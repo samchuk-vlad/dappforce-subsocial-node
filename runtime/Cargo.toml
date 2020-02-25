@@ -158,7 +158,7 @@ package = 'pallet-transaction-payment'
 rev = '3e651110aa06aa835790df63410a29676243fc54'
 version = '2.0.0'
 
-[dependencies.pallete-social]
+[dependencies.pallet-social]
 default-features = false
 path = '../palletes/social'
 
@@ -191,7 +191,7 @@ std = [
     'system/std',
     'timestamp/std',
     'transaction-payment/std',
-    'pallete-social/std'
+    'pallet-social/std'
 ]
 
 [package]
