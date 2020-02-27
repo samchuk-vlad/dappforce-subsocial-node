@@ -160,7 +160,7 @@ version = '2.0.0'
 
 [dependencies.pallet-social]
 default-features = false
-path = '../palletes/social'
+path = '../pallets/social'
 
 [features]
 default = ['std']
