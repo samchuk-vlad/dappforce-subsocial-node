@@ -162,6 +162,10 @@ version = '2.0.0'
 default-features = false
 path = '../pallets/social'
 
+[dependencies.pallet-df-multiownership]
+default-features = false
+path = '../pallets/df-multiowner'
+
 [dependencies.pallet-utility]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
