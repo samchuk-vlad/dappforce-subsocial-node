@@ -118,14 +118,16 @@ decl_event!(
 // The pallet's dispatchable functions.
 decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-		fn deposit_event() = default;
+
+    // Initializing events
+    fn deposit_event() = default;
 
 		pub fn create_space_owners(
       origin,
       space_id: SpaceId,
       owners: Vec<T::AccountId>,
       threshold: u16
-    ) -> DispatchResult {
+    ) {
 
 			let creator = ensure_signed(origin)?;
 			let mut owners_map: BTreeMap<T::AccountId, bool> = BTreeMap::new();
@@ -161,8 +163,6 @@ decl_module! {
 			}
 
 			Self::deposit_event(RawEvent::SpaceOwnersCreated(creator, space_id));
-
-			Ok(())
 		}
 
 		pub fn propose_change(
@@ -172,7 +172,7 @@ decl_module! {
       remove_owners: Vec<T::AccountId>,
       new_threshold: Option<u16>,
       notes: Vec<u8>
-    ) -> DispatchResult {
+    ) {
 
 			let sender = ensure_signed(origin)?;
 
@@ -205,11 +205,9 @@ decl_module! {
 			NextTxId::mutate(|n| { *n += 1; });
 
 			Self::deposit_event(RawEvent::UpdateProposed(sender, space_id, tx_id));
-
-			Ok(())
 		}
 
-		pub fn confirm_change(origin, space_id: SpaceId, tx_id: TransactionId) -> DispatchResult {
+		pub fn confirm_change(origin, space_id: SpaceId, tx_id: TransactionId) {
 			let sender = ensure_signed(origin)?;
 
 			let space = Self::space_by_id(space_id.clone()).ok_or(Error::<T>::SpaceNotFound)?;
@@ -234,8 +232,6 @@ decl_module! {
 			}
 
 			Self::deposit_event(RawEvent::UpdateConfirmed(sender, space_id, tx_id));
-
-			Ok(())
 		}
 	}
 }
