@@ -11,26 +11,6 @@ pub const MIN_SPACE_OWNERS: u16 = 1;
 pub const MAX_SPACE_OWNERS: u16 = u16::max_value();
 pub const MAX_TX_NOTES_LEN: u16 = 1024;
 
-pub const MSG_SPACE_NOT_FOUND: &str = "Space not found by id";
-pub const MSG_TX_NOT_FOUND: &str = "Transaction not found in a space owners";
-
-pub const MSG_NOT_ENOUGH_OWNERS: &str = "There can not be less owners than allowed";
-pub const MSG_TOO_MANY_OWNERS: &str = "There can not be more owners than allowed";
-pub const MSG_NOT_A_SPACE_OWNER: &str = "Account is not a space owner";
-
-pub const MSG_THRESHOLD_CANNOT_BE_ZERO: &str = "The threshold can not be less than 1";
-pub const MSG_THRESHOLD_EXCEEDS_OWNERS: &str = "The required confirmation count can not be greater than owners count";
-pub const MSG_TX_NOTES_GREATER_THAN_ALLOWED: &str = "Transaction notes are too long";
-
-pub const MSG_ACCOUNT_ALREADY_CONFIRMED_TX: &str = "Account has already confirmed this transaction";
-pub const MSG_NOT_ENOUGH_CONFIRMS_ON_TX: &str = "There are not enough confirmations on a transaction";
-pub const MSG_TX_ALREADY_EXECUTED: &str = "Transaction is already executed";
-pub const MSG_TX_NOT_TIED_TO_SPACE: &str = "Transaction is not tied to an owed wallet";
-
-pub const MSG_OVERFLOW_SUBMITTING_TX: &str = "Overflow in Wallet pending tx counter when submitting tx";
-pub const MSG_UNDERFLOW_EXECUTING_TX: &str = "Underflow in Wallet pending tx counter when executing tx";
-pub const MSG_OVERFLOW_EXECUTING_TX: &str = "Overflow in Wallet executed tx counter when executing tx";
-
 type SpaceId = u64;
 type TransactionId = u64;
 
@@ -66,6 +46,45 @@ pub struct Transaction<T: Trait> {
 pub trait Trait: system::Trait + pallet_timestamp::Trait {
 	/// The overarching event type.
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+}
+
+decl_error! {
+  pub enum Error for Module<T: Trait> {
+    /// Space was not found by id
+    SpaceNotFound,
+    /// Transaction was not found in a space owners
+    TxNotFound,
+
+    /// There can not be less owners than allowed
+    NotEnoughOwners,
+    /// There can not be more owners than allowed
+    TooManyOwners,
+    /// Account is not a space owner
+    NotASpaceOwner,
+
+    /// The threshold can not be less than 1
+    ZeroThershold,
+    /// The required confirmation count can not be greater than owners count"
+    TooBigThreshold,
+    /// Transaction notes are too long
+    TxNotesOversize,
+
+    /// Account has already confirmed this transaction
+    TxAlreadyConfirmed,
+    /// There are not enough confirmations on a transaction
+    NotEnoughConfirms,
+    /// Transaction is already executed
+    TxAlreadyExecuted,
+    /// Transaction is not tied to an owed wallet
+    TxNotTiedToSpace,
+
+    /// Overflow in Wallet pending tx counter when submitting tx
+    OverflowSubmittingTx,
+    /// Overflow in Wallet executed tx counter when executing tx
+    OverflowExecutingTx,
+    /// Underflow in Wallet pending tx counter when executing tx
+    UnderflowExecutingTx,
+  }
 }
 
 // This pallet's storage items.
@@ -120,11 +139,11 @@ decl_module! {
 			}
 
 			let owners_count = wallet_owners.len() as u16;
-			ensure!(owners_count >= Self::min_space_owners(), MSG_NOT_ENOUGH_OWNERS);
-			ensure!(owners_count <= Self::max_space_owners(), MSG_TOO_MANY_OWNERS);
+			ensure!(owners_count >= Self::min_space_owners(), Error::<T>::NotEnoughOwners);
+			ensure!(owners_count <= Self::max_space_owners(), Error::<T>::NotEnoughOwners);
 
-			ensure!(threshold <= owners_count, MSG_THRESHOLD_EXCEEDS_OWNERS);
-			ensure!(threshold > 0, MSG_THRESHOLD_CANNOT_BE_ZERO);
+			ensure!(threshold <= owners_count, Error::<T>::TooBigThreshold);
+			ensure!(threshold > 0, Error::<T>::ZeroThershold);
 
 			let new_wallet = SpaceOwners {
 				updated_at: Self::new_updated_at(),
@@ -157,13 +176,13 @@ decl_module! {
 
 			let sender = ensure_signed(origin)?;
 
-			ensure!(notes.len() <= Self::max_tx_notes_len() as usize, MSG_TX_NOTES_GREATER_THAN_ALLOWED);
+			ensure!(notes.len() <= Self::max_tx_notes_len() as usize, Error::<T>::TxNotesOversize);
 
-			let mut space = Self::space_by_id(space_id.clone()).ok_or(MSG_SPACE_NOT_FOUND)?;
-			space.pending_tx_count = space.pending_tx_count.checked_add(1).ok_or(MSG_OVERFLOW_SUBMITTING_TX)?;
+			let mut space = Self::space_by_id(space_id.clone()).ok_or(Error::<T>::SpaceNotFound)?;
+			space.pending_tx_count = space.pending_tx_count.checked_add(1).ok_or(Error::<T>::OverflowSubmittingTx)?;
 
 			let is_space_owner = space.owners.iter().any(|owner| *owner == sender.clone());
-      ensure!(is_space_owner, MSG_NOT_A_SPACE_OWNER);
+      ensure!(is_space_owner, Error::<T>::NotASpaceOwner);
 
       // TODO ensure: get current space owners then add_owners then remove_owners, then check that a result is not empty Vec.
 
@@ -193,18 +212,18 @@ decl_module! {
 		pub fn confirm_change(origin, space_id: SpaceId, tx_id: TransactionId) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
-			let space = Self::space_by_id(space_id.clone()).ok_or(MSG_SPACE_NOT_FOUND)?;
+			let space = Self::space_by_id(space_id.clone()).ok_or(Error::<T>::SpaceNotFound)?;
 
 			let is_space_owner = space.owners.iter().any(|owner| *owner == sender.clone());
-			ensure!(is_space_owner, MSG_NOT_A_SPACE_OWNER);
+			ensure!(is_space_owner, Error::<T>::NotASpaceOwner);
 
-			let mut tx = Self::tx_by_id(tx_id).ok_or(MSG_TX_NOT_FOUND)?;
+			let mut tx = Self::tx_by_id(tx_id).ok_or(Error::<T>::TxNotFound)?;
 
 			let txs = Self::pending_tx_ids_by_space_id(space_id.clone());
-			ensure!(txs.iter().any(|ids| *ids == tx_id), MSG_TX_NOT_TIED_TO_SPACE);
+			ensure!(txs.iter().any(|ids| *ids == tx_id), Error::<T>::TxNotTiedToSpace);
 
 			let sender_not_confirmed_yet = !tx.confirmed_by.iter().any(|account| *account == sender.clone());
-			ensure!(sender_not_confirmed_yet, MSG_ACCOUNT_ALREADY_CONFIRMED_TX);
+			ensure!(sender_not_confirmed_yet, Error::<T>::TxAlreadyConfirmed);
 
 			tx.confirmed_by.push(sender.clone());
 
@@ -239,15 +258,15 @@ impl<T: Trait> Module<T> {
 		let space_id = space.space_id;
 		let tx_id = tx.id;
 
-		ensure!(tx.confirmed_by.len() >= space.threshold as usize, MSG_NOT_ENOUGH_CONFIRMS_ON_TX);
+		ensure!(tx.confirmed_by.len() >= space.threshold as usize, Error::<T>::NotEnoughConfirms);
 
 		// TODO set new space owners here!
 
 		// TODO add or remove space from list of spaces by account that is added or removed
 		// <SpaceIdsOwnedByAccountId<T>>::mutate(owner.clone(), |ids| ids.push(space_id.clone())); // or add or remove space id
 
-		space.pending_tx_count = space.pending_tx_count.checked_sub(1).ok_or(MSG_UNDERFLOW_EXECUTING_TX)?;
-		space.executed_tx_count = space.executed_tx_count.checked_add(1).ok_or(MSG_OVERFLOW_EXECUTING_TX)?;
+		space.pending_tx_count = space.pending_tx_count.checked_sub(1).ok_or(Error::<T>::UnderflowExecutingTx)?;
+		space.executed_tx_count = space.executed_tx_count.checked_add(1).ok_or(Error::<T>::OverflowExecutingTx)?;
 
 		Self::change_tx_from_pending_to_executed(space_id.clone(), tx_id)?;
 
@@ -259,9 +278,9 @@ impl<T: Trait> Module<T> {
 	}
 
 	fn change_tx_from_pending_to_executed(space_id: SpaceId, tx_id: TransactionId) -> DispatchResult {
-		ensure!(Self::space_by_id(space_id.clone()).is_some(), MSG_SPACE_NOT_FOUND);
-		ensure!(Self::tx_by_id(tx_id).is_some(), MSG_TX_NOT_FOUND);
-		ensure!(!Self::executed_tx_ids_by_space_id(space_id.clone()).iter().any(|&x| x == tx_id), MSG_TX_ALREADY_EXECUTED);
+		ensure!(Self::space_by_id(space_id.clone()).is_some(), Error::<T>::SpaceNotFound);
+		ensure!(Self::tx_by_id(tx_id).is_some(), Error::<T>::TxNotFound);
+		ensure!(!Self::executed_tx_ids_by_space_id(space_id.clone()).iter().any(|&x| x == tx_id), Error::<T>::TxAlreadyExecuted);
 
 		PendingTxIdsBySpaceId::mutate(space_id.clone(), |txs| Self::vec_remove_on(txs, tx_id));
 		ExecutedTxIdsBySpaceId::mutate(space_id.clone(), |ids| ids.push(tx_id));
