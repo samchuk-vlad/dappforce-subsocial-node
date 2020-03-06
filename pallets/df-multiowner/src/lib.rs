@@ -1,8 +1,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use sp_std::{prelude::*, collections::btree_map::BTreeMap};
+mod functions;
+
+use sp_std::prelude::*;
+use sp_std::collections::btree_map::BTreeMap;
 use codec::{Encode, Decode};
-use frame_support::{decl_module, decl_storage, decl_event, decl_error, ensure, dispatch::DispatchResult};
+use frame_support::{decl_module, decl_storage, decl_event, decl_error, ensure};
 use sp_runtime::RuntimeDebug;
 use system::ensure_signed;
 use pallet_timestamp;
@@ -10,9 +13,6 @@ use pallet_timestamp;
 pub const MIN_SPACE_OWNERS: u16 = 1;
 pub const MAX_SPACE_OWNERS: u16 = u16::max_value();
 pub const MAX_TX_NOTES_LEN: u16 = 1024;
-
-type SpaceId = u64;
-type TransactionId = u64;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct UpdatedAt<T: Trait> {
@@ -41,6 +41,9 @@ pub struct Transaction<T: Trait> {
   pub notes: Vec<u8>,
   pub confirmed_by: Vec<T::AccountId>,
 }
+
+type SpaceId = u64;
+type TransactionId = u64;
 
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait + pallet_timestamp::Trait {
@@ -89,8 +92,8 @@ decl_error! {
 
 // This pallet's storage items.
 decl_storage! {
-	trait Store for Module<T: Trait> as MultiownershipModule {
-		MinSpaceOwners get(min_space_owners): u16 = MIN_SPACE_OWNERS;
+  trait Store for Module<T: Trait> as TemplateModule {
+    MinSpaceOwners get(min_space_owners): u16 = MIN_SPACE_OWNERS;
 		MaxSpaceOwners get(max_space_owners): u16 = MAX_SPACE_OWNERS;
 		MaxTxNotesLen get(max_tx_notes_len): u16 = MAX_TX_NOTES_LEN;
 
@@ -101,23 +104,12 @@ decl_storage! {
 		TxById get(tx_by_id): map TransactionId => Option<Transaction<T>>;
 		PendingTxIdsBySpaceId get(pending_tx_ids_by_space_id): map SpaceId => Vec<TransactionId>;
 		ExecutedTxIdsBySpaceId get(executed_tx_ids_by_space_id): map SpaceId => Vec<TransactionId>;
-	}
+  }
 }
-
-decl_event!(
-	pub enum Event<T> where
-		<T as system::Trait>::AccountId
-	{
-		SpaceOwnersCreated(AccountId, SpaceId),
-		UpdateProposed(AccountId, SpaceId, TransactionId),
-		UpdateConfirmed(AccountId, SpaceId, TransactionId),
-		SpaceOwnersUpdated(AccountId, SpaceId, TransactionId),
-	}
-);
 
 // The pallet's dispatchable functions.
 decl_module! {
-	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+  pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 
     // Initializing events
     fn deposit_event() = default;
@@ -131,7 +123,7 @@ decl_module! {
 
 			let creator = ensure_signed(origin)?;
 			let mut owners_map: BTreeMap<T::AccountId, bool> = BTreeMap::new();
-			let mut wallet_owners: Vec<T::AccountId> = vec![];
+			let mut wallet_owners: Vec<T::AccountId> = Vec::new();
 
 			for owner in owners.iter() {
 				if !owners_map.contains_key(&owner) {
@@ -194,7 +186,7 @@ decl_module! {
         remove_owners: remove_owners,
         new_threshold: new_threshold,
 				notes,
-				confirmed_by: vec![]
+				confirmed_by: Vec::new()
 			};
 
 			new_tx.confirmed_by.push(sender.clone());
@@ -236,51 +228,13 @@ decl_module! {
 	}
 }
 
-impl<T: Trait> Module<T> {
-  fn vec_remove_on<F: PartialEq>(vector: &mut Vec<F>, element: F) {
-    if let Some(index) = vector.iter().position(|x| *x == element) {
-      vector.swap_remove(index);
-    }
+decl_event!(
+  pub enum Event<T> where
+    <T as system::Trait>::AccountId,
+   {
+    SpaceOwnersCreated(AccountId, SpaceId),
+		UpdateProposed(AccountId, SpaceId, TransactionId),
+		UpdateConfirmed(AccountId, SpaceId, TransactionId),
+		SpaceOwnersUpdated(AccountId, SpaceId, TransactionId),
   }
-
-  fn new_updated_at() -> UpdatedAt<T> {
-    UpdatedAt {
-      block: <system::Module<T>>::block_number(),
-      time: <pallet_timestamp::Module<T>>::now(),
-    }
-  }
-
-  fn update_space_owners(executer: T::AccountId, mut space: SpaceOwners<T>, tx: Transaction<T>) -> DispatchResult {
-    let space_id = space.space_id;
-    let tx_id = tx.id;
-
-    ensure!(tx.confirmed_by.len() >= space.threshold as usize, Error::<T>::NotEnoughConfirms);
-
-    // TODO set new space owners here!
-
-    // TODO add or remove space from list of spaces by account that is added or removed
-    // <SpaceIdsOwnedByAccountId<T>>::mutate(owner.clone(), |ids| ids.push(space_id.clone())); // or add or remove space id
-
-    space.pending_tx_count = space.pending_tx_count.checked_sub(1).ok_or(Error::<T>::UnderflowExecutingTx)?;
-    space.executed_tx_count = space.executed_tx_count.checked_add(1).ok_or(Error::<T>::OverflowExecutingTx)?;
-
-    Self::change_tx_from_pending_to_executed(space_id.clone(), tx_id)?;
-
-    <SpaceOwnersBySpaceById<T>>::insert(space_id.clone(), space);
-    <TxById<T>>::insert(tx_id, tx);
-    Self::deposit_event(RawEvent::SpaceOwnersUpdated(executer, space_id, tx_id));
-
-    Ok(())
-  }
-
-  fn change_tx_from_pending_to_executed(space_id: SpaceId, tx_id: TransactionId) -> DispatchResult {
-    ensure!(Self::space_by_id(space_id.clone()).is_some(), Error::<T>::SpaceNotFound);
-    ensure!(Self::tx_by_id(tx_id).is_some(), Error::<T>::TxNotFound);
-    ensure!(!Self::executed_tx_ids_by_space_id(space_id.clone()).iter().any(|&x| x == tx_id), Error::<T>::TxAlreadyExecuted);
-
-    PendingTxIdsBySpaceId::mutate(space_id.clone(), |txs| Self::vec_remove_on(txs, tx_id));
-    ExecutedTxIdsBySpaceId::mutate(space_id.clone(), |ids| ids.push(tx_id));
-
-    Ok(())
-  }
-}
+);
