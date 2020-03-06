@@ -16,36 +16,36 @@ type TransactionId = u64;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct UpdatedAt<T: Trait> {
-	block: T::BlockNumber,
-	time: T::Moment,
+  block: T::BlockNumber,
+  time: T::Moment,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct SpaceOwners<T: Trait> {
-	pub updated_at: UpdatedAt<T>,
-	pub space_id: SpaceId,
-	pub owners: Vec<T::AccountId>,
-	pub threshold: u16,
+  pub updated_at: UpdatedAt<T>,
+  pub space_id: SpaceId,
+  pub owners: Vec<T::AccountId>,
+  pub threshold: u16,
 
-	pub pending_tx_count: u16,
-	pub executed_tx_count: u64,
+  pub pending_tx_count: u16,
+  pub executed_tx_count: u64,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Transaction<T: Trait> {
-	pub updated_at: UpdatedAt<T>,
-	pub id: TransactionId,
-	pub add_owners: Vec<T::AccountId>,
-	pub remove_owners: Vec<T::AccountId>,
-	pub new_threshold: Option<u16>,
-	pub notes: Vec<u8>,
-	pub confirmed_by: Vec<T::AccountId>
+  pub updated_at: UpdatedAt<T>,
+  pub id: TransactionId,
+  pub add_owners: Vec<T::AccountId>,
+  pub remove_owners: Vec<T::AccountId>,
+  pub new_threshold: Option<u16>,
+  pub notes: Vec<u8>,
+  pub confirmed_by: Vec<T::AccountId>,
 }
 
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait + pallet_timestamp::Trait {
-	/// The overarching event type.
-	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+  /// The overarching event type.
+  type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 }
 
 decl_error! {
@@ -241,50 +241,50 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-	fn vec_remove_on<F: PartialEq>(vector: &mut Vec<F>, element: F) {
-		if let Some(index) = vector.iter().position(|x| *x == element) {
-			vector.swap_remove(index);
-		}
-	}
+  fn vec_remove_on<F: PartialEq>(vector: &mut Vec<F>, element: F) {
+    if let Some(index) = vector.iter().position(|x| *x == element) {
+      vector.swap_remove(index);
+    }
+  }
 
-	fn new_updated_at() -> UpdatedAt<T> {
-		UpdatedAt {
-			block: <system::Module<T>>::block_number(),
-			time: <pallet_timestamp::Module<T>>::now(),
-		}
-	}
+  fn new_updated_at() -> UpdatedAt<T> {
+    UpdatedAt {
+      block: <system::Module<T>>::block_number(),
+      time: <pallet_timestamp::Module<T>>::now(),
+    }
+  }
 
-	fn update_space_owners(executer: T::AccountId, mut space: SpaceOwners<T>, tx: Transaction<T>) -> DispatchResult {
-		let space_id = space.space_id;
-		let tx_id = tx.id;
+  fn update_space_owners(executer: T::AccountId, mut space: SpaceOwners<T>, tx: Transaction<T>) -> DispatchResult {
+    let space_id = space.space_id;
+    let tx_id = tx.id;
 
-		ensure!(tx.confirmed_by.len() >= space.threshold as usize, Error::<T>::NotEnoughConfirms);
+    ensure!(tx.confirmed_by.len() >= space.threshold as usize, Error::<T>::NotEnoughConfirms);
 
-		// TODO set new space owners here!
+    // TODO set new space owners here!
 
-		// TODO add or remove space from list of spaces by account that is added or removed
-		// <SpaceIdsOwnedByAccountId<T>>::mutate(owner.clone(), |ids| ids.push(space_id.clone())); // or add or remove space id
+    // TODO add or remove space from list of spaces by account that is added or removed
+    // <SpaceIdsOwnedByAccountId<T>>::mutate(owner.clone(), |ids| ids.push(space_id.clone())); // or add or remove space id
 
-		space.pending_tx_count = space.pending_tx_count.checked_sub(1).ok_or(Error::<T>::UnderflowExecutingTx)?;
-		space.executed_tx_count = space.executed_tx_count.checked_add(1).ok_or(Error::<T>::OverflowExecutingTx)?;
+    space.pending_tx_count = space.pending_tx_count.checked_sub(1).ok_or(Error::<T>::UnderflowExecutingTx)?;
+    space.executed_tx_count = space.executed_tx_count.checked_add(1).ok_or(Error::<T>::OverflowExecutingTx)?;
 
-		Self::change_tx_from_pending_to_executed(space_id.clone(), tx_id)?;
+    Self::change_tx_from_pending_to_executed(space_id.clone(), tx_id)?;
 
-		<SpaceOwnersBySpaceById<T>>::insert(space_id.clone(), space);
-		<TxById<T>>::insert(tx_id, tx);
-		Self::deposit_event(RawEvent::SpaceOwnersUpdated(executer, space_id, tx_id));
+    <SpaceOwnersBySpaceById<T>>::insert(space_id.clone(), space);
+    <TxById<T>>::insert(tx_id, tx);
+    Self::deposit_event(RawEvent::SpaceOwnersUpdated(executer, space_id, tx_id));
 
-		Ok(())
-	}
+    Ok(())
+  }
 
-	fn change_tx_from_pending_to_executed(space_id: SpaceId, tx_id: TransactionId) -> DispatchResult {
-		ensure!(Self::space_by_id(space_id.clone()).is_some(), Error::<T>::SpaceNotFound);
-		ensure!(Self::tx_by_id(tx_id).is_some(), Error::<T>::TxNotFound);
-		ensure!(!Self::executed_tx_ids_by_space_id(space_id.clone()).iter().any(|&x| x == tx_id), Error::<T>::TxAlreadyExecuted);
+  fn change_tx_from_pending_to_executed(space_id: SpaceId, tx_id: TransactionId) -> DispatchResult {
+    ensure!(Self::space_by_id(space_id.clone()).is_some(), Error::<T>::SpaceNotFound);
+    ensure!(Self::tx_by_id(tx_id).is_some(), Error::<T>::TxNotFound);
+    ensure!(!Self::executed_tx_ids_by_space_id(space_id.clone()).iter().any(|&x| x == tx_id), Error::<T>::TxAlreadyExecuted);
 
-		PendingTxIdsBySpaceId::mutate(space_id.clone(), |txs| Self::vec_remove_on(txs, tx_id));
-		ExecutedTxIdsBySpaceId::mutate(space_id.clone(), |ids| ids.push(tx_id));
+    PendingTxIdsBySpaceId::mutate(space_id.clone(), |txs| Self::vec_remove_on(txs, tx_id));
+    ExecutedTxIdsBySpaceId::mutate(space_id.clone(), |ids| ids.push(tx_id));
 
-		Ok(())
-	}
+    Ok(())
+  }
 }
