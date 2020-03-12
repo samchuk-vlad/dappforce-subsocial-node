@@ -1,5 +1,6 @@
 use super::*;
 
+use sp_std::collections::btree_set::BTreeSet;
 use frame_support::{dispatch::DispatchResult};
 
 impl<T: Trait> Module<T> {
@@ -28,7 +29,6 @@ impl<T: Trait> Module<T> {
     // TODO add or remove space from list of spaces by account that is added or removed
     // <SpaceIdsOwnedByAccountId<T>>::mutate(owner.clone(), |ids| ids.push(space_id.clone())); // or add or remove space id
 
-    space.pending_tx_count = space.pending_tx_count.checked_sub(1).ok_or(Error::<T>::UnderflowExecutingTx)?;
     space.executed_tx_count = space.executed_tx_count.checked_add(1).ok_or(Error::<T>::OverflowExecutingTx)?;
 
     Self::change_tx_from_pending_to_executed(space_id, tx_id)?;
@@ -45,9 +45,25 @@ impl<T: Trait> Module<T> {
     ensure!(Self::tx_by_id(tx_id).is_some(), Error::<T>::TxNotFound);
     ensure!(!Self::executed_tx_ids_by_space_id(space_id).iter().any(|&x| x == tx_id), Error::<T>::TxAlreadyExecuted);
 
-    PendingTxIdsBySpaceId::mutate(space_id, |txs| Self::vec_remove_on(txs, tx_id));
+    PendingTxIdBySpaceId::remove(space_id);
     ExecutedTxIdsBySpaceId::mutate(space_id, |ids| ids.push(tx_id));
 
     Ok(())
+  }
+
+  pub fn transform_new_owners_to_vec(current_owners: Vec<T::AccountId>, add_owners: Vec<T::AccountId>, remove_owners: Vec<T::AccountId>) -> Vec<T::AccountId> {
+    let mut owners_set: BTreeSet<T::AccountId> = BTreeSet::new();
+    let mut new_owners_set: BTreeSet<T::AccountId> = BTreeSet::new();
+
+    // Extract current space owners
+    current_owners.iter().for_each(|x| { owners_set.insert(x.clone()); });
+    // Extract owners that should be added
+    add_owners.iter().for_each(|x| { new_owners_set.insert(x.clone()); });
+    // Unite both sets
+    owners_set.union(&new_owners_set);
+    // Remove accounts that exist in remove_owners from set
+    remove_owners.iter().for_each(|x| { owners_set.remove(x); });
+
+    owners_set.iter().cloned().collect()
   }
 }

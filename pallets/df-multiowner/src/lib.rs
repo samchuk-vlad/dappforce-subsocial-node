@@ -27,7 +27,6 @@ pub struct SpaceOwners<T: Trait> {
   pub owners: Vec<T::AccountId>,
   pub threshold: u16,
 
-  pub pending_tx_count: u16,
   pub executed_tx_count: u64,
 }
 
@@ -57,6 +56,8 @@ decl_error! {
     SpaceNotFound,
     /// Transaction was not found in a space owners
     TxNotFound,
+    /// Space owners already exist on this space
+    SpaceOwnersAlreadyExist,
 
     /// There can not be less owners than allowed
     NotEnoughOwners,
@@ -71,6 +72,8 @@ decl_error! {
     TooBigThreshold,
     /// Transaction notes are too long
     TxNotesOversize,
+    /// No space owners will left in result of tx
+    NoSpaceOwnersLeft,
 
     /// Account has already confirmed this transaction
     TxAlreadyConfirmed,
@@ -80,9 +83,11 @@ decl_error! {
     TxAlreadyExecuted,
     /// Transaction is not tied to an owed wallet
     TxNotTiedToSpace,
+    /// Pending tx already exists
+    PendingTxAlreadyExists,
+    /// Pendint tx doesn't exist
+    PendingTxDoesNotExist,
 
-    /// Overflow in Wallet pending tx counter when submitting tx
-    OverflowSubmittingTx,
     /// Overflow in Wallet executed tx counter when executing tx
     OverflowExecutingTx,
     /// Underflow in Wallet pending tx counter when executing tx
@@ -102,7 +107,7 @@ decl_storage! {
 
     NextTxId get(next_tx_id): TransactionId = 1;
 		TxById get(tx_by_id): map TransactionId => Option<Transaction<T>>;
-		PendingTxIdsBySpaceId get(pending_tx_ids_by_space_id): map SpaceId => Vec<TransactionId>;
+		PendingTxIdBySpaceId get(pending_tx_id_by_space_id): map SpaceId => Option<TransactionId>;
 		ExecutedTxIdsBySpaceId get(executed_tx_ids_by_space_id): map SpaceId => Vec<TransactionId>;
   }
 }
@@ -120,8 +125,10 @@ decl_module! {
       owners: Vec<T::AccountId>,
       threshold: u16
     ) {
-
 			let creator = ensure_signed(origin)?;
+
+			ensure!(Self::space_by_id(space_id).is_none(), Error::<T>::SpaceOwnersAlreadyExist);
+
 			let mut owners_map: BTreeMap<T::AccountId, bool> = BTreeMap::new();
 			let mut wallet_owners: Vec<T::AccountId> = Vec::new();
 
@@ -144,7 +151,6 @@ decl_module! {
 				space_id: space_id.clone(),
 				owners: wallet_owners.clone(),
 				threshold,
-				pending_tx_count: 0,
 				executed_tx_count: 0
 			};
 
@@ -165,18 +171,17 @@ decl_module! {
       new_threshold: Option<u16>,
       notes: Vec<u8>
     ) {
-
 			let sender = ensure_signed(origin)?;
 
 			ensure!(notes.len() <= Self::max_tx_notes_len() as usize, Error::<T>::TxNotesOversize);
 
-			let mut space = Self::space_by_id(space_id.clone()).ok_or(Error::<T>::SpaceNotFound)?;
-			space.pending_tx_count = space.pending_tx_count.checked_add(1).ok_or(Error::<T>::OverflowSubmittingTx)?;
+			let space = Self::space_by_id(space_id.clone()).ok_or(Error::<T>::SpaceNotFound)?;
+			ensure!(Self::pending_tx_id_by_space_id(space_id).is_some(), Error::<T>::PendingTxAlreadyExists);
 
 			let is_space_owner = space.owners.iter().any(|owner| *owner == sender.clone());
       ensure!(is_space_owner, Error::<T>::NotASpaceOwner);
 
-      // TODO ensure: get current space owners then add_owners then remove_owners, then check that a result is not empty Vec.
+      // ensure!(!Self::transform_new_owners_to_vec(space.owners.clone(), add_owners.clone(), remove_owners.clone()).is_empty(), Error::<T>::NoSpaceOwnersLeft);
 
 			let tx_id = Self::next_tx_id();
 			let ref mut new_tx = Transaction {
@@ -193,7 +198,7 @@ decl_module! {
 
 			<SpaceOwnersBySpaceById<T>>::insert(space_id.clone(), space);
 			<TxById<T>>::insert(tx_id, new_tx);
-			PendingTxIdsBySpaceId::mutate(space_id.clone(), |ids| ids.push(tx_id));
+			PendingTxIdBySpaceId::insert(space_id.clone(), tx_id);
 			NextTxId::mutate(|n| { *n += 1; });
 
 			Self::deposit_event(RawEvent::UpdateProposed(sender, space_id, tx_id));
@@ -209,8 +214,8 @@ decl_module! {
 
 			let mut tx = Self::tx_by_id(tx_id).ok_or(Error::<T>::TxNotFound)?;
 
-			let txs = Self::pending_tx_ids_by_space_id(space_id.clone());
-			ensure!(txs.iter().any(|ids| *ids == tx_id), Error::<T>::TxNotTiedToSpace);
+			let pending_tx_id = Self::pending_tx_id_by_space_id(space_id.clone()).ok_or(Error::<T>::PendingTxDoesNotExist)?;
+			ensure!(pending_tx_id == tx_id, Error::<T>::TxNotTiedToSpace);
 
 			let sender_not_confirmed_yet = !tx.confirmed_by.iter().any(|account| *account == sender.clone());
 			ensure!(sender_not_confirmed_yet, Error::<T>::TxAlreadyConfirmed);

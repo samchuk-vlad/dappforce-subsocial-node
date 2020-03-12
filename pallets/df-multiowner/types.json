@@ -1,0 +1,24 @@
+{
+  "SpaceId": "u64",
+  "TransactionId": "u64",
+  "UpdatedAt": {
+    "block": "BlockNumber",
+    "time": "Moment"
+  },
+  "SpaceOwners": {
+    "updated_at": "UpdatedAt",
+    "space_id": "SpaceId",
+    "owners": "Vec<AccountId>",
+    "threshold": "u16",
+    "executed_tx_count": "u64"
+  },
+  "Transaction": {
+    "updated_at": "UpdatedAt",
+    "id": "TransactionId",
+    "add_owners": "Vec<AccountId>",
+    "remove_owners": "Vec<AccountId>",
+    "new_threshold": "Option<u16>",
+    "notes": "Vec<u8>",
+    "confirmed_by": "Vec<AccountId>"
+  }
+}
