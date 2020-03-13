@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 mod functions;
+mod tests;
 
 use sp_std::prelude::*;
 use sp_std::collections::btree_map::BTreeMap;
