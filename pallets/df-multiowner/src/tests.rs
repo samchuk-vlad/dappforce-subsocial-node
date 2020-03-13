@@ -69,13 +69,9 @@ const ACCOUNT1 : AccountId = 1;
 const ACCOUNT2 : AccountId = 2;
 const ACCOUNT3 : AccountId = 3;
 
-/*fn blog_update(writers: Option<Vec<AccountId>>, slug: Option<Vec<u8>>, ipfs_hash: Option<Vec<u8>>) -> BlogUpdate<u64> {
-  BlogUpdate {
-    writers,
-    slug,
-    ipfs_hash
-  }
-}*/
+fn tx_note() -> Vec<u8> {
+  b"Default change proposal".to_vec()
+}
 
 fn _create_default_space_owners() -> DispatchResult {
   _create_space_owners(None, None, None, None)
@@ -115,7 +111,7 @@ fn _propose_change(
     add_owners.unwrap_or(vec![ACCOUNT3]),
     remove_owners.unwrap_or(vec![]),
     new_threshold.unwrap_or(Some(3)),
-    notes.unwrap_or(b"Default change proposal".to_vec())
+    notes.unwrap_or(self::tx_note())
   )
 }
 
@@ -134,4 +130,50 @@ fn _confirm_change(
     space_id.unwrap_or(1),
     tx_id.unwrap_or(1),
   )
+}
+
+#[test]
+fn create_space_owners_should_work() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_space_owners());
+
+    // Check storages
+    assert_eq!(MultiOwnership::space_ids_owned_by_account_id(ACCOUNT1), vec![1]);
+    assert_eq!(MultiOwnership::space_ids_owned_by_account_id(ACCOUNT2), vec![1]);
+
+    // Check whether data is stored correctly
+    let space_owners = MultiOwnership::space_owners_by_space_id(1).unwrap();
+    assert_eq!(space_owners.owners, vec![ACCOUNT1, ACCOUNT2]);
+    assert_eq!(space_owners.space_id, 1);
+    assert_eq!(space_owners.threshold, 2);
+    assert_eq!(space_owners.executed_tx_count, 0);
+  });
+}
+
+#[test]
+fn propose_change_should_work() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_space_owners());
+    assert_ok!(_propose_default_change());
+
+    // Check storages
+    assert_eq!(MultiOwnership::pending_tx_id_by_space_id(1), Some(1));
+    assert_eq!(MultiOwnership::next_tx_id(), 2);
+
+    // Check whether data is stored correctly
+    let tx = MultiOwnership::tx_by_id(1).unwrap();
+    assert_eq!(tx.add_owners, vec![ACCOUNT3]);
+    assert_eq!(tx.remove_owners, vec![]);
+    assert_eq!(tx.new_threshold, Some(3));
+    assert_eq!(tx.notes, self::tx_note());
+    assert_eq!(tx.confirmed_by, vec![ACCOUNT1]);
+  });
+}
+
+#[test]
+fn propose_change_should_fail_zero_threshold() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_space_owners());
+    assert_noop!(_propose_change(None, None, Some(vec![]), Some(vec![]), Some(Some(0)), None), Error::<Test>::ZeroThershold);
+  });
 }

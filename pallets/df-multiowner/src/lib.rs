@@ -177,12 +177,18 @@ decl_module! {
 			ensure!(notes.len() <= Self::max_tx_notes_len() as usize, Error::<T>::TxNotesOversize);
 
 			let space_owners = Self::space_owners_by_space_id(space_id.clone()).ok_or(Error::<T>::SpaceOwnersNotFound)?;
-			ensure!(Self::pending_tx_id_by_space_id(space_id).is_some(), Error::<T>::PendingTxAlreadyExists);
+			ensure!(Self::pending_tx_id_by_space_id(space_id).is_none(), Error::<T>::PendingTxAlreadyExists);
 
 			let is_space_owner = space_owners.owners.iter().any(|owner| *owner == who.clone());
       ensure!(is_space_owner, Error::<T>::NotASpaceOwner);
 
-      // ensure!(!Self::transform_new_owners_to_vec(space_owners.owners.clone(), add_owners.clone(), remove_owners.clone()).is_empty(), Error::<T>::NoSpaceOwnersLeft);
+      let result_owners = Self::transform_new_owners_to_vec(space_owners.owners.clone(), add_owners.clone(), remove_owners.clone());
+      ensure!(!result_owners.is_empty(), Error::<T>::NoSpaceOwnersLeft);
+
+      if let Some(threshold) = new_threshold {
+        ensure!(threshold <= result_owners.len() as u16, Error::<T>::TooBigThreshold);
+        ensure!(threshold > 0, Error::<T>::ZeroThershold);
+			}
 
 			let tx_id = Self::next_tx_id();
 			let mut new_tx = Transaction {
@@ -196,8 +202,6 @@ decl_module! {
 			};
 
 			new_tx.confirmed_by.push(who.clone());
-
-			<SpaceOwnersBySpaceById<T>>::insert(space_id.clone(), space_owners);
 			<TxById<T>>::insert(tx_id, new_tx);
 			PendingTxIdBySpaceId::insert(space_id.clone(), tx_id);
 			NextTxId::mutate(|n| { *n += 1; });
