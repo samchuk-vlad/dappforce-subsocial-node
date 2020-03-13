@@ -41,7 +41,7 @@ impl<T: Trait> Module<T> {
   }
 
   pub fn change_tx_from_pending_to_executed(space_id: SpaceId, tx_id: TransactionId) -> DispatchResult {
-    ensure!(Self::space_by_id(space_id).is_some(), Error::<T>::SpaceNotFound);
+    ensure!(Self::space_owners_by_space_id(space_id).is_some(), Error::<T>::SpaceOwnersNotFound);
     ensure!(Self::tx_by_id(tx_id).is_some(), Error::<T>::TxNotFound);
     ensure!(!Self::executed_tx_ids_by_space_id(space_id).iter().any(|&x| x == tx_id), Error::<T>::TxAlreadyExecuted);
 
