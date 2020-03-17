@@ -68,6 +68,7 @@ type AccountId = u64;
 const ACCOUNT1 : AccountId = 1;
 const ACCOUNT2 : AccountId = 2;
 const ACCOUNT3 : AccountId = 3;
+const ACCOUNT4 : AccountId = 4;
 
 fn tx_note() -> Vec<u8> {
   b"Default change proposal".to_vec()
@@ -285,5 +286,49 @@ fn confirm_change_should_work() {
     // Check whether data is stored correctly
     let tx = MultiOwnership::tx_by_id(1).unwrap();
     assert_eq!(tx.confirmed_by, vec![ACCOUNT1, ACCOUNT2]);
+  });
+}
+
+#[test]
+fn confirm_change_should_fail_not_related_to_space_owners() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_space_owners());
+    assert_ok!(_propose_default_change());
+    assert_ok!(_create_space_owners(
+      Some(Origin::signed(ACCOUNT3)),
+      Some(2),
+      Some(vec![ACCOUNT3]),
+      Some(1)
+    ));
+    assert_ok!(_propose_change(
+      Some(Origin::signed(ACCOUNT3)),
+      Some(2),
+      Some(vec![ACCOUNT1]),
+      Some(vec![]),
+      Some(Some(2)),
+      Some(self::tx_note())
+    ));
+
+    assert_noop!(_confirm_change(
+      None,
+      Some(1),
+      Some(2)
+    ), Error::<Test>::TxNotRelatedToSpace);
+  });
+}
+
+#[test]
+fn confirm_change_should_fail_not() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_space_owners(
+      Some(Origin::signed(ACCOUNT1)),
+      Some(1),
+      Some(vec![ACCOUNT1, ACCOUNT2, ACCOUNT4]),
+      Some(3)
+    ));
+    assert_ok!(_propose_default_change());
+    assert_ok!(_confirm_default_change());
+
+    assert_noop!(_confirm_default_change(), Error::<Test>::TxAlreadyConfirmed);
   });
 }
