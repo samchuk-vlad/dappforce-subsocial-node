@@ -269,3 +269,21 @@ fn propose_change_should_fail_no_updates_on_threshold() {
     , Error::<Test>::NoFieldsUpdatedOnProposal);
   });
 }
+
+#[test]
+fn confirm_change_should_work() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_space_owners());
+    assert_ok!(_propose_default_change());
+    assert_ok!(_confirm_default_change());
+
+    // Check storages
+    assert_eq!(MultiOwnership::pending_tx_id_by_space_id(1), None);
+    assert_eq!(MultiOwnership::executed_tx_ids_by_space_id(1), vec![1]);
+    assert_eq!(MultiOwnership::next_tx_id(), 2);
+
+    // Check whether data is stored correctly
+    let tx = MultiOwnership::tx_by_id(1).unwrap();
+    assert_eq!(tx.confirmed_by, vec![ACCOUNT1, ACCOUNT2]);
+  });
+}
