@@ -29,7 +29,7 @@ impl<T: Trait> Module<T> {
     // TODO add or remove space from list of spaces by account that is added or removed
     // <SpaceIdsOwnedByAccountId<T>>::mutate(owner.clone(), |ids| ids.push(space_id.clone())); // or add or remove space id
 
-    space.executed_tx_count = space.executed_tx_count.checked_add(1).ok_or(Error::<T>::OverflowExecutingTx)?;
+    space.changes_count = space.changes_count.checked_add(1).ok_or(Error::<T>::OverflowExecutingTx)?;
 
     Self::change_tx_from_pending_to_executed(space_id, tx_id)?;
 
