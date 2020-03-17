@@ -240,8 +240,8 @@ fn propose_change_should_fail_proposal_already_exist() {
   });
 }
 
-/*#[test]
-fn propose_change_should_do_something() {
+#[test]
+fn propose_change_should_fail_no_updates_on_owners() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_space_owners());
     assert_noop!(_propose_change(
@@ -251,6 +251,21 @@ fn propose_change_should_do_something() {
       Some(vec![ACCOUNT3]),
       Some(None),
       None)
-    , Error::<Test>::OwnersDoNotDiffer);
+    , Error::<Test>::NoFieldsUpdatedOnProposal);
   });
-}*/
+}
+
+#[test]
+fn propose_change_should_fail_no_updates_on_threshold() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_space_owners());
+    assert_noop!(_propose_change(
+      None,
+      None,
+      Some(vec![]),
+      Some(vec![]),
+      Some(Some(2)),
+      None)
+    , Error::<Test>::NoFieldsUpdatedOnProposal);
+  });
+}

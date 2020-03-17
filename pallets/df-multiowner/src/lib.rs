@@ -75,8 +75,10 @@ decl_error! {
     TxNotesOversize,
     /// No space owners will left in result of tx
     NoSpaceOwnersLeft,
-    /// Space owners before and after change don't differ
-    OwnersDoNotDiffer,
+    /// No updates proposed in change proposal
+    NoUpdatesProposed,
+    /// No fields update in result of change proposal
+    NoFieldsUpdatedOnProposal,
 
     /// Account has already confirmed this transaction
     TxAlreadyConfirmed,
@@ -176,6 +178,12 @@ decl_module! {
     ) {
 			let who = ensure_signed(origin)?;
 
+			let has_updates =
+			  !add_owners.is_empty() ||
+			  !remove_owners.is_empty() ||
+			  new_threshold.is_some();
+
+      ensure!(has_updates, Error::<T>::NoUpdatesProposed);
 			ensure!(notes.len() <= Self::max_tx_notes_len() as usize, Error::<T>::TxNotesOversize);
 
 			let space_owners = Self::space_owners_by_space_id(space_id.clone()).ok_or(Error::<T>::SpaceOwnersNotFound)?;
@@ -184,13 +192,20 @@ decl_module! {
 			let is_space_owner = space_owners.owners.iter().any(|owner| *owner == who.clone());
       ensure!(is_space_owner, Error::<T>::NotASpaceOwner);
 
+      let mut fields_updated : u16 = 0;
+
       let result_owners = Self::transform_new_owners_to_vec(space_owners.owners.clone(), add_owners.clone(), remove_owners.clone());
       ensure!(!result_owners.is_empty(), Error::<T>::NoSpaceOwnersLeft);
-      // ensure!(result_owners != space_owners.owners, Error::<T>::OwnersDoNotDiffer);
+      if result_owners != space_owners.owners {
+        fields_updated += 1;
+      }
 
       if let Some(threshold) = new_threshold {
-        ensure!(threshold as usize <= result_owners.len(), Error::<T>::TooBigThreshold);
-        ensure!(threshold > 0, Error::<T>::ZeroThershold);
+        if space_owners.threshold != threshold {
+          ensure!(threshold as usize <= result_owners.len(), Error::<T>::TooBigThreshold);
+          ensure!(threshold > 0, Error::<T>::ZeroThershold);
+          fields_updated += 1;
+        }
 			}
 
 			let tx_id = Self::next_tx_id();
@@ -204,12 +219,16 @@ decl_module! {
 				confirmed_by: Vec::new()
 			};
 
-			new_tx.confirmed_by.push(who.clone());
-			<TxById<T>>::insert(tx_id, new_tx);
-			PendingTxIdBySpaceId::insert(space_id.clone(), tx_id);
-			NextTxId::mutate(|n| { *n += 1; });
+      if fields_updated > 0 {
+        new_tx.confirmed_by.push(who.clone());
+        <TxById<T>>::insert(tx_id, new_tx);
+        PendingTxIdBySpaceId::insert(space_id.clone(), tx_id);
+        NextTxId::mutate(|n| { *n += 1; });
 
-			Self::deposit_event(RawEvent::ChangeProposed(who, space_id, tx_id));
+        Self::deposit_event(RawEvent::ChangeProposed(who, space_id, tx_id));
+			} else {
+			  Err(Error::<T>::NoFieldsUpdatedOnProposal)?
+			}
 		}
 
 		pub fn confirm_change(
