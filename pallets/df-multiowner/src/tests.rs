@@ -171,9 +171,86 @@ fn propose_change_should_work() {
 }
 
 #[test]
+fn propose_change_should_work_with_only_one_owner() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_space_owners());
+    assert_ok!(_propose_change(
+      None,
+      None,
+      Some(vec![ACCOUNT3]),
+      Some(vec![ACCOUNT1, ACCOUNT2]),
+      Some(Some(1)),
+      None)
+    );
+
+    // Check storages
+    assert_eq!(MultiOwnership::pending_tx_id_by_space_id(1), Some(1));
+    assert_eq!(MultiOwnership::next_tx_id(), 2);
+
+    // Check whether data is stored correctly
+    let tx = MultiOwnership::tx_by_id(1).unwrap();
+    assert_eq!(tx.add_owners, vec![ACCOUNT3]);
+    assert_eq!(tx.remove_owners, vec![ACCOUNT1, ACCOUNT2]);
+    assert_eq!(tx.new_threshold, Some(1));
+    assert_eq!(tx.notes, self::tx_note());
+    assert_eq!(tx.confirmed_by, vec![ACCOUNT1]);
+  });
+}
+
+#[test]
 fn propose_change_should_fail_zero_threshold() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_space_owners());
     assert_noop!(_propose_change(None, None, Some(vec![]), Some(vec![]), Some(Some(0)), None), Error::<Test>::ZeroThershold);
   });
 }
+
+#[test]
+fn propose_change_should_fail_too_big_threshold() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_space_owners());
+    assert_noop!(_propose_change(None, None, Some(vec![]), Some(vec![]), Some(Some(3)), None), Error::<Test>::TooBigThreshold);
+  });
+}
+
+#[test]
+fn propose_change_should_fail_no_owners_left() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_space_owners());
+    assert_noop!(_propose_change(
+      None,
+      None,
+      Some(vec![]),
+      Some(vec![ACCOUNT1, ACCOUNT2]),
+      Some(None),
+      None)
+    , Error::<Test>::NoSpaceOwnersLeft);
+  });
+}
+
+#[test]
+fn propose_change_should_fail_proposal_already_exist() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_space_owners());
+    assert_ok!(_propose_default_change());
+    assert_noop!(_propose_change(
+      Some(Origin::signed(ACCOUNT2)),
+      None, None, None, Some(None), None)
+    , Error::<Test>::PendingTxAlreadyExists);
+  });
+}
+
+/*#[test]
+fn propose_change_should_do_something() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_space_owners());
+    assert_noop!(_propose_change(
+      None,
+      None,
+      Some(vec![]),
+      Some(vec![ACCOUNT3]),
+      Some(None),
+      None)
+    , Error::<Test>::OwnersDoNotDiffer);
+  });
+}*/

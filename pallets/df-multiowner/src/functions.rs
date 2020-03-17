@@ -60,7 +60,7 @@ impl<T: Trait> Module<T> {
     // Extract owners that should be added
     add_owners.iter().for_each(|x| { new_owners_set.insert(x.clone()); });
     // Unite both sets
-    owners_set.union(&new_owners_set);
+    owners_set = owners_set.union(&new_owners_set).cloned().collect();
     // Remove accounts that exist in remove_owners from set
     remove_owners.iter().for_each(|x| { owners_set.remove(x); });
 

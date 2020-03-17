@@ -75,6 +75,8 @@ decl_error! {
     TxNotesOversize,
     /// No space owners will left in result of tx
     NoSpaceOwnersLeft,
+    /// Space owners before and after change don't differ
+    OwnersDoNotDiffer,
 
     /// Account has already confirmed this transaction
     TxAlreadyConfirmed,
@@ -184,9 +186,10 @@ decl_module! {
 
       let result_owners = Self::transform_new_owners_to_vec(space_owners.owners.clone(), add_owners.clone(), remove_owners.clone());
       ensure!(!result_owners.is_empty(), Error::<T>::NoSpaceOwnersLeft);
+      // ensure!(result_owners != space_owners.owners, Error::<T>::OwnersDoNotDiffer);
 
       if let Some(threshold) = new_threshold {
-        ensure!(threshold <= result_owners.len() as u16, Error::<T>::TooBigThreshold);
+        ensure!(threshold as usize <= result_owners.len(), Error::<T>::TooBigThreshold);
         ensure!(threshold > 0, Error::<T>::ZeroThershold);
 			}
 
