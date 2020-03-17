@@ -151,6 +151,8 @@ fn create_space_owners_should_work() {
   });
 }
 
+// -------
+
 #[test]
 fn propose_change_should_work() {
   new_test_ext().execute_with(|| {
@@ -271,6 +273,8 @@ fn propose_change_should_fail_no_updates_on_threshold() {
   });
 }
 
+// -------
+
 #[test]
 fn confirm_change_should_work() {
   new_test_ext().execute_with(|| {
@@ -318,7 +322,7 @@ fn confirm_change_should_fail_not_related_to_space_owners() {
 }
 
 #[test]
-fn confirm_change_should_fail_not() {
+fn confirm_change_should_fail_already_confirmed() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_space_owners(
       Some(Origin::signed(ACCOUNT1)),

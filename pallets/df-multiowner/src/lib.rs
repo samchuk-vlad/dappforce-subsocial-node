@@ -28,7 +28,7 @@ pub struct SpaceOwners<T: Trait> {
   pub owners: Vec<T::AccountId>,
   pub threshold: u16,
 
-  pub executed_tx_count: u64,
+  pub changes_count: u64,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -135,16 +135,16 @@ decl_module! {
 			ensure!(Self::space_owners_by_space_id(space_id).is_none(), Error::<T>::SpaceOwnersAlreadyExist);
 
 			let mut owners_map: BTreeMap<T::AccountId, bool> = BTreeMap::new();
-			let mut filtered_owners: Vec<T::AccountId> = Vec::new();
+			let mut unique_owners: Vec<T::AccountId> = Vec::new();
 
 			for owner in owners.iter() {
 				if !owners_map.contains_key(&owner) {
 					owners_map.insert(owner.clone(), true);
-					filtered_owners.push(owner.clone());
+					unique_owners.push(owner.clone());
 				}
 			}
 
-			let owners_count = filtered_owners.len() as u16;
+			let owners_count = unique_owners.len() as u16;
 			ensure!(owners_count >= Self::min_space_owners(), Error::<T>::NotEnoughOwners);
 			ensure!(owners_count <= Self::max_space_owners(), Error::<T>::TooManyOwners);
 
@@ -154,14 +154,14 @@ decl_module! {
 			let new_space_owners = SpaceOwners {
 				updated_at: Self::new_updated_at(),
 				space_id: space_id.clone(),
-				owners: filtered_owners.clone(),
+				owners: unique_owners.clone(),
 				threshold,
-				executed_tx_count: 0
+				changes_count: 0
 			};
 
 			<SpaceOwnersBySpaceById<T>>::insert(space_id, new_space_owners);
 
-			for owner in filtered_owners.iter() {
+			for owner in unique_owners.iter() {
 				<SpaceIdsOwnedByAccountId<T>>::mutate(owner.clone(), |ids| ids.push(space_id.clone()));
 			}
 
