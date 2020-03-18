@@ -108,16 +108,16 @@ decl_error! {
 decl_storage! {
   trait Store for Module<T: Trait> as TemplateModule {
     MinSpaceOwners get(min_space_owners): u16 = MIN_SPACE_OWNERS;
-		MaxSpaceOwners get(max_space_owners): u16 = MAX_SPACE_OWNERS;
-		MaxTxNotesLen get(max_tx_notes_len): u16 = MAX_TX_NOTES_LEN;
+    MaxSpaceOwners get(max_space_owners): u16 = MAX_SPACE_OWNERS;
+    MaxTxNotesLen get(max_tx_notes_len): u16 = MAX_TX_NOTES_LEN;
 
-		SpaceOwnersBySpaceById get(space_owners_by_space_id): map SpaceId => Option<SpaceOwners<T>>;
-		SpaceIdsOwnedByAccountId get(space_ids_owned_by_account_id): map T::AccountId => Vec<SpaceId>;
+    SpaceOwnersBySpaceById get(space_owners_by_space_id): map SpaceId => Option<SpaceOwners<T>>;
+    SpaceIdsOwnedByAccountId get(space_ids_owned_by_account_id): map T::AccountId => Vec<SpaceId>;
 
     NextTxId get(next_tx_id): TransactionId = 1;
-		TxById get(tx_by_id): map TransactionId => Option<Transaction<T>>;
-		PendingTxIdBySpaceId get(pending_tx_id_by_space_id): map SpaceId => Option<TransactionId>;
-		ExecutedTxIdsBySpaceId get(executed_tx_ids_by_space_id): map SpaceId => Vec<TransactionId>;
+    TxById get(tx_by_id): map TransactionId => Option<Transaction<T>>;
+    PendingTxIdBySpaceId get(pending_tx_id_by_space_id): map SpaceId => Option<TransactionId>;
+    ExecutedTxIdsBySpaceId get(executed_tx_ids_by_space_id): map SpaceId => Vec<TransactionId>;
   }
 }
 
@@ -133,51 +133,51 @@ decl_module! {
 
     fn on_finalize(_n: T::BlockNumber) {}
 
-		pub fn create_space_owners(
+    pub fn create_space_owners(
       origin,
       space_id: SpaceId,
       owners: Vec<T::AccountId>,
       threshold: u16
     ) {
-			let who = ensure_signed(origin)?;
+      let who = ensure_signed(origin)?;
 
-			ensure!(Self::space_owners_by_space_id(space_id).is_none(), Error::<T>::SpaceOwnersAlreadyExist);
+      ensure!(Self::space_owners_by_space_id(space_id).is_none(), Error::<T>::SpaceOwnersAlreadyExist);
 
-			let mut owners_map: BTreeMap<T::AccountId, bool> = BTreeMap::new();
-			let mut unique_owners: Vec<T::AccountId> = Vec::new();
+      let mut owners_map: BTreeMap<T::AccountId, bool> = BTreeMap::new();
+      let mut unique_owners: Vec<T::AccountId> = Vec::new();
 
-			for owner in owners.iter() {
-				if !owners_map.contains_key(&owner) {
-					owners_map.insert(owner.clone(), true);
-					unique_owners.push(owner.clone());
-				}
-			}
+      for owner in owners.iter() {
+        if !owners_map.contains_key(&owner) {
+          owners_map.insert(owner.clone(), true);
+          unique_owners.push(owner.clone());
+        }
+      }
 
-			let owners_count = unique_owners.len() as u16;
-			ensure!(owners_count >= Self::min_space_owners(), Error::<T>::NotEnoughOwners);
-			ensure!(owners_count <= Self::max_space_owners(), Error::<T>::TooManyOwners);
+      let owners_count = unique_owners.len() as u16;
+      ensure!(owners_count >= Self::min_space_owners(), Error::<T>::NotEnoughOwners);
+      ensure!(owners_count <= Self::max_space_owners(), Error::<T>::TooManyOwners);
 
-			ensure!(threshold <= owners_count, Error::<T>::TooBigThreshold);
-			ensure!(threshold > 0, Error::<T>::ZeroThershold);
+      ensure!(threshold <= owners_count, Error::<T>::TooBigThreshold);
+      ensure!(threshold > 0, Error::<T>::ZeroThershold);
 
-			let new_space_owners = SpaceOwners {
-				updated_at: Self::new_updated_at(),
-				space_id: space_id.clone(),
-				owners: unique_owners.clone(),
-				threshold,
-				changes_count: 0
-			};
+      let new_space_owners = SpaceOwners {
+        updated_at: Self::new_updated_at(),
+        space_id: space_id.clone(),
+        owners: unique_owners.clone(),
+        threshold,
+        changes_count: 0
+      };
 
-			<SpaceOwnersBySpaceById<T>>::insert(space_id, new_space_owners);
+      <SpaceOwnersBySpaceById<T>>::insert(space_id, new_space_owners);
 
-			for owner in unique_owners.iter() {
-				<SpaceIdsOwnedByAccountId<T>>::mutate(owner.clone(), |ids| ids.push(space_id.clone()));
-			}
+      for owner in unique_owners.iter() {
+        <SpaceIdsOwnedByAccountId<T>>::mutate(owner.clone(), |ids| ids.push(space_id.clone()));
+      }
 
-			Self::deposit_event(RawEvent::SpaceOwnersCreated(who, space_id));
-		}
+      Self::deposit_event(RawEvent::SpaceOwnersCreated(who, space_id));
+    }
 
-		pub fn propose_change(
+    pub fn propose_change(
       origin,
       space_id: SpaceId,
       add_owners: Vec<T::AccountId>,
@@ -185,20 +185,20 @@ decl_module! {
       new_threshold: Option<u16>,
       notes: Vec<u8>
     ) {
-			let who = ensure_signed(origin)?;
+      let who = ensure_signed(origin)?;
 
-			let has_updates =
-			  !add_owners.is_empty() ||
-			  !remove_owners.is_empty() ||
-			  new_threshold.is_some();
+      let has_updates =
+        !add_owners.is_empty() ||
+        !remove_owners.is_empty() ||
+        new_threshold.is_some();
 
       ensure!(has_updates, Error::<T>::NoUpdatesProposed);
-			ensure!(notes.len() <= Self::max_tx_notes_len() as usize, Error::<T>::TxNotesOversize);
+      ensure!(notes.len() <= Self::max_tx_notes_len() as usize, Error::<T>::TxNotesOversize);
 
-			let space_owners = Self::space_owners_by_space_id(space_id.clone()).ok_or(Error::<T>::SpaceOwnersNotFound)?;
-			ensure!(Self::pending_tx_id_by_space_id(space_id).is_none(), Error::<T>::PendingTxAlreadyExists);
+      let space_owners = Self::space_owners_by_space_id(space_id.clone()).ok_or(Error::<T>::SpaceOwnersNotFound)?;
+      ensure!(Self::pending_tx_id_by_space_id(space_id).is_none(), Error::<T>::PendingTxAlreadyExists);
 
-			let is_space_owner = space_owners.owners.iter().any(|owner| *owner == who.clone());
+      let is_space_owner = space_owners.owners.iter().any(|owner| *owner == who.clone());
       ensure!(is_space_owner, Error::<T>::NotASpaceOwner);
 
       let mut fields_updated : u16 = 0;
@@ -215,19 +215,19 @@ decl_module! {
           ensure!(threshold > 0, Error::<T>::ZeroThershold);
           fields_updated += 1;
         }
-			}
+      }
 
-			let tx_id = Self::next_tx_id();
-			let mut new_tx = Transaction {
-				updated_at: Self::new_updated_at(),
-				id: tx_id,
-				add_owners: add_owners,
+      let tx_id = Self::next_tx_id();
+      let mut new_tx = Transaction {
+        updated_at: Self::new_updated_at(),
+        id: tx_id,
+        add_owners: add_owners,
         remove_owners: remove_owners,
         new_threshold: new_threshold,
-				notes,
-				confirmed_by: Vec::new(),
-				expires_at: <system::Module<T>>::block_number() + T::ChangeExpirePeriod::get()
-			};
+        notes,
+        confirmed_by: Vec::new(),
+        expires_at: <system::Module<T>>::block_number() + T::ChangeExpirePeriod::get()
+      };
 
       if fields_updated > 0 {
         new_tx.confirmed_by.push(who.clone());
@@ -236,42 +236,42 @@ decl_module! {
         NextTxId::mutate(|n| { *n += 1; });
 
         Self::deposit_event(RawEvent::ChangeProposed(who, space_id, tx_id));
-			} else {
-			  Err(Error::<T>::NoFieldsUpdatedOnProposal)?
-			}
-		}
+      } else {
+        Err(Error::<T>::NoFieldsUpdatedOnProposal)?
+      }
+    }
 
-		pub fn confirm_change(
-		  origin,
-		  space_id: SpaceId,
-		  tx_id: TransactionId
-		) {
-			let who = ensure_signed(origin)?;
+    pub fn confirm_change(
+      origin,
+      space_id: SpaceId,
+      tx_id: TransactionId
+    ) {
+      let who = ensure_signed(origin)?;
 
-			let space_owners = Self::space_owners_by_space_id(space_id.clone()).ok_or(Error::<T>::SpaceOwnersNotFound)?;
+      let space_owners = Self::space_owners_by_space_id(space_id.clone()).ok_or(Error::<T>::SpaceOwnersNotFound)?;
 
-			let is_space_owner = space_owners.owners.iter().any(|owner| *owner == who.clone());
-			ensure!(is_space_owner, Error::<T>::NotASpaceOwner);
+      let is_space_owner = space_owners.owners.iter().any(|owner| *owner == who.clone());
+      ensure!(is_space_owner, Error::<T>::NotASpaceOwner);
 
-			let mut tx = Self::tx_by_id(tx_id).ok_or(Error::<T>::TxNotFound)?;
+      let mut tx = Self::tx_by_id(tx_id).ok_or(Error::<T>::TxNotFound)?;
 
-			let pending_tx_id = Self::pending_tx_id_by_space_id(space_id.clone()).ok_or(Error::<T>::PendingTxDoesNotExist)?;
-			ensure!(pending_tx_id == tx_id, Error::<T>::TxNotRelatedToSpace);
+      let pending_tx_id = Self::pending_tx_id_by_space_id(space_id.clone()).ok_or(Error::<T>::PendingTxDoesNotExist)?;
+      ensure!(pending_tx_id == tx_id, Error::<T>::TxNotRelatedToSpace);
 
       // Check whether sender confirmed tx or not
-			ensure!(!tx.confirmed_by.iter().any(|account| *account == who.clone()), Error::<T>::TxAlreadyConfirmed);
+      ensure!(!tx.confirmed_by.iter().any(|account| *account == who.clone()), Error::<T>::TxAlreadyConfirmed);
 
-			tx.confirmed_by.push(who.clone());
+      tx.confirmed_by.push(who.clone());
 
-			if tx.confirmed_by.len() == space_owners.threshold as usize {
-				Self::update_space_owners(who.clone(), space_owners.clone(), tx.clone())?;
-			} else {
-				<TxById<T>>::insert(tx_id, tx);
-			}
+      if tx.confirmed_by.len() == space_owners.threshold as usize {
+        Self::update_space_owners(who.clone(), space_owners.clone(), tx.clone())?;
+      } else {
+        <TxById<T>>::insert(tx_id, tx);
+      }
 
-			Self::deposit_event(RawEvent::ChangeConfirmed(who, space_id, tx_id));
-		}
-	}
+      Self::deposit_event(RawEvent::ChangeConfirmed(who, space_id, tx_id));
+    }
+  }
 }
 
 decl_event!(
@@ -279,8 +279,8 @@ decl_event!(
     <T as system::Trait>::AccountId,
    {
     SpaceOwnersCreated(AccountId, SpaceId),
-		ChangeProposed(AccountId, SpaceId, TransactionId),
-		ChangeConfirmed(AccountId, SpaceId, TransactionId),
-		SpaceOwnersUpdated(AccountId, SpaceId, TransactionId),
+    ChangeProposed(AccountId, SpaceId, TransactionId),
+    ChangeConfirmed(AccountId, SpaceId, TransactionId),
+    SpaceOwnersUpdated(AccountId, SpaceId, TransactionId),
   }
 );
