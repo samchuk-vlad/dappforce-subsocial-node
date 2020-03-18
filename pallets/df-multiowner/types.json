@@ -19,6 +19,7 @@
     "remove_owners": "Vec<AccountId>",
     "new_threshold": "Option<u16>",
     "notes": "Vec<u8>",
-    "confirmed_by": "Vec<AccountId>"
+    "confirmed_by": "Vec<AccountId>",
+    "expires_at": "BlockNumber"
   }
 }

@@ -95,7 +95,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	apis: RUNTIME_API_VERSIONS,
 };
 
-pub const MILLISECS_PER_BLOCK: u64 = 6000;
+pub const MILLISECS_PER_BLOCK: u64 = 2000;
 
 pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
 
@@ -230,12 +230,17 @@ impl sudo::Trait for Runtime {
 	type Proposal = Call;
 }
 
-impl pallet_social::Trait for Runtime {
+/*impl pallet_social::Trait for Runtime {
 	type Event = Event;
+}*/
+
+parameter_types! {
+	pub const ChangeExpirePeriod: BlockNumber = 7 * DAYS;
 }
 
 impl pallet_df_multiownership::Trait for Runtime {
 	type Event = Event;
+	type ChangeExpirePeriod = ChangeExpirePeriod;
 }
 
 parameter_types! {
@@ -269,7 +274,7 @@ construct_runtime!(
 		Balances: balances,
 		TransactionPayment: transaction_payment::{Module, Storage},
 		Sudo: sudo,
-		Social: pallet_social::{Module, Call, Storage, Event<T>},
+		// Social: pallet_social::{Module, Call, Storage, Event<T>},
 		Multiownership: pallet_df_multiownership::{Module, Call, Storage, Event<T>},
 		Utility: pallet_utility::{Module, Call, Storage, Event<T>},
 		RandomnessCollectiveFlip: randomness_collective_flip::{Module, Call, Storage},

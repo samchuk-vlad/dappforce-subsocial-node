@@ -6,7 +6,7 @@ mod tests;
 use sp_std::prelude::*;
 use sp_std::collections::btree_map::BTreeMap;
 use codec::{Encode, Decode};
-use frame_support::{decl_module, decl_storage, decl_event, decl_error, ensure};
+use frame_support::{decl_module, decl_storage, decl_event, decl_error, ensure, traits::Get};
 use sp_runtime::RuntimeDebug;
 use system::ensure_signed;
 use pallet_timestamp;
@@ -40,6 +40,7 @@ pub struct Transaction<T: Trait> {
   pub new_threshold: Option<u16>,
   pub notes: Vec<u8>,
   pub confirmed_by: Vec<T::AccountId>,
+  pub expires_at: T::BlockNumber,
 }
 
 type SpaceId = u64;
@@ -49,6 +50,9 @@ type TransactionId = u64;
 pub trait Trait: system::Trait + pallet_timestamp::Trait {
   /// The overarching event type.
   type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+
+  /// Period for which change proposal is active
+  type ChangeExpirePeriod: Get<Self::BlockNumber>;
 }
 
 decl_error! {
@@ -90,7 +94,7 @@ decl_error! {
     TxNotRelatedToSpace,
     /// Pending tx already exists
     PendingTxAlreadyExists,
-    /// Pendint tx doesn't exist
+    /// Pending tx doesn't exist
     PendingTxDoesNotExist,
 
     /// Overflow in Wallet executed tx counter when executing tx
@@ -121,8 +125,13 @@ decl_storage! {
 decl_module! {
   pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 
+    /// Period for which change proposal is active
+    const ChangeExpirePeriod: T::BlockNumber = T::ChangeExpirePeriod::get();
+
     // Initializing events
     fn deposit_event() = default;
+
+    fn on_finalize(_n: T::BlockNumber) {}
 
 		pub fn create_space_owners(
       origin,
@@ -216,7 +225,8 @@ decl_module! {
         remove_owners: remove_owners,
         new_threshold: new_threshold,
 				notes,
-				confirmed_by: Vec::new()
+				confirmed_by: Vec::new(),
+				expires_at: <system::Module<T>>::block_number() + T::ChangeExpirePeriod::get()
 			};
 
       if fields_updated > 0 {
