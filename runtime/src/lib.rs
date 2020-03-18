@@ -235,11 +235,17 @@ impl sudo::Trait for Runtime {
 }*/
 
 parameter_types! {
+	pub const MinSpaceOwners: u16 = 1;
+	pub const MaxSpaceOwners: u16 = u16::max_value();
+	pub const MaxTxNotesLength: u16 = 1024;
 	pub const ChangeExpirePeriod: BlockNumber = 7 * DAYS;
 }
 
 impl pallet_df_multiownership::Trait for Runtime {
 	type Event = Event;
+	type MinSpaceOwners = MinSpaceOwners;
+	type MaxSpaceOwners = MaxSpaceOwners;
+	type MaxTxNotesLength = MaxTxNotesLength;
 	type ChangeExpirePeriod = ChangeExpirePeriod;
 }
 

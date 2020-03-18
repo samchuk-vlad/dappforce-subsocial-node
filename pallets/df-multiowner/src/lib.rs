@@ -11,10 +11,6 @@ use sp_runtime::RuntimeDebug;
 use system::ensure_signed;
 use pallet_timestamp;
 
-pub const MIN_SPACE_OWNERS: u16 = 1;
-pub const MAX_SPACE_OWNERS: u16 = u16::max_value();
-pub const MAX_TX_NOTES_LEN: u16 = 1024;
-
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct UpdatedAt<T: Trait> {
   block: T::BlockNumber,
@@ -51,7 +47,16 @@ pub trait Trait: system::Trait + pallet_timestamp::Trait {
   /// The overarching event type.
   type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
-  /// Period for which change proposal is active
+  /// Minimum space owners allowed.
+  type MinSpaceOwners: Get<u16>;
+
+  /// Maximum space owners allowed.
+  type MaxSpaceOwners: Get<u16>;
+
+  /// Maximum transaction notes length.
+  type MaxTxNotesLength: Get<u16>;
+
+  /// Period for which change proposal is active.
   type ChangeExpirePeriod: Get<Self::BlockNumber>;
 }
 
@@ -107,10 +112,6 @@ decl_error! {
 // This pallet's storage items.
 decl_storage! {
   trait Store for Module<T: Trait> as TemplateModule {
-    MinSpaceOwners get(min_space_owners): u16 = MIN_SPACE_OWNERS;
-    MaxSpaceOwners get(max_space_owners): u16 = MAX_SPACE_OWNERS;
-    MaxTxNotesLen get(max_tx_notes_len): u16 = MAX_TX_NOTES_LEN;
-
     SpaceOwnersBySpaceById get(space_owners_by_space_id): map SpaceId => Option<SpaceOwners<T>>;
     SpaceIdsOwnedByAccountId get(space_ids_owned_by_account_id): map T::AccountId => Vec<SpaceId>;
 
@@ -124,8 +125,16 @@ decl_storage! {
 // The pallet's dispatchable functions.
 decl_module! {
   pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+    /// Minimum space owners allowed.
+    const MinSpaceOwners: u16 = T::MinSpaceOwners::get();
 
-    /// Period for which change proposal is active
+    /// Maximum space owners allowed.
+    const MaxSpaceOwners: u16 = T::MaxSpaceOwners::get();
+
+    /// Maximum transaction notes length.
+    const MaxTxNotesLength: u16 = T::MaxTxNotesLength::get();
+
+    /// Period for which change proposal is active.
     const ChangeExpirePeriod: T::BlockNumber = T::ChangeExpirePeriod::get();
 
     // Initializing events
@@ -154,8 +163,8 @@ decl_module! {
       }
 
       let owners_count = unique_owners.len() as u16;
-      ensure!(owners_count >= Self::min_space_owners(), Error::<T>::NotEnoughOwners);
-      ensure!(owners_count <= Self::max_space_owners(), Error::<T>::TooManyOwners);
+      ensure!(owners_count >= T::MinSpaceOwners::get(), Error::<T>::NotEnoughOwners);
+      ensure!(owners_count <= T::MaxSpaceOwners::get(), Error::<T>::TooManyOwners);
 
       ensure!(threshold <= owners_count, Error::<T>::TooBigThreshold);
       ensure!(threshold > 0, Error::<T>::ZeroThershold);
@@ -193,7 +202,7 @@ decl_module! {
         new_threshold.is_some();
 
       ensure!(has_updates, Error::<T>::NoUpdatesProposed);
-      ensure!(notes.len() <= Self::max_tx_notes_len() as usize, Error::<T>::TxNotesOversize);
+      ensure!(notes.len() <= T::MaxTxNotesLength::get() as usize, Error::<T>::TxNotesOversize);
 
       let space_owners = Self::space_owners_by_space_id(space_id.clone()).ok_or(Error::<T>::SpaceOwnersNotFound)?;
       ensure!(Self::pending_tx_id_by_space_id(space_id).is_none(), Error::<T>::PendingTxAlreadyExists);
