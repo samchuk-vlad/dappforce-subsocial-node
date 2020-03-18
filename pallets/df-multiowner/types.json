@@ -10,7 +10,7 @@
     "space_id": "SpaceId",
     "owners": "Vec<AccountId>",
     "threshold": "u16",
-    "executed_tx_count": "u64"
+    "changes_count": "u64"
   },
   "Transaction": {
     "updated_at": "UpdatedAt",
