@@ -51,8 +51,21 @@ impl pallet_timestamp::Trait for Test {
   type MinimumPeriod = MinimumPeriod;
 }
 
+parameter_types! {
+	pub const MinSpaceOwners: u16 = 1;
+	pub const MaxSpaceOwners: u16 = u16::max_value();
+	pub const MaxTxNotesLength: u16 = 1024;
+	pub const BlocksToLive: u64 = 302_400;
+	pub const CleanExpiredTxsPeriod: u64 = 1800;
+}
+
 impl Trait for Test {
   type Event = ();
+  type MinSpaceOwners = MinSpaceOwners;
+  type MaxSpaceOwners = MaxSpaceOwners;
+  type MaxTxNotesLength = MaxTxNotesLength;
+  type BlocksToLive = BlocksToLive;
+  type CleanExpiredTxsPeriod = CleanExpiredTxsPeriod;
 }
 
 type MultiOwnership = Module<Test>;
@@ -139,15 +152,18 @@ fn create_space_owners_should_work() {
     assert_ok!(_create_default_space_owners());
 
     // Check storages
-    assert_eq!(MultiOwnership::space_ids_owned_by_account_id(ACCOUNT1), vec![1]);
-    assert_eq!(MultiOwnership::space_ids_owned_by_account_id(ACCOUNT2), vec![1]);
+    let mut check: Vec<u64> = MultiOwnership::space_ids_owned_by_account_id(ACCOUNT1).iter().cloned().collect();
+    assert_eq!(check, vec![1]);
+
+    check = MultiOwnership::space_ids_owned_by_account_id(ACCOUNT2).iter().cloned().collect();
+    assert_eq!(check, vec![1]);
 
     // Check whether data is stored correctly
     let space_owners = MultiOwnership::space_owners_by_space_id(1).unwrap();
     assert_eq!(space_owners.owners, vec![ACCOUNT1, ACCOUNT2]);
     assert_eq!(space_owners.space_id, 1);
     assert_eq!(space_owners.threshold, 2);
-    assert_eq!(space_owners.executed_tx_count, 0);
+    assert_eq!(space_owners.changes_count, 0);
   });
 }
 
@@ -276,7 +292,7 @@ fn propose_change_should_fail_no_updates_on_threshold() {
 // -------
 
 #[test]
-fn confirm_change_should_work() {
+fn confirm_change_should_work_owner_added() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_space_owners());
     assert_ok!(_propose_default_change());
@@ -290,6 +306,41 @@ fn confirm_change_should_work() {
     // Check whether data is stored correctly
     let tx = MultiOwnership::tx_by_id(1).unwrap();
     assert_eq!(tx.confirmed_by, vec![ACCOUNT1, ACCOUNT2]);
+
+    // Check whether updates applied
+    let space_owners = MultiOwnership::space_owners_by_space_id(1).unwrap();
+    assert_eq!(space_owners.owners, vec![ACCOUNT1, ACCOUNT2, ACCOUNT3]);
+    assert_eq!(space_owners.threshold, 3);
+  });
+}
+
+#[test]
+fn confirm_change_should_work_owner_removed() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_space_owners());
+    assert_ok!(_propose_change(
+      None,
+      None,
+      Some(vec![]),
+      Some(vec![ACCOUNT2]),
+      Some(Some(1)),
+      None
+    ));
+    assert_ok!(_confirm_default_change());
+
+    // Check storages
+    assert_eq!(MultiOwnership::pending_tx_id_by_space_id(1), None);
+    assert_eq!(MultiOwnership::executed_tx_ids_by_space_id(1), vec![1]);
+    assert_eq!(MultiOwnership::next_tx_id(), 2);
+
+    // Check whether data is stored correctly
+    let tx = MultiOwnership::tx_by_id(1).unwrap();
+    assert_eq!(tx.confirmed_by, vec![ACCOUNT1, ACCOUNT2]);
+
+    // Check whether updates applied
+    let space_owners = MultiOwnership::space_owners_by_space_id(1).unwrap();
+    assert_eq!(space_owners.owners, vec![ACCOUNT1]);
+    assert_eq!(space_owners.threshold, 1);
   });
 }
 

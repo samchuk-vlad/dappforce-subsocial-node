@@ -4,10 +4,10 @@ mod functions;
 mod tests;
 
 use sp_std::prelude::*;
-use sp_std::collections::btree_map::BTreeMap;
+use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 use codec::{Encode, Decode};
 use frame_support::{decl_module, decl_storage, decl_event, decl_error, ensure, traits::Get};
-use sp_runtime::RuntimeDebug;
+use sp_runtime::{RuntimeDebug, traits::Zero};
 use system::ensure_signed;
 use pallet_timestamp;
 
@@ -31,6 +31,7 @@ pub struct SpaceOwners<T: Trait> {
 pub struct Transaction<T: Trait> {
   pub updated_at: UpdatedAt<T>,
   pub id: TransactionId,
+  pub space_id: SpaceId,
   pub add_owners: Vec<T::AccountId>,
   pub remove_owners: Vec<T::AccountId>,
   pub new_threshold: Option<u16>,
@@ -56,8 +57,11 @@ pub trait Trait: system::Trait + pallet_timestamp::Trait {
   /// Maximum transaction notes length.
   type MaxTxNotesLength: Get<u16>;
 
-  /// Period for which change proposal is active.
-  type ChangeExpirePeriod: Get<Self::BlockNumber>;
+  /// Expiration time for change proposal.
+  type BlocksToLive: Get<Self::BlockNumber>;
+
+  /// Period in blocks to initialize cleaning of pending txs that are outdated.
+  type CleanExpiredTxsPeriod: Get<Self::BlockNumber>;
 }
 
 decl_error! {
@@ -113,11 +117,12 @@ decl_error! {
 decl_storage! {
   trait Store for Module<T: Trait> as TemplateModule {
     SpaceOwnersBySpaceById get(space_owners_by_space_id): map SpaceId => Option<SpaceOwners<T>>;
-    SpaceIdsOwnedByAccountId get(space_ids_owned_by_account_id): map T::AccountId => Vec<SpaceId>;
+    SpaceIdsOwnedByAccountId get(space_ids_owned_by_account_id): map T::AccountId => BTreeSet<SpaceId> = BTreeSet::new();
 
     NextTxId get(next_tx_id): TransactionId = 1;
     TxById get(tx_by_id): map TransactionId => Option<Transaction<T>>;
     PendingTxIdBySpaceId get(pending_tx_id_by_space_id): map SpaceId => Option<TransactionId>;
+    PendingTxIds get(pending_tx_ids): BTreeSet<TransactionId> = BTreeSet::new();
     ExecutedTxIdsBySpaceId get(executed_tx_ids_by_space_id): map SpaceId => Vec<TransactionId>;
   }
 }
@@ -135,12 +140,17 @@ decl_module! {
     const MaxTxNotesLength: u16 = T::MaxTxNotesLength::get();
 
     /// Period for which change proposal is active.
-    const ChangeExpirePeriod: T::BlockNumber = T::ChangeExpirePeriod::get();
+    const BlocksToLive: T::BlockNumber = T::BlocksToLive::get();
+
+    /// Period in blocks to initialize cleaning of pending txs that are outdated.
+    const CleanExpiredTxsPeriod: T::BlockNumber = T::CleanExpiredTxsPeriod::get();
 
     // Initializing events
     fn deposit_event() = default;
 
-    fn on_finalize(_n: T::BlockNumber) {}
+    fn on_finalize(n: T::BlockNumber) {
+      Self::clean_pending_txs(n);
+    }
 
     pub fn create_space_owners(
       origin,
@@ -180,7 +190,7 @@ decl_module! {
       <SpaceOwnersBySpaceById<T>>::insert(space_id, new_space_owners);
 
       for owner in unique_owners.iter() {
-        <SpaceIdsOwnedByAccountId<T>>::mutate(owner.clone(), |ids| ids.push(space_id.clone()));
+        <SpaceIdsOwnedByAccountId<T>>::mutate(owner.clone(), |ids| ids.insert(space_id));
       }
 
       Self::deposit_event(RawEvent::SpaceOwnersCreated(who, space_id));
@@ -230,18 +240,20 @@ decl_module! {
       let mut new_tx = Transaction {
         updated_at: Self::new_updated_at(),
         id: tx_id,
+        space_id,
         add_owners: add_owners,
         remove_owners: remove_owners,
         new_threshold: new_threshold,
         notes,
         confirmed_by: Vec::new(),
-        expires_at: <system::Module<T>>::block_number() + T::ChangeExpirePeriod::get()
+        expires_at: <system::Module<T>>::block_number() + T::BlocksToLive::get()
       };
 
       if fields_updated > 0 {
         new_tx.confirmed_by.push(who.clone());
         <TxById<T>>::insert(tx_id, new_tx);
         PendingTxIdBySpaceId::insert(space_id.clone(), tx_id);
+        PendingTxIds::mutate(|v| v.insert(tx_id));
         NextTxId::mutate(|n| { *n += 1; });
 
         Self::deposit_event(RawEvent::ChangeProposed(who, space_id, tx_id));

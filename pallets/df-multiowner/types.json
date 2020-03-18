@@ -15,6 +15,7 @@
   "Transaction": {
     "updated_at": "UpdatedAt",
     "id": "TransactionId",
+    "space_id": "SpaceId",
     "add_owners": "Vec<AccountId>",
     "remove_owners": "Vec<AccountId>",
     "new_threshold": "Option<u16>",

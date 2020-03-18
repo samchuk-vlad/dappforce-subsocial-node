@@ -238,7 +238,8 @@ parameter_types! {
 	pub const MinSpaceOwners: u16 = 1;
 	pub const MaxSpaceOwners: u16 = u16::max_value();
 	pub const MaxTxNotesLength: u16 = 1024;
-	pub const ChangeExpirePeriod: BlockNumber = 7 * DAYS;
+	pub const BlocksToLive: BlockNumber = 7 * DAYS;
+	pub const CleanExpiredTxsPeriod: BlockNumber = 1 * HOURS;
 }
 
 impl pallet_df_multiownership::Trait for Runtime {
@@ -246,7 +247,8 @@ impl pallet_df_multiownership::Trait for Runtime {
 	type MinSpaceOwners = MinSpaceOwners;
 	type MaxSpaceOwners = MaxSpaceOwners;
 	type MaxTxNotesLength = MaxTxNotesLength;
-	type ChangeExpirePeriod = ChangeExpirePeriod;
+	type BlocksToLive = BlocksToLive;
+	type CleanExpiredTxsPeriod = CleanExpiredTxsPeriod;
 }
 
 parameter_types! {
