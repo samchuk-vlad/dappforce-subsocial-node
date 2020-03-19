@@ -11,8 +11,9 @@ impl<T: Trait> Module<T> {
     }
   }
 
-  pub fn new_updated_at() -> UpdatedAt<T> {
-    UpdatedAt {
+  pub fn new_whoandwhen(account: T::AccountId) -> WhoAndWhen<T> {
+    WhoAndWhen {
+      account,
       block: <system::Module<T>>::block_number(),
       time: <pallet_timestamp::Module<T>>::now(),
     }
@@ -34,10 +35,10 @@ impl<T: Trait> Module<T> {
       space_owners.threshold = threshold;
     }
 
-    for account in tx.add_owners.clone() {
+    for account in &tx.add_owners {
       <SpaceIdsOwnedByAccountId<T>>::mutate(account, |ids| ids.insert(space_id));
     }
-    for account in tx.remove_owners.clone() {
+    for account in &tx.remove_owners {
       <SpaceIdsOwnedByAccountId<T>>::mutate(account, |ids| ids.remove(&space_id));
     }
 
@@ -54,7 +55,7 @@ impl<T: Trait> Module<T> {
     ensure!(!Self::executed_tx_ids_by_space_id(space_id).iter().any(|&x| x == tx_id), Error::<T>::TxAlreadyExecuted);
 
     PendingTxIdBySpaceId::remove(&space_id);
-    PendingTxIds::mutate(|v| v.remove(&tx_id));
+    PendingTxIds::mutate(|set| set.remove(&tx_id));
     ExecutedTxIdsBySpaceId::mutate(space_id, |ids| ids.push(tx_id));
 
     Ok(())
