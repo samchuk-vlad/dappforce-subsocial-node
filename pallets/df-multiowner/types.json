@@ -1,7 +1,8 @@
 {
   "SpaceId": "u64",
   "TransactionId": "u64",
-  "UpdatedAt": {
+  "WhoAndWhen": {
+    "account": "AccountId",
     "block": "BlockNumber",
     "time": "Moment"
   },
