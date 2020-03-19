@@ -164,7 +164,7 @@ path = '../pallets/social'
 
 [dependencies.pallet-df-multiownership]
 default-features = false
-path = '../pallets/df-multiowner'
+path = '../pallets/space-owners'
 
 [dependencies.pallet-utility]
 default-features = false
