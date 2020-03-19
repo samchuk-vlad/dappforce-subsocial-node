@@ -12,14 +12,15 @@ use system::ensure_signed;
 use pallet_timestamp;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct UpdatedAt<T: Trait> {
+pub struct WhoAndWhen<T: Trait> {
+  account: T::AccountId,
   block: T::BlockNumber,
   time: T::Moment,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct SpaceOwners<T: Trait> {
-  pub updated_at: UpdatedAt<T>,
+  pub created: WhoAndWhen<T>,
   pub space_id: SpaceId,
   pub owners: Vec<T::AccountId>,
   pub threshold: u16,
@@ -29,7 +30,7 @@ pub struct SpaceOwners<T: Trait> {
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Transaction<T: Trait> {
-  pub updated_at: UpdatedAt<T>,
+  pub created: WhoAndWhen<T>,
   pub id: TransactionId,
   pub space_id: SpaceId,
   pub add_owners: Vec<T::AccountId>,
@@ -106,6 +107,9 @@ decl_error! {
     /// Pending tx doesn't exist
     PendingTxDoesNotExist,
 
+    /// Account is not a proposal creator
+    NotAProposalCreator,
+
     /// Overflow in Wallet executed tx counter when executing tx
     OverflowExecutingTx,
     /// Underflow in Wallet pending tx counter when executing tx
@@ -180,7 +184,7 @@ decl_module! {
       ensure!(threshold > 0, Error::<T>::ZeroThershold);
 
       let new_space_owners = SpaceOwners {
-        updated_at: Self::new_updated_at(),
+        created: Self::new_whoandwhen(who.clone()),
         space_id: space_id.clone(),
         owners: unique_owners.clone(),
         threshold,
@@ -238,7 +242,7 @@ decl_module! {
 
       let tx_id = Self::next_tx_id();
       let mut new_tx = Transaction {
-        updated_at: Self::new_updated_at(),
+        created: Self::new_whoandwhen(who.clone()),
         id: tx_id,
         space_id,
         add_owners: add_owners,
@@ -253,7 +257,7 @@ decl_module! {
         new_tx.confirmed_by.push(who.clone());
         <TxById<T>>::insert(tx_id, new_tx);
         PendingTxIdBySpaceId::insert(space_id.clone(), tx_id);
-        PendingTxIds::mutate(|v| v.insert(tx_id));
+        PendingTxIds::mutate(|set| set.insert(tx_id));
         NextTxId::mutate(|n| { *n += 1; });
 
         Self::deposit_event(RawEvent::ChangeProposed(who, space_id, tx_id));
@@ -292,6 +296,31 @@ decl_module! {
 
       Self::deposit_event(RawEvent::ChangeConfirmed(who, space_id, tx_id));
     }
+
+    pub fn cancel_proposal(
+      origin,
+      space_id: SpaceId,
+      tx_id: TransactionId
+    ) {
+      let who = ensure_signed(origin)?;
+
+      let space_owners = Self::space_owners_by_space_id(space_id.clone()).ok_or(Error::<T>::SpaceOwnersNotFound)?;
+
+      let is_space_owner = space_owners.owners.iter().any(|owner| *owner == who.clone());
+      ensure!(is_space_owner, Error::<T>::NotASpaceOwner);
+
+      let pending_tx_id = Self::pending_tx_id_by_space_id(space_id.clone()).ok_or(Error::<T>::PendingTxDoesNotExist)?;
+      ensure!(pending_tx_id == tx_id, Error::<T>::TxNotRelatedToSpace);
+
+      let tx = Self::tx_by_id(tx_id).ok_or(Error::<T>::TxNotFound)?;
+      ensure!(tx.created.account == who, Error::<T>::NotAProposalCreator);
+
+      <TxById<T>>::remove(tx_id);
+      PendingTxIdBySpaceId::remove(space_id);
+      PendingTxIds::mutate(|set| set.remove(&tx_id));
+
+      Self::deposit_event(RawEvent::ProposalCanceled(who, space_id));
+    }
   }
 }
 
@@ -301,6 +330,7 @@ decl_event!(
    {
     SpaceOwnersCreated(AccountId, SpaceId),
     ChangeProposed(AccountId, SpaceId, TransactionId),
+    ProposalCanceled(AccountId, SpaceId),
     ChangeConfirmed(AccountId, SpaceId, TransactionId),
     SpaceOwnersUpdated(AccountId, SpaceId, TransactionId),
   }
