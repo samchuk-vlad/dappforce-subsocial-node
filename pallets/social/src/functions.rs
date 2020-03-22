@@ -46,7 +46,7 @@ impl<T: Trait> Module<T> {
         }
 
         <BlogById<T>>::insert(blog_id, blog);
-        <SocialAccountById<T>>::insert(follower.clone(), social_account.clone());
+        <SocialAccountById<T>>::insert(follower.clone(), social_account);
         <BlogsFollowedByAccount<T>>::mutate(follower.clone(), |ids| ids.push(blog_id));
         <BlogFollowers<T>>::mutate(blog_id, |ids| ids.push(follower.clone()));
         <BlogFollowedByAccount<T>>::insert((follower.clone(), blog_id), true);
@@ -93,7 +93,7 @@ impl<T: Trait> Module<T> {
                 post.score = post.score.checked_add(score_diff as i32 * -1).ok_or(Error::<T>::OutOfBoundsRevertingPostScore)?;
                 blog.score = blog.score.checked_add(score_diff as i32 * -1).ok_or(Error::<T>::OutOfBoundsRevertingBlogScore)?;
                 Self::change_social_account_reputation(post.created.account.clone(), account.clone(), reputation_diff * -1, action)?;
-                <PostScoreByAccount<T>>::remove((account.clone(), post_id, action));
+                <PostScoreByAccount<T>>::remove((account, post_id, action));
             } else {
                 match action {
                     ScoringAction::UpvotePost => {
@@ -112,11 +112,11 @@ impl<T: Trait> Module<T> {
                 post.score = post.score.checked_add(score_diff as i32).ok_or(Error::<T>::OutOfBoundsUpdatingPostScore)?;
                 blog.score = blog.score.checked_add(score_diff as i32).ok_or(Error::<T>::OutOfBoundsUpdatingBlogScore)?;
                 Self::change_social_account_reputation(post.created.account.clone(), account.clone(), score_diff, action)?;
-                <PostScoreByAccount<T>>::insert((account.clone(), post_id, action), score_diff);
+                <PostScoreByAccount<T>>::insert((account, post_id, action), score_diff);
             }
 
             <PostById<T>>::insert(post_id, post.clone());
-            <BlogById<T>>::insert(post.blog_id, blog.clone());
+            <BlogById<T>>::insert(post.blog_id, blog);
         }
 
         Ok(())
