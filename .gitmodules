@@ -1,3 +1,0 @@
-[submodule "pallet-social"]
-	path = pallets/social
-	url = https://github.com/F3Joule/subsocial-pallet
