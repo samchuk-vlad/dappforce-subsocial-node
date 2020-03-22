@@ -204,7 +204,7 @@ pub type CommentId = u64;
 pub type ReactionId = u64;
 
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait + pallet_timestamp::Trait + pallet_utils::Trait {
+pub trait Trait: system::Trait + pallet_timestamp::Trait {
   /// The overarching event type.
   type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 }
