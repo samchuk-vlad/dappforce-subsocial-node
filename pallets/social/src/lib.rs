@@ -14,19 +14,13 @@ use frame_support::{decl_module, decl_storage, decl_event, decl_error, ensure};
 use sp_runtime::RuntimeDebug;
 use system::ensure_signed;
 use pallet_timestamp;
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct Change<T: Trait> {
-  pub account: T::AccountId,
-  pub block: T::BlockNumber,
-  pub time: T::Moment,
-}
+use pallet_utils::WhoAndWhen;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Blog<T: Trait> {
   pub id: BlogId,
-  pub created: Change<T>,
-  pub updated: Option<Change<T>>,
+  pub created: WhoAndWhen<T>,
+  pub updated: Option<WhoAndWhen<T>>,
 
   // Can be updated by the owner:
   pub writers: Vec<T::AccountId>,
@@ -50,7 +44,7 @@ pub struct BlogUpdate<AccountId> {
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct BlogHistoryRecord<T: Trait> {
-  pub edited: Change<T>,
+  pub edited: WhoAndWhen<T>,
   pub old_data: BlogUpdate<T::AccountId>,
 }
 
@@ -58,8 +52,8 @@ pub struct BlogHistoryRecord<T: Trait> {
 pub struct Post<T: Trait> {
   pub id: PostId,
   pub blog_id: BlogId,
-  pub created: Change<T>,
-  pub updated: Option<Change<T>>,
+  pub created: WhoAndWhen<T>,
+  pub updated: Option<WhoAndWhen<T>>,
   pub extension: PostExtension,
 
   // Next fields can be updated by the owner only:
@@ -84,7 +78,7 @@ pub struct PostUpdate {
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct PostHistoryRecord<T: Trait> {
-  pub edited: Change<T>,
+  pub edited: WhoAndWhen<T>,
   pub old_data: PostUpdate,
 }
 
@@ -106,8 +100,8 @@ pub struct Comment<T: Trait> {
   pub id: CommentId,
   pub parent_id: Option<CommentId>,
   pub post_id: PostId,
-  pub created: Change<T>,
-  pub updated: Option<Change<T>>,
+  pub created: WhoAndWhen<T>,
+  pub updated: Option<WhoAndWhen<T>>,
 
   // Can be updated by the owner:
   pub ipfs_hash: Vec<u8>,
@@ -129,7 +123,7 @@ pub struct CommentUpdate {
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct CommentHistoryRecord<T: Trait> {
-  pub edited: Change<T>,
+  pub edited: WhoAndWhen<T>,
   pub old_data: CommentUpdate,
 }
 
@@ -148,8 +142,8 @@ impl Default for ReactionKind {
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Reaction<T: Trait> {
   pub id: ReactionId,
-  pub created: Change<T>,
-  pub updated: Option<Change<T>>,
+  pub created: WhoAndWhen<T>,
+  pub updated: Option<WhoAndWhen<T>>,
   pub kind: ReactionKind,
 }
 
@@ -164,8 +158,8 @@ pub struct SocialAccount<T: Trait> {
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Profile<T: Trait> {
-  pub created: Change<T>,
-  pub updated: Option<Change<T>>,
+  pub created: WhoAndWhen<T>,
+  pub updated: Option<WhoAndWhen<T>>,
 
   pub username: Vec<u8>,
   pub ipfs_hash: Vec<u8>,
@@ -181,7 +175,7 @@ pub struct ProfileUpdate {
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct ProfileHistoryRecord<T: Trait> {
-  pub edited: Change<T>,
+  pub edited: WhoAndWhen<T>,
   pub old_data: ProfileUpdate,
 }
 
@@ -210,7 +204,7 @@ pub type CommentId = u64;
 pub type ReactionId = u64;
 
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait + pallet_timestamp::Trait {
+pub trait Trait: system::Trait + pallet_timestamp::Trait + pallet_utils::Trait {
   /// The overarching event type.
   type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 }
@@ -447,7 +441,7 @@ decl_module! {
       let blog_id = Self::next_blog_id();
       let ref mut new_blog: Blog<T> = Blog {
         id: blog_id,
-        created: Self::new_change(owner.clone()),
+        created: WhoAndWhen::<T>::new(owner.clone()),
         updated: None,
         writers: vec![],
         slug: slug.clone(),
@@ -483,7 +477,7 @@ decl_module! {
 
       let mut fields_updated = 0;
       let mut new_history_record = BlogHistoryRecord {
-        edited: Self::new_change(owner.clone()),
+        edited: WhoAndWhen::<T>::new(owner.clone()),
         old_data: BlogUpdate {writers: None, slug: None, ipfs_hash: None}
       };
 
@@ -523,7 +517,7 @@ decl_module! {
 
       // Update this blog only if at least one field should be updated:
       if fields_updated > 0 {
-        blog.updated = Some(Self::new_change(owner.clone()));
+        blog.updated = Some(WhoAndWhen::<T>::new(owner.clone()));
         blog.edit_history.push(new_history_record);
         <BlogById<T>>::insert(blog_id, blog);
         Self::deposit_event(RawEvent::BlogUpdated(owner.clone(), blog_id));
@@ -638,7 +632,7 @@ decl_module! {
 
       social_account.profile = Some(
         Profile {
-          created: Self::new_change(owner.clone()),
+          created: WhoAndWhen::<T>::new(owner.clone()),
           updated: None,
           username: username.clone(),
           ipfs_hash,
@@ -664,7 +658,7 @@ decl_module! {
       let mut profile = social_account.profile.ok_or(Error::<T>::ProfileDoesNotExist)?;
       let mut is_update_applied = false;
       let mut new_history_record = ProfileHistoryRecord {
-        edited: Self::new_change(owner.clone()),
+        edited: WhoAndWhen::<T>::new(owner.clone()),
         old_data: ProfileUpdate {username: None, ipfs_hash: None}
       };
 
@@ -689,7 +683,7 @@ decl_module! {
       }
 
       if is_update_applied {
-        profile.updated = Some(Self::new_change(owner.clone()));
+        profile.updated = Some(WhoAndWhen::<T>::new(owner.clone()));
         profile.edit_history.push(new_history_record);
         social_account.profile = Some(profile);
         <SocialAccountById<T>>::insert(owner.clone(), social_account);
@@ -724,7 +718,7 @@ decl_module! {
       let new_post: Post<T> = Post {
         id: new_post_id,
         blog_id,
-        created: Self::new_change(owner.clone()),
+        created: WhoAndWhen::<T>::new(owner.clone()),
         updated: None,
         extension,
         ipfs_hash,
@@ -760,7 +754,7 @@ decl_module! {
 
       let mut fields_updated = 0;
       let mut new_history_record = PostHistoryRecord {
-        edited: Self::new_change(owner.clone()),
+        edited: WhoAndWhen::<T>::new(owner.clone()),
         old_data: PostUpdate {blog_id: None, ipfs_hash: None}
       };
 
@@ -791,7 +785,7 @@ decl_module! {
 
       // Update this post only if at least one field should be updated:
       if fields_updated > 0 {
-        post.updated = Some(Self::new_change(owner.clone()));
+        post.updated = Some(WhoAndWhen::<T>::new(owner.clone()));
         post.edit_history.push(new_history_record);
         <PostById<T>>::insert(post_id, post);
 
@@ -810,7 +804,7 @@ decl_module! {
         id: comment_id,
         parent_id,
         post_id,
-        created: Self::new_change(owner.clone()),
+        created: WhoAndWhen::<T>::new(owner.clone()),
         updated: None,
         ipfs_hash,
         upvotes_count: 0,
@@ -850,13 +844,13 @@ decl_module! {
       Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
 
       let new_history_record = CommentHistoryRecord {
-        edited: Self::new_change(owner.clone()),
+        edited: WhoAndWhen::<T>::new(owner.clone()),
         old_data: CommentUpdate {ipfs_hash: comment.ipfs_hash}
       };
       comment.edit_history.push(new_history_record);
 
       comment.ipfs_hash = ipfs_hash;
-      comment.updated = Some(Self::new_change(owner.clone()));
+      comment.updated = Some(WhoAndWhen::<T>::new(owner.clone()));
       <CommentById<T>>::insert(comment_id, comment);
 
       Self::deposit_event(RawEvent::CommentUpdated(owner.clone(), comment_id));
@@ -913,7 +907,7 @@ decl_module! {
       ensure!(reaction.kind != new_kind, Error::<T>::NewReactionKindNotDiffer);
 
       reaction.kind = new_kind;
-      reaction.updated = Some(Self::new_change(owner.clone()));
+      reaction.updated = Some(WhoAndWhen::<T>::new(owner.clone()));
       let action: ScoringAction;
       let action_to_cancel: ScoringAction;
 
@@ -1025,7 +1019,7 @@ decl_module! {
       ensure!(reaction.kind != new_kind, Error::<T>::NewReactionKindNotDiffer);
 
       reaction.kind = new_kind;
-      reaction.updated = Some(Self::new_change(owner.clone()));
+      reaction.updated = Some(WhoAndWhen::<T>::new(owner.clone()));
       let action: ScoringAction;
       let action_to_cancel: ScoringAction;
 

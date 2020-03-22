@@ -1,8 +1,6 @@
 use super::*;
 
-// use sp_std::prelude::*;
 use frame_support::{dispatch::DispatchResult};
-// use system::{self};
 
 impl<T: Trait> Module<T> {
 
@@ -11,20 +9,12 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
-    pub fn new_change(account: T::AccountId) -> Change<T> {
-        Change {
-            account,
-            block: <system::Module<T>>::block_number(),
-            time: <pallet_timestamp::Module<T>>::now(),
-        }
-    }
-
     // TODO: maybe don't add reaction in storage before checks in 'create_reaction' are done?
     pub fn new_reaction(account: T::AccountId, kind: ReactionKind) -> ReactionId {
         let reaction_id = Self::next_reaction_id();
         let new_reaction: Reaction<T> = Reaction {
             id: reaction_id,
-            created: Self::new_change(account),
+            created: WhoAndWhen::<T>::new(account),
             updated: None,
             kind
         };
