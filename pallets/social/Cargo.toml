@@ -7,7 +7,6 @@ edition = "2018"
 [features]
 default = ['std']
 std = [
-#    'serde',
     'codec/std',
     'frame-support/std',
     'sp-runtime/std',
@@ -15,11 +14,8 @@ std = [
     'sp-std/std',
     'system/std',
     'pallet-timestamp/std',
+    'pallet-utils/std'
 ]
-
-#[dependencies.serde]
-#features = ['derive']
-#version = '1.0.101'
 
 [dependencies.codec]
 default-features = false
