@@ -242,7 +242,7 @@ parameter_types! {
 	pub const CleanExpiredTxsPeriod: BlockNumber = 1 * HOURS;
 }
 
-impl pallet_df_multiownership::Trait for Runtime {
+impl pallet_space_owners::Trait for Runtime {
 	type Event = Event;
 	type MinSpaceOwners = MinSpaceOwners;
 	type MaxSpaceOwners = MaxSpaceOwners;
@@ -266,7 +266,7 @@ construct_runtime!(
 		TransactionPayment: transaction_payment::{Module, Storage},
 		Sudo: sudo,
 		Social: pallet_social::{Module, Call, Storage, Event<T>},
-		Multiownership: pallet_df_multiownership::{Module, Call, Storage, Event<T>},
+		Multiownership: pallet_space_owners::{Module, Call, Storage, Event<T>},
 		RandomnessCollectiveFlip: randomness_collective_flip::{Module, Call, Storage},
 	}
 );
