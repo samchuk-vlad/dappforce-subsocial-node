@@ -14,13 +14,6 @@ Initialize your Wasm Build environment:
 ./scripts/init.sh
 ```
 
-Initialize submodules:
-
-```bash
-git submodule init
-git submodule update
-```
-
 Build Wasm and native code:
 
 ```bash
