@@ -251,23 +251,6 @@ impl pallet_df_multiownership::Trait for Runtime {
 	type CleanExpiredTxsPeriod = CleanExpiredTxsPeriod;
 }
 
-parameter_types! {
-	// One storage item; value is size 4+4+16+32 bytes = 56 bytes.
-	pub const MultisigDepositBase: Balance = 30;
-	// Additional storage item size of 32 bytes.
-	pub const MultisigDepositFactor: Balance = 5;
-	pub const MaxSignatories: u16 = 100;
-}
-
-impl pallet_utility::Trait for Runtime {
-	type Event = Event;
-	type Call = Call;
-	type Currency = Balances;
-	type MultisigDepositBase = MultisigDepositBase;
-	type MultisigDepositFactor = MultisigDepositFactor;
-	type MaxSignatories = MaxSignatories;
-}
-
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -284,7 +267,6 @@ construct_runtime!(
 		Sudo: sudo,
 		Social: pallet_social::{Module, Call, Storage, Event<T>},
 		Multiownership: pallet_df_multiownership::{Module, Call, Storage, Event<T>},
-		Utility: pallet_utility::{Module, Call, Storage, Event<T>},
 		RandomnessCollectiveFlip: randomness_collective_flip::{Module, Call, Storage},
 	}
 );

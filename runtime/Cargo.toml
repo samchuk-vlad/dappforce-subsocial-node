@@ -166,12 +166,6 @@ path = '../pallets/social'
 default-features = false
 path = '../pallets/space-owners'
 
-[dependencies.pallet-utility]
-default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-rev = '3e651110aa06aa835790df63410a29676243fc54'
-version = '2.0.0'
-
 [features]
 default = ['std']
 std = [
@@ -202,7 +196,6 @@ std = [
     'timestamp/std',
     'transaction-payment/std',
     'pallet-social/std',
-    'pallet-utility/std',
 ]
 
 [package]
