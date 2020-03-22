@@ -95,7 +95,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	apis: RUNTIME_API_VERSIONS,
 };
 
-pub const MILLISECS_PER_BLOCK: u64 = 6000;
+pub const MILLISECS_PER_BLOCK: u64 = 2000;
 
 pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
 
@@ -234,6 +234,23 @@ impl pallet_social::Trait for Runtime {
 	type Event = Event;
 }
 
+parameter_types! {
+	pub const MinSpaceOwners: u16 = 1;
+	pub const MaxSpaceOwners: u16 = u16::max_value();
+	pub const MaxTxNotesLength: u16 = 1024;
+	pub const BlocksToLive: BlockNumber = 7 * DAYS;
+	pub const CleanExpiredTxsPeriod: BlockNumber = 1 * HOURS;
+}
+
+impl pallet_df_multiownership::Trait for Runtime {
+	type Event = Event;
+	type MinSpaceOwners = MinSpaceOwners;
+	type MaxSpaceOwners = MaxSpaceOwners;
+	type MaxTxNotesLength = MaxTxNotesLength;
+	type BlocksToLive = BlocksToLive;
+	type CleanExpiredTxsPeriod = CleanExpiredTxsPeriod;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -249,6 +266,7 @@ construct_runtime!(
 		TransactionPayment: transaction_payment::{Module, Storage},
 		Sudo: sudo,
 		Social: pallet_social::{Module, Call, Storage, Event<T>},
+		Multiownership: pallet_df_multiownership::{Module, Call, Storage, Event<T>},
 		RandomnessCollectiveFlip: randomness_collective_flip::{Module, Call, Storage},
 	}
 );
