@@ -279,7 +279,7 @@ impl<T: Trait> Module<T> {
 
     fn is_valid_handle_char(c: u8) -> bool {
         match c {
-            b'0'..=b'9' | b'a'..=b'z' | b'A'..=b'Z' | b'_' => true,
+            b'0'..=b'9' | b'a'..=b'z' | b'_' => true,
             _ => false,
         }
     }
