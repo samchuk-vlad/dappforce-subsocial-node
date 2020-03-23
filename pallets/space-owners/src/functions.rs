@@ -11,14 +11,6 @@ impl<T: Trait> Module<T> {
     }
   }
 
-  pub fn new_whoandwhen(account: T::AccountId) -> WhoAndWhen<T> {
-    WhoAndWhen {
-      account,
-      block: <system::Module<T>>::block_number(),
-      time: <pallet_timestamp::Module<T>>::now(),
-    }
-  }
-
   pub fn update_space_owners(who: T::AccountId, mut space_owners: SpaceOwners<T>, change: Change<T>) -> DispatchResult {
     let space_id = space_owners.space_id;
     let change_id = change.id;

@@ -1,11 +1,6 @@
 {
   "SpaceId": "u64",
   "ChangeId": "u64",
-  "WhoAndWhen": {
-    "account": "AccountId",
-    "block": "BlockNumber",
-    "time": "Moment"
-  },
   "SpaceOwners": {
     "updated_at": "UpdatedAt",
     "space_id": "SpaceId",

@@ -2762,6 +2762,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "pallet-timestamp",
+ "pallet-utils",
  "parity-scale-codec",
  "sp-core",
  "sp-io",

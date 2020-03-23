@@ -9,14 +9,7 @@ use codec::{Encode, Decode};
 use frame_support::{decl_module, decl_storage, decl_event, decl_error, ensure, traits::Get};
 use sp_runtime::{RuntimeDebug, traits::Zero};
 use system::ensure_signed;
-use pallet_timestamp;
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct WhoAndWhen<T: Trait> {
-  account: T::AccountId,
-  block: T::BlockNumber,
-  time: T::Moment,
-}
+use pallet_utils::WhoAndWhen;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct SpaceOwners<T: Trait> {
@@ -184,7 +177,7 @@ decl_module! {
       ensure!(threshold > 0, Error::<T>::ZeroThershold);
 
       let new_space_owners = SpaceOwners {
-        created: Self::new_whoandwhen(who.clone()),
+        created: WhoAndWhen::<T>::new(who.clone()),
         space_id: space_id,
         owners: unique_owners.clone(),
         threshold,
@@ -242,7 +235,7 @@ decl_module! {
 
       let change_id = Self::next_change_id();
       let mut new_change = Change {
-        created: Self::new_whoandwhen(who.clone()),
+        created: WhoAndWhen::<T>::new(who.clone()),
         id: change_id,
         space_id,
         add_owners: add_owners,
