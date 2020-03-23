@@ -284,7 +284,9 @@ impl<T: Trait> Module<T> {
         }
     }
 
-    pub fn if_blog_handle_valid_then_to_lower(handle: Vec<u8>) -> Result<Vec<u8>, DispatchError> {
+    pub fn if_blog_handle_valid_then_to_lower(mut handle: Vec<u8>) -> Result<Vec<u8>, DispatchError> {
+        handle = handle.to_ascii_lowercase();
+
         ensure!(Self::blog_id_by_handle(handle.clone()).is_none(), Error::<T>::HandleIsNotUnique);
 
         ensure!(handle.len() >= Self::handle_min_len() as usize, Error::<T>::HandleIsTooShort);
@@ -292,6 +294,6 @@ impl<T: Trait> Module<T> {
 
         ensure!(handle.iter().all(|&x| Self::is_valid_handle_char(x)), Error::<T>::HandleContainsRestrictedChar);
 
-        Ok(handle.to_ascii_lowercase())
+        Ok(handle)
     }
 }
