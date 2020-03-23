@@ -392,6 +392,18 @@ fn create_blog_should_work() {
 }
 
 #[test]
+fn create_blog_should_make_handle_lowercase() {
+  let handle : Vec<u8> = b"bLoG_hAnDlE".to_vec();
+
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_blog(None, Some(handle.clone()), None)); // BlodId 1
+
+    let blog = Social::blog_by_id(1).unwrap();
+    assert_eq!(blog.handle, handle.to_ascii_lowercase());
+  });
+}
+
+#[test]
 fn create_blog_should_fail_short_handle() {
   let handle : Vec<u8> = vec![97; (DEFAULT_HANDLE_MIN_LEN - 1) as usize];
 

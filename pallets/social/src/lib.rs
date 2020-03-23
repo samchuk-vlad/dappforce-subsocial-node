@@ -432,7 +432,7 @@ decl_module! {
     pub fn create_blog(origin, handle: Vec<u8>, ipfs_hash: Vec<u8>) {
       let owner = ensure_signed(origin)?;
 
-      Self::is_blog_handle_valid(handle.clone())?;
+      let handle = Self::if_blog_handle_valid_then_to_lower(handle.clone())?;
       Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
 
       let blog_id = Self::next_blog_id();
@@ -497,9 +497,9 @@ decl_module! {
         }
       }
 
-      if let Some(handle) = update.handle {
+      if let Some(mut handle) = update.handle {
         if handle != blog.handle {
-          Self::is_blog_handle_valid(handle.clone())?;
+          handle = Self::if_blog_handle_valid_then_to_lower(handle.clone())?;
 
           BlogIdByHandle::remove(blog.handle.clone());
           BlogIdByHandle::insert(handle.clone(), blog_id);

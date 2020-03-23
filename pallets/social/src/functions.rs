@@ -1,6 +1,7 @@
 use super::*;
 
-use frame_support::{dispatch::DispatchResult};
+use sp_std::result::Result;
+use frame_support::{dispatch::{DispatchResult, DispatchError}};
 
 impl<T: Trait> Module<T> {
 
@@ -278,12 +279,12 @@ impl<T: Trait> Module<T> {
 
     fn is_valid_handle_char(c: u8) -> bool {
         match c {
-            b'0'..=b'9' | b'a'..=b'z' | b'_' => true,
+            b'0'..=b'9' | b'a'..=b'z' | b'A'..=b'Z' | b'_' => true,
             _ => false,
         }
     }
 
-    pub fn is_blog_handle_valid(handle: Vec<u8>) -> DispatchResult {
+    pub fn if_blog_handle_valid_then_to_lower(handle: Vec<u8>) -> Result<Vec<u8>, DispatchError> {
         ensure!(Self::blog_id_by_handle(handle.clone()).is_none(), Error::<T>::HandleIsNotUnique);
 
         ensure!(handle.len() >= Self::handle_min_len() as usize, Error::<T>::HandleIsTooShort);
@@ -291,6 +292,6 @@ impl<T: Trait> Module<T> {
 
         ensure!(handle.iter().all(|&x| Self::is_valid_handle_char(x)), Error::<T>::HandleContainsRestrictedChar);
 
-        Ok(())
+        Ok(handle.to_ascii_lowercase())
     }
 }
