@@ -275,4 +275,22 @@ impl<T: Trait> Module<T> {
 
         Ok(())
     }
+
+    fn is_valid_handle_char(c: u8) -> bool {
+        match c {
+            b'0'..=b'9' | b'a'..=b'z' | b'_' => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_blog_handle_valid(handle: Vec<u8>) -> DispatchResult {
+        ensure!(Self::blog_id_by_handle(handle.clone()).is_none(), Error::<T>::HandleIsNotUnique);
+
+        ensure!(handle.len() >= Self::handle_min_len() as usize, Error::<T>::HandleIsTooShort);
+        ensure!(handle.len() <= Self::handle_max_len() as usize, Error::<T>::HandleIsTooLong);
+
+        ensure!(handle.iter().all(|&x| Self::is_valid_handle_char(x)), Error::<T>::HandleContainsRestrictedChar);
+
+        Ok(())
+    }
 }

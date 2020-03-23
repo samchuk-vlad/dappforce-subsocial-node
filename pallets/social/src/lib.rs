@@ -1,8 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-/// For more guidance on FRAME pallets, see the example.
-/// https://github.com/paritytech/substrate/blob/master/frame/example/src/lib.rs
-
 pub mod defaults;
 pub mod functions;
 mod tests;
@@ -24,7 +21,7 @@ pub struct Blog<T: Trait> {
 
   // Can be updated by the owner:
   pub writers: Vec<T::AccountId>,
-  pub slug: Vec<u8>,
+  pub handle: Vec<u8>,
   pub ipfs_hash: Vec<u8>,
 
   pub posts_count: u16,
@@ -38,7 +35,7 @@ pub struct Blog<T: Trait> {
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct BlogUpdate<AccountId> {
   pub writers: Option<Vec<AccountId>>,
-  pub slug: Option<Vec<u8>>,
+  pub handle: Option<Vec<u8>>,
   pub ipfs_hash: Option<Vec<u8>>,
 }
 
@@ -213,12 +210,14 @@ decl_error! {
   pub enum Error for Module<T: Trait> {
     /// Blog was not found by id
     BlogNotFound,
-    /// Blog slug is too short
-    SlugIsTooShort,
-    /// Blog slug is too long
-    SlugIsTooLong,
-    /// Blog slug is not unique
-    SlugIsNotUnique,
+    /// Blog handle is too short
+    HandleIsTooShort,
+    /// Blog handle is too long
+    HandleIsTooLong,
+    /// Blog handle is not unique
+    HandleIsNotUnique,
+    /// Blog handle contains invalid characters
+    HandleContainsRestrictedChar,
     /// Nothing to update in blog
     NoUpdatesInBlog,
     /// Only blog owner can manage their blog
@@ -356,8 +355,8 @@ decl_error! {
 // This pallet's storage items.
 decl_storage! {
   trait Store for Module<T: Trait> as TemplateModule {
-    pub SlugMinLen get(slug_min_len): u32 = DEFAULT_SLUG_MIN_LEN;
-    pub SlugMaxLen get(slug_max_len): u32 = DEFAULT_SLUG_MAX_LEN;
+    pub HandleMinLen get(handle_min_len): u32 = DEFAULT_HANDLE_MIN_LEN;
+    pub HandleMaxLen get(handle_max_len): u32 = DEFAULT_HANDLE_MAX_LEN;
 
     pub IpfsHashLen get(ipfs_hash_len): u32 = DEFAULT_IPFS_HASH_LEN;
 
@@ -393,7 +392,7 @@ decl_storage! {
     pub PostReactionIdByAccount get(post_reaction_id_by_account): map (T::AccountId, PostId) => ReactionId;
     pub CommentReactionIdByAccount get(comment_reaction_id_by_account): map (T::AccountId, CommentId) => ReactionId;
 
-    pub BlogIdBySlug get(blog_id_by_slug): map Vec<u8> => Option<BlogId>;
+    pub BlogIdByHandle get(blog_id_by_handle): map Vec<u8> => Option<BlogId>;
 
     pub BlogsFollowedByAccount get(blogs_followed_by_account): map T::AccountId => Vec<BlogId>;
     pub BlogFollowers get(blog_followers): map BlogId => Vec<T::AccountId>;
@@ -430,12 +429,10 @@ decl_module! {
     // this is needed only if you are using events in your pallet
     fn deposit_event() = default;
 
-    pub fn create_blog(origin, slug: Vec<u8>, ipfs_hash: Vec<u8>) {
+    pub fn create_blog(origin, handle: Vec<u8>, ipfs_hash: Vec<u8>) {
       let owner = ensure_signed(origin)?;
 
-      ensure!(slug.len() >= Self::slug_min_len() as usize, Error::<T>::SlugIsTooShort);
-      ensure!(slug.len() <= Self::slug_max_len() as usize, Error::<T>::SlugIsTooLong);
-      ensure!(!BlogIdBySlug::exists(slug.clone()), Error::<T>::SlugIsNotUnique);
+      Self::is_blog_handle_valid(handle.clone())?;
       Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
 
       let blog_id = Self::next_blog_id();
@@ -444,7 +441,7 @@ decl_module! {
         created: WhoAndWhen::<T>::new(owner.clone()),
         updated: None,
         writers: vec![],
-        slug: slug.clone(),
+        handle: handle.clone(),
         ipfs_hash,
         posts_count: 0,
         followers_count: 0,
@@ -456,7 +453,7 @@ decl_module! {
       Self::add_blog_follower_and_insert_blog(owner.clone(), new_blog, true)?;
 
       <BlogIdsByOwner<T>>::mutate(owner.clone(), |ids| ids.push(blog_id));
-      BlogIdBySlug::insert(slug, blog_id);
+      BlogIdByHandle::insert(handle, blog_id);
       NextBlogId::mutate(|n| { *n += 1; });
     }
 
@@ -465,7 +462,7 @@ decl_module! {
 
       let has_updates =
         update.writers.is_some() ||
-        update.slug.is_some() ||
+        update.handle.is_some() ||
         update.ipfs_hash.is_some();
 
       ensure!(has_updates, Error::<T>::NoUpdatesInBlog);
@@ -478,7 +475,7 @@ decl_module! {
       let mut fields_updated = 0;
       let mut new_history_record = BlogHistoryRecord {
         edited: WhoAndWhen::<T>::new(owner.clone()),
-        old_data: BlogUpdate {writers: None, slug: None, ipfs_hash: None}
+        old_data: BlogUpdate {writers: None, handle: None, ipfs_hash: None}
       };
 
       if let Some(writers) = update.writers {
@@ -500,17 +497,14 @@ decl_module! {
         }
       }
 
-      if let Some(slug) = update.slug {
-        if slug != blog.slug {
-          let slug_len = slug.len();
-          ensure!(slug_len >= Self::slug_min_len() as usize, Error::<T>::SlugIsTooShort);
-          ensure!(slug_len <= Self::slug_max_len() as usize, Error::<T>::SlugIsTooLong);
-          ensure!(!BlogIdBySlug::exists(slug.clone()), Error::<T>::SlugIsNotUnique);
+      if let Some(handle) = update.handle {
+        if handle != blog.handle {
+          Self::is_blog_handle_valid(handle.clone())?;
 
-          BlogIdBySlug::remove(blog.slug.clone());
-          BlogIdBySlug::insert(slug.clone(), blog_id);
-          new_history_record.old_data.slug = Some(blog.slug);
-          blog.slug = slug;
+          BlogIdByHandle::remove(blog.handle.clone());
+          BlogIdByHandle::insert(handle.clone(), blog_id);
+          new_history_record.old_data.handle = Some(blog.handle);
+          blog.handle = handle;
           fields_updated += 1;
         }
       }
