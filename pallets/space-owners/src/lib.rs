@@ -153,7 +153,7 @@ decl_module! {
     fn deposit_event() = default;
 
     fn on_finalize(n: T::BlockNumber) {
-      Self::clean_pending_changes(n);
+      Self::delete_expired_changes(n);
     }
 
     pub fn create_space_owners(

@@ -77,7 +77,7 @@ impl<T: Trait> Module<T> {
     owners_set.iter().cloned().collect()
   }
 
-  pub fn clean_pending_changes(block_number: T::BlockNumber) {
+  pub fn delete_expired_changes(block_number: T::BlockNumber) {
     if (block_number % T::CleanExpiredChangesPeriod::get()).is_zero() {
       for change_id in Self::pending_change_ids() {
         if let Some(change) = Self::change_by_id(change_id) {
