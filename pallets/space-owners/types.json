@@ -1,6 +1,6 @@
 {
   "SpaceId": "u64",
-  "TransactionId": "u64",
+  "ChangeId": "u64",
   "WhoAndWhen": {
     "account": "AccountId",
     "block": "BlockNumber",
@@ -13,9 +13,9 @@
     "threshold": "u16",
     "changes_count": "u64"
   },
-  "Transaction": {
+  "Change": {
     "updated_at": "UpdatedAt",
-    "id": "TransactionId",
+    "id": "ChangeId",
     "space_id": "SpaceId",
     "add_owners": "Vec<AccountId>",
     "remove_owners": "Vec<AccountId>",
