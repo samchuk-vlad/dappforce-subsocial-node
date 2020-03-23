@@ -68,18 +68,18 @@ pub type AccountId = u64;
 const ACCOUNT1 : AccountId = 1;
 const ACCOUNT2 : AccountId = 2;
 
-fn blog_slug() -> Vec<u8> {
-  b"blog_slug".to_vec()
+fn blog_handle() -> Vec<u8> {
+  b"blog_handle".to_vec()
 }
 
 fn blog_ipfs_hash() -> Vec<u8> {
   b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()
 }
 
-fn blog_update(writers: Option<Vec<AccountId>>, slug: Option<Vec<u8>>, ipfs_hash: Option<Vec<u8>>) -> BlogUpdate<u64> {
+fn blog_update(writers: Option<Vec<AccountId>>, handle: Option<Vec<u8>>, ipfs_hash: Option<Vec<u8>>) -> BlogUpdate<u64> {
   BlogUpdate {
     writers,
-    slug,
+    handle,
     ipfs_hash
   }
 }
@@ -169,10 +169,10 @@ fn _create_default_blog() -> DispatchResult {
   _create_blog(None, None, None)
 }
 
-fn _create_blog(origin: Option<Origin>, slug: Option<Vec<u8>>, ipfs_hash: Option<Vec<u8>>) -> DispatchResult {
+fn _create_blog(origin: Option<Origin>, handle: Option<Vec<u8>>, ipfs_hash: Option<Vec<u8>>) -> DispatchResult {
   Social::create_blog(
     origin.unwrap_or(Origin::signed(ACCOUNT1)),
-    slug.unwrap_or(self::blog_slug()),
+    handle.unwrap_or(self::blog_handle()),
     ipfs_hash.unwrap_or(self::blog_ipfs_hash())
   )
 }
@@ -375,14 +375,14 @@ fn create_blog_should_work() {
 
     // Check storages
     assert_eq!(Social::blog_ids_by_owner(ACCOUNT1), vec![1]);
-    assert_eq!(Social::blog_id_by_slug(self::blog_slug()), Some(1));
+    assert_eq!(Social::blog_id_by_handle(self::blog_handle()), Some(1));
     assert_eq!(Social::next_blog_id(), 2);
 
     // Check whether data stored correctly
     let blog = Social::blog_by_id(1).unwrap();
 
     assert_eq!(blog.created.account, ACCOUNT1);
-    assert_eq!(blog.slug, self::blog_slug());
+    assert_eq!(blog.handle, self::blog_handle());
     assert_eq!(blog.ipfs_hash, self::blog_ipfs_hash());
     assert!(blog.writers.is_empty());
     assert_eq!(blog.posts_count, 0);
@@ -392,32 +392,32 @@ fn create_blog_should_work() {
 }
 
 #[test]
-fn create_blog_should_fail_short_slug() {
-  let slug : Vec<u8> = vec![97; (DEFAULT_SLUG_MIN_LEN - 1) as usize];
+fn create_blog_should_fail_short_handle() {
+  let handle : Vec<u8> = vec![97; (DEFAULT_HANDLE_MIN_LEN - 1) as usize];
 
   new_test_ext().execute_with(|| {
-    // Try to catch an error creating a blog with too short slug
-    assert_noop!(_create_blog(None, Some(slug), None), Error::<Test>::SlugIsTooShort);
+    // Try to catch an error creating a blog with too short handle
+    assert_noop!(_create_blog(None, Some(handle), None), Error::<Test>::HandleIsTooShort);
   });
 }
 
 #[test]
-fn create_blog_should_fail_long_slug() {
-  let slug : Vec<u8> = vec![97; (DEFAULT_SLUG_MAX_LEN + 1) as usize];
+fn create_blog_should_fail_long_handle() {
+  let handle : Vec<u8> = vec![97; (DEFAULT_HANDLE_MAX_LEN + 1) as usize];
 
   new_test_ext().execute_with(|| {
-    // Try to catch an error creating a blog with too long slug
-    assert_noop!(_create_blog(None, Some(slug), None), Error::<Test>::SlugIsTooLong);
+    // Try to catch an error creating a blog with too long handle
+    assert_noop!(_create_blog(None, Some(handle), None), Error::<Test>::HandleIsTooLong);
   });
 }
 
 #[test]
-fn create_blog_should_fail_not_unique_slug() {
+fn create_blog_should_fail_not_unique_handle() {
 
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
-    // Try to catch an error creating a blog with not unique slug
-    assert_noop!(_create_default_blog(), Error::<Test>::SlugIsNotUnique);
+    // Try to catch an error creating a blog with not unique handle
+    assert_noop!(_create_default_blog(), Error::<Test>::HandleIsNotUnique);
   });
 }
 
@@ -433,7 +433,7 @@ fn create_blog_should_fail_invalid_ipfs_hash() {
 
 #[test]
 fn update_blog_should_work() {
-  let slug : Vec<u8> = b"new_slug".to_vec();
+  let handle : Vec<u8> = b"new_handle".to_vec();
   let ipfs_hash : Vec<u8> = b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec();
 
   new_test_ext().execute_with(|| {
@@ -444,7 +444,7 @@ fn update_blog_should_work() {
       Some(
         self::blog_update(
           None,
-          Some(slug.clone()),
+          Some(handle.clone()),
           Some(ipfs_hash.clone())
         )
       )
@@ -452,12 +452,12 @@ fn update_blog_should_work() {
 
     // Check whether blog updates correctly
     let blog = Social::blog_by_id(1).unwrap();
-    assert_eq!(blog.slug, slug);
+    assert_eq!(blog.handle, handle);
     assert_eq!(blog.ipfs_hash, ipfs_hash);
 
     // Check whether history recorded correctly
     assert_eq!(blog.edit_history[0].old_data.writers, None);
-    assert_eq!(blog.edit_history[0].old_data.slug, Some(self::blog_slug()));
+    assert_eq!(blog.edit_history[0].old_data.handle, Some(self::blog_handle()));
     assert_eq!(blog.edit_history[0].old_data.ipfs_hash, Some(self::blog_ipfs_hash()));
   });
 }
@@ -474,7 +474,7 @@ fn update_blog_should_fail_nothing_to_update() {
 
 #[test]
 fn update_blog_should_fail_blog_not_found() {
-  let slug : Vec<u8> = b"new_slug".to_vec();
+  let handle : Vec<u8> = b"new_handle".to_vec();
 
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
@@ -484,7 +484,7 @@ fn update_blog_should_fail_blog_not_found() {
       Some(
         self::blog_update(
           None,
-          Some(slug),
+          Some(handle),
           None
         )
       )
@@ -494,7 +494,7 @@ fn update_blog_should_fail_blog_not_found() {
 
 #[test]
 fn update_blog_should_fail_not_an_owner() {
-  let slug : Vec<u8> = b"new_slug".to_vec();
+  let handle : Vec<u8> = b"new_handle".to_vec();
 
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
@@ -504,7 +504,7 @@ fn update_blog_should_fail_not_an_owner() {
       Some(
         self::blog_update(
           None,
-          Some(slug),
+          Some(handle),
           None
         )
       )
@@ -513,68 +513,68 @@ fn update_blog_should_fail_not_an_owner() {
 }
 
 #[test]
-fn update_blog_should_fail_short_slug() {
-  let slug : Vec<u8> = vec![97; (DEFAULT_SLUG_MIN_LEN - 1) as usize];
+fn update_blog_should_fail_short_handle() {
+  let handle : Vec<u8> = vec![97; (DEFAULT_HANDLE_MIN_LEN - 1) as usize];
 
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
 
-    // Try to catch an error updating a blog with too short slug
+    // Try to catch an error updating a blog with too short handle
     assert_noop!(_update_blog(None, None,
       Some(
         self::blog_update(
           None,
-          Some(slug),
+          Some(handle),
           None
         )
       )
-    ), Error::<Test>::SlugIsTooShort);
+    ), Error::<Test>::HandleIsTooShort);
   });
 }
 
 #[test]
-fn update_blog_should_fail_long_slug() {
-  let slug : Vec<u8> = vec![97; (DEFAULT_SLUG_MAX_LEN + 1) as usize];
+fn update_blog_should_fail_long_handle() {
+  let handle : Vec<u8> = vec![97; (DEFAULT_HANDLE_MAX_LEN + 1) as usize];
 
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
 
-    // Try to catch an error updating a blog with too long slug
+    // Try to catch an error updating a blog with too long handle
     assert_noop!(_update_blog(None, None,
       Some(
         self::blog_update(
           None,
-          Some(slug),
+          Some(handle),
           None
         )
       )
-    ), Error::<Test>::SlugIsTooLong);
+    ), Error::<Test>::HandleIsTooLong);
   });
 }
 
 #[test]
-fn update_blog_should_fail_not_unique_slug() {
-  let slug : Vec<u8> = b"unique_slug".to_vec();
+fn update_blog_should_fail_not_unique_handle() {
+  let handle : Vec<u8> = b"unique_handle".to_vec();
 
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
 
     assert_ok!(_create_blog(
       None,
-      Some(slug.clone()),
+      Some(handle.clone()),
       None
-    )); // BlogId 2 with a custom slug
+    )); // BlogId 2 with a custom handle
 
-    // Try to catch an error updating a blog on ID 1 with a slug of blog on ID 2
+    // Try to catch an error updating a blog on ID 1 with a handle of blog on ID 2
     assert_noop!(_update_blog(None, Some(1),
       Some(
         self::blog_update(
           None,
-          Some(slug),
+          Some(handle),
           None
         )
       )
-    ), Error::<Test>::SlugIsNotUnique);
+    ), Error::<Test>::HandleIsNotUnique);
   });
 }
 
@@ -688,7 +688,7 @@ fn update_post_should_fail_nothing_to_update() {
 fn update_post_should_fail_post_not_found() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_blog(None, Some(b"blog2_slug".to_vec()), None)); // BlogId 2
+    assert_ok!(_create_blog(None, Some(b"blog2_handle".to_vec()), None)); // BlogId 2
     assert_ok!(_create_default_post()); // PostId 1
 
     // Try to catch an error updating a post with wrong post ID
@@ -707,7 +707,7 @@ fn update_post_should_fail_post_not_found() {
 fn update_post_should_fail_not_an_owner() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_blog(None, Some(b"blog2_slug".to_vec()), None)); // BlogId 2
+    assert_ok!(_create_blog(None, Some(b"blog2_handle".to_vec()), None)); // BlogId 2
     assert_ok!(_create_default_post()); // PostId 1
 
     // Try to catch an error updating a post with different account
@@ -1412,7 +1412,7 @@ fn change_comment_score_should_fail_comment_not_found() {
 fn share_post_should_work() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(b"blog2_slug".to_vec()), None)); // BlogId 2 by ACCOUNT2
+    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(b"blog2_handle".to_vec()), None)); // BlogId 2 by ACCOUNT2
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_post(
       Some(Origin::signed(ACCOUNT2)),
@@ -1475,7 +1475,7 @@ fn share_post_should_work_share_own_post() {
 fn share_post_should_change_score() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(b"blog2_slug".to_vec()), None)); // BlogId 2 by ACCOUNT2
+    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(b"blog2_handle".to_vec()), None)); // BlogId 2 by ACCOUNT2
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_post(
       Some(Origin::signed(ACCOUNT2)),
@@ -1512,7 +1512,7 @@ fn share_post_should_not_change_score() {
 fn share_post_should_fail_original_post_not_found() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(b"blog2_slug".to_vec()), None)); // BlogId 2 by ACCOUNT2
+    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(b"blog2_handle".to_vec()), None)); // BlogId 2 by ACCOUNT2
     // Skipped creating PostId 1
     assert_noop!(_create_post(
       Some(Origin::signed(ACCOUNT2)),
@@ -1528,7 +1528,7 @@ fn share_post_should_fail_original_post_not_found() {
 fn share_post_should_fail_share_shared_post() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(b"blog2_slug".to_vec()), None)); // BlogId 2 by ACCOUNT2
+    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(b"blog2_handle".to_vec()), None)); // BlogId 2 by ACCOUNT2
     assert_ok!(_create_default_post());
     assert_ok!(_create_post(
       Some(Origin::signed(ACCOUNT2)),
@@ -1552,7 +1552,7 @@ fn share_post_should_fail_share_shared_post() {
 fn share_comment_should_work() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(b"blog2_slug".to_vec()), None)); // BlogId 2 by ACCOUNT2
+    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(b"blog2_handle".to_vec()), None)); // BlogId 2 by ACCOUNT2
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_default_comment()); // CommentId 1
     assert_ok!(_create_post(
@@ -1586,7 +1586,7 @@ fn share_comment_should_work() {
 fn share_comment_should_change_score() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(b"blog2_slug".to_vec()), None)); // BlogId 2 by ACCOUNT2
+    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(b"blog2_handle".to_vec()), None)); // BlogId 2 by ACCOUNT2
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_default_comment()); // CommentId 1
     assert_ok!(_create_post(
@@ -1606,7 +1606,7 @@ fn share_comment_should_change_score() {
 fn share_comment_should_fail_original_comment_not_found() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(b"blog2_slug".to_vec()), None)); // BlogId 2 by ACCOUNT2
+    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(b"blog2_handle".to_vec()), None)); // BlogId 2 by ACCOUNT2
     assert_ok!(_create_default_post()); // PostId 1
     // Skipped creating CommentId 1
     assert_noop!(_create_post(
