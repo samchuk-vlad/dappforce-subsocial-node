@@ -119,7 +119,7 @@ decl_error! {
 
 // This pallet's storage items.
 decl_storage! {
-  trait Store for Module<T: Trait> as TemplateModule {
+  trait Store for Module<T: Trait> as SpaceOwnersModule {
     SpaceOwnersBySpaceById get(space_owners_by_space_id): map SpaceId => Option<SpaceOwners<T>>;
     SpaceIdsOwnedByAccountId get(space_ids_owned_by_account_id): map T::AccountId => BTreeSet<SpaceId> = BTreeSet::new();
 
@@ -185,7 +185,7 @@ decl_module! {
 
       let new_space_owners = SpaceOwners {
         created: Self::new_whoandwhen(who.clone()),
-        space_id: space_id.clone(),
+        space_id: space_id,
         owners: unique_owners.clone(),
         threshold,
         changes_count: 0
@@ -218,7 +218,7 @@ decl_module! {
       ensure!(has_updates, Error::<T>::NoUpdatesProposed);
       ensure!(notes.len() <= T::MaxChangeNotesLength::get() as usize, Error::<T>::ChangeNotesOversize);
 
-      let space_owners = Self::space_owners_by_space_id(space_id.clone()).ok_or(Error::<T>::SpaceOwnersNotFound)?;
+      let space_owners = Self::space_owners_by_space_id(space_id).ok_or(Error::<T>::SpaceOwnersNotFound)?;
       ensure!(Self::pending_change_id_by_space_id(space_id).is_none(), Error::<T>::PendingChangeAlreadyExists);
 
       let is_space_owner = space_owners.owners.iter().any(|owner| *owner == who.clone());
@@ -256,13 +256,13 @@ decl_module! {
       if fields_updated > 0 {
         new_change.confirmed_by.push(who.clone());
         <ChangeById<T>>::insert(change_id, new_change);
-        PendingChangeIdBySpaceId::insert(space_id.clone(), change_id);
+        PendingChangeIdBySpaceId::insert(space_id, change_id);
         PendingChangeIds::mutate(|set| set.insert(change_id));
         NextChangeId::mutate(|n| { *n += 1; });
 
         Self::deposit_event(RawEvent::ChangeProposed(who, space_id, change_id));
       } else {
-        Err(Error::<T>::NoFieldsUpdatedOnProposal)?
+        return Err(Error::<T>::NoFieldsUpdatedOnProposal.into());
       }
     }
 
@@ -273,14 +273,14 @@ decl_module! {
     ) {
       let who = ensure_signed(origin)?;
 
-      let space_owners = Self::space_owners_by_space_id(space_id.clone()).ok_or(Error::<T>::SpaceOwnersNotFound)?;
+      let space_owners = Self::space_owners_by_space_id(space_id).ok_or(Error::<T>::SpaceOwnersNotFound)?;
 
       let is_space_owner = space_owners.owners.iter().any(|owner| *owner == who.clone());
       ensure!(is_space_owner, Error::<T>::NotASpaceOwner);
 
       let mut change = Self::change_by_id(change_id).ok_or(Error::<T>::ChangeNotFound)?;
 
-      let pending_change_id = Self::pending_change_id_by_space_id(space_id.clone()).ok_or(Error::<T>::PendingChangeDoesNotExist)?;
+      let pending_change_id = Self::pending_change_id_by_space_id(space_id).ok_or(Error::<T>::PendingChangeDoesNotExist)?;
       ensure!(pending_change_id == change_id, Error::<T>::ChangeNotRelatedToSpace);
 
       // Check whether sender confirmed change or not
@@ -289,7 +289,7 @@ decl_module! {
       change.confirmed_by.push(who.clone());
 
       if change.confirmed_by.len() == space_owners.threshold as usize {
-        Self::update_space_owners(who.clone(), space_owners.clone(), change.clone())?;
+        Self::update_space_owners(who.clone(), space_owners, change)?;
       } else {
         <ChangeById<T>>::insert(change_id, change);
       }
@@ -304,12 +304,12 @@ decl_module! {
     ) {
       let who = ensure_signed(origin)?;
 
-      let space_owners = Self::space_owners_by_space_id(space_id.clone()).ok_or(Error::<T>::SpaceOwnersNotFound)?;
+      let space_owners = Self::space_owners_by_space_id(space_id).ok_or(Error::<T>::SpaceOwnersNotFound)?;
 
       let is_space_owner = space_owners.owners.iter().any(|owner| *owner == who.clone());
       ensure!(is_space_owner, Error::<T>::NotASpaceOwner);
 
-      let pending_change_id = Self::pending_change_id_by_space_id(space_id.clone()).ok_or(Error::<T>::PendingChangeDoesNotExist)?;
+      let pending_change_id = Self::pending_change_id_by_space_id(space_id).ok_or(Error::<T>::PendingChangeDoesNotExist)?;
       ensure!(pending_change_id == change_id, Error::<T>::ChangeNotRelatedToSpace);
 
       let change = Self::change_by_id(change_id).ok_or(Error::<T>::ChangeNotFound)?;

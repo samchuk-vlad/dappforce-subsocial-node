@@ -98,9 +98,9 @@ fn _create_space_owners(
   threshold: Option<u16>,
 ) -> DispatchResult {
   MultiOwnership::create_space_owners(
-    origin.unwrap_or(Origin::signed(ACCOUNT1)),
+    origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
     space_id.unwrap_or(1),
-    owners.unwrap_or(vec![ACCOUNT1, ACCOUNT2]),
+    owners.unwrap_or_else(|| vec![ACCOUNT1, ACCOUNT2]),
     threshold.unwrap_or(2),
   )
 }
@@ -109,6 +109,7 @@ fn _propose_default_change() -> DispatchResult {
   _propose_change(None, None, None, None, None, None)
 }
 
+#[allow(clippy::option_option)]
 fn _propose_change(
   origin: Option<Origin>,
   space_id: Option<SpaceId>,
@@ -118,12 +119,12 @@ fn _propose_change(
   notes: Option<Vec<u8>>,
 ) -> DispatchResult {
   MultiOwnership::propose_change(
-    origin.unwrap_or(Origin::signed(ACCOUNT1)),
+    origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
     space_id.unwrap_or(1),
-    add_owners.unwrap_or(vec![ACCOUNT3]),
-    remove_owners.unwrap_or(vec![]),
+    add_owners.unwrap_or_else(|| vec![ACCOUNT3]),
+    remove_owners.unwrap_or_else(|| vec![]),
     new_threshold.unwrap_or(Some(3)),
-    notes.unwrap_or(self::change_note()),
+    notes.unwrap_or_else(self::change_note),
   )
 }
 
@@ -137,7 +138,7 @@ fn _confirm_change(
   change_id: Option<ChangeId>,
 ) -> DispatchResult {
   MultiOwnership::confirm_change(
-    origin.unwrap_or(Origin::signed(ACCOUNT2)),
+    origin.unwrap_or_else(|| Origin::signed(ACCOUNT2)),
     space_id.unwrap_or(1),
     change_id.unwrap_or(1),
   )
@@ -153,7 +154,7 @@ fn _cancel_proposal(
   change_id: Option<ChangeId>,
 ) -> DispatchResult {
   MultiOwnership::cancel_proposal(
-    origin.unwrap_or(Origin::signed(ACCOUNT1)),
+    origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
     space_id.unwrap_or(1),
     change_id.unwrap_or(1),
   )
