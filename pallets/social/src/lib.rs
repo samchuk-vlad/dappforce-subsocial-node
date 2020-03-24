@@ -215,6 +215,8 @@ decl_error! {
     OverflowAddingCommentOnPost,
     /// Overflow replying on comment
     OverflowReplyingOnComment,
+    /// Cannot update blog id on Comment
+    CannotUpdateBlogIdOnComment,
 
     /// Reaction was not found by id
     ReactionNotFound,
@@ -752,17 +754,24 @@ decl_module! {
 
       // Move this post to another blog:
       if let Some(blog_id) = update.blog_id {
-        if blog_id != post.blog_id {
-          Self::ensure_blog_exists(blog_id)?;
+        match post.extension {
+          PostExtension::Comment(_) => Err(Error::<T>::CannotUpdateBlogIdOnComment)?,
+          _ => (),
+        }
 
-          // Remove post_id from its old blog:
-          PostIdsByBlogId::mutate(post.blog_id, |post_ids| Self::vec_remove_on(post_ids, post_id));
+        if let Some(post_blog_id) = post.blog_id {
+          if blog_id != post_blog_id {
+            Self::ensure_blog_exists(blog_id)?;
 
-          // Add post_id to its new blog:
-          PostIdsByBlogId::mutate(blog_id.clone(), |ids| ids.push(post_id));
-          new_history_record.old_data.blog_id = Some(post.blog_id);
-          post.blog_id = blog_id;
-          fields_updated += 1;
+            // Remove post_id from its old blog:
+            PostIdsByBlogId::mutate(post_blog_id, |post_ids| Self::vec_remove_on(post_ids, post_id));
+
+            // Add post_id to its new blog:
+            PostIdsByBlogId::mutate(blog_id.clone(), |ids| ids.push(post_id));
+            new_history_record.old_data.blog_id = post.blog_id;
+            post.blog_id = Some(blog_id);
+            fields_updated += 1;
+          }
         }
       }
 
@@ -772,7 +781,14 @@ decl_module! {
         post.edit_history.push(new_history_record);
         <PostById<T>>::insert(post_id, post);
 
-        Self::deposit_event(RawEvent::PostUpdated(owner.clone(), post_id));
+        match post.extension {
+          PostExtension::RegularPost | PostExtension::SharedPost(_) => {
+            Self::deposit_event(RawEvent::PostUpdated(owner.clone(), post_id));
+          },
+          PostExtension::Comment(_) => {
+            Self::deposit_event(RawEvent::PostUpdated(owner.clone(), post_id));
+          },
+        }
       }
     }
 
