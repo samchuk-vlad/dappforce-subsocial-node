@@ -802,18 +802,12 @@ decl_module! {
 
       let ref mut post = Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?;
       let reaction_id = Self::new_reaction(owner.clone(), kind.clone());
-      let action: ScoringAction;
 
       match kind {
-        ReactionKind::Upvote => {
-          post.upvotes_count = post.upvotes_count.checked_add(1).ok_or(Error::<T>::OverflowUpvotingPost)?;
-          action = ScoringAction::UpvotePost;
-        },
-        ReactionKind::Downvote => {
-          post.downvotes_count = post.downvotes_count.checked_add(1).ok_or(Error::<T>::OverflowDownvotingPost)?;
-          action = ScoringAction::DownvotePost;
-        },
+        ReactionKind::Upvote => post.upvotes_count = post.upvotes_count.checked_add(1).ok_or(Error::<T>::OverflowUpvotingPost)?,
+        ReactionKind::Downvote => post.downvotes_count = post.downvotes_count.checked_add(1).ok_or(Error::<T>::OverflowDownvotingPost)?,
       }
+      let action = Self::scoring_action_by_post_extension(post.extension, kind);
 
       if post.created.account != owner {
         Self::change_post_score(owner.clone(), post, action)?;
