@@ -869,23 +869,17 @@ decl_module! {
         Error::<T>::PostReactionByAccountNotFound
       );
 
-      let action_to_cancel: ScoringAction;
       let reaction = Self::reaction_by_id(reaction_id).ok_or(Error::<T>::ReactionNotFound)?;
       let ref mut post = Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?;
 
       ensure!(owner == reaction.created.account, Error::<T>::NotAReactionOwner);
 
       match reaction.kind {
-        ReactionKind::Upvote => {
-          post.upvotes_count -= 1;
-          action_to_cancel = ScoringAction::UpvotePost;
-        },
-        ReactionKind::Downvote => {
-          post.downvotes_count -= 1;
-          action_to_cancel = ScoringAction::DownvotePost;
-
-        },
+        ReactionKind::Upvote => post.upvotes_count -= 1,
+        ReactionKind::Downvote => post.downvotes_count -= 1,
       }
+      let action_to_cancel = Self::scoring_action_by_post_extension(post.extension, reaction.kind, false);
+
       Self::change_post_score(owner.clone(), post, action_to_cancel)?;
 
       <PostById<T>>::insert(post_id, post);
