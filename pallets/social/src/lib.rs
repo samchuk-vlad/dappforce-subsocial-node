@@ -164,7 +164,6 @@ impl Default for ScoringAction {
 
 pub type BlogId = u64;
 pub type PostId = u64;
-pub type CommentId = u64;
 pub type ReactionId = u64;
 
 /// The pallet's configuration trait.
@@ -351,12 +350,11 @@ decl_storage! {
 
     pub BlogIdsByOwner get(blog_ids_by_owner): map T::AccountId => Vec<BlogId>;
     pub PostIdsByBlogId get(post_ids_by_blog_id): map BlogId => Vec<PostId>;
-    pub CommentIdsByPostId get(comment_ids_by_post_id): map PostId => Vec<CommentId>;
+    pub CommentIdsByPostId get(comment_ids_by_post_id): map PostId => Vec<PostId>;
 
     pub ReactionIdsByPostId get(reaction_ids_by_post_id): map PostId => Vec<ReactionId>;
-    pub ReactionIdsByCommentId get(reaction_ids_by_comment_id): map CommentId => Vec<ReactionId>;
     pub PostReactionIdByAccount get(post_reaction_id_by_account): map (T::AccountId, PostId) => ReactionId;
-    pub CommentReactionIdByAccount get(comment_reaction_id_by_account): map (T::AccountId, CommentId) => ReactionId;
+    pub CommentReactionIdByAccount get(comment_reaction_id_by_account): map (T::AccountId, PostId) => ReactionId;
 
     pub BlogIdByHandle get(blog_id_by_handle): map Vec<u8> => Option<BlogId>;
 
@@ -370,18 +368,17 @@ decl_storage! {
 
     pub NextBlogId get(next_blog_id): BlogId = 1;
     pub NextPostId get(next_post_id): PostId = 1;
-    pub NextCommentId get(next_comment_id): CommentId = 1;
     pub NextReactionId get(next_reaction_id): ReactionId = 1;
 
     pub AccountReputationDiffByAccount get(account_reputation_diff_by_account): map (T::AccountId, T::AccountId, ScoringAction) => Option<i16>; // TODO shorten name (?refactor)
     pub PostScoreByAccount get(post_score_by_account): map (T::AccountId, PostId, ScoringAction) => Option<i16>;
-    pub CommentScoreByAccount get(comment_score_by_account): map (T::AccountId, CommentId, ScoringAction) => Option<i16>;
+    pub CommentScoreByAccount get(comment_score_by_account): map (T::AccountId, PostId, ScoringAction) => Option<i16>;
 
     pub PostSharesByAccount get(post_shares_by_account): map (T::AccountId, PostId) => u16;
     pub SharedPostIdsByOriginalPostId get(shared_post_ids_by_original_post_id): map PostId => Vec<PostId>;
 
-    pub CommentSharesByAccount get(comment_shares_by_account): map (T::AccountId, CommentId) => u16;
-    pub SharedPostIdsByOriginalCommentId get(shared_post_ids_by_original_comment_id): map CommentId => Vec<PostId>;
+    pub CommentSharesByAccount get(comment_shares_by_account): map (T::AccountId, PostId) => u16;
+    pub SharedPostIdsByOriginalCommentId get(shared_post_ids_by_original_comment_id): map PostId => Vec<PostId>;
 
     pub AccountByProfileUsername get(account_by_profile_username): map Vec<u8> => Option<T::AccountId>;
   }
@@ -898,18 +895,18 @@ decl_event!(
     PostDeleted(AccountId, PostId),
     PostShared(AccountId, PostId),
 
-    CommentCreated(AccountId, CommentId),
-    CommentUpdated(AccountId, CommentId),
-    CommentDeleted(AccountId, CommentId),
-    CommentShared(AccountId, CommentId),
+    CommentCreated(AccountId, PostId),
+    CommentUpdated(AccountId, PostId),
+    CommentDeleted(AccountId, PostId),
+    CommentShared(AccountId, PostId),
 
     PostReactionCreated(AccountId, PostId, ReactionId),
     PostReactionUpdated(AccountId, PostId, ReactionId),
     PostReactionDeleted(AccountId, PostId, ReactionId),
 
-    CommentReactionCreated(AccountId, CommentId, ReactionId),
-    CommentReactionUpdated(AccountId, CommentId, ReactionId),
-    CommentReactionDeleted(AccountId, CommentId, ReactionId),
+    CommentReactionCreated(AccountId, PostId, ReactionId),
+    CommentReactionUpdated(AccountId, PostId, ReactionId),
+    CommentReactionDeleted(AccountId, PostId, ReactionId),
 
     ProfileCreated(AccountId),
     ProfileUpdated(AccountId),
