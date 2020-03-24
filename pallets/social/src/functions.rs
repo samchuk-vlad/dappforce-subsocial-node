@@ -116,47 +116,6 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
-    pub fn change_comment_score(account: T::AccountId, comment: &mut Comment<T>, action: ScoringAction) -> DispatchResult {
-        let social_account = Self::get_or_new_social_account(account.clone());
-        <SocialAccountById<T>>::insert(account.clone(), social_account.clone());
-
-        let comment_id = comment.id;
-
-        if comment.created.account != account {
-            if let Some(score_diff) = Self::comment_score_by_account((account.clone(), comment_id, action)) {
-                let reputation_diff = Self::account_reputation_diff_by_account((account.clone(), comment.created.account.clone(), action)).ok_or(Error::<T>::ReputationDiffNotFound)?;
-                comment.score = comment.score.checked_add(score_diff as i32 * -1).ok_or(Error::<T>::OutOfBoundsRevertingCommentScore)?;
-                Self::change_social_account_reputation(comment.created.account.clone(), account.clone(), reputation_diff * -1, action)?;
-                <CommentScoreByAccount<T>>::remove((account.clone(), comment_id, action));
-            } else {
-                match action {
-                    ScoringAction::UpvoteComment => {
-                        if Self::comment_score_by_account((account.clone(), comment_id, ScoringAction::DownvoteComment)).is_some() {
-                            Self::change_comment_score(account.clone(), comment, ScoringAction::DownvoteComment)?;
-                        }
-                    },
-                    ScoringAction::DownvoteComment => {
-                        if Self::comment_score_by_account((account.clone(), comment_id, ScoringAction::UpvoteComment)).is_some() {
-                            Self::change_comment_score(account.clone(), comment, ScoringAction::UpvoteComment)?;
-                        }
-                    },
-                    ScoringAction::CreateComment => {
-                        let ref mut post = Self::post_by_id(comment.post_id).ok_or(Error::<T>::PostNotFound)?;
-                        Self::change_post_score(account.clone(), post, action)?;
-                    }
-                    _ => (),
-                }
-                let score_diff = Self::get_score_diff(social_account.reputation, action);
-                comment.score = comment.score.checked_add(score_diff as i32).ok_or(Error::<T>::OutOfBoundsUpdatingCommentScore)?;
-                Self::change_social_account_reputation(comment.created.account.clone(), account.clone(), score_diff, action)?;
-                <CommentScoreByAccount<T>>::insert((account, comment_id, action), score_diff);
-            }
-            <CommentById<T>>::insert(comment_id, comment.clone());
-        }
-
-        Ok(())
-    }
-
     pub fn change_social_account_reputation(account: T::AccountId, scorer: T::AccountId, mut score_diff: i16, action: ScoringAction) -> DispatchResult {
         let mut social_account = Self::get_or_new_social_account(account.clone());
 
@@ -246,26 +205,6 @@ impl<T: Trait> Module<T> {
         SharedPostIdsByOriginalPostId::mutate(original_post_id, |ids| ids.push(shared_post_id));
 
         Self::deposit_event(RawEvent::PostShared(account, original_post_id));
-
-        Ok(())
-    }
-
-    pub fn share_comment(account: T::AccountId, original_comment_id: CommentId, shared_post_id: PostId) -> DispatchResult {
-        let ref mut original_comment = Self::comment_by_id(original_comment_id).ok_or(Error::<T>::OriginalCommentNotFound)?;
-        original_comment.shares_count = original_comment.shares_count.checked_add(1)
-            .ok_or(Error::<T>::OverflowTotalSharesSharingComment)?;
-
-        let mut shares_count = Self::comment_shares_by_account((account.clone(), original_comment_id));
-        shares_count = shares_count.checked_add(1).ok_or(Error::<T>::OverflowCommentSharesByAccount)?;
-
-        if shares_count == 1 {
-            Self::change_comment_score(account.clone(), original_comment, ScoringAction::ShareComment)?;
-        }
-
-        <CommentSharesByAccount<T>>::insert((account.clone(), original_comment_id), shares_count); // TODO Maybe use mutate instead?
-        SharedPostIdsByOriginalCommentId::mutate(original_comment_id, |ids| ids.push(shared_post_id));
-
-        Self::deposit_event(RawEvent::CommentShared(account, original_comment_id));
 
         Ok(())
     }

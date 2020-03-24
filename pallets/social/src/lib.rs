@@ -83,45 +83,12 @@ pub struct PostHistoryRecord<T: Trait> {
 pub enum PostExtension {
   RegularPost,
   SharedPost(PostId),
-  SharedComment(CommentId),
 }
 
 impl Default for PostExtension {
   fn default() -> Self {
     PostExtension::RegularPost
   }
-}
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct Comment<T: Trait> {
-  pub id: CommentId,
-  pub parent_id: Option<CommentId>,
-  pub post_id: PostId,
-  pub created: WhoAndWhen<T>,
-  pub updated: Option<WhoAndWhen<T>>,
-
-  // Can be updated by the owner:
-  pub ipfs_hash: Vec<u8>,
-
-  pub upvotes_count: u16,
-  pub downvotes_count: u16,
-  pub shares_count: u16,
-  pub direct_replies_count: u16,
-
-  pub edit_history: Vec<CommentHistoryRecord<T>>,
-
-  pub score: i32,
-}
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct CommentUpdate {
-  pub ipfs_hash: Vec<u8>,
-}
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct CommentHistoryRecord<T: Trait> {
-  pub edited: WhoAndWhen<T>,
-  pub old_data: CommentUpdate,
 }
 
 #[derive(Encode, Decode, Clone, Copy, Eq, PartialEq, RuntimeDebug)]
@@ -379,7 +346,6 @@ decl_storage! {
 
     pub BlogById get(blog_by_id): map BlogId => Option<Blog<T>>;
     pub PostById get(post_by_id): map PostId => Option<Post<T>>;
-    pub CommentById get(comment_by_id): map CommentId => Option<Comment<T>>;
     pub ReactionById get(reaction_by_id): map ReactionId => Option<Reaction<T>>;
     pub SocialAccountById get(social_account_by_id): map T::AccountId => Option<SocialAccount<T>>;
 
@@ -716,9 +682,6 @@ decl_module! {
           ensure!(post.extension == PostExtension::RegularPost, Error::<T>::CannotShareSharedPost);
           Self::share_post(owner.clone(), post_id, new_post_id)?;
         },
-        PostExtension::SharedComment(comment_id) => {
-          Self::share_comment(owner.clone(), comment_id, new_post_id)?;
-        },
       }
 
       let new_post: Post<T> = Post {
@@ -797,69 +760,6 @@ decl_module! {
 
         Self::deposit_event(RawEvent::PostUpdated(owner.clone(), post_id));
       }
-    }
-
-    pub fn create_comment(origin, post_id: PostId, parent_id: Option<CommentId>, ipfs_hash: Vec<u8>) {
-      let owner = ensure_signed(origin)?;
-
-      let ref mut post = Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?;
-      Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
-
-      let comment_id = Self::next_comment_id();
-      let new_comment: Comment<T> = Comment {
-        id: comment_id,
-        parent_id,
-        post_id,
-        created: WhoAndWhen::<T>::new(owner.clone()),
-        updated: None,
-        ipfs_hash,
-        upvotes_count: 0,
-        downvotes_count: 0,
-        shares_count: 0,
-        direct_replies_count: 0,
-        edit_history: vec![],
-        score: 0,
-      };
-
-      post.comments_count = post.comments_count.checked_add(1).ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
-
-      Self::change_post_score(owner.clone(), post, ScoringAction::CreateComment)?;
-
-      if let Some(id) = parent_id {
-        let mut parent_comment = Self::comment_by_id(id).ok_or(Error::<T>::UnknownParentComment)?;
-        parent_comment.direct_replies_count = parent_comment.direct_replies_count.checked_add(1).ok_or(Error::<T>::OverflowReplyingOnComment)?;
-        <CommentById<T>>::insert(id, parent_comment);
-      }
-
-      <CommentById<T>>::insert(comment_id, new_comment);
-      CommentIdsByPostId::mutate(post_id, |ids| ids.push(comment_id));
-      NextCommentId::mutate(|n| { *n += 1; });
-      <PostById<T>>::insert(post_id, post);
-
-      Self::deposit_event(RawEvent::CommentCreated(owner.clone(), comment_id));
-    }
-
-    pub fn update_comment(origin, comment_id: CommentId, update: CommentUpdate) {
-      let owner = ensure_signed(origin)?;
-
-      let mut comment = Self::comment_by_id(comment_id).ok_or(Error::<T>::CommentNotFound)?;
-      ensure!(owner == comment.created.account, Error::<T>::NotACommentAuthor);
-
-      let ipfs_hash = update.ipfs_hash;
-      ensure!(ipfs_hash != comment.ipfs_hash, Error::<T>::CommentIPFSHashNotDiffer);
-      Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
-
-      let new_history_record = CommentHistoryRecord {
-        edited: WhoAndWhen::<T>::new(owner.clone()),
-        old_data: CommentUpdate {ipfs_hash: comment.ipfs_hash}
-      };
-      comment.edit_history.push(new_history_record);
-
-      comment.ipfs_hash = ipfs_hash;
-      comment.updated = Some(WhoAndWhen::<T>::new(owner.clone()));
-      <CommentById<T>>::insert(comment_id, comment);
-
-      Self::deposit_event(RawEvent::CommentUpdated(owner.clone(), comment_id));
     }
 
     pub fn create_post_reaction(origin, post_id: PostId, kind: ReactionKind) {
@@ -973,117 +873,6 @@ decl_module! {
       <PostReactionIdByAccount<T>>::remove((owner.clone(), post_id));
 
       Self::deposit_event(RawEvent::PostReactionDeleted(owner.clone(), post_id, reaction_id));
-    }
-
-    pub fn create_comment_reaction(origin, comment_id: CommentId, kind: ReactionKind) {
-      let owner = ensure_signed(origin)?;
-
-      ensure!(
-        !<CommentReactionIdByAccount<T>>::exists((owner.clone(), comment_id)),
-        Error::<T>::AccountAlreadyReactedToComment
-      );
-
-      let ref mut comment = Self::comment_by_id(comment_id).ok_or(Error::<T>::CommentNotFound)?;
-      let reaction_id = Self::new_reaction(owner.clone(), kind.clone());
-      let action: ScoringAction;
-
-      match kind {
-        ReactionKind::Upvote => {
-          comment.upvotes_count = comment.upvotes_count.checked_add(1).ok_or(Error::<T>::OverflowUpvotingComment)?;
-          action = ScoringAction::UpvoteComment;
-        },
-        ReactionKind::Downvote => {
-          comment.downvotes_count = comment.downvotes_count.checked_add(1).ok_or(Error::<T>::OverflowDownvotingComment)?;
-          action = ScoringAction::DownvoteComment;
-        },
-      }
-      if comment.created.account != owner {
-        Self::change_comment_score(owner.clone(), comment, action)?;
-      }
-      else {
-        <CommentById<T>>::insert(comment_id, comment);
-      }
-
-      ReactionIdsByCommentId::mutate(comment_id, |ids| ids.push(reaction_id));
-      <CommentReactionIdByAccount<T>>::insert((owner.clone(), comment_id), reaction_id);
-
-      Self::deposit_event(RawEvent::CommentReactionCreated(owner.clone(), comment_id, reaction_id));
-    }
-
-    pub fn update_comment_reaction(origin, comment_id: CommentId, reaction_id: ReactionId, new_kind: ReactionKind) {
-      let owner = ensure_signed(origin)?;
-
-      ensure!(
-        <CommentReactionIdByAccount<T>>::exists((owner.clone(), comment_id)),
-        Error::<T>::AccountNotYetReactedToComment
-      );
-
-      let mut reaction = Self::reaction_by_id(reaction_id).ok_or(Error::<T>::ReactionNotFound)?;
-      let ref mut comment = Self::comment_by_id(comment_id).ok_or(Error::<T>::CommentNotFound)?;
-
-      ensure!(owner == reaction.created.account, Error::<T>::NotAReactionOwner);
-      ensure!(reaction.kind != new_kind, Error::<T>::NewReactionKindNotDiffer);
-
-      reaction.kind = new_kind;
-      reaction.updated = Some(WhoAndWhen::<T>::new(owner.clone()));
-      let action: ScoringAction;
-      let action_to_cancel: ScoringAction;
-
-      match new_kind {
-        ReactionKind::Upvote => {
-          comment.upvotes_count += 1;
-          comment.downvotes_count -= 1;
-          action_to_cancel = ScoringAction::DownvoteComment;
-          action = ScoringAction::UpvoteComment;
-        },
-        ReactionKind::Downvote => {
-          comment.downvotes_count += 1;
-          comment.upvotes_count -= 1;
-          action_to_cancel = ScoringAction::UpvoteComment;
-          action = ScoringAction::DownvoteComment;
-        },
-      }
-      Self::change_comment_score(owner.clone(), comment, action_to_cancel)?;
-      Self::change_comment_score(owner.clone(), comment, action)?;
-
-      <ReactionById<T>>::insert(reaction_id, reaction);
-      <CommentById<T>>::insert(comment_id, comment);
-
-      Self::deposit_event(RawEvent::CommentReactionUpdated(owner.clone(), comment_id, reaction_id));
-    }
-
-    pub fn delete_comment_reaction(origin, comment_id: CommentId, reaction_id: ReactionId) {
-      let owner = ensure_signed(origin)?;
-
-      ensure!(
-        <CommentReactionIdByAccount<T>>::exists((owner.clone(), comment_id)),
-        Error::<T>::CommentReactionByAccountNotFound
-      );
-
-      let action_to_cancel: ScoringAction;
-      let reaction = Self::reaction_by_id(reaction_id).ok_or(Error::<T>::ReactionNotFound)?;
-      let ref mut comment = Self::comment_by_id(comment_id).ok_or(Error::<T>::CommentNotFound)?;
-
-      ensure!(owner == reaction.created.account, Error::<T>::NotAReactionOwner);
-
-      match reaction.kind {
-        ReactionKind::Upvote => {
-          comment.upvotes_count -= 1;
-          action_to_cancel = ScoringAction::UpvoteComment
-        },
-        ReactionKind::Downvote => {
-          comment.downvotes_count -= 1;
-          action_to_cancel = ScoringAction::DownvoteComment
-        },
-      }
-      Self::change_comment_score(owner.clone(), comment, action_to_cancel)?;
-
-      <CommentById<T>>::insert(comment_id, comment);
-      ReactionIdsByCommentId::mutate(comment_id, |ids| Self::vec_remove_on(ids, reaction_id));
-      <ReactionById<T>>::remove(reaction_id);
-      <CommentReactionIdByAccount<T>>::remove((owner.clone(), comment_id));
-
-      Self::deposit_event(RawEvent::CommentReactionDeleted(owner.clone(), comment_id, reaction_id));
     }
   }
 }
