@@ -48,21 +48,19 @@ pub struct BlogHistoryRecord<T: Trait> {
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Post<T: Trait> {
   pub id: PostId,
-  pub blog_id: BlogId,
   pub created: WhoAndWhen<T>,
   pub updated: Option<WhoAndWhen<T>>,
+
+  pub blog_id: Option<BlogId>,
   pub extension: PostExtension,
 
-  // Next fields can be updated by the owner only:
-
   pub ipfs_hash: Vec<u8>,
+  pub edit_history: Vec<PostHistoryRecord<T>>,
 
-  pub comments_count: u16,
+  pub total_replies_count: u16,
+  pub shares_count: u16,
   pub upvotes_count: u16,
   pub downvotes_count: u16,
-  pub shares_count: u16,
-
-  pub edit_history: Vec<PostHistoryRecord<T>>,
 
   pub score: i32,
 }
@@ -82,7 +80,14 @@ pub struct PostHistoryRecord<T: Trait> {
 #[derive(Encode, Decode, Clone, Copy, Eq, PartialEq, RuntimeDebug)]
 pub enum PostExtension {
   RegularPost,
+  Comment(CommentExt),
   SharedPost(PostId),
+}
+
+#[derive(Encode, Decode, Clone, Copy, Eq, PartialEq, RuntimeDebug)]
+pub struct CommentExt {
+  parent_id: Option<PostId>,
+  root_post_id: PostId,
 }
 
 impl Default for PostExtension {
@@ -661,18 +666,22 @@ decl_module! {
       }
     }
 
-    pub fn create_post(origin, blog_id: BlogId, ipfs_hash: Vec<u8>, extension: PostExtension) {
+    pub fn create_post(origin, blog_id_opt: Option<BlogId>, parent_id: Option<BlogId>, extension: PostExtension, ipfs_hash: Vec<u8>) {
       let owner = ensure_signed(origin)?;
 
-      let mut blog = Self::blog_by_id(blog_id).ok_or(Error::<T>::BlogNotFound)?;
-      blog.posts_count = blog.posts_count.checked_add(1).ok_or(Error::<T>::OverflowAddingPostOnBlog)?;
-
       let new_post_id = Self::next_post_id();
+      let mut is_comment = None;
 
-      // Sharing functions contain check for post/comment existance
+      // Sharing functions contain check for post/comment existence
       match extension {
         PostExtension::RegularPost => {
           Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
+        },
+        PostExtension::Comment(comment_ext) => {
+          let mut root_post = Self::post_by_id(comment_ext.root_post_id).ok_or(Error::<T>::PostNotFound)?;
+          root_post.total_replies_count = root_post.total_replies_count.checked_add(1).ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
+
+          is_comment = Some(comment_ext);
         },
         PostExtension::SharedPost(post_id) => {
           let post = Self::post_by_id(post_id).ok_or(Error::<T>::OriginalPostNotFound)?;
@@ -683,25 +692,33 @@ decl_module! {
 
       let new_post: Post<T> = Post {
         id: new_post_id,
-        blog_id,
         created: WhoAndWhen::<T>::new(owner.clone()),
         updated: None,
+        blog_id: blog_id_opt,
         extension,
         ipfs_hash,
-        comments_count: 0,
+        edit_history: vec![],
+        total_replies_count: 0,
+        shares_count: 0,
         upvotes_count: 0,
         downvotes_count: 0,
-        shares_count: 0,
-        edit_history: vec![],
         score: 0,
       };
 
-      <PostById<T>>::insert(new_post_id, new_post);
-      PostIdsByBlogId::mutate(blog_id, |ids| ids.push(new_post_id));
-      NextPostId::mutate(|n| { *n += 1; });
-      <BlogById<T>>::insert(blog_id, blog);
+      if let Some(comment_ext) = is_comment {
+        CommentIdsByPostId::mutate(comment_ext.root_post_id, |ids| ids.push(new_post_id));
+        Self::deposit_event(RawEvent::CommentCreated(owner.clone(), new_post_id));
+      } else if let Some(blog_id) = blog_id_opt {
+          let mut blog = Self::blog_by_id(blog_id).ok_or(Error::<T>::BlogNotFound)?;
+          blog.posts_count = blog.posts_count.checked_add(1).ok_or(Error::<T>::OverflowAddingPostOnBlog)?;
 
-      Self::deposit_event(RawEvent::PostCreated(owner.clone(), new_post_id));
+          <BlogById<T>>::insert(blog_id, blog);
+          PostIdsByBlogId::mutate(blog_id, |ids| ids.push(new_post_id));
+          Self::deposit_event(RawEvent::PostCreated(owner.clone(), new_post_id));
+      }
+
+      <PostById<T>>::insert(new_post_id, new_post);
+      NextPostId::mutate(|n| { *n += 1; });
     }
 
     pub fn update_post(origin, post_id: PostId, update: PostUpdate) {
