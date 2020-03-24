@@ -209,17 +209,17 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
-    pub fn scoring_action_by_post_extension(extension: PostExtension, reaction_kind: ReactionKind) -> ScoringAction {
+    pub fn scoring_action_by_post_extension(extension: PostExtension, reaction_kind: ReactionKind, reverse: bool) -> ScoringAction {
         let mut scoring_action: ScoringAction = ScoringAction::default();
 
         match extension {
             PostExtension::RegularPost | PostExtension::SharedPost(_) => match reaction_kind {
-                ReactionKind::Upvote => scoring_action = ScoringAction::UpvotePost,
-                ReactionKind::Downvote => scoring_action = ScoringAction::DownvotePost,
+                ReactionKind::Upvote => scoring_action = if reverse {ScoringAction::DownvotePost} else {ScoringAction::UpvotePost},
+                ReactionKind::Downvote => scoring_action = if reverse {ScoringAction::UpvotePost} else {ScoringAction::DownvotePost},
             },
             PostExtension::Comment(_) => match reaction_kind {
-                ReactionKind::Upvote => scoring_action = ScoringAction::UpvoteComment,
-                ReactionKind::Downvote => scoring_action = ScoringAction::DownvoteComment,
+                ReactionKind::Upvote => scoring_action = if reverse {ScoringAction::DownvoteComment} else {ScoringAction::UpvoteComment},
+                ReactionKind::Downvote => scoring_action = if reverse {ScoringAction::UpvoteComment} else {ScoringAction::DownvoteComment},
             },
         }
 

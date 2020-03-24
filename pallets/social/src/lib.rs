@@ -807,7 +807,7 @@ decl_module! {
         ReactionKind::Upvote => post.upvotes_count = post.upvotes_count.checked_add(1).ok_or(Error::<T>::OverflowUpvotingPost)?,
         ReactionKind::Downvote => post.downvotes_count = post.downvotes_count.checked_add(1).ok_or(Error::<T>::OverflowDownvotingPost)?,
       }
-      let action = Self::scoring_action_by_post_extension(post.extension, kind);
+      let action = Self::scoring_action_by_post_extension(post.extension, kind, false);
 
       if post.created.account != owner {
         Self::change_post_score(owner.clone(), post, action)?;
@@ -838,23 +838,20 @@ decl_module! {
 
       reaction.kind = new_kind;
       reaction.updated = Some(WhoAndWhen::<T>::new(owner.clone()));
-      let action: ScoringAction;
-      let action_to_cancel: ScoringAction;
 
       match new_kind {
         ReactionKind::Upvote => {
           post.upvotes_count += 1;
           post.downvotes_count -= 1;
-          action_to_cancel = ScoringAction::DownvotePost;
-          action = ScoringAction::UpvotePost;
         },
         ReactionKind::Downvote => {
           post.downvotes_count += 1;
           post.upvotes_count -= 1;
-          action_to_cancel = ScoringAction::UpvotePost;
-          action = ScoringAction::DownvotePost;
         },
       }
+      let action = Self::scoring_action_by_post_extension(post.extension, new_kind, false);
+      let action_to_cancel = Self::scoring_action_by_post_extension(post.extension, new_kind, true);
+
       Self::change_post_score(owner.clone(), post, action_to_cancel)?;
       Self::change_post_score(owner.clone(), post, action)?;
 
