@@ -688,7 +688,7 @@ decl_module! {
         PostExtension::SharedPost(post_id) => {
           let post = Self::post_by_id(post_id).ok_or(Error::<T>::OriginalPostNotFound)?;
           ensure!(post.extension == PostExtension::RegularPost, Error::<T>::CannotShareSharedPost);
-          Self::share_post(owner.clone(), post_id, new_post_id)?;
+          Self::share_post_by_extension(owner.clone(), post_id, new_post_id)?;
         },
       }
 

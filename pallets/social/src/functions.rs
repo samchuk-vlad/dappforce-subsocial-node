@@ -188,23 +188,57 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
-    pub fn share_post(account: T::AccountId, original_post_id: PostId, shared_post_id: PostId) -> DispatchResult {
+    pub fn share_post_by_extension(account: T::AccountId, original_post_id: PostId, shared_post_id: PostId) -> DispatchResult {
         let ref mut original_post = Self::post_by_id(original_post_id).ok_or(Error::<T>::OriginalPostNotFound)?;
-        original_post.shares_count = original_post.shares_count.checked_add(1)
-            .ok_or(Error::<T>::OverflowTotalSharesSharingPost)?;
+        match original_post.extension {
+            PostExtension::RegularPost | PostExtension::SharedPost(_) => {
+                Self::share_post(account, original_post, shared_post_id)?;
+            },
+            PostExtension::Comment(_) => {
+                Self::share_comment(account, original_post, shared_post_id)?;
+            },
+        }
 
-        let mut shares_by_account = Self::post_shares_by_account((account.clone(), original_post_id));
-        shares_by_account = shares_by_account.checked_add(1).ok_or(Error::<T>::OverflowPostSharesSharingPost)?;
+        Ok(())
+    }
 
-        if shares_by_account == 1 {
+    fn share_post(account: T::AccountId, original_post: &mut Post<T>, shared_post_id: PostId) -> DispatchResult {
+        original_post.shares_count = original_post.shares_count.checked_add(1).ok_or(Error::<T>::OverflowTotalSharesSharingPost)?;
+
+        let original_post_id = original_post.id;
+
+        let mut shares_count = Self::post_shares_by_account((account.clone(), original_post_id));
+        shares_count = shares_count.checked_add(1).ok_or(Error::<T>::OverflowPostSharesSharingPost)?;
+
+        if shares_count == 1 {
             Self::change_post_score(account.clone(), original_post, ScoringAction::SharePost)?;
         }
 
         <PostById<T>>::insert(original_post_id, original_post);
-        <PostSharesByAccount<T>>::insert((account.clone(), original_post_id), shares_by_account); // TODO Maybe use mutate instead?
+        <PostSharesByAccount<T>>::insert((account.clone(), original_post_id), shares_count);
         SharedPostIdsByOriginalPostId::mutate(original_post_id, |ids| ids.push(shared_post_id));
 
         Self::deposit_event(RawEvent::PostShared(account, original_post_id));
+
+        Ok(())
+    }
+
+    fn share_comment(account: T::AccountId, original_comment: &mut Post<T>, shared_post_id: PostId) -> DispatchResult {
+        original_comment.shares_count = original_comment.shares_count.checked_add(1).ok_or(Error::<T>::OverflowTotalSharesSharingComment)?;
+
+        let original_comment_id = original_comment.id;
+
+        let mut shares_count = Self::comment_shares_by_account((account.clone(), original_comment_id));
+        shares_count = shares_count.checked_add(1).ok_or(Error::<T>::OverflowCommentSharesByAccount)?;
+
+        if shares_count == 1 {
+            Self::change_comment_score(account.clone(), original_comment, ScoringAction::ShareComment)?;
+        }
+
+        <CommentSharesByAccount<T>>::insert((account.clone(), original_comment_id), shares_count);
+        SharedPostIdsByOriginalCommentId::mutate(original_comment_id, |ids| ids.push(shared_post_id));
+
+        Self::deposit_event(RawEvent::CommentShared(account, original_comment_id));
 
         Ok(())
     }
