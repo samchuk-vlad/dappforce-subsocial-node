@@ -366,6 +366,7 @@ decl_storage! {
     pub CommentIdsByPostId get(comment_ids_by_post_id): map PostId => Vec<PostId>;
 
     pub ReactionIdsByPostId get(reaction_ids_by_post_id): map PostId => Vec<ReactionId>;
+    pub ReactionIdsByCommentId get(reaction_ids_by_comment_id): map PostId => Vec<ReactionId>;
     pub PostReactionIdByAccount get(post_reaction_id_by_account): map (T::AccountId, PostId) => ReactionId;
     pub CommentReactionIdByAccount get(comment_reaction_id_by_account): map (T::AccountId, PostId) => ReactionId;
 
@@ -820,11 +821,16 @@ decl_module! {
         Self::change_post_score_by_extension(owner.clone(), post, action)?;
       }
       else {
-        <PostById<T>>::insert(post_id, post);
+        <PostById<T>>::insert(post_id, post.clone());
       }
 
-      ReactionIdsByPostId::mutate(post_id, |ids| ids.push(reaction_id));
-      <PostReactionIdByAccount<T>>::insert((owner.clone(), post_id), reaction_id);
+      if post.is_comment() {
+        ReactionIdsByCommentId::mutate(post_id, |ids| ids.push(reaction_id));
+        <CommentReactionIdByAccount<T>>::insert((owner.clone(), post_id), reaction_id);
+      } else {
+        ReactionIdsByPostId::mutate(post_id, |ids| ids.push(reaction_id));
+        <PostReactionIdByAccount<T>>::insert((owner.clone(), post_id), reaction_id);
+      }
 
       Self::deposit_event(RawEvent::PostReactionCreated(owner.clone(), post_id, reaction_id));
     }
