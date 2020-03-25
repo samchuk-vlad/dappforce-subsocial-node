@@ -207,6 +207,8 @@ decl_error! {
     CommentNotFound,
     /// Unknown parent comment id
     UnknownParentComment,
+    /// Post by root_post_id is not of RegularPost extension
+    NoPostByRootPostId,
     /// Only comment author can manage their blog
     NotACommentAuthor,
     /// New comment IPFS-hash is the same as old one
@@ -284,13 +286,13 @@ decl_error! {
     OutOfBoundsUpdatingPostScore,
     /// Out of bounds reverting post score
     OutOfBoundsRevertingPostScore,
-    /// Post extension is a comment, better use change_post_score_by_extension()
+    /// Post extension is a comment
     PostIsAComment,
     /// Out of bounds updating comment score
     OutOfBoundsUpdatingCommentScore,
     /// Out of bounds reverting comment score
     OutOfBoundsRevertingCommentScore,
-    /// Post extension is not a comment, better use change_post_score_by_extension()
+    /// Post extension is not a comment
     PostIsNotAComment,
     /// Out of bounds updating social account reputation
     OutOfBoundsUpdatingAccountReputation,
@@ -684,10 +686,12 @@ decl_module! {
           Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
         },
         PostExtension::Comment(comment_ext) => {
-          let mut root_post = Self::post_by_id(comment_ext.root_post_id).ok_or(Error::<T>::PostNotFound)?;
-          root_post.total_replies_count = root_post.total_replies_count.checked_add(1).ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
-
           is_comment = Some(comment_ext);
+
+          if let Some(parent_id) = comment_ext.parent_id {
+            let parent_comment = Self::post_by_id(parent_id).ok_or(Error::<T>::UnknownParentComment)?;
+            ensure!(parent_comment.is_comment(), Error::<T>::PostNotFound);
+          }
         },
         PostExtension::SharedPost(post_id) => {
           let post = Self::post_by_id(post_id).ok_or(Error::<T>::OriginalPostNotFound)?;
@@ -712,7 +716,12 @@ decl_module! {
       };
 
       if let Some(comment_ext) = is_comment {
+        let mut root_post = Self::post_by_id(comment_ext.root_post_id).ok_or(Error::<T>::PostNotFound)?;
+        ensure!(root_post.extension == PostExtension::RegularPost, Error::<T>::NoPostByRootPostId);
+        root_post.total_replies_count = root_post.total_replies_count.checked_add(1).ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
+
         CommentIdsByPostId::mutate(comment_ext.root_post_id, |ids| ids.push(new_post_id));
+        <PostById<T>>::insert(comment_ext.root_post_id, root_post);
         Self::deposit_event(RawEvent::CommentCreated(owner.clone(), new_post_id));
       } else if let Some(blog_id) = blog_id_opt {
           let mut blog = Self::blog_by_id(blog_id).ok_or(Error::<T>::BlogNotFound)?;
