@@ -672,7 +672,7 @@ decl_module! {
       }
     }
 
-    pub fn create_post(origin, blog_id_opt: Option<BlogId>, parent_id: Option<BlogId>, extension: PostExtension, ipfs_hash: Vec<u8>) {
+    pub fn create_post(origin, blog_id_opt: Option<BlogId>, extension: PostExtension, ipfs_hash: Vec<u8>) {
       let owner = ensure_signed(origin)?;
 
       let new_post_id = Self::next_post_id();
@@ -783,7 +783,7 @@ decl_module! {
       if fields_updated > 0 {
         post.updated = Some(WhoAndWhen::<T>::new(owner.clone()));
         post.edit_history.push(new_history_record);
-        <PostById<T>>::insert(post_id, post);
+        <PostById<T>>::insert(post_id, post.clone());
 
         match post.extension {
           PostExtension::RegularPost | PostExtension::SharedPost(_) => {

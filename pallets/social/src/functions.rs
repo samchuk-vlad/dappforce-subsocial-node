@@ -306,7 +306,7 @@ impl<T: Trait> Module<T> {
     }
 
     pub fn scoring_action_by_post_extension(extension: PostExtension, reaction_kind: ReactionKind, reverse: bool) -> ScoringAction {
-        let mut scoring_action: ScoringAction = ScoringAction::default();
+        let scoring_action;
 
         match extension {
             PostExtension::RegularPost | PostExtension::SharedPost(_) => match reaction_kind {
