@@ -75,9 +75,10 @@ impl<T: Trait> Module<T> {
     }
 
     pub fn change_post_score_by_extension(account: T::AccountId, post: &mut Post<T>, action: ScoringAction) -> DispatchResult {
-        match post.extension {
-            PostExtension::RegularPost | PostExtension::SharedPost(_) => Self::change_post_score(account, post, action)?,
-            PostExtension::Comment(_) => Self::change_comment_score(account, post, action)?,
+        if post.is_comment() {
+            Self::change_comment_score(account, post, action)?;
+        } else {
+            Self::change_post_score(account, post, action)?;
         }
 
         Ok(())
@@ -87,10 +88,7 @@ impl<T: Trait> Module<T> {
         let social_account = Self::get_or_new_social_account(account.clone());
         <SocialAccountById<T>>::insert(account.clone(), social_account.clone());
 
-        match post.extension {
-            PostExtension::Comment(_) => return Err(Error::<T>::PostIsAComment.into()),
-            _ => (),
-        }
+        ensure!(!post.is_comment(), Error::<T>::PostIsAComment);
 
         if let Some(post_blog_id) = post.blog_id {
             let post_id = post.id;
@@ -138,10 +136,8 @@ impl<T: Trait> Module<T> {
 
         let comment_id = comment.id;
         let comment_ext;
-        match comment.extension {
-            PostExtension::Comment(ext) => comment_ext = ext,
-            _ => return Err(Error::<T>::PostIsNotAComment.into()),
-        }
+
+        ensure!(comment.is_comment(), Error::<T>::PostIsNotAComment);
 
         if comment.created.account != account {
             if let Some(score_diff) = Self::comment_score_by_account((account.clone(), comment_id, action)) {
@@ -252,13 +248,10 @@ impl<T: Trait> Module<T> {
 
     pub fn share_post_by_extension(account: T::AccountId, original_post_id: PostId, shared_post_id: PostId) -> DispatchResult {
         let ref mut original_post = Self::post_by_id(original_post_id).ok_or(Error::<T>::OriginalPostNotFound)?;
-        match original_post.extension {
-            PostExtension::RegularPost | PostExtension::SharedPost(_) => {
-                Self::share_post(account, original_post, shared_post_id)?;
-            },
-            PostExtension::Comment(_) => {
-                Self::share_comment(account, original_post, shared_post_id)?;
-            },
+        if original_post.is_comment() {
+            Self::share_comment(account, original_post, shared_post_id)?;
+        } else {
+            Self::share_post(account, original_post, shared_post_id)?;
         }
 
         Ok(())
@@ -340,5 +333,22 @@ impl<T: Trait> Module<T> {
         ensure!(handle.iter().all(|&x| Self::is_valid_handle_char(x)), Error::<T>::HandleContainsInvalidChars);
 
         Ok(handle)
+    }
+}
+
+impl<T: Trait> Post<T> {
+    pub fn is_comment(&self) -> bool {
+        return match self.extension {
+            PostExtension::Comment(_) => true,
+            _ => false,
+        }
+    }
+
+    // TODO: Look for cases where this function can be used
+    pub fn get_comment_ext(&self) -> Result<CommentExt, DispatchError> {
+        return match self.extension {
+            PostExtension::Comment(comment_ext) => Ok(comment_ext),
+            _ => Err(Error::<T>::PostIsNotAComment.into()),
+        }
     }
 }

@@ -758,10 +758,7 @@ decl_module! {
 
       // Move this post to another blog:
       if let Some(blog_id) = update.blog_id {
-        match post.extension {
-          PostExtension::Comment(_) => Err(Error::<T>::CannotUpdateBlogIdOnComment)?,
-          _ => (),
-        }
+        ensure!(!post.is_comment(), Error::<T>::CannotUpdateBlogIdOnComment);
 
         if let Some(post_blog_id) = post.blog_id {
           if blog_id != post_blog_id {
@@ -785,13 +782,10 @@ decl_module! {
         post.edit_history.push(new_history_record);
         <PostById<T>>::insert(post_id, post.clone());
 
-        match post.extension {
-          PostExtension::RegularPost | PostExtension::SharedPost(_) => {
-            Self::deposit_event(RawEvent::PostUpdated(owner.clone(), post_id));
-          },
-          PostExtension::Comment(_) => {
-            Self::deposit_event(RawEvent::PostUpdated(owner.clone(), post_id));
-          },
+        if post.is_comment() {
+          Self::deposit_event(RawEvent::PostUpdated(owner.clone(), post_id));
+        } else {
+          Self::deposit_event(RawEvent::PostUpdated(owner.clone(), post_id));
         }
       }
     }
