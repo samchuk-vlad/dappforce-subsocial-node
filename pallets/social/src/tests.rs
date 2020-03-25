@@ -104,12 +104,6 @@ fn subcomment_ipfs_hash() -> Vec<u8> {
   b"QmYA2fn8cMbVWo4v95RwcwJVyQsNtnEwHerfWR8UNtEwoE".to_vec()
 }
 
-fn comment_update(ipfs_hash: Vec<u8>) -> CommentUpdate {
-  CommentUpdate {
-    ipfs_hash
-  }
-}
-
 fn alice_username() -> Vec<u8> {
   b"Alice".to_vec()
 }
@@ -159,11 +153,11 @@ fn scoring_action_follow_account() -> ScoringAction {
 fn extension_regular_post() -> PostExtension {
   PostExtension::RegularPost
 }
+fn extension_comment(parent_id: Option<PostId>, root_post_id: PostId) -> PostExtension {
+  PostExtension::Comment(CommentExt{ parent_id, root_post_id })
+}
 fn extension_shared_post(post_id: PostId) -> PostExtension {
   PostExtension::SharedPost(post_id)
-}
-fn extension_shared_comment(comment_id: CommentId) -> PostExtension {
-  PostExtension::SharedComment(comment_id)
 }
 
 fn _create_default_blog() -> DispatchResult {
@@ -212,12 +206,12 @@ fn _create_default_post() -> DispatchResult {
   _create_post(None, None, None, None)
 }
 
-fn _create_post(origin: Option<Origin>, blog_id: Option<BlogId>, ipfs_hash: Option<Vec<u8>>, extension: Option<PostExtension>) -> DispatchResult {
+fn _create_post(origin: Option<Origin>, blog_id_opt: Option<Option<BlogId>>, extension: Option<PostExtension>, ipfs_hash: Option<Vec<u8>>) -> DispatchResult {
   Social::create_post(
     origin.unwrap_or(Origin::signed(ACCOUNT1)),
-    blog_id.unwrap_or(1),
-    ipfs_hash.unwrap_or(self::post_ipfs_hash()),
-    extension.unwrap_or(self::extension_regular_post())
+    blog_id_opt.unwrap_or(Some(1)),
+    extension.unwrap_or(self::extension_regular_post()),
+    ipfs_hash.unwrap_or(self::post_ipfs_hash())
   )
 }
 
@@ -233,20 +227,26 @@ fn _create_default_comment() -> DispatchResult {
   _create_comment(None, None, None, None)
 }
 
-fn _create_comment(origin: Option<Origin>, post_id: Option<PostId>, parent_id: Option<CommentId>, ipfs_hash: Option<Vec<u8>>) -> DispatchResult {
-  Social::create_comment(
-    origin.unwrap_or(Origin::signed(ACCOUNT1)),
-    post_id.unwrap_or(1),
-    parent_id,
-    ipfs_hash.unwrap_or(self::comment_ipfs_hash())
+fn _create_comment(origin: Option<Origin>, post_id: Option<PostId>,
+                   parent_id: Option<Option<PostId>>, ipfs_hash: Option<Vec<u8>>)
+  -> DispatchResult {
+  _create_post(
+    origin,
+    Some(None),
+    Some(self::extension_comment(
+      parent_id.unwrap_or(None), post_id.unwrap_or(1))
+    ),
+    Some(ipfs_hash.unwrap_or(self::comment_ipfs_hash()))
   )
 }
 
-fn _update_comment(origin: Option<Origin>, comment_id: Option<CommentId>, update: Option<CommentUpdate>) -> DispatchResult {
-  Social::update_comment(
-    origin.unwrap_or(Origin::signed(ACCOUNT1)),
-    comment_id.unwrap_or(1),
-    update.unwrap_or(self::comment_update(self::subcomment_ipfs_hash()))
+fn _update_comment(origin: Option<Origin>, post_id: Option<PostId>, update: Option<PostUpdate>) -> DispatchResult {
+  _update_post(
+    origin,
+    Some(post_id.unwrap_or(2)),
+    Some(update.unwrap_or(
+      self::post_update(None, Some(self::subcomment_ipfs_hash())))
+    )
   )
 }
 
@@ -266,12 +266,8 @@ fn _create_post_reaction(origin: Option<Origin>, post_id: Option<PostId>, kind: 
   )
 }
 
-fn _create_comment_reaction(origin: Option<Origin>, comment_id: Option<CommentId>, kind: Option<ReactionKind>) -> DispatchResult {
-  Social::create_comment_reaction(
-    origin.unwrap_or(Origin::signed(ACCOUNT1)),
-    comment_id.unwrap_or(1),
-    kind.unwrap_or(self::reaction_upvote())
-  )
+fn _create_comment_reaction(origin: Option<Origin>, post_id: Option<PostId>, kind: Option<ReactionKind>) -> DispatchResult {
+  _create_post_reaction(origin, Some(post_id.unwrap_or(2)), kind)
 }
 
 fn _update_post_reaction(origin: Option<Origin>, post_id: Option<PostId>, reaction_id: ReactionId, kind: Option<ReactionKind>) -> DispatchResult {
@@ -283,13 +279,8 @@ fn _update_post_reaction(origin: Option<Origin>, post_id: Option<PostId>, reacti
   )
 }
 
-fn _update_comment_reaction(origin: Option<Origin>, comment_id: Option<CommentId>, reaction_id: ReactionId, kind: Option<ReactionKind>) -> DispatchResult {
-  Social::update_comment_reaction(
-    origin.unwrap_or(Origin::signed(ACCOUNT1)),
-    comment_id.unwrap_or(1),
-    reaction_id,
-    kind.unwrap_or(self::reaction_upvote())
-  )
+fn _update_comment_reaction(origin: Option<Origin>, post_id: Option<PostId>, reaction_id: ReactionId, kind: Option<ReactionKind>) -> DispatchResult {
+  _update_post_reaction(origin, Some(post_id.unwrap_or(2)), reaction_id, kind)
 }
 
 fn _delete_post_reaction(origin: Option<Origin>, post_id: Option<PostId>, reaction_id: ReactionId) -> DispatchResult {
@@ -300,12 +291,8 @@ fn _delete_post_reaction(origin: Option<Origin>, post_id: Option<PostId>, reacti
   )
 }
 
-fn _delete_comment_reaction(origin: Option<Origin>, comment_id: Option<CommentId>, reaction_id: ReactionId) -> DispatchResult {
-  Social::delete_comment_reaction(
-    origin.unwrap_or(Origin::signed(ACCOUNT1)),
-    comment_id.unwrap_or(1),
-    reaction_id
-  )
+fn _delete_comment_reaction(origin: Option<Origin>, post_id: Option<PostId>, reaction_id: ReactionId) -> DispatchResult {
+  _delete_post_reaction(origin, Some(post_id.unwrap_or(2)), reaction_id)
 }
 
 fn _create_default_profile() -> DispatchResult {
@@ -352,19 +339,11 @@ fn _unfollow_account(origin: Option<Origin>, account: Option<AccountId>) -> Disp
   )
 }
 
-fn _change_post_score_by_id(account: AccountId, post_id: PostId, action: ScoringAction) -> DispatchResult {
+fn _change_post_score_by_extension_with_id(account: AccountId, post_id: PostId, action: ScoringAction) -> DispatchResult {
   if let Some(ref mut post) = Social::post_by_id(post_id) {
-    Social::change_post_score(account, post, action)
+    Social::change_post_score_by_extension(account, post, action)
   } else {
     Err(Error::<Test>::PostNotFound)?
-  }
-}
-
-fn _change_comment_score_by_id(account: AccountId, comment_id: CommentId, action: ScoringAction) -> DispatchResult {
-  if let Some(ref mut comment) = Social::comment_by_id(comment_id) {
-    Social::change_comment_score(account, comment, action)
-  } else {
-    Err(Error::<Test>::CommentNotFound)?
   }
 }
 
