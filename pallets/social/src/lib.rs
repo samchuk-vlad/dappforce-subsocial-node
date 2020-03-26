@@ -211,33 +211,21 @@ decl_error! {
     CommentIPFSHashNotDiffer,
     /// Overflow adding comment on post
     OverflowAddingCommentOnPost,
-    /// Overflow replying on comment
-    OverflowReplyingOnComment,
     /// Cannot update blog id on Comment
     CannotUpdateBlogIdOnComment,
 
     /// Reaction was not found by id
     ReactionNotFound,
-    /// Account has already reacted to this post
-    AccountAlreadyReactedToPost,
-    /// Account has not reacted to this post yet
-    AccountNotYetReactedToPost,
-    /// There is no post reaction by account that could be deleted
-    PostReactionByAccountNotFound,
-    /// Overflow caused upvoting post
-    OverflowUpvotingPost,
-    /// Overflow caused downvoting post
-    OverflowDownvotingPost,
-    /// Account has already reacted to this comment
-    AccountAlreadyReactedToComment,
-    /// Account has not reacted to this comment yet
-    AccountNotYetReactedToComment,
-    /// There is no comment reaction by account that could be deleted
-    CommentReactionByAccountNotFound,
-    /// Overflow caused upvoting comment
-    OverflowUpvotingComment,
-    /// Overflow caused downvoting comment
-    OverflowDownvotingComment,
+    /// Account has already reacted to this post/comment
+    AccountAlreadyReacted,
+    /// Account has not reacted to this post/comment yet
+    AccountNotYetReacted,
+    /// There is no post/comment reaction by account that could be deleted
+    ReactionByAccountNotFound,
+    /// Overflow caused upvoting post/comment
+    OverflowUpvoting,
+    /// Overflow caused downvoting post/comment
+    OverflowDownvoting,
     /// Only reaction owner can update their reaction
     NotAReactionOwner,
     /// New reaction kind is the same as old one
@@ -805,24 +793,23 @@ decl_module! {
       let owner = ensure_signed(origin)?;
 
       let ref mut post = Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?;
-
       if post.is_comment() {
         ensure!(
           !<CommentReactionIdByAccount<T>>::exists((owner.clone(), post_id)),
-          Error::<T>::AccountAlreadyReactedToComment
+          Error::<T>::AccountAlreadyReacted
         );
       } else {
         ensure!(
           !<PostReactionIdByAccount<T>>::exists((owner.clone(), post_id)),
-          Error::<T>::AccountAlreadyReactedToPost
+          Error::<T>::AccountAlreadyReacted
         );
       }
 
       let reaction_id = Self::new_reaction(owner.clone(), kind.clone());
 
       match kind {
-        ReactionKind::Upvote => post.upvotes_count = post.upvotes_count.checked_add(1).ok_or(Error::<T>::OverflowUpvotingPost)?,
-        ReactionKind::Downvote => post.downvotes_count = post.downvotes_count.checked_add(1).ok_or(Error::<T>::OverflowDownvotingPost)?,
+        ReactionKind::Upvote => post.upvotes_count = post.upvotes_count.checked_add(1).ok_or(Error::<T>::OverflowUpvoting)?,
+        ReactionKind::Downvote => post.downvotes_count = post.downvotes_count.checked_add(1).ok_or(Error::<T>::OverflowDownvoting)?,
       }
       let action = Self::scoring_action_by_post_extension(post.extension, kind, false);
 
@@ -849,7 +836,7 @@ decl_module! {
 
       ensure!(
         <PostReactionIdByAccount<T>>::exists((owner.clone(), post_id)),
-        Error::<T>::AccountNotYetReactedToPost
+        Error::<T>::AccountNotYetReacted
       );
 
       let mut reaction = Self::reaction_by_id(reaction_id).ok_or(Error::<T>::ReactionNotFound)?;
@@ -888,7 +875,7 @@ decl_module! {
 
       ensure!(
         <PostReactionIdByAccount<T>>::exists((owner.clone(), post_id)),
-        Error::<T>::PostReactionByAccountNotFound
+        Error::<T>::ReactionByAccountNotFound
       );
 
       let reaction = Self::reaction_by_id(reaction_id).ok_or(Error::<T>::ReactionNotFound)?;

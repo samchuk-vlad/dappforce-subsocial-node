@@ -1081,7 +1081,7 @@ fn create_post_reaction_should_fail_already_reacted() {
     assert_ok!(_create_default_post_reaction()); // ReactionId1
 
     // Try to catch an error creating reaction by the same account
-    assert_noop!(_create_default_post_reaction(), Error::<Test>::AccountAlreadyReactedToPost);
+    assert_noop!(_create_default_post_reaction(), Error::<Test>::AccountAlreadyReacted);
   });
 }
 
@@ -1150,7 +1150,7 @@ fn create_comment_reaction_should_fail_already_reacted() {
     assert_ok!(_create_default_comment_reaction()); // ReactionId 1
 
     // Try to catch an error creating reaction by the same account
-    assert_noop!(_create_default_comment_reaction(), Error::<Test>::AccountAlreadyReactedToComment);
+    assert_noop!(_create_default_comment_reaction(), Error::<Test>::AccountAlreadyReacted);
   });
 }
 
