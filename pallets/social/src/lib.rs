@@ -199,18 +199,14 @@ decl_error! {
     /// Nothing to update in post
     NoUpdatesInPost,
     /// Only post author can manage their blog
-    NotAPostAuthor,
+    NotAnAuthor,
     /// Overflow caused adding post on blog
     OverflowAddingPostOnBlog,
 
-    /// Comment was not found by id
-    CommentNotFound,
     /// Unknown parent comment id
     UnknownParentComment,
     /// Post by root_post_id is not of RegularPost extension
     NoPostByRootPostId,
-    /// Only comment author can manage their blog
-    NotACommentAuthor,
     /// New comment IPFS-hash is the same as old one
     CommentIPFSHashNotDiffer,
     /// Overflow adding comment on post
@@ -307,8 +303,6 @@ decl_error! {
     OverflowPostSharesSharingPost,
     /// Cannot share post that is not a regular post
     CannotShareSharedPost,
-    /// Original comment not found when sharing
-    OriginalCommentNotFound,
     /// Overflow caused on total shares counter when sharing comment
     OverflowTotalSharesSharingComment,
     /// Overflow caused on shares by account counter when sharing comment
@@ -687,16 +681,17 @@ decl_module! {
           Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
         },
         PostExtension::Comment(comment_ext) => {
-          is_comment = Some(comment_ext);
+          Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
 
           if let Some(parent_id) = comment_ext.parent_id {
             let parent_comment = Self::post_by_id(parent_id).ok_or(Error::<T>::UnknownParentComment)?;
             ensure!(parent_comment.is_comment(), Error::<T>::PostNotFound);
           }
+          is_comment = Some(comment_ext);
         },
         PostExtension::SharedPost(post_id) => {
           let post = Self::post_by_id(post_id).ok_or(Error::<T>::OriginalPostNotFound)?;
-          ensure!(post.extension == PostExtension::RegularPost, Error::<T>::CannotShareSharedPost);
+          ensure!(!post.is_shared_post(), Error::<T>::CannotShareSharedPost);
           Self::share_post_by_extension(owner.clone(), post_id, new_post_id)?;
         },
       }
@@ -717,9 +712,11 @@ decl_module! {
       };
 
       if let Some(comment_ext) = is_comment {
-        let mut root_post = Self::post_by_id(comment_ext.root_post_id).ok_or(Error::<T>::PostNotFound)?;
+        let ref mut root_post = Self::post_by_id(comment_ext.root_post_id).ok_or(Error::<T>::PostNotFound)?;
         ensure!(root_post.extension == PostExtension::RegularPost, Error::<T>::NoPostByRootPostId);
+
         root_post.total_replies_count = root_post.total_replies_count.checked_add(1).ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
+        Self::change_post_score_by_extension(owner.clone(), root_post, ScoringAction::CreateComment)?;
 
         CommentIdsByPostId::mutate(comment_ext.root_post_id, |ids| ids.push(new_post_id));
         <PostById<T>>::insert(comment_ext.root_post_id, root_post);
@@ -749,7 +746,7 @@ decl_module! {
       let mut post = Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?;
 
       // TODO ensure: blog writers also should be able to edit this post:
-      ensure!(owner == post.created.account, Error::<T>::NotAPostAuthor);
+      ensure!(owner == post.created.account, Error::<T>::NotAnAuthor);
 
       let mut fields_updated = 0;
       let mut new_history_record = PostHistoryRecord {
@@ -763,6 +760,10 @@ decl_module! {
           new_history_record.old_data.ipfs_hash = Some(post.ipfs_hash);
           post.ipfs_hash = ipfs_hash;
           fields_updated += 1;
+        } else {
+          if post.is_comment() {
+            return Err(Error::<T>::CommentIPFSHashNotDiffer.into());
+          }
         }
       }
 
@@ -803,12 +804,20 @@ decl_module! {
     pub fn create_post_reaction(origin, post_id: PostId, kind: ReactionKind) {
       let owner = ensure_signed(origin)?;
 
-      ensure!(
-        !<PostReactionIdByAccount<T>>::exists((owner.clone(), post_id)),
-        Error::<T>::AccountAlreadyReactedToPost
-      );
-
       let ref mut post = Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?;
+
+      if post.is_comment() {
+        ensure!(
+          !<CommentReactionIdByAccount<T>>::exists((owner.clone(), post_id)),
+          Error::<T>::AccountAlreadyReactedToComment
+        );
+      } else {
+        ensure!(
+          !<PostReactionIdByAccount<T>>::exists((owner.clone(), post_id)),
+          Error::<T>::AccountAlreadyReactedToPost
+        );
+      }
+
       let reaction_id = Self::new_reaction(owner.clone(), kind.clone());
 
       match kind {

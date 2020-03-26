@@ -87,10 +87,11 @@ impl<T: Trait> Module<T> {
         let social_account = Self::get_or_new_social_account(account.clone());
         <SocialAccountById<T>>::insert(account.clone(), social_account.clone());
 
+        let post_id = post.id;
+        ensure!(<PostById<T>>::exists(post_id), Error::<T>::PostNotFound);
         ensure!(!post.is_comment(), Error::<T>::PostIsAComment);
 
         if let Some(post_blog_id) = post.blog_id {
-            let post_id = post.id;
             let mut blog = Self::blog_by_id(post_blog_id).ok_or(Error::<T>::BlogNotFound)?;
 
             if post.created.account != account {
@@ -134,6 +135,7 @@ impl<T: Trait> Module<T> {
         <SocialAccountById<T>>::insert(account.clone(), social_account.clone());
 
         let comment_id = comment.id;
+        ensure!(<PostById<T>>::exists(comment_id), Error::<T>::PostNotFound);
         let comment_ext = comment.get_comment_ext()?;
 
         ensure!(comment.is_comment(), Error::<T>::PostIsNotAComment);
@@ -339,6 +341,13 @@ impl<T: Trait> Post<T> {
     pub fn is_comment(&self) -> bool {
         return match self.extension {
             PostExtension::Comment(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_shared_post(&self) -> bool {
+        return match self.extension {
+            PostExtension::SharedPost(_) => true,
             _ => false,
         }
     }
