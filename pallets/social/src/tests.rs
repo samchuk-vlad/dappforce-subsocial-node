@@ -435,6 +435,42 @@ fn create_blog_should_fail_not_unique_handle() {
 }
 
 #[test]
+fn create_blog_should_fail_invalid_at_char() {
+  let handle : Vec<u8> = b"@blog_handle".to_vec();
+
+  new_test_ext().execute_with(|| {
+    assert_err!(_create_blog(None, Some(Some(handle.clone())), None), Error::<Test>::HandleContainsInvalidChars);
+  });
+}
+
+#[test]
+fn create_blog_should_fail_invalid_minus_char() {
+  let handle : Vec<u8> = b"blog-handle".to_vec();
+
+  new_test_ext().execute_with(|| {
+    assert_err!(_create_blog(None, Some(Some(handle.clone())), None), Error::<Test>::HandleContainsInvalidChars);
+  });
+}
+
+#[test]
+fn create_blog_should_fail_invalid_space_char() {
+  let handle : Vec<u8> = b"blog handle".to_vec();
+
+  new_test_ext().execute_with(|| {
+    assert_err!(_create_blog(None, Some(Some(handle.clone())), None), Error::<Test>::HandleContainsInvalidChars);
+  });
+}
+
+#[test]
+fn create_blog_should_fail_invalid_unicode_char() {
+  let handle : Vec<u8> = String::from("блог_хендл").into_bytes().to_vec();
+
+  new_test_ext().execute_with(|| {
+    assert_err!(_create_blog(None, Some(Some(handle.clone())), None), Error::<Test>::HandleContainsInvalidChars);
+  });
+}
+
+#[test]
 fn create_blog_should_fail_invalid_ipfs_hash() {
   let ipfs_hash : Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
 
@@ -588,6 +624,82 @@ fn update_blog_should_fail_not_unique_handle() {
         )
       )
     ), Error::<Test>::HandleIsNotUnique);
+  });
+}
+
+#[test]
+fn update_blog_should_fail_invalid_at_char() {
+  let handle : Vec<u8> = b"@blog_handle".to_vec();
+
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_blog()); // BlogId 1
+
+    assert_err!(_update_blog(None, None,
+      Some(
+        self::blog_update(
+          None,
+          Some(Some(handle)),
+          None
+        )
+      )
+    ), Error::<Test>::HandleContainsInvalidChars);
+  });
+}
+
+#[test]
+fn update_blog_should_fail_invalid_minus_char() {
+  let handle : Vec<u8> = b"blog-handle".to_vec();
+
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_blog()); // BlogId 1
+
+    assert_err!(_update_blog(None, None,
+      Some(
+        self::blog_update(
+          None,
+          Some(Some(handle)),
+          None
+        )
+      )
+    ), Error::<Test>::HandleContainsInvalidChars);
+  });
+}
+
+#[test]
+fn update_blog_should_fail_invalid_space_char() {
+  let handle : Vec<u8> = b"blog handle".to_vec();
+
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_blog()); // BlogId 1
+
+    assert_err!(_update_blog(None, None,
+      Some(
+        self::blog_update(
+          None,
+          Some(Some(handle)),
+          None
+        )
+      )
+    ), Error::<Test>::HandleContainsInvalidChars);
+  });
+}
+
+#[test]
+fn update_blog_should_fail_invalid_unicode_char() {
+  let handle : Vec<u8> = String::from("блог_хендл").into_bytes().to_vec();
+
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_blog()); // BlogId 1
+
+    assert_err!(_update_blog(None, None,
+      Some(
+        self::blog_update(
+          None,
+          Some(Some(handle)),
+          None
+        )
+      )
+    ), Error::<Test>::HandleContainsInvalidChars);
   });
 }
 
