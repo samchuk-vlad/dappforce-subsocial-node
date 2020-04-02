@@ -56,7 +56,7 @@ parameter_types! {
 	pub const MaxSpaceOwners: u16 = u16::max_value();
 	pub const MaxChangeNotesLength: u16 = 1024;
 	pub const BlocksToLive: u64 = 302_400;
-	pub const CleanExpiredChangesPeriod: u64 = 1800;
+	pub const DeleteExpiredChangesPeriod: u64 = 1800;
 }
 
 impl Trait for Test {
@@ -65,7 +65,7 @@ impl Trait for Test {
   type MaxSpaceOwners = MaxSpaceOwners;
   type MaxChangeNotesLength = MaxChangeNotesLength;
   type BlocksToLive = BlocksToLive;
-  type CleanExpiredChangesPeriod = CleanExpiredChangesPeriod;
+  type DeleteExpiredChangesPeriod = DeleteExpiredChangesPeriod;
 }
 
 type MultiOwnership = Module<Test>;

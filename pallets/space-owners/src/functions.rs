@@ -16,7 +16,7 @@ impl<T: Trait> Module<T> {
     let change_id = change.id;
 
     ensure!(change.confirmed_by.len() >= space_owners.threshold as usize, Error::<T>::NotEnoughConfirms);
-    Self::change_change_from_pending_to_executed(space_id, change_id)?;
+    Self::move_change_from_pending_state_to_executed(space_id, change_id)?;
 
     space_owners.changes_count = space_owners.changes_count.checked_add(1).ok_or(Error::<T>::OverflowExecutingChange)?;
     if !change.add_owners.is_empty() || !change.remove_owners.is_empty() {
@@ -41,7 +41,7 @@ impl<T: Trait> Module<T> {
     Ok(())
   }
 
-  pub fn change_change_from_pending_to_executed(space_id: SpaceId, change_id: ChangeId) -> DispatchResult {
+  pub fn move_change_from_pending_state_to_executed(space_id: SpaceId, change_id: ChangeId) -> DispatchResult {
     ensure!(Self::space_owners_by_space_id(space_id).is_some(), Error::<T>::SpaceOwnersNotFound);
     ensure!(Self::change_by_id(change_id).is_some(), Error::<T>::ChangeNotFound);
     ensure!(!Self::executed_change_ids_by_space_id(space_id).iter().any(|&x| x == change_id), Error::<T>::ChangeAlreadyExecuted);
@@ -70,7 +70,7 @@ impl<T: Trait> Module<T> {
   }
 
   pub fn delete_expired_changes(block_number: T::BlockNumber) {
-    if (block_number % T::CleanExpiredChangesPeriod::get()).is_zero() {
+    if (block_number % T::DeleteExpiredChangesPeriod::get()).is_zero() {
       for change_id in Self::pending_change_ids() {
         if let Some(change) = Self::change_by_id(change_id) {
           if block_number >= change.expires_at {

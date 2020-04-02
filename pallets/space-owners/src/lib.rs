@@ -48,21 +48,21 @@ pub trait Trait: system::Trait + pallet_timestamp::Trait {
   /// Maximum space owners allowed.
   type MaxSpaceOwners: Get<u16>;
 
-  /// Maximum change notes length.
+  /// Maximum length of change notes.
   type MaxChangeNotesLength: Get<u16>;
 
   /// Expiration time for change proposal.
   type BlocksToLive: Get<Self::BlockNumber>;
 
-  /// Period in blocks to initialize cleaning of pending changes that are outdated.
-  type CleanExpiredChangesPeriod: Get<Self::BlockNumber>;
+  /// Period in blocks for which change proposal is can remain in a pending state until deleted.
+  type DeleteExpiredChangesPeriod: Get<Self::BlockNumber>;
 }
 
 decl_error! {
   pub enum Error for Module<T: Trait> {
     /// Space owners was not found by id
     SpaceOwnersNotFound,
-    /// Change was not found in a space owners
+    /// Change was not found by id
     ChangeNotFound,
     /// Space owners already exist on this space
     SpaceOwnersAlreadyExist,
@@ -82,18 +82,18 @@ decl_error! {
     ChangeNotesOversize,
     /// No space owners will left in result of change
     NoSpaceOwnersLeft,
-    /// No updates proposed in change proposal
+    /// No updates proposed with this change
     NoUpdatesProposed,
     /// No fields update in result of change proposal
     NoFieldsUpdatedOnProposal,
 
     /// Account has already confirmed this change
     ChangeAlreadyConfirmed,
-    /// There are not enough confirmations on a change
+    /// There are not enough confirmations for this change
     NotEnoughConfirms,
     /// Change is already executed
     ChangeAlreadyExecuted,
-    /// Change is not tied to an owed wallet
+    /// Change is not related to this space
     ChangeNotRelatedToSpace,
     /// Pending change already exists
     PendingChangeAlreadyExists,
@@ -101,11 +101,11 @@ decl_error! {
     PendingChangeDoesNotExist,
 
     /// Account is not a proposal creator
-    NotAProposalCreator,
+    NotAChangeCreator,
 
-    /// Overflow in Wallet executed change counter
+    /// Overflow when incrementing a counter of executed changes
     OverflowExecutingChange,
-    /// Underflow in Wallet pending change counter
+    /// Underflow when decrementing a counter of executed changes
     UnderflowExecutingChange,
   }
 }
@@ -133,14 +133,14 @@ decl_module! {
     /// Maximum space owners allowed.
     const MaxSpaceOwners: u16 = T::MaxSpaceOwners::get();
 
-    /// Maximum change notes length.
+    /// Maximum length of change notes.
     const MaxChangeNotesLength: u16 = T::MaxChangeNotesLength::get();
 
-    /// Period for which change proposal is active.
+    /// Period in blocks for which change proposal is can remain in a pending state until deleted.
     const BlocksToLive: T::BlockNumber = T::BlocksToLive::get();
 
-    /// Period in blocks to initialize cleaning of pending changes that are outdated.
-    const CleanExpiredChangesPeriod: T::BlockNumber = T::CleanExpiredChangesPeriod::get();
+    /// Period in blocks to initialize deleting of pending changes that are outdated.
+    const DeleteExpiredChangesPeriod: T::BlockNumber = T::DeleteExpiredChangesPeriod::get();
 
     // Initializing events
     fn deposit_event() = default;
@@ -290,7 +290,7 @@ decl_module! {
       Self::deposit_event(RawEvent::ChangeConfirmed(who, space_id, change_id));
     }
 
-    pub fn cancel_proposal(
+    pub fn cancel_change(
       origin,
       space_id: SpaceId,
       change_id: ChangeId
