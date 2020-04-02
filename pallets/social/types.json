@@ -6,7 +6,7 @@
    "ReactionId":"u64",
    "BlogUpdate":{
       "writers":"Option<Vec<AccountId>>",
-      "slug":"Option<Text>",
+      "handle":"Option<Text>",
       "ipfs_hash":"Option<IpfsHash>"
    },
    "BlogHistoryRecord":{
@@ -18,7 +18,7 @@
       "created":"WhoAndWhen",
       "updated":"Option<WhoAndWhen>",
       "writers":"Vec<AccountId>",
-      "slug":"Text",
+      "handle":"Text",
       "ipfs_hash":"IpfsHash",
       "posts_count":"u16",
       "followers_count":"u32",

@@ -429,10 +429,9 @@ decl_module! {
     // this is needed only if you are using events in your pallet
     fn deposit_event() = default;
 
-    pub fn create_blog(origin, handle: Option<Vec<u8>>, ipfs_hash: Vec<u8>) {
+    pub fn create_blog(origin, handle_opt: Option<Vec<u8>>, ipfs_hash: Vec<u8>) {
       let owner = ensure_signed(origin)?;
 
-      let handle = Self::lowercase_and_validate_a_handle(handle.clone())?;
       Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
 
       let blog_id = Self::next_blog_id();
@@ -441,7 +440,7 @@ decl_module! {
         created: WhoAndWhen::<T>::new(owner.clone()),
         updated: None,
         writers: vec![],
-        handle: handle.clone(),
+        handle: handle_opt.clone(),
         ipfs_hash,
         posts_count: 0,
         followers_count: 0,
@@ -452,17 +451,21 @@ decl_module! {
       // Blog creator automatically follows their blog:
       Self::add_blog_follower_and_insert_blog(owner.clone(), new_blog, true)?;
 
+      if let Some(handle) = handle_opt {
+        BlogIdByHandle::insert(Self::lowercase_and_validate_a_handle(handle)?, blog_id);
+      }
+
       <BlogIdsByOwner<T>>::mutate(owner.clone(), |ids| ids.push(blog_id));
-      BlogIdByHandle::insert(handle, blog_id);
       NextBlogId::mutate(|n| { *n += 1; });
     }
 
     pub fn update_blog(origin, blog_id: BlogId, update: BlogUpdate<T::AccountId>) {
       let owner = ensure_signed(origin)?;
 
+      let handle_opt = update.handle.unwrap_or(None);
       let has_updates =
         update.writers.is_some() ||
-        update.handle.is_some() ||
+        handle_opt.is_some() ||
         update.ipfs_hash.is_some();
 
       ensure!(has_updates, Error::<T>::NoUpdatesInBlog);
@@ -497,16 +500,18 @@ decl_module! {
         }
       }
 
-      if let Some(mut handle) = update.handle {
-        if handle != blog.handle {
+      if handle_opt != blog.handle {
+        if let Some(blog_handle) = blog.handle.clone() {
+          BlogIdByHandle::remove(blog_handle);
+        }
+        if let Some(mut handle) = handle_opt.clone() {
           handle = Self::lowercase_and_validate_a_handle(handle.clone())?;
 
-          BlogIdByHandle::remove(blog.handle.clone());
           BlogIdByHandle::insert(handle.clone(), blog_id);
-          new_history_record.old_data.handle = Some(blog.handle);
-          blog.handle = handle;
-          fields_updated += 1;
         }
+        new_history_record.old_data.handle = Some(blog.handle);
+        blog.handle = handle_opt;
+        fields_updated += 1;
       }
 
       // Update this blog only if at least one field should be updated:

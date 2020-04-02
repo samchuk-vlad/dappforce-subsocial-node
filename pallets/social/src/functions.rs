@@ -292,7 +292,7 @@ impl<T: Trait> Module<T> {
         ensure!(handle.len() >= Self::handle_min_len() as usize, Error::<T>::HandleIsTooShort);
         ensure!(handle.len() <= Self::handle_max_len() as usize, Error::<T>::HandleIsTooLong);
 
-        ensure!(handle.iter().all(|&x| Self::is_valid_handle_char(x)), Error::<T>::HandleContainsRestrictedChar);
+        ensure!(handle.iter().all(|&x| Self::is_valid_handle_char(x)), Error::<T>::HandleContainsInvalidChars);
 
         Ok(handle)
     }

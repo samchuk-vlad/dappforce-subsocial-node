@@ -172,7 +172,7 @@ fn _create_default_blog() -> DispatchResult {
 fn _create_blog(origin: Option<Origin>, handle: Option<Option<Vec<u8>>>, ipfs_hash: Option<Vec<u8>>) -> DispatchResult {
   Social::create_blog(
     origin.unwrap_or(Origin::signed(ACCOUNT1)),
-    handle.unwrap_or(self::blog_handle()),
+    handle.unwrap_or(Some(self::blog_handle())),
     ipfs_hash.unwrap_or(self::blog_ipfs_hash())
   )
 }
@@ -382,7 +382,7 @@ fn create_blog_should_work() {
     let blog = Social::blog_by_id(1).unwrap();
 
     assert_eq!(blog.created.account, ACCOUNT1);
-    assert_eq!(blog.handle, self::blog_handle());
+    assert_eq!(blog.handle, Some(self::blog_handle()));
     assert_eq!(blog.ipfs_hash, self::blog_ipfs_hash());
     assert!(blog.writers.is_empty());
     assert_eq!(blog.posts_count, 0);
@@ -396,30 +396,31 @@ fn create_blog_should_make_handle_lowercase() {
   let handle : Vec<u8> = b"bLoG_hAnDlE".to_vec();
 
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_blog(None, Some(handle.clone()), None)); // BlodId 1
+    assert_ok!(_create_blog(None, Some(Some(handle.clone())), None)); // BlodId 1
 
     let blog = Social::blog_by_id(1).unwrap();
-    assert_eq!(blog.handle, handle.to_ascii_lowercase());
+    assert_eq!(blog.handle, Some(handle.to_ascii_lowercase()));
   });
 }
 
 #[test]
 fn create_blog_should_fail_short_handle() {
-  let handle : Vec<u8> = vec![97; (DEFAULT_HANDLE_MIN_LEN - 1) as usize];
+  let handle : Vec<u8> = vec![65; (DEFAULT_HANDLE_MIN_LEN - 1) as usize];
 
   new_test_ext().execute_with(|| {
     // Try to catch an error creating a blog with too short handle
-    assert_noop!(_create_blog(None, Some(handle), None), Error::<Test>::HandleIsTooShort);
+    assert_noop!(_create_blog(None, Some(Some(handle)), None), Error::<Test>::HandleIsTooShort);
   });
 }
 
 #[test]
 fn create_blog_should_fail_long_handle() {
-  let handle : Vec<u8> = vec![97; (DEFAULT_HANDLE_MAX_LEN + 1) as usize];
+  let handle : Vec<u8> = vec![65; (DEFAULT_HANDLE_MAX_LEN + 1) as usize];
 
   new_test_ext().execute_with(|| {
     // Try to catch an error creating a blog with too long handle
-    assert_noop!(_create_blog(None, Some(handle), None), Error::<Test>::HandleIsTooLong);
+    assert_noop!(_create_blog(None, Some(Some(handle)), None), Error::<Test>::HandleIsTooLong);
+    // assert_ok!(_create_blog(None, Some(Some(handle)), None));
   });
 }
 
@@ -456,7 +457,7 @@ fn update_blog_should_work() {
       Some(
         self::blog_update(
           None,
-          Some(handle.clone()),
+          Some(Some(handle.clone())),
           Some(ipfs_hash.clone())
         )
       )
@@ -464,12 +465,12 @@ fn update_blog_should_work() {
 
     // Check whether blog updates correctly
     let blog = Social::blog_by_id(1).unwrap();
-    assert_eq!(blog.handle, handle);
+    assert_eq!(blog.handle, Some(handle));
     assert_eq!(blog.ipfs_hash, ipfs_hash);
 
     // Check whether history recorded correctly
     assert_eq!(blog.edit_history[0].old_data.writers, None);
-    assert_eq!(blog.edit_history[0].old_data.handle, Some(self::blog_handle()));
+    assert_eq!(blog.edit_history[0].old_data.handle, Some(Some(self::blog_handle())));
     assert_eq!(blog.edit_history[0].old_data.ipfs_hash, Some(self::blog_ipfs_hash()));
   });
 }
@@ -496,7 +497,7 @@ fn update_blog_should_fail_blog_not_found() {
       Some(
         self::blog_update(
           None,
-          Some(handle),
+          Some(Some(handle)),
           None
         )
       )
@@ -516,7 +517,7 @@ fn update_blog_should_fail_not_an_owner() {
       Some(
         self::blog_update(
           None,
-          Some(handle),
+          Some(Some(handle)),
           None
         )
       )
@@ -526,7 +527,7 @@ fn update_blog_should_fail_not_an_owner() {
 
 #[test]
 fn update_blog_should_fail_short_handle() {
-  let handle : Vec<u8> = vec![97; (DEFAULT_HANDLE_MIN_LEN - 1) as usize];
+  let handle : Vec<u8> = vec![65; (DEFAULT_HANDLE_MIN_LEN - 1) as usize];
 
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
@@ -536,7 +537,7 @@ fn update_blog_should_fail_short_handle() {
       Some(
         self::blog_update(
           None,
-          Some(handle),
+          Some(Some(handle)),
           None
         )
       )
@@ -546,7 +547,7 @@ fn update_blog_should_fail_short_handle() {
 
 #[test]
 fn update_blog_should_fail_long_handle() {
-  let handle : Vec<u8> = vec![97; (DEFAULT_HANDLE_MAX_LEN + 1) as usize];
+  let handle : Vec<u8> = vec![65; (DEFAULT_HANDLE_MAX_LEN + 1) as usize];
 
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
@@ -556,7 +557,7 @@ fn update_blog_should_fail_long_handle() {
       Some(
         self::blog_update(
           None,
-          Some(handle),
+          Some(Some(handle)),
           None
         )
       )
@@ -573,7 +574,7 @@ fn update_blog_should_fail_not_unique_handle() {
 
     assert_ok!(_create_blog(
       None,
-      Some(handle.clone()),
+      Some(Some(handle.clone())),
       None
     )); // BlogId 2 with a custom handle
 
@@ -582,7 +583,7 @@ fn update_blog_should_fail_not_unique_handle() {
       Some(
         self::blog_update(
           None,
-          Some(handle),
+          Some(Some(handle)),
           None
         )
       )
@@ -700,7 +701,7 @@ fn update_post_should_fail_nothing_to_update() {
 fn update_post_should_fail_post_not_found() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_blog(None, Some(b"blog2_handle".to_vec()), None)); // BlogId 2
+    assert_ok!(_create_blog(None, Some(Some(b"blog2_handle".to_vec())), None)); // BlogId 2
     assert_ok!(_create_default_post()); // PostId 1
 
     // Try to catch an error updating a post with wrong post ID
@@ -719,7 +720,7 @@ fn update_post_should_fail_post_not_found() {
 fn update_post_should_fail_not_an_owner() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_blog(None, Some(b"blog2_handle".to_vec()), None)); // BlogId 2
+    assert_ok!(_create_blog(None, Some(Some(b"blog2_handle".to_vec())), None)); // BlogId 2
     assert_ok!(_create_default_post()); // PostId 1
 
     // Try to catch an error updating a post with different account
@@ -1424,7 +1425,7 @@ fn change_comment_score_should_fail_comment_not_found() {
 fn share_post_should_work() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(b"blog2_handle".to_vec()), None)); // BlogId 2 by ACCOUNT2
+    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(Some(b"blog2_handle".to_vec())), None)); // BlogId 2 by ACCOUNT2
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_post(
       Some(Origin::signed(ACCOUNT2)),
@@ -1487,7 +1488,7 @@ fn share_post_should_work_share_own_post() {
 fn share_post_should_change_score() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(b"blog2_handle".to_vec()), None)); // BlogId 2 by ACCOUNT2
+    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(Some(b"blog2_handle".to_vec())), None)); // BlogId 2 by ACCOUNT2
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_post(
       Some(Origin::signed(ACCOUNT2)),
@@ -1524,7 +1525,7 @@ fn share_post_should_not_change_score() {
 fn share_post_should_fail_original_post_not_found() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(b"blog2_handle".to_vec()), None)); // BlogId 2 by ACCOUNT2
+    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(Some(b"blog2_handle".to_vec())), None)); // BlogId 2 by ACCOUNT2
     // Skipped creating PostId 1
     assert_noop!(_create_post(
       Some(Origin::signed(ACCOUNT2)),
@@ -1540,7 +1541,7 @@ fn share_post_should_fail_original_post_not_found() {
 fn share_post_should_fail_share_shared_post() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(b"blog2_handle".to_vec()), None)); // BlogId 2 by ACCOUNT2
+    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(Some(b"blog2_handle".to_vec())), None)); // BlogId 2 by ACCOUNT2
     assert_ok!(_create_default_post());
     assert_ok!(_create_post(
       Some(Origin::signed(ACCOUNT2)),
@@ -1564,7 +1565,7 @@ fn share_post_should_fail_share_shared_post() {
 fn share_comment_should_work() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(b"blog2_handle".to_vec()), None)); // BlogId 2 by ACCOUNT2
+    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(Some(b"blog2_handle".to_vec())), None)); // BlogId 2 by ACCOUNT2
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_default_comment()); // CommentId 1
     assert_ok!(_create_post(
@@ -1598,7 +1599,7 @@ fn share_comment_should_work() {
 fn share_comment_should_change_score() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(b"blog2_handle".to_vec()), None)); // BlogId 2 by ACCOUNT2
+    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(Some(b"blog2_handle".to_vec())), None)); // BlogId 2 by ACCOUNT2
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_default_comment()); // CommentId 1
     assert_ok!(_create_post(
@@ -1618,7 +1619,7 @@ fn share_comment_should_change_score() {
 fn share_comment_should_fail_original_comment_not_found() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(b"blog2_handle".to_vec()), None)); // BlogId 2 by ACCOUNT2
+    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(Some(b"blog2_handle".to_vec())), None)); // BlogId 2 by ACCOUNT2
     assert_ok!(_create_default_post()); // PostId 1
     // Skipped creating CommentId 1
     assert_noop!(_create_post(
