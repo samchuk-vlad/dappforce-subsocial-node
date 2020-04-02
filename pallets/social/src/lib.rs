@@ -467,10 +467,9 @@ decl_module! {
     pub fn update_blog(origin, blog_id: BlogId, update: BlogUpdate<T::AccountId>) {
       let owner = ensure_signed(origin)?;
 
-      let handle_opt = update.handle.unwrap_or(None);
       let has_updates =
         update.writers.is_some() ||
-        handle_opt.is_some() ||
+        update.handle.is_some() ||
         update.ipfs_hash.is_some();
 
       ensure!(has_updates, Error::<T>::NoUpdatesInBlog);
@@ -505,18 +504,20 @@ decl_module! {
         }
       }
 
-      if handle_opt != blog.handle {
-        if let Some(blog_handle) = blog.handle.clone() {
-          BlogIdByHandle::remove(blog_handle);
-        }
-        if let Some(mut handle) = handle_opt.clone() {
-          handle = Self::lowercase_and_validate_a_handle(handle.clone())?;
+      if let Some(handle_opt) = update.handle {
+        if handle_opt != blog.handle {
+          if let Some(blog_handle) = blog.handle.clone() {
+            BlogIdByHandle::remove(blog_handle);
+          }
+          if let Some(mut handle) = handle_opt.clone() {
+            handle = Self::lowercase_and_validate_a_handle(handle.clone())?;
 
-          BlogIdByHandle::insert(handle.clone(), blog_id);
+            BlogIdByHandle::insert(handle.clone(), blog_id);
+          }
+          new_history_record.old_data.handle = Some(blog.handle);
+          blog.handle = handle_opt;
+          fields_updated += 1;
         }
-        new_history_record.old_data.handle = Some(blog.handle);
-        blog.handle = handle_opt;
-        fields_updated += 1;
       }
 
       // Update this blog only if at least one field should be updated:
