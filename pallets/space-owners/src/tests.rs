@@ -53,7 +53,7 @@ impl pallet_timestamp::Trait for Test {
 
 parameter_types! {
 	pub const MinSpaceOwners: u16 = 1;
-	pub const MaxSpaceOwners: u16 = u16::max_value();
+	pub const MaxSpaceOwners: u16 = 1000;
 	pub const MaxChangeNotesLength: u16 = 1024;
 	pub const BlocksToLive: u64 = 302_400;
 	pub const DeleteExpiredChangesPeriod: u64 = 1800;
