@@ -1,6 +1,7 @@
 use super::*;
 
-use frame_support::{dispatch::DispatchResult};
+use sp_std::result::Result;
+use frame_support::{dispatch::{DispatchResult, DispatchError}};
 
 impl<T: Trait> Module<T> {
 
@@ -25,10 +26,9 @@ impl<T: Trait> Module<T> {
         reaction_id
     }
 
-    pub fn add_blog_follower_and_insert_blog(
+    pub fn add_blog_follower(
         follower: T::AccountId,
-        blog: &mut Blog<T>,
-        is_new_blog: bool
+        blog: &mut Blog<T>
     ) -> DispatchResult {
 
         let blog_id = blog.id;
@@ -45,18 +45,12 @@ impl<T: Trait> Module<T> {
             Self::change_social_account_reputation(author, follower.clone(), score_diff, ScoringAction::FollowBlog)?;
         }
 
-        <BlogById<T>>::insert(blog_id, blog);
         <SocialAccountById<T>>::insert(follower.clone(), social_account);
         <BlogsFollowedByAccount<T>>::mutate(follower.clone(), |ids| ids.push(blog_id));
         <BlogFollowers<T>>::mutate(blog_id, |ids| ids.push(follower.clone()));
         <BlogFollowedByAccount<T>>::insert((follower.clone(), blog_id), true);
 
-        if is_new_blog {
-            Self::deposit_event(RawEvent::BlogCreated(follower.clone(), blog_id));
-        }
-
         Self::deposit_event(RawEvent::BlogFollowed(follower, blog_id));
-
         Ok(())
     }
 
@@ -274,5 +268,25 @@ impl<T: Trait> Module<T> {
         Self::deposit_event(RawEvent::CommentShared(account, original_comment_id));
 
         Ok(())
+    }
+
+    fn is_valid_handle_char(c: u8) -> bool {
+        match c {
+            b'0'..=b'9' | b'a'..=b'z' | b'_' => true,
+            _ => false,
+        }
+    }
+
+    pub fn lowercase_and_validate_a_handle(mut handle: Vec<u8>) -> Result<Vec<u8>, DispatchError> {
+        handle = handle.to_ascii_lowercase();
+
+        ensure!(Self::blog_id_by_handle(handle.clone()).is_none(), Error::<T>::HandleIsNotUnique);
+
+        ensure!(handle.len() >= Self::handle_min_len() as usize, Error::<T>::HandleIsTooShort);
+        ensure!(handle.len() <= Self::handle_max_len() as usize, Error::<T>::HandleIsTooLong);
+
+        ensure!(handle.iter().all(|&x| Self::is_valid_handle_char(x)), Error::<T>::HandleContainsInvalidChars);
+
+        Ok(handle)
     }
 }
