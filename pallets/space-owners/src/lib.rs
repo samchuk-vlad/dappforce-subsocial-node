@@ -9,14 +9,7 @@ use codec::{Encode, Decode};
 use frame_support::{decl_module, decl_storage, decl_event, decl_error, ensure, traits::Get};
 use sp_runtime::{RuntimeDebug, traits::Zero};
 use system::ensure_signed;
-use pallet_timestamp;
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct WhoAndWhen<T: Trait> {
-  account: T::AccountId,
-  block: T::BlockNumber,
-  time: T::Moment,
-}
+use pallet_utils::WhoAndWhen;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct SpaceOwners<T: Trait> {
@@ -29,9 +22,9 @@ pub struct SpaceOwners<T: Trait> {
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct Transaction<T: Trait> {
+pub struct Change<T: Trait> {
   pub created: WhoAndWhen<T>,
-  pub id: TransactionId,
+  pub id: ChangeId,
   pub space_id: SpaceId,
   pub add_owners: Vec<T::AccountId>,
   pub remove_owners: Vec<T::AccountId>,
@@ -42,7 +35,7 @@ pub struct Transaction<T: Trait> {
 }
 
 type SpaceId = u64;
-type TransactionId = u64;
+type ChangeId = u64;
 
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait + pallet_timestamp::Trait {
@@ -55,22 +48,22 @@ pub trait Trait: system::Trait + pallet_timestamp::Trait {
   /// Maximum space owners allowed.
   type MaxSpaceOwners: Get<u16>;
 
-  /// Maximum transaction notes length.
-  type MaxTxNotesLength: Get<u16>;
+  /// Maximum length of change notes.
+  type MaxChangeNotesLength: Get<u16>;
 
   /// Expiration time for change proposal.
   type BlocksToLive: Get<Self::BlockNumber>;
 
-  /// Period in blocks to initialize cleaning of pending txs that are outdated.
-  type CleanExpiredTxsPeriod: Get<Self::BlockNumber>;
+  /// Period in blocks for which change proposal is can remain in a pending state until deleted.
+  type DeleteExpiredChangesPeriod: Get<Self::BlockNumber>;
 }
 
 decl_error! {
   pub enum Error for Module<T: Trait> {
     /// Space owners was not found by id
     SpaceOwnersNotFound,
-    /// Transaction was not found in a space owners
-    TxNotFound,
+    /// Change was not found by id
+    ChangeNotFound,
     /// Space owners already exist on this space
     SpaceOwnersAlreadyExist,
 
@@ -85,49 +78,49 @@ decl_error! {
     ZeroThershold,
     /// The required confirmation count can not be greater than owners count"
     TooBigThreshold,
-    /// Transaction notes are too long
-    TxNotesOversize,
-    /// No space owners will left in result of tx
+    /// Change notes are too long
+    ChangeNotesOversize,
+    /// No space owners will left in result of change
     NoSpaceOwnersLeft,
-    /// No updates proposed in change proposal
+    /// No updates proposed with this change
     NoUpdatesProposed,
     /// No fields update in result of change proposal
     NoFieldsUpdatedOnProposal,
 
-    /// Account has already confirmed this transaction
-    TxAlreadyConfirmed,
-    /// There are not enough confirmations on a transaction
+    /// Account has already confirmed this change
+    ChangeAlreadyConfirmed,
+    /// There are not enough confirmations for this change
     NotEnoughConfirms,
-    /// Transaction is already executed
-    TxAlreadyExecuted,
-    /// Transaction is not tied to an owed wallet
-    TxNotRelatedToSpace,
-    /// Pending tx already exists
-    PendingTxAlreadyExists,
-    /// Pending tx doesn't exist
-    PendingTxDoesNotExist,
+    /// Change is already executed
+    ChangeAlreadyExecuted,
+    /// Change is not related to this space
+    ChangeNotRelatedToSpace,
+    /// Pending change already exists
+    PendingChangeAlreadyExists,
+    /// Pending change doesn't exist
+    PendingChangeDoesNotExist,
 
     /// Account is not a proposal creator
-    NotAProposalCreator,
+    NotAChangeCreator,
 
-    /// Overflow in Wallet executed tx counter when executing tx
-    OverflowExecutingTx,
-    /// Underflow in Wallet pending tx counter when executing tx
-    UnderflowExecutingTx,
+    /// Overflow when incrementing a counter of executed changes
+    OverflowExecutingChange,
+    /// Underflow when decrementing a counter of executed changes
+    UnderflowExecutingChange,
   }
 }
 
 // This pallet's storage items.
 decl_storage! {
-  trait Store for Module<T: Trait> as TemplateModule {
+  trait Store for Module<T: Trait> as SpaceOwnersModule {
     SpaceOwnersBySpaceById get(space_owners_by_space_id): map SpaceId => Option<SpaceOwners<T>>;
     SpaceIdsOwnedByAccountId get(space_ids_owned_by_account_id): map T::AccountId => BTreeSet<SpaceId> = BTreeSet::new();
 
-    NextTxId get(next_tx_id): TransactionId = 1;
-    TxById get(tx_by_id): map TransactionId => Option<Transaction<T>>;
-    PendingTxIdBySpaceId get(pending_tx_id_by_space_id): map SpaceId => Option<TransactionId>;
-    PendingTxIds get(pending_tx_ids): BTreeSet<TransactionId> = BTreeSet::new();
-    ExecutedTxIdsBySpaceId get(executed_tx_ids_by_space_id): map SpaceId => Vec<TransactionId>;
+    NextChangeId get(next_change_id): ChangeId = 1;
+    ChangeById get(change_by_id): map ChangeId => Option<Change<T>>;
+    PendingChangeIdBySpaceId get(pending_change_id_by_space_id): map SpaceId => Option<ChangeId>;
+    PendingChangeIds get(pending_change_ids): BTreeSet<ChangeId> = BTreeSet::new();
+    ExecutedChangeIdsBySpaceId get(executed_change_ids_by_space_id): map SpaceId => Vec<ChangeId>;
   }
 }
 
@@ -140,20 +133,20 @@ decl_module! {
     /// Maximum space owners allowed.
     const MaxSpaceOwners: u16 = T::MaxSpaceOwners::get();
 
-    /// Maximum transaction notes length.
-    const MaxTxNotesLength: u16 = T::MaxTxNotesLength::get();
+    /// Maximum length of change notes.
+    const MaxChangeNotesLength: u16 = T::MaxChangeNotesLength::get();
 
-    /// Period for which change proposal is active.
+    /// Period in blocks for which change proposal is can remain in a pending state until deleted.
     const BlocksToLive: T::BlockNumber = T::BlocksToLive::get();
 
-    /// Period in blocks to initialize cleaning of pending txs that are outdated.
-    const CleanExpiredTxsPeriod: T::BlockNumber = T::CleanExpiredTxsPeriod::get();
+    /// Period in blocks to initialize deleting of pending changes that are outdated.
+    const DeleteExpiredChangesPeriod: T::BlockNumber = T::DeleteExpiredChangesPeriod::get();
 
     // Initializing events
     fn deposit_event() = default;
 
     fn on_finalize(n: T::BlockNumber) {
-      Self::clean_pending_txs(n);
+      Self::delete_expired_changes(n);
     }
 
     pub fn create_space_owners(
@@ -184,8 +177,8 @@ decl_module! {
       ensure!(threshold > 0, Error::<T>::ZeroThershold);
 
       let new_space_owners = SpaceOwners {
-        created: Self::new_whoandwhen(who.clone()),
-        space_id: space_id.clone(),
+        created: WhoAndWhen::<T>::new(who.clone()),
+        space_id: space_id,
         owners: unique_owners.clone(),
         threshold,
         changes_count: 0
@@ -216,10 +209,10 @@ decl_module! {
         new_threshold.is_some();
 
       ensure!(has_updates, Error::<T>::NoUpdatesProposed);
-      ensure!(notes.len() <= T::MaxTxNotesLength::get() as usize, Error::<T>::TxNotesOversize);
+      ensure!(notes.len() <= T::MaxChangeNotesLength::get() as usize, Error::<T>::ChangeNotesOversize);
 
-      let space_owners = Self::space_owners_by_space_id(space_id.clone()).ok_or(Error::<T>::SpaceOwnersNotFound)?;
-      ensure!(Self::pending_tx_id_by_space_id(space_id).is_none(), Error::<T>::PendingTxAlreadyExists);
+      let space_owners = Self::space_owners_by_space_id(space_id).ok_or(Error::<T>::SpaceOwnersNotFound)?;
+      ensure!(Self::pending_change_id_by_space_id(space_id).is_none(), Error::<T>::PendingChangeAlreadyExists);
 
       let is_space_owner = space_owners.owners.iter().any(|owner| *owner == who.clone());
       ensure!(is_space_owner, Error::<T>::NotASpaceOwner);
@@ -240,10 +233,10 @@ decl_module! {
         }
       }
 
-      let tx_id = Self::next_tx_id();
-      let mut new_tx = Transaction {
-        created: Self::new_whoandwhen(who.clone()),
-        id: tx_id,
+      let change_id = Self::next_change_id();
+      let mut new_change = Change {
+        created: WhoAndWhen::<T>::new(who.clone()),
+        id: change_id,
         space_id,
         add_owners: add_owners,
         remove_owners: remove_owners,
@@ -254,70 +247,70 @@ decl_module! {
       };
 
       if fields_updated > 0 {
-        new_tx.confirmed_by.push(who.clone());
-        <TxById<T>>::insert(tx_id, new_tx);
-        PendingTxIdBySpaceId::insert(space_id.clone(), tx_id);
-        PendingTxIds::mutate(|set| set.insert(tx_id));
-        NextTxId::mutate(|n| { *n += 1; });
+        new_change.confirmed_by.push(who.clone());
+        <ChangeById<T>>::insert(change_id, new_change);
+        PendingChangeIdBySpaceId::insert(space_id, change_id);
+        PendingChangeIds::mutate(|set| set.insert(change_id));
+        NextChangeId::mutate(|n| { *n += 1; });
 
-        Self::deposit_event(RawEvent::ChangeProposed(who, space_id, tx_id));
+        Self::deposit_event(RawEvent::ChangeProposed(who, space_id, change_id));
       } else {
-        Err(Error::<T>::NoFieldsUpdatedOnProposal)?
+        return Err(Error::<T>::NoFieldsUpdatedOnProposal.into());
       }
     }
 
     pub fn confirm_change(
       origin,
       space_id: SpaceId,
-      tx_id: TransactionId
+      change_id: ChangeId
     ) {
       let who = ensure_signed(origin)?;
 
-      let space_owners = Self::space_owners_by_space_id(space_id.clone()).ok_or(Error::<T>::SpaceOwnersNotFound)?;
+      let space_owners = Self::space_owners_by_space_id(space_id).ok_or(Error::<T>::SpaceOwnersNotFound)?;
 
       let is_space_owner = space_owners.owners.iter().any(|owner| *owner == who.clone());
       ensure!(is_space_owner, Error::<T>::NotASpaceOwner);
 
-      let mut tx = Self::tx_by_id(tx_id).ok_or(Error::<T>::TxNotFound)?;
+      let mut change = Self::change_by_id(change_id).ok_or(Error::<T>::ChangeNotFound)?;
 
-      let pending_tx_id = Self::pending_tx_id_by_space_id(space_id.clone()).ok_or(Error::<T>::PendingTxDoesNotExist)?;
-      ensure!(pending_tx_id == tx_id, Error::<T>::TxNotRelatedToSpace);
+      let pending_change_id = Self::pending_change_id_by_space_id(space_id).ok_or(Error::<T>::PendingChangeDoesNotExist)?;
+      ensure!(pending_change_id == change_id, Error::<T>::ChangeNotRelatedToSpace);
 
-      // Check whether sender confirmed tx or not
-      ensure!(!tx.confirmed_by.iter().any(|account| *account == who.clone()), Error::<T>::TxAlreadyConfirmed);
+      // Check whether sender confirmed change or not
+      ensure!(!change.confirmed_by.iter().any(|account| *account == who.clone()), Error::<T>::ChangeAlreadyConfirmed);
 
-      tx.confirmed_by.push(who.clone());
+      change.confirmed_by.push(who.clone());
 
-      if tx.confirmed_by.len() == space_owners.threshold as usize {
-        Self::update_space_owners(who.clone(), space_owners.clone(), tx.clone())?;
+      if change.confirmed_by.len() == space_owners.threshold as usize {
+        Self::update_space_owners(who.clone(), space_owners, change)?;
       } else {
-        <TxById<T>>::insert(tx_id, tx);
+        <ChangeById<T>>::insert(change_id, change);
       }
 
-      Self::deposit_event(RawEvent::ChangeConfirmed(who, space_id, tx_id));
+      Self::deposit_event(RawEvent::ChangeConfirmed(who, space_id, change_id));
     }
 
-    pub fn cancel_proposal(
+    pub fn cancel_change(
       origin,
       space_id: SpaceId,
-      tx_id: TransactionId
+      change_id: ChangeId
     ) {
       let who = ensure_signed(origin)?;
 
-      let space_owners = Self::space_owners_by_space_id(space_id.clone()).ok_or(Error::<T>::SpaceOwnersNotFound)?;
+      let space_owners = Self::space_owners_by_space_id(space_id).ok_or(Error::<T>::SpaceOwnersNotFound)?;
 
       let is_space_owner = space_owners.owners.iter().any(|owner| *owner == who.clone());
       ensure!(is_space_owner, Error::<T>::NotASpaceOwner);
 
-      let pending_tx_id = Self::pending_tx_id_by_space_id(space_id.clone()).ok_or(Error::<T>::PendingTxDoesNotExist)?;
-      ensure!(pending_tx_id == tx_id, Error::<T>::TxNotRelatedToSpace);
+      let pending_change_id = Self::pending_change_id_by_space_id(space_id).ok_or(Error::<T>::PendingChangeDoesNotExist)?;
+      ensure!(pending_change_id == change_id, Error::<T>::ChangeNotRelatedToSpace);
 
-      let tx = Self::tx_by_id(tx_id).ok_or(Error::<T>::TxNotFound)?;
-      ensure!(tx.created.account == who, Error::<T>::NotAProposalCreator);
+      let change = Self::change_by_id(change_id).ok_or(Error::<T>::ChangeNotFound)?;
+      ensure!(change.created.account == who, Error::<T>::NotAChangeCreator);
 
-      <TxById<T>>::remove(tx_id);
-      PendingTxIdBySpaceId::remove(space_id);
-      PendingTxIds::mutate(|set| set.remove(&tx_id));
+      <ChangeById<T>>::remove(change_id);
+      PendingChangeIdBySpaceId::remove(space_id);
+      PendingChangeIds::mutate(|set| set.remove(&change_id));
 
       Self::deposit_event(RawEvent::ProposalCanceled(who, space_id));
     }
@@ -329,9 +322,9 @@ decl_event!(
     <T as system::Trait>::AccountId,
    {
     SpaceOwnersCreated(AccountId, SpaceId),
-    ChangeProposed(AccountId, SpaceId, TransactionId),
+    ChangeProposed(AccountId, SpaceId, ChangeId),
     ProposalCanceled(AccountId, SpaceId),
-    ChangeConfirmed(AccountId, SpaceId, TransactionId),
-    SpaceOwnersUpdated(AccountId, SpaceId, TransactionId),
+    ChangeConfirmed(AccountId, SpaceId, ChangeId),
+    SpaceOwnersUpdated(AccountId, SpaceId, ChangeId),
   }
 );

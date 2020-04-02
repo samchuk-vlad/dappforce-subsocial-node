@@ -236,19 +236,19 @@ impl pallet_social::Trait for Runtime {
 
 parameter_types! {
   pub const MinSpaceOwners: u16 = 1;
-  pub const MaxSpaceOwners: u16 = u16::max_value();
-  pub const MaxTxNotesLength: u16 = 1024;
+  pub const MaxSpaceOwners: u16 = 1000;
+  pub const MaxChangeNotesLength: u16 = 1024;
   pub const BlocksToLive: BlockNumber = 7 * DAYS;
-  pub const CleanExpiredTxsPeriod: BlockNumber = 1 * HOURS;
+  pub const DeleteExpiredChangesPeriod: BlockNumber = 1 * HOURS;
 }
 
 impl pallet_space_owners::Trait for Runtime {
   type Event = Event;
   type MinSpaceOwners = MinSpaceOwners;
   type MaxSpaceOwners = MaxSpaceOwners;
-  type MaxTxNotesLength = MaxTxNotesLength;
+  type MaxChangeNotesLength = MaxChangeNotesLength;
   type BlocksToLive = BlocksToLive;
-  type CleanExpiredTxsPeriod = CleanExpiredTxsPeriod;
+  type DeleteExpiredChangesPeriod = DeleteExpiredChangesPeriod;
 }
 
 construct_runtime!(

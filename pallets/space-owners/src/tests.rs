@@ -53,19 +53,19 @@ impl pallet_timestamp::Trait for Test {
 
 parameter_types! {
 	pub const MinSpaceOwners: u16 = 1;
-	pub const MaxSpaceOwners: u16 = u16::max_value();
-	pub const MaxTxNotesLength: u16 = 1024;
+	pub const MaxSpaceOwners: u16 = 1000;
+	pub const MaxChangeNotesLength: u16 = 1024;
 	pub const BlocksToLive: u64 = 302_400;
-	pub const CleanExpiredTxsPeriod: u64 = 1800;
+	pub const DeleteExpiredChangesPeriod: u64 = 1800;
 }
 
 impl Trait for Test {
   type Event = ();
   type MinSpaceOwners = MinSpaceOwners;
   type MaxSpaceOwners = MaxSpaceOwners;
-  type MaxTxNotesLength = MaxTxNotesLength;
+  type MaxChangeNotesLength = MaxChangeNotesLength;
   type BlocksToLive = BlocksToLive;
-  type CleanExpiredTxsPeriod = CleanExpiredTxsPeriod;
+  type DeleteExpiredChangesPeriod = DeleteExpiredChangesPeriod;
 }
 
 type MultiOwnership = Module<Test>;
@@ -83,7 +83,7 @@ const ACCOUNT2: AccountId = 2;
 const ACCOUNT3: AccountId = 3;
 const ACCOUNT4: AccountId = 4;
 
-fn tx_note() -> Vec<u8> {
+fn change_note() -> Vec<u8> {
   b"Default change proposal".to_vec()
 }
 
@@ -98,9 +98,9 @@ fn _create_space_owners(
   threshold: Option<u16>,
 ) -> DispatchResult {
   MultiOwnership::create_space_owners(
-    origin.unwrap_or(Origin::signed(ACCOUNT1)),
+    origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
     space_id.unwrap_or(1),
-    owners.unwrap_or(vec![ACCOUNT1, ACCOUNT2]),
+    owners.unwrap_or_else(|| vec![ACCOUNT1, ACCOUNT2]),
     threshold.unwrap_or(2),
   )
 }
@@ -109,6 +109,7 @@ fn _propose_default_change() -> DispatchResult {
   _propose_change(None, None, None, None, None, None)
 }
 
+#[allow(clippy::option_option)]
 fn _propose_change(
   origin: Option<Origin>,
   space_id: Option<SpaceId>,
@@ -118,12 +119,12 @@ fn _propose_change(
   notes: Option<Vec<u8>>,
 ) -> DispatchResult {
   MultiOwnership::propose_change(
-    origin.unwrap_or(Origin::signed(ACCOUNT1)),
+    origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
     space_id.unwrap_or(1),
-    add_owners.unwrap_or(vec![ACCOUNT3]),
-    remove_owners.unwrap_or(vec![]),
+    add_owners.unwrap_or_else(|| vec![ACCOUNT3]),
+    remove_owners.unwrap_or_else(|| vec![]),
     new_threshold.unwrap_or(Some(3)),
-    notes.unwrap_or(self::tx_note()),
+    notes.unwrap_or_else(self::change_note),
   )
 }
 
@@ -134,28 +135,28 @@ fn _confirm_default_change() -> DispatchResult {
 fn _confirm_change(
   origin: Option<Origin>,
   space_id: Option<SpaceId>,
-  tx_id: Option<TransactionId>,
+  change_id: Option<ChangeId>,
 ) -> DispatchResult {
   MultiOwnership::confirm_change(
-    origin.unwrap_or(Origin::signed(ACCOUNT2)),
+    origin.unwrap_or_else(|| Origin::signed(ACCOUNT2)),
     space_id.unwrap_or(1),
-    tx_id.unwrap_or(1),
+    change_id.unwrap_or(1),
   )
 }
 
 fn _cancel_default_proposal() -> DispatchResult {
-  _cancel_proposal(None, None, None)
+  _cancel_change(None, None, None)
 }
 
-fn _cancel_proposal(
+fn _cancel_change(
   origin: Option<Origin>,
   space_id: Option<SpaceId>,
-  tx_id: Option<TransactionId>,
+  change_id: Option<ChangeId>,
 ) -> DispatchResult {
-  MultiOwnership::cancel_proposal(
-    origin.unwrap_or(Origin::signed(ACCOUNT1)),
+  MultiOwnership::cancel_change(
+    origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
     space_id.unwrap_or(1),
-    tx_id.unwrap_or(1),
+    change_id.unwrap_or(1),
   )
 }
 
@@ -189,18 +190,18 @@ fn propose_change_should_work() {
     assert_ok!(_propose_default_change());
 
     // Check storages
-    let set_to_vec: Vec<u64> = MultiOwnership::pending_tx_ids().iter().cloned().collect();
+    let set_to_vec: Vec<u64> = MultiOwnership::pending_change_ids().iter().cloned().collect();
     assert_eq!(set_to_vec, vec![1]);
-    assert_eq!(MultiOwnership::pending_tx_id_by_space_id(1), Some(1));
-    assert_eq!(MultiOwnership::next_tx_id(), 2);
+    assert_eq!(MultiOwnership::pending_change_id_by_space_id(1), Some(1));
+    assert_eq!(MultiOwnership::next_change_id(), 2);
 
     // Check whether data is stored correctly
-    let tx = MultiOwnership::tx_by_id(1).unwrap();
-    assert_eq!(tx.add_owners, vec![ACCOUNT3]);
-    assert_eq!(tx.remove_owners, vec![]);
-    assert_eq!(tx.new_threshold, Some(3));
-    assert_eq!(tx.notes, self::tx_note());
-    assert_eq!(tx.confirmed_by, vec![ACCOUNT1]);
+    let change = MultiOwnership::change_by_id(1).unwrap();
+    assert_eq!(change.add_owners, vec![ACCOUNT3]);
+    assert_eq!(change.remove_owners, vec![]);
+    assert_eq!(change.new_threshold, Some(3));
+    assert_eq!(change.notes, self::change_note());
+    assert_eq!(change.confirmed_by, vec![ACCOUNT1]);
   });
 }
 
@@ -218,16 +219,16 @@ fn propose_change_should_work_with_only_one_owner() {
     );
 
     // Check storages
-    assert_eq!(MultiOwnership::pending_tx_id_by_space_id(1), Some(1));
-    assert_eq!(MultiOwnership::next_tx_id(), 2);
+    assert_eq!(MultiOwnership::pending_change_id_by_space_id(1), Some(1));
+    assert_eq!(MultiOwnership::next_change_id(), 2);
 
     // Check whether data is stored correctly
-    let tx = MultiOwnership::tx_by_id(1).unwrap();
-    assert_eq!(tx.add_owners, vec![ACCOUNT3]);
-    assert_eq!(tx.remove_owners, vec![ACCOUNT1, ACCOUNT2]);
-    assert_eq!(tx.new_threshold, Some(1));
-    assert_eq!(tx.notes, self::tx_note());
-    assert_eq!(tx.confirmed_by, vec![ACCOUNT1]);
+    let change = MultiOwnership::change_by_id(1).unwrap();
+    assert_eq!(change.add_owners, vec![ACCOUNT3]);
+    assert_eq!(change.remove_owners, vec![ACCOUNT1, ACCOUNT2]);
+    assert_eq!(change.new_threshold, Some(1));
+    assert_eq!(change.notes, self::change_note());
+    assert_eq!(change.confirmed_by, vec![ACCOUNT1]);
   });
 }
 
@@ -270,7 +271,7 @@ fn propose_change_should_fail_proposal_already_exist() {
     assert_noop!(_propose_change(
       Some(Origin::signed(ACCOUNT2)),
       None, None, None, Some(None), None
-     ), Error::<Test>::PendingTxAlreadyExists);
+     ), Error::<Test>::PendingChangeAlreadyExists);
   });
 }
 
@@ -329,13 +330,13 @@ fn confirm_change_should_work_owner_added() {
     assert_ok!(_confirm_default_change());
 
     // Check storages
-    assert_eq!(MultiOwnership::pending_tx_id_by_space_id(1), None);
-    assert_eq!(MultiOwnership::executed_tx_ids_by_space_id(1), vec![1]);
-    assert_eq!(MultiOwnership::next_tx_id(), 2);
+    assert_eq!(MultiOwnership::pending_change_id_by_space_id(1), None);
+    assert_eq!(MultiOwnership::executed_change_ids_by_space_id(1), vec![1]);
+    assert_eq!(MultiOwnership::next_change_id(), 2);
 
     // Check whether data is stored correctly
-    let tx = MultiOwnership::tx_by_id(1).unwrap();
-    assert_eq!(tx.confirmed_by, vec![ACCOUNT1, ACCOUNT2]);
+    let change = MultiOwnership::change_by_id(1).unwrap();
+    assert_eq!(change.confirmed_by, vec![ACCOUNT1, ACCOUNT2]);
 
     // Check whether updates applied
     let space_owners = MultiOwnership::space_owners_by_space_id(1).unwrap();
@@ -359,13 +360,13 @@ fn confirm_change_should_work_owner_removed() {
     assert_ok!(_confirm_default_change());
 
     // Check storages
-    assert_eq!(MultiOwnership::pending_tx_id_by_space_id(1), None);
-    assert_eq!(MultiOwnership::executed_tx_ids_by_space_id(1), vec![1]);
-    assert_eq!(MultiOwnership::next_tx_id(), 2);
+    assert_eq!(MultiOwnership::pending_change_id_by_space_id(1), None);
+    assert_eq!(MultiOwnership::executed_change_ids_by_space_id(1), vec![1]);
+    assert_eq!(MultiOwnership::next_change_id(), 2);
 
     // Check whether data is stored correctly
-    let tx = MultiOwnership::tx_by_id(1).unwrap();
-    assert_eq!(tx.confirmed_by, vec![ACCOUNT1, ACCOUNT2]);
+    let change = MultiOwnership::change_by_id(1).unwrap();
+    assert_eq!(change.confirmed_by, vec![ACCOUNT1, ACCOUNT2]);
 
     // Check whether updates applied
     let space_owners = MultiOwnership::space_owners_by_space_id(1).unwrap();
@@ -391,14 +392,14 @@ fn confirm_change_should_fail_not_related_to_space_owners() {
       Some(vec![ACCOUNT1]),
       Some(vec![]),
       Some(Some(2)),
-      Some(self::tx_note())
+      Some(self::change_note())
     ));
 
     assert_noop!(_confirm_change(
       None,
       Some(1),
       Some(2)
-    ), Error::<Test>::TxNotRelatedToSpace);
+    ), Error::<Test>::ChangeNotRelatedToSpace);
   });
 }
 
@@ -414,7 +415,7 @@ fn confirm_change_should_fail_already_confirmed() {
     assert_ok!(_propose_default_change());
     assert_ok!(_confirm_default_change());
 
-    assert_noop!(_confirm_default_change(), Error::<Test>::TxAlreadyConfirmed);
+    assert_noop!(_confirm_default_change(), Error::<Test>::ChangeAlreadyConfirmed);
   });
 }
 
@@ -441,11 +442,11 @@ fn cancel_proposal_should_work() {
     assert_ok!(_cancel_default_proposal());
 
     // Check storages
-    let set_to_vec: Vec<u64> = MultiOwnership::pending_tx_ids().iter().cloned().collect();
+    let set_to_vec: Vec<u64> = MultiOwnership::pending_change_ids().iter().cloned().collect();
     assert_eq!(set_to_vec, vec![]);
-    assert_eq!(MultiOwnership::pending_tx_id_by_space_id(1), None);
-    assert_eq!(MultiOwnership::next_tx_id(), 2);
-    assert!(MultiOwnership::tx_by_id(1).is_none());
+    assert_eq!(MultiOwnership::pending_change_id_by_space_id(1), None);
+    assert_eq!(MultiOwnership::next_change_id(), 2);
+    assert!(MultiOwnership::change_by_id(1).is_none());
   });
 }
 
@@ -466,14 +467,14 @@ fn cancel_proposal_should_fail_not_related_to_space_owners() {
       Some(vec![ACCOUNT1]),
       Some(vec![]),
       Some(Some(2)),
-      Some(self::tx_note())
+      Some(self::change_note())
     ));
 
-    assert_noop!(_cancel_proposal(
+    assert_noop!(_cancel_change(
       None,
       Some(1),
       Some(2)
-    ), Error::<Test>::TxNotRelatedToSpace);
+    ), Error::<Test>::ChangeNotRelatedToSpace);
   });
 }
 
@@ -482,11 +483,11 @@ fn cancel_proposal_should_fail_not_a_creator() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_space_owners());
     assert_ok!(_propose_default_change());
-    assert_noop!(_cancel_proposal(
+    assert_noop!(_cancel_change(
       Some(Origin::signed(ACCOUNT2)),
       None,
       None
-    ), Error::<Test>::NotAProposalCreator);
+    ), Error::<Test>::NotAChangeCreator);
   });
 }
 
@@ -495,7 +496,7 @@ fn cancel_proposal_should_fail_not_a_space_owner() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_space_owners());
     assert_ok!(_propose_default_change());
-    assert_noop!(_cancel_proposal(
+    assert_noop!(_cancel_change(
       Some(Origin::signed(ACCOUNT3)),
       None,
       None
