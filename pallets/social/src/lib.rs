@@ -449,14 +449,19 @@ decl_module! {
       };
 
       // Blog creator automatically follows their blog:
-      Self::add_blog_follower_and_insert_blog(owner.clone(), new_blog, true)?;
+      Self::add_blog_follower(owner.clone(), new_blog)?;
 
-      if let Some(handle) = handle_opt {
-        BlogIdByHandle::insert(Self::lowercase_and_validate_a_handle(handle)?, blog_id);
+      if let Some(mut handle) = handle_opt {
+        handle = Self::lowercase_and_validate_a_handle(handle)?;
+        new_blog.handle = Some(handle.clone());
+
+        BlogIdByHandle::insert(handle, blog_id);
       }
 
+      <BlogById<T>>::insert(blog_id, new_blog);
       <BlogIdsByOwner<T>>::mutate(owner.clone(), |ids| ids.push(blog_id));
       NextBlogId::mutate(|n| { *n += 1; });
+      Self::deposit_event(RawEvent::BlogCreated(owner.clone(), blog_id));
     }
 
     pub fn update_blog(origin, blog_id: BlogId, update: BlogUpdate<T::AccountId>) {
@@ -529,7 +534,8 @@ decl_module! {
       let ref mut blog = Self::blog_by_id(blog_id).ok_or(Error::<T>::BlogNotFound)?;
       ensure!(!Self::blog_followed_by_account((follower.clone(), blog_id)), Error::<T>::AccountIsFollowingBlog);
 
-      Self::add_blog_follower_and_insert_blog(follower.clone(), blog, false)?;
+      Self::add_blog_follower(follower.clone(), blog)?;
+      <BlogById<T>>::insert(blog_id, blog);
     }
 
     pub fn unfollow_blog(origin, blog_id: BlogId) {

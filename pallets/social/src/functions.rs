@@ -26,10 +26,9 @@ impl<T: Trait> Module<T> {
         reaction_id
     }
 
-    pub fn add_blog_follower_and_insert_blog(
+    pub fn add_blog_follower(
         follower: T::AccountId,
-        blog: &mut Blog<T>,
-        is_new_blog: bool
+        blog: &mut Blog<T>
     ) -> DispatchResult {
 
         let blog_id = blog.id;
@@ -46,18 +45,12 @@ impl<T: Trait> Module<T> {
             Self::change_social_account_reputation(author, follower.clone(), score_diff, ScoringAction::FollowBlog)?;
         }
 
-        <BlogById<T>>::insert(blog_id, blog);
         <SocialAccountById<T>>::insert(follower.clone(), social_account);
         <BlogsFollowedByAccount<T>>::mutate(follower.clone(), |ids| ids.push(blog_id));
         <BlogFollowers<T>>::mutate(blog_id, |ids| ids.push(follower.clone()));
         <BlogFollowedByAccount<T>>::insert((follower.clone(), blog_id), true);
 
-        if is_new_blog {
-            Self::deposit_event(RawEvent::BlogCreated(follower.clone(), blog_id));
-        }
-
         Self::deposit_event(RawEvent::BlogFollowed(follower, blog_id));
-
         Ok(())
     }
 

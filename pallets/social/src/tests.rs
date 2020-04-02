@@ -3,7 +3,8 @@
 pub use super::*;
 
 use sp_core::H256;
-use frame_support::{impl_outer_origin, assert_ok, assert_noop, parameter_types, weights::Weight, dispatch::DispatchResult};
+use frame_support::{impl_outer_origin, assert_ok, assert_noop, assert_err, parameter_types,
+                    weights::Weight, dispatch::DispatchResult};
 use sp_runtime::{
   traits::{BlakeTwo256, IdentityLookup}, testing::Header, Perbill,
 };
@@ -409,7 +410,7 @@ fn create_blog_should_fail_short_handle() {
 
   new_test_ext().execute_with(|| {
     // Try to catch an error creating a blog with too short handle
-    assert_noop!(_create_blog(None, Some(Some(handle)), None), Error::<Test>::HandleIsTooShort);
+    assert_err!(_create_blog(None, Some(Some(handle)), None), Error::<Test>::HandleIsTooShort);
   });
 }
 
@@ -419,8 +420,7 @@ fn create_blog_should_fail_long_handle() {
 
   new_test_ext().execute_with(|| {
     // Try to catch an error creating a blog with too long handle
-    assert_noop!(_create_blog(None, Some(Some(handle)), None), Error::<Test>::HandleIsTooLong);
-    // assert_ok!(_create_blog(None, Some(Some(handle)), None));
+    assert_err!(_create_blog(None, Some(Some(handle)), None), Error::<Test>::HandleIsTooLong);
   });
 }
 
@@ -430,7 +430,7 @@ fn create_blog_should_fail_not_unique_handle() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
     // Try to catch an error creating a blog with not unique handle
-    assert_noop!(_create_default_blog(), Error::<Test>::HandleIsNotUnique);
+    assert_err!(_create_default_blog(), Error::<Test>::HandleIsNotUnique);
   });
 }
 
@@ -533,7 +533,7 @@ fn update_blog_should_fail_short_handle() {
     assert_ok!(_create_default_blog()); // BlogId 1
 
     // Try to catch an error updating a blog with too short handle
-    assert_noop!(_update_blog(None, None,
+    assert_err!(_update_blog(None, None,
       Some(
         self::blog_update(
           None,
@@ -553,7 +553,7 @@ fn update_blog_should_fail_long_handle() {
     assert_ok!(_create_default_blog()); // BlogId 1
 
     // Try to catch an error updating a blog with too long handle
-    assert_noop!(_update_blog(None, None,
+    assert_err!(_update_blog(None, None,
       Some(
         self::blog_update(
           None,
@@ -579,7 +579,7 @@ fn update_blog_should_fail_not_unique_handle() {
     )); // BlogId 2 with a custom handle
 
     // Try to catch an error updating a blog on ID 1 with a handle of blog on ID 2
-    assert_noop!(_update_blog(None, Some(1),
+    assert_err!(_update_blog(None, Some(1),
       Some(
         self::blog_update(
           None,
