@@ -21,7 +21,7 @@ pub struct Blog<T: Trait> {
 
   // Can be updated by the owner:
   pub writers: Vec<T::AccountId>,
-  pub handle: Vec<u8>,
+  pub handle: Option<Vec<u8>>,
   pub ipfs_hash: Vec<u8>,
 
   pub posts_count: u16,
@@ -35,7 +35,7 @@ pub struct Blog<T: Trait> {
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct BlogUpdate<AccountId> {
   pub writers: Option<Vec<AccountId>>,
-  pub handle: Option<Vec<u8>>,
+  pub handle: Option<Option<Vec<u8>>>,
   pub ipfs_hash: Option<Vec<u8>>,
 }
 
@@ -217,7 +217,7 @@ decl_error! {
     /// Blog handle is not unique
     HandleIsNotUnique,
     /// Blog handle contains invalid characters
-    HandleContainsRestrictedChar,
+    HandleContainsInvalidChars,
     /// Nothing to update in blog
     NoUpdatesInBlog,
     /// Only blog owner can manage their blog
@@ -429,10 +429,10 @@ decl_module! {
     // this is needed only if you are using events in your pallet
     fn deposit_event() = default;
 
-    pub fn create_blog(origin, handle: Vec<u8>, ipfs_hash: Vec<u8>) {
+    pub fn create_blog(origin, handle: Option<Vec<u8>>, ipfs_hash: Vec<u8>) {
       let owner = ensure_signed(origin)?;
 
-      let handle = Self::if_blog_handle_valid_then_to_lower(handle.clone())?;
+      let handle = Self::lowercase_and_validate_a_handle(handle.clone())?;
       Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
 
       let blog_id = Self::next_blog_id();
@@ -499,7 +499,7 @@ decl_module! {
 
       if let Some(mut handle) = update.handle {
         if handle != blog.handle {
-          handle = Self::if_blog_handle_valid_then_to_lower(handle.clone())?;
+          handle = Self::lowercase_and_validate_a_handle(handle.clone())?;
 
           BlogIdByHandle::remove(blog.handle.clone());
           BlogIdByHandle::insert(handle.clone(), blog_id);

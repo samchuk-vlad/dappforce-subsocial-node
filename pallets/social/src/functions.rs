@@ -284,7 +284,7 @@ impl<T: Trait> Module<T> {
         }
     }
 
-    pub fn if_blog_handle_valid_then_to_lower(mut handle: Vec<u8>) -> Result<Vec<u8>, DispatchError> {
+    pub fn lowercase_and_validate_a_handle(mut handle: Vec<u8>) -> Result<Vec<u8>, DispatchError> {
         handle = handle.to_ascii_lowercase();
 
         ensure!(Self::blog_id_by_handle(handle.clone()).is_none(), Error::<T>::HandleIsNotUnique);

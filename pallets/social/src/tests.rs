@@ -76,7 +76,7 @@ fn blog_ipfs_hash() -> Vec<u8> {
   b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()
 }
 
-fn blog_update(writers: Option<Vec<AccountId>>, handle: Option<Vec<u8>>, ipfs_hash: Option<Vec<u8>>) -> BlogUpdate<u64> {
+fn blog_update(writers: Option<Vec<AccountId>>, handle: Option<Option<Vec<u8>>>, ipfs_hash: Option<Vec<u8>>) -> BlogUpdate<u64> {
   BlogUpdate {
     writers,
     handle,
@@ -169,7 +169,7 @@ fn _create_default_blog() -> DispatchResult {
   _create_blog(None, None, None)
 }
 
-fn _create_blog(origin: Option<Origin>, handle: Option<Vec<u8>>, ipfs_hash: Option<Vec<u8>>) -> DispatchResult {
+fn _create_blog(origin: Option<Origin>, handle: Option<Option<Vec<u8>>>, ipfs_hash: Option<Vec<u8>>) -> DispatchResult {
   Social::create_blog(
     origin.unwrap_or(Origin::signed(ACCOUNT1)),
     handle.unwrap_or(self::blog_handle()),
