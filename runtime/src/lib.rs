@@ -239,7 +239,7 @@ parameter_types! {
   pub const MaxSpaceOwners: u16 = 1000;
   pub const MaxChangeNotesLength: u16 = 1024;
   pub const BlocksToLive: BlockNumber = 7 * DAYS;
-  pub const CleanExpiredChangesPeriod: BlockNumber = 1 * HOURS;
+  pub const DeleteExpiredChangesPeriod: BlockNumber = 1 * HOURS;
 }
 
 impl pallet_space_owners::Trait for Runtime {
@@ -248,7 +248,7 @@ impl pallet_space_owners::Trait for Runtime {
   type MaxSpaceOwners = MaxSpaceOwners;
   type MaxChangeNotesLength = MaxChangeNotesLength;
   type BlocksToLive = BlocksToLive;
-  type CleanExpiredChangesPeriod = CleanExpiredChangesPeriod;
+  type DeleteExpiredChangesPeriod = DeleteExpiredChangesPeriod;
 }
 
 construct_runtime!(

@@ -306,7 +306,7 @@ decl_module! {
       ensure!(pending_change_id == change_id, Error::<T>::ChangeNotRelatedToSpace);
 
       let change = Self::change_by_id(change_id).ok_or(Error::<T>::ChangeNotFound)?;
-      ensure!(change.created.account == who, Error::<T>::NotAProposalCreator);
+      ensure!(change.created.account == who, Error::<T>::NotAChangeCreator);
 
       <ChangeById<T>>::remove(change_id);
       PendingChangeIdBySpaceId::remove(space_id);

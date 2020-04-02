@@ -145,15 +145,15 @@ fn _confirm_change(
 }
 
 fn _cancel_default_proposal() -> DispatchResult {
-  _cancel_proposal(None, None, None)
+  _cancel_change(None, None, None)
 }
 
-fn _cancel_proposal(
+fn _cancel_change(
   origin: Option<Origin>,
   space_id: Option<SpaceId>,
   change_id: Option<ChangeId>,
 ) -> DispatchResult {
-  MultiOwnership::cancel_proposal(
+  MultiOwnership::cancel_change(
     origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
     space_id.unwrap_or(1),
     change_id.unwrap_or(1),
@@ -470,7 +470,7 @@ fn cancel_proposal_should_fail_not_related_to_space_owners() {
       Some(self::change_note())
     ));
 
-    assert_noop!(_cancel_proposal(
+    assert_noop!(_cancel_change(
       None,
       Some(1),
       Some(2)
@@ -483,11 +483,11 @@ fn cancel_proposal_should_fail_not_a_creator() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_space_owners());
     assert_ok!(_propose_default_change());
-    assert_noop!(_cancel_proposal(
+    assert_noop!(_cancel_change(
       Some(Origin::signed(ACCOUNT2)),
       None,
       None
-    ), Error::<Test>::NotAProposalCreator);
+    ), Error::<Test>::NotAChangeCreator);
   });
 }
 
@@ -496,7 +496,7 @@ fn cancel_proposal_should_fail_not_a_space_owner() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_space_owners());
     assert_ok!(_propose_default_change());
-    assert_noop!(_cancel_proposal(
+    assert_noop!(_cancel_change(
       Some(Origin::signed(ACCOUNT3)),
       None,
       None
