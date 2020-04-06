@@ -351,6 +351,19 @@ impl<T: Trait> Module<T> {
         let post = Self::get_root_post(post_id)?;
         Ok(post.hidden)
     }
+
+    pub fn get_ancestors(post_id: PostId) -> Vec<Post<T>> {
+        let mut ancestors: Vec<Post<T>> = Vec::new();
+
+        if let Some(post) = Self::post_by_id(post_id) {
+            ancestors.push(post.clone());
+            if let Some(parent_id) = post.get_comment_ext().ok().unwrap().parent_id {
+                ancestors.extend(Self::get_ancestors(parent_id).iter().cloned());
+            }
+        }
+
+        ancestors
+    }
 }
 
 impl<T: Trait> Post<T> {

@@ -246,6 +246,7 @@ parameter_types! {
   pub const UpvoteCommentActionWeight: i16 = 4;
   pub const DownvoteCommentActionWeight: i16 = -2;
   pub const ShareCommentActionWeight: i16 = 3;
+  pub const MaxCommentDepth: u32 = 10;
 }
 
 impl pallet_social::Trait for Runtime {
@@ -264,6 +265,7 @@ impl pallet_social::Trait for Runtime {
   type UpvoteCommentActionWeight = UpvoteCommentActionWeight;
   type DownvoteCommentActionWeight = DownvoteCommentActionWeight;
   type ShareCommentActionWeight = ShareCommentActionWeight;
+  type MaxCommentDepth = MaxCommentDepth;
 }
 
 parameter_types! {

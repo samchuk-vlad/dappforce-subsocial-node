@@ -67,6 +67,7 @@ parameter_types! {
   pub const UpvoteCommentActionWeight: i16 = 4;
   pub const DownvoteCommentActionWeight: i16 = -2;
   pub const ShareCommentActionWeight: i16 = 3;
+  pub const MaxCommentDepth: u32 = 10;
 }
 impl Trait for Test {
   type Event = ();
@@ -84,6 +85,7 @@ impl Trait for Test {
   type UpvoteCommentActionWeight = UpvoteCommentActionWeight;
   type DownvoteCommentActionWeight = DownvoteCommentActionWeight;
   type ShareCommentActionWeight = ShareCommentActionWeight;
+  type MaxCommentDepth = MaxCommentDepth;
 }
 
 type Social = Module<Test>;
@@ -1047,6 +1049,26 @@ fn create_comment_should_fail_post_is_hidden() {
     ));
 
     assert_noop!(_create_default_comment(), Error::<Test>::BannedToCreateWhenHidden);
+  });
+}
+
+#[test]
+fn create_comment_should_fail_max_depth_reached() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_post()); // PostId 1
+    assert_ok!(_create_comment(None, None, Some(None), None)); // PostId 2
+    assert_ok!(_create_comment(None, None, Some(Some(2)), None)); // PostId 3
+    assert_ok!(_create_comment(None, None, Some(Some(3)), None)); // PostId 4
+    assert_ok!(_create_comment(None, None, Some(Some(4)), None)); // PostId 5
+    assert_ok!(_create_comment(None, None, Some(Some(5)), None)); // PostId 6
+    assert_ok!(_create_comment(None, None, Some(Some(6)), None)); // PostId 7
+    assert_ok!(_create_comment(None, None, Some(Some(7)), None)); // PostId 8
+    assert_ok!(_create_comment(None, None, Some(Some(8)), None)); // PostId 9
+    assert_ok!(_create_comment(None, None, Some(Some(9)), None)); // PostId 10
+    assert_ok!(_create_comment(None, None, Some(Some(10)), None)); // PostId 11
+
+    assert_noop!(_create_comment(None, None, Some(Some(11)), None), Error::<Test>::MaxCommentDepthReached);
   });
 }
 

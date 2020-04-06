@@ -202,6 +202,9 @@ pub trait Trait: system::Trait + pallet_timestamp::Trait {
   type UpvoteCommentActionWeight: Get<i16>;
   type DownvoteCommentActionWeight: Get<i16>;
   type ShareCommentActionWeight: Get<i16>;
+
+  /// Max comments depth
+  type MaxCommentDepth: Get<u32>;
 }
 
 decl_error! {
@@ -248,6 +251,8 @@ decl_error! {
     OverflowAddingCommentOnPost,
     /// Cannot update blog id on Comment
     CannotUpdateBlogIdOnComment,
+    /// Max comment depth reached
+    MaxCommentDepthReached,
 
     /// Reaction was not found by id
     ReactionNotFound,
@@ -411,6 +416,9 @@ decl_module! {
     const UpvoteCommentActionWeight: i16 = T::UpvoteCommentActionWeight::get();
     const DownvoteCommentActionWeight: i16 = T::DownvoteCommentActionWeight::get();
     const ShareCommentActionWeight: i16 = T::ShareCommentActionWeight::get();
+
+    /// Max comments depth
+    const MaxCommentDepth: u32 = T::MaxCommentDepth::get();
 
     // Initializing events
     // this is needed only if you are using events in your pallet
@@ -700,7 +708,8 @@ decl_module! {
       let owner = ensure_signed(origin)?;
 
       let new_post_id = Self::next_post_id();
-      let mut is_comment = None;
+      let mut is_comment : Option<CommentExt> = None;
+      let mut ancestors : Vec<Post<T>> = Vec::new();
 
       // Sharing functions contain check for post/comment existence
       match extension {
@@ -713,6 +722,9 @@ decl_module! {
           if let Some(parent_id) = comment_ext.parent_id {
             let parent_comment = Self::post_by_id(parent_id).ok_or(Error::<T>::UnknownParentComment)?;
             ensure!(parent_comment.is_comment(), Error::<T>::PostNotFound);
+
+            ancestors.extend(Self::get_ancestors(parent_id));
+            ensure!(ancestors.len() < T::MaxCommentDepth::get() as usize, Error::<T>::MaxCommentDepthReached);
           }
           is_comment = Some(comment_ext);
         },
@@ -747,6 +759,12 @@ decl_module! {
         ensure!(!blog.hidden && !root_post.hidden, Error::<T>::BannedToCreateWhenHidden);
 
         root_post.total_replies_count = root_post.total_replies_count.checked_add(1).ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
+        for mut post in ancestors {
+          post.total_replies_count = root_post.total_replies_count.checked_add(1).ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
+
+          <PostById<T>>::insert(post.id, post.clone());
+        }
+
         Self::change_post_score_by_extension(owner.clone(), root_post, ScoringAction::CreateComment)?;
 
         CommentIdsByPostId::mutate(comment_ext.root_post_id, |ids| ids.push(new_post_id));
