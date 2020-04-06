@@ -1,21 +1,22 @@
 {
   "SpaceId": "u64",
   "ChangeId": "u64",
+
   "SpaceOwners": {
-    "updated_at": "UpdatedAt",
+    "created": "WhoAndWhen",
     "space_id": "SpaceId",
     "owners": "Vec<AccountId>",
     "threshold": "u16",
     "changes_count": "u64"
   },
   "Change": {
-    "updated_at": "UpdatedAt",
+    "created": "WhoAndWhen",
     "id": "ChangeId",
     "space_id": "SpaceId",
     "add_owners": "Vec<AccountId>",
     "remove_owners": "Vec<AccountId>",
     "new_threshold": "Option<u16>",
-    "notes": "Vec<u8>",
+    "notes": "Text",
     "confirmed_by": "Vec<AccountId>",
     "expires_at": "BlockNumber"
   }
