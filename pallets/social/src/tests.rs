@@ -77,11 +77,13 @@ fn blog_ipfs_hash() -> Vec<u8> {
   b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()
 }
 
-fn blog_update(writers: Option<Vec<AccountId>>, handle: Option<Option<Vec<u8>>>, ipfs_hash: Option<Vec<u8>>) -> BlogUpdate<u64> {
+fn blog_update(writers: Option<Vec<AccountId>>, handle: Option<Option<Vec<u8>>>,
+               ipfs_hash: Option<Vec<u8>>, hidden: Option<bool>) -> BlogUpdate<u64> {
   BlogUpdate {
     writers,
     handle,
-    ipfs_hash
+    ipfs_hash,
+    hidden
   }
 }
 
@@ -94,6 +96,7 @@ fn fake_post(id: PostId, created_by: AccountId, blog_id: Option<BlogId>, extensi
     id,
     created: WhoAndWhen::<Test>::new(created_by),
     updated: None,
+    hidden: false,
     blog_id,
     extension,
     ipfs_hash: self::post_ipfs_hash(),
@@ -106,10 +109,11 @@ fn fake_post(id: PostId, created_by: AccountId, blog_id: Option<BlogId>, extensi
   }
 }
 
-fn post_update(blog_id: Option<BlogId>, ipfs_hash: Option<Vec<u8>>) -> PostUpdate {
+fn post_update(blog_id: Option<BlogId>, ipfs_hash: Option<Vec<u8>>, hidden: Option<bool>) -> PostUpdate {
   PostUpdate {
     blog_id,
-    ipfs_hash
+    ipfs_hash,
+    hidden
   }
 }
 
@@ -193,7 +197,7 @@ fn _update_blog(origin: Option<Origin>, blog_id: Option<u32>, update: Option<Blo
   Social::update_blog(
     origin.unwrap_or(Origin::signed(ACCOUNT1)),
     blog_id.unwrap_or(1).into(),
-    update.unwrap_or(self::blog_update(None, None, None))
+    update.unwrap_or(self::blog_update(None, None, None, None))
   )
 }
 
@@ -236,7 +240,7 @@ fn _update_post(origin: Option<Origin>, post_id: Option<PostId>, update: Option<
   Social::update_post(
     origin.unwrap_or(Origin::signed(ACCOUNT1)),
     post_id.unwrap_or(1),
-    update.unwrap_or(self::post_update(None, None))
+    update.unwrap_or(self::post_update(None, None, None))
   )
 }
 
@@ -262,7 +266,7 @@ fn _update_comment(origin: Option<Origin>, post_id: Option<PostId>, update: Opti
     origin,
     Some(post_id.unwrap_or(2)),
     Some(update.unwrap_or(
-      self::post_update(None, Some(self::subcomment_ipfs_hash())))
+      self::post_update(None, Some(self::subcomment_ipfs_hash()), None))
     )
   )
 }
@@ -383,12 +387,17 @@ fn create_blog_should_work() {
     let blog = Social::blog_by_id(1).unwrap();
 
     assert_eq!(blog.created.account, ACCOUNT1);
+    assert!(blog.updated.is_none());
+    assert_eq!(blog.hidden, false);
+
+    assert!(blog.writers.is_empty());
     assert_eq!(blog.handle, Some(self::blog_handle()));
     assert_eq!(blog.ipfs_hash, self::blog_ipfs_hash());
-    assert!(blog.writers.is_empty());
+
     assert_eq!(blog.posts_count, 0);
     assert_eq!(blog.followers_count, 1);
     assert!(blog.edit_history.is_empty());
+    assert_eq!(blog.score, 0);
   });
 }
 
@@ -494,7 +503,8 @@ fn update_blog_should_work() {
         self::blog_update(
           None,
           Some(Some(handle.clone())),
-          Some(ipfs_hash.clone())
+          Some(ipfs_hash.clone()),
+          Some(true)
         )
       )
     ));
@@ -503,11 +513,13 @@ fn update_blog_should_work() {
     let blog = Social::blog_by_id(1).unwrap();
     assert_eq!(blog.handle, Some(handle));
     assert_eq!(blog.ipfs_hash, ipfs_hash);
+    assert_eq!(blog.hidden, true);
 
     // Check whether history recorded correctly
     assert_eq!(blog.edit_history[0].old_data.writers, None);
     assert_eq!(blog.edit_history[0].old_data.handle, Some(Some(self::blog_handle())));
     assert_eq!(blog.edit_history[0].old_data.ipfs_hash, Some(self::blog_ipfs_hash()));
+    assert_eq!(blog.edit_history[0].old_data.hidden, Some(false));
   });
 }
 
@@ -534,6 +546,7 @@ fn update_blog_should_fail_blog_not_found() {
         self::blog_update(
           None,
           Some(Some(handle)),
+          None,
           None
         )
       )
@@ -554,6 +567,7 @@ fn update_blog_should_fail_not_an_owner() {
         self::blog_update(
           None,
           Some(Some(handle)),
+          None,
           None
         )
       )
@@ -574,6 +588,7 @@ fn update_blog_should_fail_short_handle() {
         self::blog_update(
           None,
           Some(Some(handle)),
+          None,
           None
         )
       )
@@ -594,6 +609,7 @@ fn update_blog_should_fail_long_handle() {
         self::blog_update(
           None,
           Some(Some(handle)),
+          None,
           None
         )
       )
@@ -620,6 +636,7 @@ fn update_blog_should_fail_not_unique_handle() {
         self::blog_update(
           None,
           Some(Some(handle)),
+          None,
           None
         )
       )
@@ -716,7 +733,8 @@ fn update_blog_should_fail_invalid_ipfs_hash() {
         self::blog_update(
           None,
           None,
-          Some(ipfs_hash)
+          Some(ipfs_hash),
+          None
         )
       )
     ), Error::<Test>::IpfsIsIncorrect);
@@ -739,6 +757,7 @@ fn create_post_should_work() {
 
     assert_eq!(post.created.account, ACCOUNT1);
     assert!(post.updated.is_none());
+    assert_eq!(post.hidden, false);
 
     assert_eq!(post.blog_id, Some(1));
     assert_eq!(post.extension, self::extension_regular_post());
@@ -795,7 +814,8 @@ fn update_post_should_work() {
       Some(
         self::post_update(
           None,
-          Some(ipfs_hash.clone())
+          Some(ipfs_hash.clone()),
+          Some(true)
         )
       )
     ));
@@ -805,10 +825,12 @@ fn update_post_should_work() {
     let post = Social::post_by_id(1).unwrap();
     assert_eq!(post.blog_id, Some(1));
     assert_eq!(post.ipfs_hash, ipfs_hash);
+    assert_eq!(post.hidden, true);
 
     // Check whether history recorded correctly
     assert_eq!(post.edit_history[0].old_data.blog_id, None);
     assert_eq!(post.edit_history[0].old_data.ipfs_hash, Some(self::post_ipfs_hash()));
+    assert_eq!(post.edit_history[0].old_data.hidden, Some(false));
   });
 }
 
@@ -835,6 +857,7 @@ fn update_post_should_fail_post_not_found() {
       Some(
         self::post_update(
           Some(2),
+          None,
           None
         )
       )
@@ -854,6 +877,7 @@ fn update_post_should_fail_not_an_owner() {
       Some(
         self::post_update(
           Some(2),
+          None,
           None
         )
       )
@@ -874,7 +898,8 @@ fn update_post_should_fail_invalid_ipfs_hash() {
       Some(
         self::post_update(
           None,
-          Some(ipfs_hash)
+          Some(ipfs_hash),
+          None
         )
       )
     ), Error::<Test>::IpfsIsIncorrect);
@@ -1013,7 +1038,7 @@ fn update_comment_should_fail_invalid_ipfs_hash() {
 
     // Try to catch an error updating a comment with invalid ipfs_hash
     assert_noop!(_update_comment(
-      None, None, Some(self::post_update(None, Some(ipfs_hash)))
+      None, None, Some(self::post_update(None, Some(ipfs_hash), None))
     ), Error::<Test>::IpfsIsIncorrect);
   });
 }
@@ -1027,7 +1052,7 @@ fn update_comment_should_fail_ipfs_hash_dont_differ() {
 
     // Try to catch an error updating a comment with the same ipfs_hash
     assert_noop!(_update_comment(
-      None, None, Some(self::post_update(None, Some(self::comment_ipfs_hash())))
+      None, None, Some(self::post_update(None, Some(self::comment_ipfs_hash()), None))
     ), Error::<Test>::CommentIPFSHashNotDiffer);
   });
 }

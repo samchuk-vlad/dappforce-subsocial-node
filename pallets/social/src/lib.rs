@@ -18,6 +18,7 @@ pub struct Blog<T: Trait> {
   pub id: BlogId,
   pub created: WhoAndWhen<T>,
   pub updated: Option<WhoAndWhen<T>>,
+  pub hidden: bool,
 
   // Can be updated by the owner:
   pub writers: Vec<T::AccountId>,
@@ -37,6 +38,7 @@ pub struct BlogUpdate<AccountId> {
   pub writers: Option<Vec<AccountId>>,
   pub handle: Option<Option<Vec<u8>>>,
   pub ipfs_hash: Option<Vec<u8>>,
+  pub hidden: Option<bool>,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -50,6 +52,7 @@ pub struct Post<T: Trait> {
   pub id: PostId,
   pub created: WhoAndWhen<T>,
   pub updated: Option<WhoAndWhen<T>>,
+  pub hidden: bool,
 
   pub blog_id: Option<BlogId>,
   pub extension: PostExtension,
@@ -69,6 +72,7 @@ pub struct Post<T: Trait> {
 pub struct PostUpdate {
   pub blog_id: Option<BlogId>,
   pub ipfs_hash: Option<Vec<u8>>,
+  pub hidden: Option<bool>,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -390,6 +394,7 @@ decl_module! {
         id: blog_id,
         created: WhoAndWhen::<T>::new(owner.clone()),
         updated: None,
+        hidden: false,
         writers: vec![],
         handle: handle_opt.clone(),
         ipfs_hash,
@@ -421,7 +426,8 @@ decl_module! {
       let has_updates =
         update.writers.is_some() ||
         update.handle.is_some() ||
-        update.ipfs_hash.is_some();
+        update.ipfs_hash.is_some() ||
+        update.hidden.is_some();
 
       ensure!(has_updates, Error::<T>::NoUpdatesInBlog);
 
@@ -433,7 +439,7 @@ decl_module! {
       let mut fields_updated = 0;
       let mut new_history_record = BlogHistoryRecord {
         edited: WhoAndWhen::<T>::new(owner.clone()),
-        old_data: BlogUpdate {writers: None, handle: None, ipfs_hash: None}
+        old_data: BlogUpdate {writers: None, handle: None, ipfs_hash: None, hidden: None}
       };
 
       if let Some(writers) = update.writers {
@@ -451,6 +457,14 @@ decl_module! {
           Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
           new_history_record.old_data.ipfs_hash = Some(blog.ipfs_hash);
           blog.ipfs_hash = ipfs_hash;
+          fields_updated += 1;
+        }
+      }
+
+      if let Some(hidden) = update.hidden {
+        if hidden != blog.hidden {
+          new_history_record.old_data.hidden = Some(blog.hidden);
+          blog.hidden = hidden;
           fields_updated += 1;
         }
       }
@@ -680,6 +694,7 @@ decl_module! {
         id: new_post_id,
         created: WhoAndWhen::<T>::new(owner.clone()),
         updated: None,
+        hidden: false,
         blog_id: blog_id_opt,
         extension,
         ipfs_hash,
@@ -721,7 +736,8 @@ decl_module! {
 
       let has_updates =
         update.blog_id.is_some() ||
-        update.ipfs_hash.is_some();
+        update.ipfs_hash.is_some() ||
+        update.hidden.is_some();
 
       ensure!(has_updates, Error::<T>::NoUpdatesInPost);
 
@@ -733,7 +749,7 @@ decl_module! {
       let mut fields_updated = 0;
       let mut new_history_record = PostHistoryRecord {
         edited: WhoAndWhen::<T>::new(owner.clone()),
-        old_data: PostUpdate {blog_id: None, ipfs_hash: None}
+        old_data: PostUpdate {blog_id: None, ipfs_hash: None, hidden: None}
       };
 
       if let Some(ipfs_hash) = update.ipfs_hash {
@@ -746,6 +762,14 @@ decl_module! {
           if post.is_comment() {
             return Err(Error::<T>::CommentIPFSHashNotDiffer.into());
           }
+        }
+      }
+
+      if let Some(hidden) = update.hidden {
+        if hidden != post.hidden {
+          new_history_record.old_data.hidden = Some(post.hidden);
+          post.hidden = hidden;
+          fields_updated += 1;
         }
       }
 
