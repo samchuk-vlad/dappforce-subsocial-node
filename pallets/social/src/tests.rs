@@ -133,6 +133,7 @@ fn fake_post(id: PostId, created_by: AccountId, blog_id: Option<BlogId>, extensi
     extension,
     ipfs_hash: self::post_ipfs_hash(),
     edit_history: vec![],
+    direct_replies_count: 0,
     total_replies_count: 0,
     shares_count: 0,
     upvotes_count: 0,
@@ -951,8 +952,10 @@ fn create_comment_should_work() {
     assert_ok!(_create_default_comment()); // PostId 2
 
     // Check storages
+    let root_post = Social::post_by_id(1).unwrap();
     assert_eq!(Social::reply_ids_by_post_id(1), vec![2]);
-    assert_eq!(Social::post_by_id(1).unwrap().total_replies_count, 1);
+    assert_eq!(root_post.total_replies_count, 1);
+    assert_eq!(root_post.direct_replies_count, 1);
 
     // Check whether data stored correctly
     let comment = Social::post_by_id(2).unwrap();
@@ -983,8 +986,12 @@ fn create_comment_should_work_with_parent() {
     // Check storages
     assert_eq!(Social::reply_ids_by_post_id(1), vec![2]);
     assert_eq!(Social::reply_ids_by_post_id(2), vec![3]);
-    assert_eq!(Social::post_by_id(1).unwrap().total_replies_count, 2);
-    assert_eq!(Social::post_by_id(2).unwrap().total_replies_count, 1);
+    let root_post = Social::post_by_id(1).unwrap();
+    let parent_post = Social::post_by_id(2).unwrap();
+    assert_eq!(root_post.total_replies_count, 2);
+    assert_eq!(root_post.direct_replies_count, 1);
+    assert_eq!(parent_post.total_replies_count, 1);
+    assert_eq!(parent_post.direct_replies_count, 1);
 
     // Check whether data stored correctly
     let comment_ext = Social::post_by_id(3).unwrap().get_comment_ext().unwrap();

@@ -57,7 +57,9 @@ pub struct Post<T: Trait> {
   pub ipfs_hash: Vec<u8>,
   pub edit_history: Vec<PostHistoryRecord<T>>,
 
-  pub total_replies_count: u16,
+  pub direct_replies_count: u16,
+  pub total_replies_count: u32,
+
   pub shares_count: u16,
   pub upvotes_count: u16,
   pub downvotes_count: u16,
@@ -738,6 +740,7 @@ decl_module! {
         extension,
         ipfs_hash,
         edit_history: vec![],
+        direct_replies_count: 0,
         total_replies_count: 0,
         shares_count: 0,
         upvotes_count: 0,
@@ -755,18 +758,23 @@ decl_module! {
         root_post.total_replies_count = root_post.total_replies_count.checked_add(1).ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
 
         if let Some(parent_id) = comment_ext.parent_id {
-          let parent_comment = Self::post_by_id(parent_id).ok_or(Error::<T>::UnknownParentComment)?;
+          let mut parent_comment = Self::post_by_id(parent_id).ok_or(Error::<T>::UnknownParentComment)?;
           ensure!(parent_comment.is_comment(), Error::<T>::NotACommentByParentId);
+          parent_comment.direct_replies_count = parent_comment.direct_replies_count.checked_add(1).ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
 
-          let ancestors = Self::get_ancestors(parent_id);
+          let mut ancestors = Self::get_ancestors(parent_id);
+          ancestors[0] = parent_comment;
           ensure!(ancestors.len() < T::MaxCommentDepth::get() as usize, Error::<T>::MaxCommentDepthReached);
-          for mut post in ancestors.clone() {
+          for mut post in ancestors {
             post.total_replies_count = post.total_replies_count.checked_add(1).ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
             <PostById<T>>::insert(post.id, post.clone());
           }
 
           ReplyIdsByPostId::mutate(parent_id, |ids| ids.push(new_post_id));
         } else {
+          root_post.direct_replies_count = root_post.direct_replies_count.checked_add(1)
+            .ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
+
           ReplyIdsByPostId::mutate(comment_ext.root_post_id, |ids| ids.push(new_post_id));
         }
 
