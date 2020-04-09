@@ -245,6 +245,8 @@ decl_error! {
     UnknownParentComment,
     /// Post by root_post_id is not of RegularPost extension
     NotAPostByRootPostId,
+    /// Post by parent_id is not of Comment extension
+    NotACommentByParentId,
     /// New comment IPFS-hash is the same as old one
     CommentIPFSHashNotDiffer,
     /// Overflow adding comment on post
@@ -359,7 +361,8 @@ decl_storage! {
 
     pub BlogIdsByOwner get(blog_ids_by_owner): map T::AccountId => Vec<BlogId>;
     pub PostIdsByBlogId get(post_ids_by_blog_id): map BlogId => Vec<PostId>;
-    pub CommentIdsByPostId get(comment_ids_by_post_id): map PostId => Vec<PostId>;
+
+    pub ReplyIdsByPostId get(reply_ids_by_post_id): map PostId => Vec<PostId>;
 
     pub ReactionIdsByPostId get(reaction_ids_by_post_id): map PostId => Vec<ReactionId>;
     pub PostReactionIdByAccount get(post_reaction_id_by_account): map (T::AccountId, PostId) => ReactionId;
@@ -709,7 +712,6 @@ decl_module! {
 
       let new_post_id = Self::next_post_id();
       let mut is_comment : Option<CommentExt> = None;
-      let mut ancestors : Vec<Post<T>> = Vec::new();
 
       // Sharing functions contain check for post/comment existence
       match extension {
@@ -718,14 +720,6 @@ decl_module! {
         },
         PostExtension::Comment(comment_ext) => {
           Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
-
-          if let Some(parent_id) = comment_ext.parent_id {
-            let parent_comment = Self::post_by_id(parent_id).ok_or(Error::<T>::UnknownParentComment)?;
-            ensure!(parent_comment.is_comment(), Error::<T>::PostNotFound);
-
-            ancestors.extend(Self::get_ancestors(parent_id));
-            ensure!(ancestors.len() < T::MaxCommentDepth::get() as usize, Error::<T>::MaxCommentDepthReached);
-          }
           is_comment = Some(comment_ext);
         },
         PostExtension::SharedPost(post_id) => {
@@ -759,15 +753,25 @@ decl_module! {
         ensure!(!blog.hidden && !root_post.hidden, Error::<T>::BannedToCreateWhenHidden);
 
         root_post.total_replies_count = root_post.total_replies_count.checked_add(1).ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
-        for mut post in ancestors {
-          post.total_replies_count = root_post.total_replies_count.checked_add(1).ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
 
-          <PostById<T>>::insert(post.id, post.clone());
+        if let Some(parent_id) = comment_ext.parent_id {
+          let parent_comment = Self::post_by_id(parent_id).ok_or(Error::<T>::UnknownParentComment)?;
+          ensure!(parent_comment.is_comment(), Error::<T>::NotACommentByParentId);
+
+          let ancestors = Self::get_ancestors(parent_id);
+          ensure!(ancestors.len() < T::MaxCommentDepth::get() as usize, Error::<T>::MaxCommentDepthReached);
+          for mut post in ancestors.clone() {
+            post.total_replies_count = post.total_replies_count.checked_add(1).ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
+            <PostById<T>>::insert(post.id, post.clone());
+          }
+
+          ReplyIdsByPostId::mutate(parent_id, |ids| ids.push(new_post_id));
+        } else {
+          ReplyIdsByPostId::mutate(comment_ext.root_post_id, |ids| ids.push(new_post_id));
         }
 
         Self::change_post_score_by_extension(owner.clone(), root_post, ScoringAction::CreateComment)?;
 
-        CommentIdsByPostId::mutate(comment_ext.root_post_id, |ids| ids.push(new_post_id));
         <PostById<T>>::insert(comment_ext.root_post_id, root_post);
         Self::deposit_event(RawEvent::CommentCreated(owner.clone(), new_post_id));
       } else if let Some(blog_id) = blog_id_opt {

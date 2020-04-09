@@ -951,7 +951,7 @@ fn create_comment_should_work() {
     assert_ok!(_create_default_comment()); // PostId 2
 
     // Check storages
-    assert_eq!(Social::comment_ids_by_post_id(1), vec![2]);
+    assert_eq!(Social::reply_ids_by_post_id(1), vec![2]);
     assert_eq!(Social::post_by_id(1).unwrap().total_replies_count, 1);
 
     // Check whether data stored correctly
@@ -981,8 +981,10 @@ fn create_comment_should_work_with_parent() {
     assert_ok!(_create_comment(None, None, Some(Some(2)), None)); // PostId 3 with parent comment with PostId 2
 
     // Check storages
-    assert_eq!(Social::comment_ids_by_post_id(1), vec![2, 3]);
+    assert_eq!(Social::reply_ids_by_post_id(1), vec![2]);
+    assert_eq!(Social::reply_ids_by_post_id(2), vec![3]);
     assert_eq!(Social::post_by_id(1).unwrap().total_replies_count, 2);
+    assert_eq!(Social::post_by_id(2).unwrap().total_replies_count, 1);
 
     // Check whether data stored correctly
     let comment_ext = Social::post_by_id(3).unwrap().get_comment_ext().unwrap();
