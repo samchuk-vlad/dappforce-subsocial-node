@@ -1110,7 +1110,7 @@ fn create_comment_reaction_should_work_upvote() {
     assert_ok!(_create_comment_reaction(Some(Origin::signed(ACCOUNT2)), None, None)); // ReactionId 1 by ACCOUNT2
 
     // Check storages
-    assert_eq!(Social::reaction_ids_by_comment_id(2), vec![1]);
+    assert_eq!(Social::reaction_ids_by_post_id(2), vec![1]);
     assert_eq!(Social::next_reaction_id(), 2);
 
     // Check comment reaction counters
@@ -1134,7 +1134,7 @@ fn create_comment_reaction_should_work_downvote() {
     assert_ok!(_create_comment_reaction(Some(Origin::signed(ACCOUNT2)), None, Some(self::reaction_downvote()))); // ReactionId 1 by ACCOUNT2
 
     // Check storages
-    assert_eq!(Social::reaction_ids_by_comment_id(2), vec![1]);
+    assert_eq!(Social::reaction_ids_by_post_id(2), vec![1]);
     assert_eq!(Social::next_reaction_id(), 2);
 
     // Check comment reaction counters
@@ -1445,7 +1445,7 @@ fn change_comment_score_should_work_upvote() {
     assert_eq!(Social::post_by_id(2).unwrap().score, DEFAULT_UPVOTE_COMMENT_ACTION_WEIGHT as i32);
     assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1);
     assert_eq!(Social::social_account_by_id(ACCOUNT2).unwrap().reputation, 1 + DEFAULT_UPVOTE_COMMENT_ACTION_WEIGHT as u32);
-    assert_eq!(Social::comment_score_by_account((ACCOUNT1, 2, self::scoring_action_upvote_comment())), Some(DEFAULT_UPVOTE_COMMENT_ACTION_WEIGHT));
+    assert_eq!(Social::post_score_by_account((ACCOUNT1, 2, self::scoring_action_upvote_comment())), Some(DEFAULT_UPVOTE_COMMENT_ACTION_WEIGHT));
   });
 }
 
@@ -1461,7 +1461,7 @@ fn change_comment_score_should_work_downvote() {
     assert_eq!(Social::post_by_id(2).unwrap().score, DEFAULT_DOWNVOTE_COMMENT_ACTION_WEIGHT as i32);
     assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1);
     assert_eq!(Social::social_account_by_id(ACCOUNT2).unwrap().reputation, 1);
-    assert_eq!(Social::comment_score_by_account((ACCOUNT1, 2, self::scoring_action_downvote_comment())), Some(DEFAULT_DOWNVOTE_COMMENT_ACTION_WEIGHT));
+    assert_eq!(Social::post_score_by_account((ACCOUNT1, 2, self::scoring_action_downvote_comment())), Some(DEFAULT_DOWNVOTE_COMMENT_ACTION_WEIGHT));
   });
 }
 
@@ -1478,7 +1478,7 @@ fn change_comment_score_should_revert_upvote() {
     assert_eq!(Social::post_by_id(2).unwrap().score, 0);
     assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1);
     assert_eq!(Social::social_account_by_id(ACCOUNT2).unwrap().reputation, 1);
-    assert_eq!(Social::comment_score_by_account((ACCOUNT1, 2, self::scoring_action_upvote_comment())), None);
+    assert_eq!(Social::post_score_by_account((ACCOUNT1, 2, self::scoring_action_upvote_comment())), None);
   });
 }
 
@@ -1495,7 +1495,7 @@ fn change_comment_score_should_revert_downvote() {
     assert_eq!(Social::post_by_id(2).unwrap().score, 0);
     assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1);
     assert_eq!(Social::social_account_by_id(ACCOUNT2).unwrap().reputation, 1);
-    assert_eq!(Social::comment_score_by_account((ACCOUNT1, 2, self::scoring_action_downvote_comment())), None);
+    assert_eq!(Social::post_score_by_account((ACCOUNT1, 2, self::scoring_action_downvote_comment())), None);
   });
 }
 
@@ -1512,8 +1512,8 @@ fn change_comment_score_check_cancel_upvote() {
     assert_eq!(Social::post_by_id(2).unwrap().score, DEFAULT_DOWNVOTE_COMMENT_ACTION_WEIGHT as i32);
     assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1);
     assert_eq!(Social::social_account_by_id(ACCOUNT2).unwrap().reputation, 1);
-    assert_eq!(Social::comment_score_by_account((ACCOUNT1, 2, self::scoring_action_upvote_comment())), None);
-    assert_eq!(Social::comment_score_by_account((ACCOUNT1, 2, self::scoring_action_downvote_comment())), Some(DEFAULT_DOWNVOTE_COMMENT_ACTION_WEIGHT));
+    assert_eq!(Social::post_score_by_account((ACCOUNT1, 2, self::scoring_action_upvote_comment())), None);
+    assert_eq!(Social::post_score_by_account((ACCOUNT1, 2, self::scoring_action_downvote_comment())), Some(DEFAULT_DOWNVOTE_COMMENT_ACTION_WEIGHT));
   });
 }
 
@@ -1530,8 +1530,8 @@ fn change_comment_score_check_cancel_downvote() {
     assert_eq!(Social::post_by_id(2).unwrap().score, DEFAULT_UPVOTE_COMMENT_ACTION_WEIGHT as i32);
     assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1);
     assert_eq!(Social::social_account_by_id(ACCOUNT2).unwrap().reputation, 1 + DEFAULT_UPVOTE_COMMENT_ACTION_WEIGHT as u32);
-    assert_eq!(Social::comment_score_by_account((ACCOUNT1, 2, self::scoring_action_downvote_comment())), None);
-    assert_eq!(Social::comment_score_by_account((ACCOUNT1, 2, self::scoring_action_upvote_comment())), Some(DEFAULT_UPVOTE_COMMENT_ACTION_WEIGHT));
+    assert_eq!(Social::post_score_by_account((ACCOUNT1, 2, self::scoring_action_downvote_comment())), None);
+    assert_eq!(Social::post_score_by_account((ACCOUNT1, 2, self::scoring_action_upvote_comment())), Some(DEFAULT_UPVOTE_COMMENT_ACTION_WEIGHT));
   });
 }
 
@@ -1717,8 +1717,8 @@ fn share_comment_should_work() {
     assert_eq!(Social::post_ids_by_blog_id(2), vec![3]);
     assert_eq!(Social::next_post_id(), 4);
 
-    assert_eq!(Social::comment_shares_by_account((ACCOUNT2, 2)), 1);
-    assert_eq!(Social::shared_post_ids_by_original_comment_id(2), vec![3]);
+    assert_eq!(Social::post_shares_by_account((ACCOUNT2, 2)), 1);
+    assert_eq!(Social::shared_post_ids_by_original_post_id(2), vec![3]);
 
     // Check whether data stored correctly
     assert_eq!(Social::post_by_id(2).unwrap().shares_count, 1);
@@ -1748,7 +1748,7 @@ fn share_comment_should_change_score() {
 
     assert_eq!(Social::post_by_id(2).unwrap().score, DEFAULT_SHARE_COMMENT_ACTION_WEIGHT as i32);
     assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + DEFAULT_SHARE_COMMENT_ACTION_WEIGHT as u32);
-    assert_eq!(Social::comment_score_by_account((ACCOUNT2, 2, self::scoring_action_share_comment())), Some(DEFAULT_SHARE_COMMENT_ACTION_WEIGHT));
+    assert_eq!(Social::post_score_by_account((ACCOUNT2, 2, self::scoring_action_share_comment())), Some(DEFAULT_SHARE_COMMENT_ACTION_WEIGHT));
   });
 }
 
