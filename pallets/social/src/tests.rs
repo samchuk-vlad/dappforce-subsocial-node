@@ -52,8 +52,38 @@ impl pallet_timestamp::Trait for Test {
   type MinimumPeriod = MinimumPeriod;
 }
 
+parameter_types! {
+  pub const IpfsHashLen: u32 = 46;
+  pub const MinHandleLen: u32 = 5;
+  pub const MaxHandleLen: u32 = 50;
+  pub const MinUsernameLen: u32 = 3;
+  pub const MaxUsernameLen: u32 = 50;
+  pub const FollowBlogActionWeight: i16 = 7;
+  pub const FollowAccountActionWeight: i16 = 3;
+  pub const UpvotePostActionWeight: i16 = 5;
+  pub const DownvotePostActionWeight: i16 = -3;
+  pub const SharePostActionWeight: i16 = 5;
+  pub const CreateCommentActionWeight: i16 = 5;
+  pub const UpvoteCommentActionWeight: i16 = 4;
+  pub const DownvoteCommentActionWeight: i16 = -2;
+  pub const ShareCommentActionWeight: i16 = 3;
+}
 impl Trait for Test {
   type Event = ();
+  type IpfsHashLen = IpfsHashLen;
+  type MinHandleLen = MinHandleLen;
+  type MaxHandleLen = MaxHandleLen;
+  type MinUsernameLen = MinUsernameLen;
+  type MaxUsernameLen = MaxUsernameLen;
+  type FollowBlogActionWeight = FollowBlogActionWeight;
+  type FollowAccountActionWeight = FollowAccountActionWeight;
+  type UpvotePostActionWeight = UpvotePostActionWeight;
+  type DownvotePostActionWeight = DownvotePostActionWeight;
+  type SharePostActionWeight = SharePostActionWeight;
+  type CreateCommentActionWeight = CreateCommentActionWeight;
+  type UpvoteCommentActionWeight = UpvoteCommentActionWeight;
+  type DownvoteCommentActionWeight = DownvoteCommentActionWeight;
+  type ShareCommentActionWeight = ShareCommentActionWeight;
 }
 
 type Social = Module<Test>;
@@ -415,7 +445,7 @@ fn create_blog_should_make_handle_lowercase() {
 
 #[test]
 fn create_blog_should_fail_short_handle() {
-  let handle : Vec<u8> = vec![65; (DEFAULT_HANDLE_MIN_LEN - 1) as usize];
+  let handle : Vec<u8> = vec![65; (MinHandleLen::get() - 1) as usize];
 
   new_test_ext().execute_with(|| {
     // Try to catch an error creating a blog with too short handle
@@ -425,7 +455,7 @@ fn create_blog_should_fail_short_handle() {
 
 #[test]
 fn create_blog_should_fail_long_handle() {
-  let handle : Vec<u8> = vec![65; (DEFAULT_HANDLE_MAX_LEN + 1) as usize];
+  let handle : Vec<u8> = vec![65; (MaxHandleLen::get() + 1) as usize];
 
   new_test_ext().execute_with(|| {
     // Try to catch an error creating a blog with too long handle
@@ -577,7 +607,7 @@ fn update_blog_should_fail_not_an_owner() {
 
 #[test]
 fn update_blog_should_fail_short_handle() {
-  let handle : Vec<u8> = vec![65; (DEFAULT_HANDLE_MIN_LEN - 1) as usize];
+  let handle : Vec<u8> = vec![65; (MinHandleLen::get() - 1) as usize];
 
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
@@ -598,7 +628,7 @@ fn update_blog_should_fail_short_handle() {
 
 #[test]
 fn update_blog_should_fail_long_handle() {
-  let handle : Vec<u8> = vec![65; (DEFAULT_HANDLE_MAX_LEN + 1) as usize];
+  let handle : Vec<u8> = vec![65; (MaxHandleLen::get() + 1) as usize];
 
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
@@ -656,6 +686,7 @@ fn update_blog_should_fail_invalid_at_char() {
         self::blog_update(
           None,
           Some(Some(handle)),
+          None,
           None
         )
       )
@@ -675,6 +706,7 @@ fn update_blog_should_fail_invalid_minus_char() {
         self::blog_update(
           None,
           Some(Some(handle)),
+          None,
           None
         )
       )
@@ -694,6 +726,7 @@ fn update_blog_should_fail_invalid_space_char() {
         self::blog_update(
           None,
           Some(Some(handle)),
+          None,
           None
         )
       )
@@ -713,6 +746,7 @@ fn update_blog_should_fail_invalid_unicode_char() {
         self::blog_update(
           None,
           Some(Some(handle)),
+          None,
           None
         )
       )
@@ -1292,15 +1326,15 @@ fn create_comment_reaction_should_fail_post_is_hidden() {
 #[test]
 fn score_diff_by_weights_check_result() {
   new_test_ext().execute_with(|| {
-    assert_eq!(Social::get_score_diff(1, self::scoring_action_upvote_post()), DEFAULT_UPVOTE_POST_ACTION_WEIGHT as i16);
-    assert_eq!(Social::get_score_diff(1, self::scoring_action_downvote_post()), DEFAULT_DOWNVOTE_POST_ACTION_WEIGHT as i16);
-    assert_eq!(Social::get_score_diff(1, self::scoring_action_share_post()), DEFAULT_SHARE_POST_ACTION_WEIGHT as i16);
-    assert_eq!(Social::get_score_diff(1, self::scoring_action_create_comment()), DEFAULT_CREATE_COMMENT_ACTION_WEIGHT as i16);
-    assert_eq!(Social::get_score_diff(1, self::scoring_action_upvote_comment()), DEFAULT_UPVOTE_COMMENT_ACTION_WEIGHT as i16);
-    assert_eq!(Social::get_score_diff(1, self::scoring_action_downvote_comment()), DEFAULT_DOWNVOTE_COMMENT_ACTION_WEIGHT as i16);
-    assert_eq!(Social::get_score_diff(1, self::scoring_action_share_comment()), DEFAULT_SHARE_COMMENT_ACTION_WEIGHT as i16);
-    assert_eq!(Social::get_score_diff(1, self::scoring_action_follow_blog()), DEFAULT_FOLLOW_BLOG_ACTION_WEIGHT as i16);
-    assert_eq!(Social::get_score_diff(1, self::scoring_action_follow_account()), DEFAULT_FOLLOW_ACCOUNT_ACTION_WEIGHT as i16);
+    assert_eq!(Social::get_score_diff(1, self::scoring_action_upvote_post()), UpvotePostActionWeight::get() as i16);
+    assert_eq!(Social::get_score_diff(1, self::scoring_action_downvote_post()), DownvotePostActionWeight::get() as i16);
+    assert_eq!(Social::get_score_diff(1, self::scoring_action_share_post()), SharePostActionWeight::get() as i16);
+    assert_eq!(Social::get_score_diff(1, self::scoring_action_create_comment()), CreateCommentActionWeight::get() as i16);
+    assert_eq!(Social::get_score_diff(1, self::scoring_action_upvote_comment()), UpvoteCommentActionWeight::get() as i16);
+    assert_eq!(Social::get_score_diff(1, self::scoring_action_downvote_comment()), DownvoteCommentActionWeight::get() as i16);
+    assert_eq!(Social::get_score_diff(1, self::scoring_action_share_comment()), ShareCommentActionWeight::get() as i16);
+    assert_eq!(Social::get_score_diff(1, self::scoring_action_follow_blog()), FollowBlogActionWeight::get() as i16);
+    assert_eq!(Social::get_score_diff(1, self::scoring_action_follow_account()), FollowAccountActionWeight::get() as i16);
   });
 }
 
@@ -1323,8 +1357,8 @@ fn change_blog_score_should_work_follow_blog() {
 
     assert_ok!(Social::follow_blog(Origin::signed(ACCOUNT2), 1));
 
-    assert_eq!(Social::blog_by_id(1).unwrap().score, DEFAULT_FOLLOW_BLOG_ACTION_WEIGHT as i32);
-    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + DEFAULT_FOLLOW_BLOG_ACTION_WEIGHT as u32);
+    assert_eq!(Social::blog_by_id(1).unwrap().score, FollowBlogActionWeight::get() as i32);
+    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + FollowBlogActionWeight::get() as u32);
     assert_eq!(Social::social_account_by_id(ACCOUNT2).unwrap().reputation, 1);
   });
 }
@@ -1350,8 +1384,8 @@ fn change_blog_score_should_work_upvote_post() {
     assert_ok!(_create_default_post());
     assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), None, None)); // ReactionId 1
 
-    assert_eq!(Social::blog_by_id(1).unwrap().score, DEFAULT_UPVOTE_POST_ACTION_WEIGHT as i32);
-    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + DEFAULT_UPVOTE_POST_ACTION_WEIGHT as u32);
+    assert_eq!(Social::blog_by_id(1).unwrap().score, UpvotePostActionWeight::get() as i32);
+    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + UpvotePostActionWeight::get() as u32);
   });
 }
 
@@ -1362,7 +1396,7 @@ fn change_blog_score_should_work_downvote_post() {
     assert_ok!(_create_default_post());
     assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), None, Some(self::reaction_downvote()))); // ReactionId 1
 
-    assert_eq!(Social::blog_by_id(1).unwrap().score, DEFAULT_DOWNVOTE_POST_ACTION_WEIGHT as i32);
+    assert_eq!(Social::blog_by_id(1).unwrap().score, DownvotePostActionWeight::get() as i32);
     assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1);
   });
 }
@@ -1376,10 +1410,10 @@ fn change_post_score_should_work_create_comment() {
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_comment(Some(Origin::signed(ACCOUNT2)), None, None, None)); // PostId 2
 
-    assert_eq!(Social::post_by_id(1).unwrap().score, DEFAULT_CREATE_COMMENT_ACTION_WEIGHT as i32);
-    assert_eq!(Social::blog_by_id(1).unwrap().score, DEFAULT_CREATE_COMMENT_ACTION_WEIGHT as i32);
-    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + DEFAULT_CREATE_COMMENT_ACTION_WEIGHT as u32);
-    assert_eq!(Social::post_score_by_account((ACCOUNT2, 1, self::scoring_action_create_comment())), Some(DEFAULT_CREATE_COMMENT_ACTION_WEIGHT));
+    assert_eq!(Social::post_by_id(1).unwrap().score, CreateCommentActionWeight::get() as i32);
+    assert_eq!(Social::blog_by_id(1).unwrap().score, CreateCommentActionWeight::get() as i32);
+    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + CreateCommentActionWeight::get() as u32);
+    assert_eq!(Social::post_score_by_account((ACCOUNT2, 1, self::scoring_action_create_comment())), Some(CreateCommentActionWeight::get()));
   });
 }
 
@@ -1391,9 +1425,9 @@ fn change_post_score_should_work_upvote() {
 
     assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), None, None));
 
-    assert_eq!(Social::post_by_id(1).unwrap().score, DEFAULT_UPVOTE_POST_ACTION_WEIGHT as i32);
-    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + DEFAULT_UPVOTE_POST_ACTION_WEIGHT as u32);
-    assert_eq!(Social::post_score_by_account((ACCOUNT2, 1, self::scoring_action_upvote_post())), Some(DEFAULT_UPVOTE_POST_ACTION_WEIGHT));
+    assert_eq!(Social::post_by_id(1).unwrap().score, UpvotePostActionWeight::get() as i32);
+    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + UpvotePostActionWeight::get() as u32);
+    assert_eq!(Social::post_score_by_account((ACCOUNT2, 1, self::scoring_action_upvote_post())), Some(UpvotePostActionWeight::get()));
   });
 }
 
@@ -1405,9 +1439,9 @@ fn change_post_score_should_work_downvote() {
 
     assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), None, Some(self::reaction_downvote())));
 
-    assert_eq!(Social::post_by_id(1).unwrap().score, DEFAULT_DOWNVOTE_POST_ACTION_WEIGHT as i32);
+    assert_eq!(Social::post_by_id(1).unwrap().score, DownvotePostActionWeight::get() as i32);
     assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1);
-    assert_eq!(Social::post_score_by_account((ACCOUNT2, 1, self::scoring_action_downvote_post())), Some(DEFAULT_DOWNVOTE_POST_ACTION_WEIGHT));
+    assert_eq!(Social::post_score_by_account((ACCOUNT2, 1, self::scoring_action_downvote_post())), Some(DownvotePostActionWeight::get()));
   });
 }
 
@@ -1450,10 +1484,10 @@ fn change_post_score_cancel_upvote_with_downvote() {
     assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), None, None)); // ReactionId 1
     assert_ok!(_update_post_reaction(Some(Origin::signed(ACCOUNT2)), None, 1, Some(self::reaction_downvote())));
 
-    assert_eq!(Social::post_by_id(1).unwrap().score, DEFAULT_DOWNVOTE_POST_ACTION_WEIGHT as i32);
+    assert_eq!(Social::post_by_id(1).unwrap().score, DownvotePostActionWeight::get() as i32);
     assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1);
     assert_eq!(Social::post_score_by_account((ACCOUNT2, 1, self::scoring_action_upvote_post())), None);
-    assert_eq!(Social::post_score_by_account((ACCOUNT2, 1, self::scoring_action_downvote_post())), Some(DEFAULT_DOWNVOTE_POST_ACTION_WEIGHT));
+    assert_eq!(Social::post_score_by_account((ACCOUNT2, 1, self::scoring_action_downvote_post())), Some(DownvotePostActionWeight::get()));
   });
 }
 
@@ -1466,10 +1500,10 @@ fn change_post_score_cancel_downvote_with_upvote() {
     assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), None, Some(self::reaction_downvote()))); // ReactionId 1
     assert_ok!(_update_post_reaction(Some(Origin::signed(ACCOUNT2)), None, 1, None));
 
-    assert_eq!(Social::post_by_id(1).unwrap().score, DEFAULT_UPVOTE_POST_ACTION_WEIGHT as i32);
-    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + DEFAULT_UPVOTE_POST_ACTION_WEIGHT as u32);
+    assert_eq!(Social::post_by_id(1).unwrap().score, UpvotePostActionWeight::get() as i32);
+    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + UpvotePostActionWeight::get() as u32);
     assert_eq!(Social::post_score_by_account((ACCOUNT2, 1, self::scoring_action_downvote_post())), None);
-    assert_eq!(Social::post_score_by_account((ACCOUNT2, 1, self::scoring_action_upvote_post())), Some(DEFAULT_UPVOTE_POST_ACTION_WEIGHT));
+    assert_eq!(Social::post_score_by_account((ACCOUNT2, 1, self::scoring_action_upvote_post())), Some(UpvotePostActionWeight::get()));
   });
 }
 
@@ -1528,7 +1562,7 @@ fn change_social_account_reputation_should_work() {
     assert_ok!(Social::change_social_account_reputation(
       ACCOUNT2,
       ACCOUNT1,
-      DEFAULT_DOWNVOTE_POST_ACTION_WEIGHT,
+      DownvotePostActionWeight::get(),
       self::scoring_action_downvote_post())
     );
     assert_eq!(Social::account_reputation_diff_by_account((ACCOUNT1, ACCOUNT2, self::scoring_action_downvote_post())), Some(0));
@@ -1537,14 +1571,14 @@ fn change_social_account_reputation_should_work() {
     assert_ok!(Social::change_social_account_reputation(
       ACCOUNT2,
       ACCOUNT1,
-      DEFAULT_UPVOTE_POST_ACTION_WEIGHT * 2,
+      UpvotePostActionWeight::get() * 2,
       self::scoring_action_upvote_post())
     );
     assert_eq!(Social::account_reputation_diff_by_account(
       (ACCOUNT1, ACCOUNT2, self::scoring_action_upvote_post())),
-               Some(DEFAULT_UPVOTE_POST_ACTION_WEIGHT * 2)
+               Some(UpvotePostActionWeight::get() * 2)
     );
-    assert_eq!(Social::social_account_by_id(ACCOUNT2).unwrap().reputation, 1 + (DEFAULT_UPVOTE_POST_ACTION_WEIGHT * 2) as u32);
+    assert_eq!(Social::social_account_by_id(ACCOUNT2).unwrap().reputation, 1 + (UpvotePostActionWeight::get() * 2) as u32);
   });
 }
 
@@ -1559,10 +1593,10 @@ fn change_comment_score_should_work_upvote() {
 
     assert_ok!(_change_post_score_by_extension_with_id(ACCOUNT1, 2, self::scoring_action_upvote_comment()));
 
-    assert_eq!(Social::post_by_id(2).unwrap().score, DEFAULT_UPVOTE_COMMENT_ACTION_WEIGHT as i32);
+    assert_eq!(Social::post_by_id(2).unwrap().score, UpvoteCommentActionWeight::get() as i32);
     assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1);
-    assert_eq!(Social::social_account_by_id(ACCOUNT2).unwrap().reputation, 1 + DEFAULT_UPVOTE_COMMENT_ACTION_WEIGHT as u32);
-    assert_eq!(Social::post_score_by_account((ACCOUNT1, 2, self::scoring_action_upvote_comment())), Some(DEFAULT_UPVOTE_COMMENT_ACTION_WEIGHT));
+    assert_eq!(Social::social_account_by_id(ACCOUNT2).unwrap().reputation, 1 + UpvoteCommentActionWeight::get() as u32);
+    assert_eq!(Social::post_score_by_account((ACCOUNT1, 2, self::scoring_action_upvote_comment())), Some(UpvoteCommentActionWeight::get()));
   });
 }
 
@@ -1575,10 +1609,10 @@ fn change_comment_score_should_work_downvote() {
 
     assert_ok!(_change_post_score_by_extension_with_id(ACCOUNT1, 2, self::scoring_action_downvote_comment()));
 
-    assert_eq!(Social::post_by_id(2).unwrap().score, DEFAULT_DOWNVOTE_COMMENT_ACTION_WEIGHT as i32);
+    assert_eq!(Social::post_by_id(2).unwrap().score, DownvoteCommentActionWeight::get() as i32);
     assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1);
     assert_eq!(Social::social_account_by_id(ACCOUNT2).unwrap().reputation, 1);
-    assert_eq!(Social::post_score_by_account((ACCOUNT1, 2, self::scoring_action_downvote_comment())), Some(DEFAULT_DOWNVOTE_COMMENT_ACTION_WEIGHT));
+    assert_eq!(Social::post_score_by_account((ACCOUNT1, 2, self::scoring_action_downvote_comment())), Some(DownvoteCommentActionWeight::get()));
   });
 }
 
@@ -1626,11 +1660,11 @@ fn change_comment_score_check_cancel_upvote() {
     assert_ok!(_change_post_score_by_extension_with_id(ACCOUNT1, 2, self::scoring_action_upvote_comment()));
     assert_ok!(_change_post_score_by_extension_with_id(ACCOUNT1, 2, self::scoring_action_downvote_comment()));
 
-    assert_eq!(Social::post_by_id(2).unwrap().score, DEFAULT_DOWNVOTE_COMMENT_ACTION_WEIGHT as i32);
+    assert_eq!(Social::post_by_id(2).unwrap().score, DownvoteCommentActionWeight::get() as i32);
     assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1);
     assert_eq!(Social::social_account_by_id(ACCOUNT2).unwrap().reputation, 1);
     assert_eq!(Social::post_score_by_account((ACCOUNT1, 2, self::scoring_action_upvote_comment())), None);
-    assert_eq!(Social::post_score_by_account((ACCOUNT1, 2, self::scoring_action_downvote_comment())), Some(DEFAULT_DOWNVOTE_COMMENT_ACTION_WEIGHT));
+    assert_eq!(Social::post_score_by_account((ACCOUNT1, 2, self::scoring_action_downvote_comment())), Some(DownvoteCommentActionWeight::get()));
   });
 }
 
@@ -1644,11 +1678,11 @@ fn change_comment_score_check_cancel_downvote() {
     assert_ok!(_change_post_score_by_extension_with_id(ACCOUNT1, 2, self::scoring_action_downvote_comment()));
     assert_ok!(_change_post_score_by_extension_with_id(ACCOUNT1, 2, self::scoring_action_upvote_comment()));
 
-    assert_eq!(Social::post_by_id(2).unwrap().score, DEFAULT_UPVOTE_COMMENT_ACTION_WEIGHT as i32);
+    assert_eq!(Social::post_by_id(2).unwrap().score, UpvoteCommentActionWeight::get() as i32);
     assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1);
-    assert_eq!(Social::social_account_by_id(ACCOUNT2).unwrap().reputation, 1 + DEFAULT_UPVOTE_COMMENT_ACTION_WEIGHT as u32);
+    assert_eq!(Social::social_account_by_id(ACCOUNT2).unwrap().reputation, 1 + UpvoteCommentActionWeight::get() as u32);
     assert_eq!(Social::post_score_by_account((ACCOUNT1, 2, self::scoring_action_downvote_comment())), None);
-    assert_eq!(Social::post_score_by_account((ACCOUNT1, 2, self::scoring_action_upvote_comment())), Some(DEFAULT_UPVOTE_COMMENT_ACTION_WEIGHT));
+    assert_eq!(Social::post_score_by_account((ACCOUNT1, 2, self::scoring_action_upvote_comment())), Some(UpvoteCommentActionWeight::get()));
   });
 }
 
@@ -1753,9 +1787,9 @@ fn share_post_should_change_score() {
       Some(vec![])
     )); // Share PostId 1 on BlogId 2 by ACCOUNT2
 
-    assert_eq!(Social::post_by_id(1).unwrap().score, DEFAULT_SHARE_POST_ACTION_WEIGHT as i32);
-    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + DEFAULT_SHARE_POST_ACTION_WEIGHT as u32);
-    assert_eq!(Social::post_score_by_account((ACCOUNT2, 1, self::scoring_action_share_post())), Some(DEFAULT_SHARE_POST_ACTION_WEIGHT));
+    assert_eq!(Social::post_by_id(1).unwrap().score, SharePostActionWeight::get() as i32);
+    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + SharePostActionWeight::get() as u32);
+    assert_eq!(Social::post_score_by_account((ACCOUNT2, 1, self::scoring_action_share_post())), Some(SharePostActionWeight::get()));
   });
 }
 
@@ -1863,9 +1897,9 @@ fn share_comment_should_change_score() {
       Some(vec![])
     )); // Share PostId 2 comment on BlogId 2 by ACCOUNT2
 
-    assert_eq!(Social::post_by_id(2).unwrap().score, DEFAULT_SHARE_COMMENT_ACTION_WEIGHT as i32);
-    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + DEFAULT_SHARE_COMMENT_ACTION_WEIGHT as u32);
-    assert_eq!(Social::post_score_by_account((ACCOUNT2, 2, self::scoring_action_share_comment())), Some(DEFAULT_SHARE_COMMENT_ACTION_WEIGHT));
+    assert_eq!(Social::post_by_id(2).unwrap().score, ShareCommentActionWeight::get() as i32);
+    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + ShareCommentActionWeight::get() as u32);
+    assert_eq!(Social::post_score_by_account((ACCOUNT2, 2, self::scoring_action_share_comment())), Some(ShareCommentActionWeight::get()));
   });
 }
 
@@ -1930,7 +1964,7 @@ fn create_profile_should_fail_username_is_busy() {
 
 #[test]
 fn create_profile_should_fail_too_short_username() {
-  let username : Vec<u8> = vec![97; (DEFAULT_USERNAME_MIN_LEN - 1) as usize];
+  let username : Vec<u8> = vec![97; (MinUsernameLen::get() - 1) as usize];
 
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_profile()); // AccountId 1
@@ -1940,7 +1974,7 @@ fn create_profile_should_fail_too_short_username() {
 
 #[test]
 fn create_profile_should_fail_too_long_username() {
-  let username : Vec<u8> = vec![97; (DEFAULT_USERNAME_MAX_LEN + 1) as usize];
+  let username : Vec<u8> = vec![97; (MaxUsernameLen::get() + 1) as usize];
 
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_profile()); // AccountId 1
@@ -2014,7 +2048,7 @@ fn update_profile_should_fail_username_is_busy() {
 
 #[test]
 fn update_profile_should_fail_too_short_username() {
-  let username : Vec<u8> = vec![97; (DEFAULT_USERNAME_MIN_LEN - 1) as usize];
+  let username : Vec<u8> = vec![97; (MinUsernameLen::get() - 1) as usize];
 
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_profile()); // AccountId 1
@@ -2024,7 +2058,7 @@ fn update_profile_should_fail_too_short_username() {
 
 #[test]
 fn update_profile_should_fail_too_long_username() {
-  let username : Vec<u8> = vec![97; (DEFAULT_USERNAME_MAX_LEN + 1) as usize];
+  let username : Vec<u8> = vec![97; (MaxUsernameLen::get() + 1) as usize];
 
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_profile()); // AccountId 1

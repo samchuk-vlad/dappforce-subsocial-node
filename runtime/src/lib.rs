@@ -230,8 +230,40 @@ impl sudo::Trait for Runtime {
   type Proposal = Call;
 }
 
+
+parameter_types! {
+  pub const IpfsHashLen: u32 = 46;
+  pub const MinHandleLen: u32 = 5;
+  pub const MaxHandleLen: u32 = 50;
+  pub const MinUsernameLen: u32 = 3;
+  pub const MaxUsernameLen: u32 = 50;
+  pub const FollowBlogActionWeight: i16 = 7;
+  pub const FollowAccountActionWeight: i16 = 3;
+  pub const UpvotePostActionWeight: i16 = 5;
+  pub const DownvotePostActionWeight: i16 = -3;
+  pub const SharePostActionWeight: i16 = 5;
+  pub const CreateCommentActionWeight: i16 = 5;
+  pub const UpvoteCommentActionWeight: i16 = 4;
+  pub const DownvoteCommentActionWeight: i16 = -2;
+  pub const ShareCommentActionWeight: i16 = 3;
+}
+
 impl pallet_social::Trait for Runtime {
   type Event = Event;
+  type IpfsHashLen = IpfsHashLen;
+  type MinHandleLen = MinHandleLen;
+  type MaxHandleLen = MaxHandleLen;
+  type MinUsernameLen = MinUsernameLen;
+  type MaxUsernameLen = MaxUsernameLen;
+  type FollowBlogActionWeight = FollowBlogActionWeight;
+  type FollowAccountActionWeight = FollowAccountActionWeight;
+  type UpvotePostActionWeight = UpvotePostActionWeight;
+  type DownvotePostActionWeight = DownvotePostActionWeight;
+  type SharePostActionWeight = SharePostActionWeight;
+  type CreateCommentActionWeight = CreateCommentActionWeight;
+  type UpvoteCommentActionWeight = UpvoteCommentActionWeight;
+  type DownvoteCommentActionWeight = DownvoteCommentActionWeight;
+  type ShareCommentActionWeight = ShareCommentActionWeight;
 }
 
 parameter_types! {

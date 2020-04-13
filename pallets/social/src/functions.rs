@@ -213,15 +213,15 @@ impl<T: Trait> Module<T> {
     // TODO write unit tests for this method.
     pub fn weight_of_scoring_action(action: ScoringAction) -> i16 {
         match action {
-            ScoringAction::UpvotePost => Self::upvote_post_action_weight(),
-            ScoringAction::DownvotePost => Self::downvote_post_action_weight(),
-            ScoringAction::SharePost => Self::share_post_action_weight(),
-            ScoringAction::CreateComment => Self::create_comment_action_weight(),
-            ScoringAction::UpvoteComment => Self::upvote_comment_action_weight(),
-            ScoringAction::DownvoteComment => Self::downvote_comment_action_weight(),
-            ScoringAction::ShareComment => Self::share_comment_action_weight(),
-            ScoringAction::FollowBlog => Self::follow_blog_action_weight(),
-            ScoringAction::FollowAccount => Self::follow_account_action_weight(),
+            ScoringAction::UpvotePost => T::UpvotePostActionWeight::get(),
+            ScoringAction::DownvotePost => T::DownvotePostActionWeight::get(),
+            ScoringAction::SharePost => T::SharePostActionWeight::get(),
+            ScoringAction::CreateComment => T::CreateCommentActionWeight::get(),
+            ScoringAction::UpvoteComment => T::UpvoteCommentActionWeight::get(),
+            ScoringAction::DownvoteComment => T::DownvoteCommentActionWeight::get(),
+            ScoringAction::ShareComment => T::ShareCommentActionWeight::get(),
+            ScoringAction::FollowBlog => T::FollowBlogActionWeight::get(),
+            ScoringAction::FollowAccount => T::FollowAccountActionWeight::get(),
         }
     }
 
@@ -234,15 +234,15 @@ impl<T: Trait> Module<T> {
 
     pub fn is_username_valid(username: Vec<u8>) -> DispatchResult {
         ensure!(Self::account_by_profile_username(username.clone()).is_none(), Error::<T>::UsernameIsBusy);
-        ensure!(username.len() >= Self::username_min_len() as usize, Error::<T>::UsernameIsTooShort);
-        ensure!(username.len() <= Self::username_max_len() as usize, Error::<T>::UsernameIsTooLong);
+        ensure!(username.len() >= T::MinUsernameLen::get() as usize, Error::<T>::UsernameIsTooShort);
+        ensure!(username.len() <= T::MaxUsernameLen::get() as usize, Error::<T>::UsernameIsTooLong);
         ensure!(username.iter().all(|&x| x.is_ascii_alphanumeric()), Error::<T>::UsernameIsNotAlphanumeric);
 
         Ok(())
     }
 
     pub fn is_ipfs_hash_valid(ipfs_hash: Vec<u8>) -> DispatchResult {
-        ensure!(ipfs_hash.len() == Self::ipfs_hash_len() as usize, Error::<T>::IpfsIsIncorrect);
+        ensure!(ipfs_hash.len() == T::IpfsHashLen::get() as usize, Error::<T>::IpfsIsIncorrect);
 
         Ok(())
     }
@@ -303,8 +303,8 @@ impl<T: Trait> Module<T> {
 
         ensure!(Self::blog_id_by_handle(handle.clone()).is_none(), Error::<T>::HandleIsNotUnique);
 
-        ensure!(handle.len() >= Self::handle_min_len() as usize, Error::<T>::HandleIsTooShort);
-        ensure!(handle.len() <= Self::handle_max_len() as usize, Error::<T>::HandleIsTooLong);
+        ensure!(handle.len() >= T::MinHandleLen::get() as usize, Error::<T>::HandleIsTooShort);
+        ensure!(handle.len() <= T::MaxHandleLen::get() as usize, Error::<T>::HandleIsTooLong);
 
         ensure!(handle.iter().all(|&x| Self::is_valid_handle_char(x)), Error::<T>::HandleContainsInvalidChars);
 
