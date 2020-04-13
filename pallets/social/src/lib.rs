@@ -208,11 +208,17 @@ decl_error! {
     OverflowAddingPostOnBlog,
     /// Cannot create post not defining blog_id
     BlogIdIsUndefined,
+    /// Not allowed to create post/comment when entity is hidden
+    BannedToCreateWhenHidden,
+    /// Not allowed to follow blog when it's hidden
+    BannedToFollowWhenHidden,
+    /// Not allowed to create/update reaction to post/comment when entity is hidden
+    BannedToChangeReactionWhenHidden,
 
     /// Unknown parent comment id
     UnknownParentComment,
     /// Post by root_post_id is not of RegularPost extension
-    NoPostByRootPostId,
+    NotAPostByRootPostId,
     /// New comment IPFS-hash is the same as old one
     CommentIPFSHashNotDiffer,
     /// Overflow adding comment on post
@@ -499,6 +505,7 @@ decl_module! {
 
       let ref mut blog = Self::blog_by_id(blog_id).ok_or(Error::<T>::BlogNotFound)?;
       ensure!(!Self::blog_followed_by_account((follower.clone(), blog_id)), Error::<T>::AccountIsFollowingBlog);
+      ensure!(!blog.hidden, Error::<T>::BannedToFollowWhenHidden);
 
       Self::add_blog_follower(follower.clone(), blog)?;
       <BlogById<T>>::insert(blog_id, blog);
@@ -708,7 +715,10 @@ decl_module! {
 
       if let Some(comment_ext) = is_comment {
         let ref mut root_post = Self::post_by_id(comment_ext.root_post_id).ok_or(Error::<T>::PostNotFound)?;
-        ensure!(root_post.extension == PostExtension::RegularPost, Error::<T>::NoPostByRootPostId);
+        ensure!(root_post.extension == PostExtension::RegularPost, Error::<T>::NotAPostByRootPostId);
+
+        let blog = Self::get_blog_by_post_id(comment_ext.root_post_id)?;
+        ensure!(!blog.hidden && !root_post.hidden, Error::<T>::BannedToCreateWhenHidden);
 
         root_post.total_replies_count = root_post.total_replies_count.checked_add(1).ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
         Self::change_post_score_by_extension(owner.clone(), root_post, ScoringAction::CreateComment)?;
@@ -717,12 +727,13 @@ decl_module! {
         <PostById<T>>::insert(comment_ext.root_post_id, root_post);
         Self::deposit_event(RawEvent::CommentCreated(owner.clone(), new_post_id));
       } else if let Some(blog_id) = blog_id_opt {
-          let mut blog = Self::blog_by_id(blog_id).ok_or(Error::<T>::BlogNotFound)?;
-          blog.posts_count = blog.posts_count.checked_add(1).ok_or(Error::<T>::OverflowAddingPostOnBlog)?;
+        let mut blog = Self::blog_by_id(blog_id).ok_or(Error::<T>::BlogNotFound)?;
+        blog.posts_count = blog.posts_count.checked_add(1).ok_or(Error::<T>::OverflowAddingPostOnBlog)?;
+        ensure!(!blog.hidden, Error::<T>::BannedToCreateWhenHidden);
 
-          <BlogById<T>>::insert(blog_id, blog);
-          PostIdsByBlogId::mutate(blog_id, |ids| ids.push(new_post_id));
-          Self::deposit_event(RawEvent::PostCreated(owner.clone(), new_post_id));
+        <BlogById<T>>::insert(blog_id, blog);
+        PostIdsByBlogId::mutate(blog_id, |ids| ids.push(new_post_id));
+        Self::deposit_event(RawEvent::PostCreated(owner.clone(), new_post_id));
       } else {
         return Err(Error::<T>::BlogIdIsUndefined.into());
       }
@@ -816,6 +827,9 @@ decl_module! {
         Error::<T>::AccountAlreadyReacted
       );
 
+      let blog = Self::get_blog_by_post_id(post.id)?;
+      ensure!(!blog.hidden && !Self::is_root_post_hidden(post_id)?, Error::<T>::BannedToChangeReactionWhenHidden);
+
       let reaction_id = Self::new_reaction(owner.clone(), kind.clone());
 
       match kind {
@@ -846,6 +860,9 @@ decl_module! {
 
       let mut reaction = Self::reaction_by_id(reaction_id).ok_or(Error::<T>::ReactionNotFound)?;
       let ref mut post = Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?;
+
+      let blog = Self::get_blog_by_post_id(post.id)?;
+      ensure!(!blog.hidden && !post.hidden, Error::<T>::BannedToChangeReactionWhenHidden);
 
       ensure!(owner == reaction.created.account, Error::<T>::NotAReactionOwner);
       ensure!(reaction.kind != new_kind, Error::<T>::NewReactionKindNotDiffer);

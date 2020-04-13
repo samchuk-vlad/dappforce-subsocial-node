@@ -310,6 +310,47 @@ impl<T: Trait> Module<T> {
 
         Ok(handle)
     }
+
+    pub fn scoring_action_by_post_extension(extension: PostExtension, reaction_kind: ReactionKind, reverse: bool) -> ScoringAction {
+        let scoring_action;
+
+        match extension {
+            PostExtension::RegularPost | PostExtension::SharedPost(_) => match reaction_kind {
+                ReactionKind::Upvote => scoring_action = if reverse {ScoringAction::DownvotePost} else {ScoringAction::UpvotePost},
+                ReactionKind::Downvote => scoring_action = if reverse {ScoringAction::UpvotePost} else {ScoringAction::DownvotePost},
+            },
+            PostExtension::Comment(_) => match reaction_kind {
+                ReactionKind::Upvote => scoring_action = if reverse {ScoringAction::DownvoteComment} else {ScoringAction::UpvoteComment},
+                ReactionKind::Downvote => scoring_action = if reverse {ScoringAction::UpvoteComment} else {ScoringAction::DownvoteComment},
+            },
+        }
+
+        scoring_action
+    }
+
+    fn get_root_post(post_id: PostId) -> Result<Post<T>, DispatchError> {
+        let mut post = Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?;
+        if post.is_comment() {
+            let comment_ext = post.get_comment_ext()?;
+            post = Self::post_by_id(comment_ext.root_post_id).ok_or(Error::<T>::PostNotFound)?;
+        }
+
+        Ok(post)
+    }
+
+    // TODO: use this function everywhere, when blog_id is needed knowing only Post or post_id
+    pub fn get_blog_by_post_id(post_id: PostId) -> Result<Blog<T>, DispatchError> {
+        let post = Self::get_root_post(post_id)?;
+        let blog_id = post.blog_id.ok_or(Error::<T>::BlogIdIsUndefined)?;
+        let blog = Self::blog_by_id(blog_id).ok_or(Error::<T>::BlogNotFound)?;
+
+        Ok(blog)
+    }
+
+    pub fn is_root_post_hidden(post_id: PostId) -> Result<bool, DispatchError> {
+        let post = Self::get_root_post(post_id)?;
+        Ok(post.hidden)
+    }
 }
 
 impl<T: Trait> Post<T> {

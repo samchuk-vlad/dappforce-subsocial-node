@@ -987,6 +987,36 @@ fn create_comment_should_fail_invalid_ipfs_hash() {
 }
 
 #[test]
+fn create_comment_should_fail_blog_is_hidden() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_post()); // PostId 1
+    assert_ok!(_update_blog(
+      None,
+      None,
+      Some(self::blog_update(None, None, None, Some(true)))
+    ));
+
+    assert_noop!(_create_default_comment(), Error::<Test>::BannedToCreateWhenHidden);
+  });
+}
+
+#[test]
+fn create_comment_should_fail_post_is_hidden() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_post()); // PostId 1
+    assert_ok!(_update_post(
+      None,
+      None,
+      Some(self::post_update(None, None, Some(true)))
+    ));
+
+    assert_noop!(_create_default_comment(), Error::<Test>::BannedToCreateWhenHidden);
+  });
+}
+
+#[test]
 fn update_comment_should_work() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
@@ -1127,6 +1157,36 @@ fn create_post_reaction_should_fail_post_not_found() {
 }
 
 #[test]
+fn create_post_reaction_should_fail_blog_is_hidden() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_post()); // PostId 1
+    assert_ok!(_update_blog(
+      None,
+      None,
+      Some(self::blog_update(None, None, None, Some(true)))
+    ));
+
+    assert_noop!(_create_default_post_reaction(), Error::<Test>::BannedToChangeReactionWhenHidden);
+  });
+}
+
+#[test]
+fn create_post_reaction_should_fail_post_is_hidden() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_post()); // PostId 1
+    assert_ok!(_update_post(
+      None,
+      None,
+      Some(self::post_update(None, None, Some(true)))
+    ));
+
+    assert_noop!(_create_default_post_reaction(), Error::<Test>::BannedToChangeReactionWhenHidden);
+  });
+}
+
+#[test]
 fn create_comment_reaction_should_work_upvote() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
@@ -1192,6 +1252,38 @@ fn create_comment_reaction_should_fail_comment_not_found() {
   new_test_ext().execute_with(|| {
     // Try to catch an error creating reaction by the same account
     assert_noop!(_create_default_comment_reaction(), Error::<Test>::PostNotFound);
+  });
+}
+
+#[test]
+fn create_comment_reaction_should_fail_blog_is_hidden() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_post()); // PostId 1
+    assert_ok!(_create_default_comment()); // PostId 2
+    assert_ok!(_update_blog(
+      None,
+      None,
+      Some(self::blog_update(None, None, None, Some(true)))
+    ));
+
+    assert_noop!(_create_default_comment_reaction(), Error::<Test>::BannedToChangeReactionWhenHidden);
+  });
+}
+
+#[test]
+fn create_comment_reaction_should_fail_post_is_hidden() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_post()); // PostId 1
+    assert_ok!(_create_default_comment()); // PostId 2
+    assert_ok!(_update_post(
+      None,
+      None,
+      Some(self::post_update(None, None, Some(true)))
+    ));
+
+    assert_noop!(_create_default_comment_reaction(), Error::<Test>::BannedToChangeReactionWhenHidden);
   });
 }
 
@@ -1990,6 +2082,20 @@ fn follow_blog_should_fail_already_following() {
     assert_ok!(_default_follow_blog()); // Follow BlogId 1 by ACCOUNT2
 
     assert_noop!(_default_follow_blog(), Error::<Test>::AccountIsFollowingBlog);
+  });
+}
+
+#[test]
+fn follow_blog_should_fail_blog_is_hidden() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_update_blog(
+      None,
+      None,
+      Some(self::blog_update(None, None, None, Some(true)))
+    ));
+
+    assert_noop!(_default_follow_blog(), Error::<Test>::BannedToFollowWhenHidden);
   });
 }
 
