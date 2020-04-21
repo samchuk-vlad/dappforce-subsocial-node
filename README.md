@@ -42,7 +42,9 @@ cargo build --release
 [!] Experimental and may not work. Better [run with Docker](#connect-to-our-network-with-docker)
 Run as an archive node and connect to the public [Subsocial Testnet](http://testnet.subsocial.network/).
 ```bash
-./target/release/subsocial-node --name "Node Name" --pruning archive --bootnodes /ip4/167.172.104.62/tcp/30333/p2p/QmfHoYER3gPchRvHSTzyFZ9hhvQG3oP9jgcQEbfbm2x9LR /ip4/167.172.104.62/tcp/30334/p2p/QmVcp8pBKtKcwWmWcrARZcdLxW9E1EzfU9JwvgiSKu4How
+./target/release/subsocial-node --name "Node Name" \
+--pruning archive \
+--bootnodes /ip4/167.172.104.62/tcp/30333/p2p/QmSoDzpuLQYnxxADmMqNmjtMrZnUPXtY7dJzZw3Wxmrcrz /ip4/167.172.104.62/tcp/30334/p2p/QmVnB3nq37TYmucRK1AQwKUaBpnLJdQvtKmnouw9BFVmp4
 ```
 
 ### Install a release build
@@ -78,14 +80,21 @@ docker run -p 9944:9944 dappforce/subsocial-node:latest ./subsocial-node [flags]
 ### Connect to our network with Docker
 If you're interested in launching your node and connect to [Subsocial Testnet](http://testnet.subsocial.network/), you should run the next command:
 ```
-docker run -p 30333:30333 -p 9933:9933 -v <YourPath>:/data dappforce/subsocial-node:df-v2 ./subsocial-node -d /data --name <NodeName> --pruning archive --bootnodes /ip4/167.172.104.62/tcp/30333/p2p/QmfHoYER3gPchRvHSTzyFZ9hhvQG3oP9jgcQEbfbm2x9LR /ip4/167.172.104.62/tcp/30334/p2p/QmVcp8pBKtKcwWmWcrARZcdLxW9E1EzfU9JwvgiSKu4How
+docker run \
+-p 30333:30333 -p 9933:9933 \
+-v <YourPath>:/data \
+dappforce/subsocial-node:df-v2 ./subsocial-node \
+-d /data \
+--name <NodeName> \
+--pruning archive \
+--bootnodes /ip4/167.172.104.62/tcp/30333/p2p/QmSoDzpuLQYnxxADmMqNmjtMrZnUPXtY7dJzZw3Wxmrcrz /ip4/167.172.104.62/tcp/30334/p2p/QmVnB3nq37TYmucRK1AQwKUaBpnLJdQvtKmnouw9BFVmp4
 ```
 where:
 `<YourPath>` - should be replaced with a full path, where node's data will be stored;
 `<NodeName>` - node's name you wish to be shown on [Telemetry](https://telemetry.polkadot.io/#list/Subsocial%20Barracuda%20Testnet).
 Be patient, the current active bootnodes' URIs are:
-- Alice: `/ip4/167.172.104.62/tcp/30333/p2p/QmfHoYER3gPchRvHSTzyFZ9hhvQG3oP9jgcQEbfbm2x9LR`
-- Bob: `/ip4/167.172.104.62/tcp/30334/p2p/QmVcp8pBKtKcwWmWcrARZcdLxW9E1EzfU9JwvgiSKu4How`
+- Alice: `/ip4/167.172.104.62/tcp/30333/p2p/QmSoDzpuLQYnxxADmMqNmjtMrZnUPXtY7dJzZw3Wxmrcrz`
+- Bob: `/ip4/167.172.104.62/tcp/30334/p2p/QmVnB3nq37TYmucRK1AQwKUaBpnLJdQvtKmnouw9BFVmp4`
 
 ### Build your own Docker image
 If you want to build a docker image from your local repository (it will take some time...), run the following command from the root of your repository:
