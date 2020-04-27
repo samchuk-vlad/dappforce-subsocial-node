@@ -311,23 +311,6 @@ impl<T: Trait> Module<T> {
         Ok(handle)
     }
 
-    pub fn scoring_action_by_post_extension(extension: PostExtension, reaction_kind: ReactionKind, reverse: bool) -> ScoringAction {
-        let scoring_action;
-
-        match extension {
-            PostExtension::RegularPost | PostExtension::SharedPost(_) => match reaction_kind {
-                ReactionKind::Upvote => scoring_action = if reverse {ScoringAction::DownvotePost} else {ScoringAction::UpvotePost},
-                ReactionKind::Downvote => scoring_action = if reverse {ScoringAction::UpvotePost} else {ScoringAction::DownvotePost},
-            },
-            PostExtension::Comment(_) => match reaction_kind {
-                ReactionKind::Upvote => scoring_action = if reverse {ScoringAction::DownvoteComment} else {ScoringAction::UpvoteComment},
-                ReactionKind::Downvote => scoring_action = if reverse {ScoringAction::UpvoteComment} else {ScoringAction::DownvoteComment},
-            },
-        }
-
-        scoring_action
-    }
-
     fn get_root_post(post_id: PostId) -> Result<Post<T>, DispatchError> {
         let mut post = Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?;
         if post.is_comment() {
