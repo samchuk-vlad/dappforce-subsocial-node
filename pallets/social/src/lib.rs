@@ -454,7 +454,6 @@ decl_module! {
 
       if let Some(mut handle) = handle_opt {
         handle = Self::lowercase_and_validate_a_handle(handle)?;
-        new_blog.handle = Some(handle.clone());
 
         BlogIdByHandle::insert(handle, blog_id);
       }
@@ -520,9 +519,9 @@ decl_module! {
             BlogIdByHandle::remove(blog_handle);
           }
           if let Some(mut handle) = handle_opt.clone() {
-            handle = Self::lowercase_and_validate_a_handle(handle.clone())?;
+            handle = Self::lowercase_and_validate_a_handle(handle)?;
 
-            BlogIdByHandle::insert(handle.clone(), blog_id);
+            BlogIdByHandle::insert(handle, blog_id);
           }
           new_history_record.old_data.handle = Some(blog.handle);
           blog.handle = handle_opt;
