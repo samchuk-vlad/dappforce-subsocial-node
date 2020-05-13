@@ -780,7 +780,6 @@ decl_module! {
         Self::change_post_score_by_extension(owner.clone(), root_post, ScoringAction::CreateComment)?;
 
         <PostById<T>>::insert(comment_ext.root_post_id, root_post);
-        Self::deposit_event(RawEvent::CommentCreated(owner.clone(), new_post_id));
       } else if let Some(blog_id) = blog_id_opt {
         let mut blog = Self::blog_by_id(blog_id).ok_or(Error::<T>::BlogNotFound)?;
         blog.posts_count = blog.posts_count.checked_add(1).ok_or(Error::<T>::OverflowAddingPostOnBlog)?;
@@ -788,13 +787,14 @@ decl_module! {
 
         <BlogById<T>>::insert(blog_id, blog);
         PostIdsByBlogId::mutate(blog_id, |ids| ids.push(new_post_id));
-        Self::deposit_event(RawEvent::PostCreated(owner.clone(), new_post_id));
       } else {
         return Err(Error::<T>::BlogIdIsUndefined.into());
       }
-
+      
       <PostById<T>>::insert(new_post_id, new_post);
       NextPostId::mutate(|n| { *n += 1; });
+      
+      Self::deposit_event(RawEvent::PostCreated(owner.clone(), new_post_id));
     }
 
     pub fn update_post(origin, post_id: PostId, update: PostUpdate) {
@@ -865,11 +865,7 @@ decl_module! {
         post.edit_history.push(new_history_record);
         <PostById<T>>::insert(post_id, post.clone());
 
-        if post.is_comment() {
-          Self::deposit_event(RawEvent::PostUpdated(owner.clone(), post_id));
-        } else {
-          Self::deposit_event(RawEvent::PostUpdated(owner.clone(), post_id));
-        }
+        Self::deposit_event(RawEvent::PostUpdated(owner.clone(), post_id));
       }
     }
 
@@ -999,18 +995,9 @@ decl_event!(
     PostDeleted(AccountId, PostId),
     PostShared(AccountId, PostId),
 
-    CommentCreated(AccountId, PostId),
-    CommentUpdated(AccountId, PostId),
-    CommentDeleted(AccountId, PostId),
-    CommentShared(AccountId, PostId),
-
     PostReactionCreated(AccountId, PostId, ReactionId),
     PostReactionUpdated(AccountId, PostId, ReactionId),
     PostReactionDeleted(AccountId, PostId, ReactionId),
-
-    CommentReactionCreated(AccountId, PostId, ReactionId),
-    CommentReactionUpdated(AccountId, PostId, ReactionId),
-    CommentReactionDeleted(AccountId, PostId, ReactionId),
 
     ProfileCreated(AccountId),
     ProfileUpdated(AccountId),

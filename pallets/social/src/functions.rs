@@ -265,12 +265,7 @@ impl<T: Trait> Module<T> {
         <PostSharesByAccount<T>>::insert((account.clone(), original_post_id), shares_count);
         SharedPostIdsByOriginalPostId::mutate(original_post_id, |ids| ids.push(shared_post_id));
 
-        if original_post.is_comment() {
-            Self::deposit_event(RawEvent::CommentShared(account, original_post_id));
-        } else {
-            Self::deposit_event(RawEvent::PostShared(account, original_post_id));
-        }
-
+        Self::deposit_event(RawEvent::PostShared(account, original_post_id));
         Ok(())
     }
 
