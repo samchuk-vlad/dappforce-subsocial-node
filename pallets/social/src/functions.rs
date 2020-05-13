@@ -97,9 +97,9 @@ impl<T: Trait> Module<T> {
             if post.created.account != account {
                 if let Some(score_diff) = Self::post_score_by_account((account.clone(), post_id, action)) {
                     let reputation_diff = Self::account_reputation_diff_by_account((account.clone(), post.created.account.clone(), action)).ok_or(Error::<T>::ReputationDiffNotFound)?;
-                    post.score = post.score.checked_add(score_diff as i32 * -1).ok_or(Error::<T>::OutOfBoundsRevertingPostScore)?;
-                    blog.score = blog.score.checked_add(score_diff as i32 * -1).ok_or(Error::<T>::OutOfBoundsRevertingBlogScore)?;
-                    Self::change_social_account_reputation(post.created.account.clone(), account.clone(), reputation_diff * -1, action)?;
+                    post.score = post.score.checked_add(-(score_diff as i32)).ok_or(Error::<T>::OutOfBoundsRevertingPostScore)?;
+                    blog.score = blog.score.checked_add(-(score_diff as i32)).ok_or(Error::<T>::OutOfBoundsRevertingBlogScore)?;
+                    Self::change_social_account_reputation(post.created.account.clone(), account.clone(), -reputation_diff, action)?;
                     <PostScoreByAccount<T>>::remove((account, post_id, action));
                 } else {
                     match action {
@@ -143,9 +143,9 @@ impl<T: Trait> Module<T> {
         if comment.created.account != account {
             if let Some(score_diff) = Self::post_score_by_account((account.clone(), comment_id, action)) {
                 let reputation_diff = Self::account_reputation_diff_by_account((account.clone(), comment.created.account.clone(), action)).ok_or(Error::<T>::ReputationDiffNotFound)?;
-                comment.score = comment.score.checked_add(score_diff as i32 * -1).ok_or(Error::<T>::OutOfBoundsRevertingCommentScore)?;
-                Self::change_social_account_reputation(comment.created.account.clone(), account.clone(), reputation_diff * -1, action)?;
-                <PostScoreByAccount<T>>::remove((account.clone(), comment_id, action));
+                comment.score = comment.score.checked_add(-(score_diff as i32)).ok_or(Error::<T>::OutOfBoundsRevertingCommentScore)?;
+                Self::change_social_account_reputation(comment.created.account.clone(), account.clone(), -reputation_diff, action)?;
+                <PostScoreByAccount<T>>::remove((account, comment_id, action));
             } else {
                 match action {
                     ScoringAction::UpvoteComment => {
@@ -159,7 +159,7 @@ impl<T: Trait> Module<T> {
                         }
                     },
                     ScoringAction::CreateComment => {
-                        let ref mut post = Self::post_by_id(comment_ext.root_post_id).ok_or(Error::<T>::PostNotFound)?;
+                        let post = &mut (Self::post_by_id(comment_ext.root_post_id).ok_or(Error::<T>::PostNotFound)?);
                         Self::change_post_score(account.clone(), post, action)?;
                     }
                     _ => (),
@@ -184,15 +184,15 @@ impl<T: Trait> Module<T> {
         }
 
         if score_diff < 0 {
-            social_account.reputation = social_account.reputation.checked_sub((score_diff * -1) as u32).ok_or(Error::<T>::OutOfBoundsUpdatingAccountReputation)?;
+            social_account.reputation = social_account.reputation.checked_sub(-score_diff as u32).ok_or(Error::<T>::OutOfBoundsUpdatingAccountReputation)?;
         } else {
             social_account.reputation = social_account.reputation.checked_add(score_diff as u32).ok_or(Error::<T>::OutOfBoundsUpdatingAccountReputation)?;
         }
 
         if Self::account_reputation_diff_by_account((scorer.clone(), account.clone(), action)).is_some() {
-            <AccountReputationDiffByAccount<T>>::remove((scorer.clone(), account.clone(), action));
+            <AccountReputationDiffByAccount<T>>::remove((scorer, account.clone(), action));
         } else {
-            <AccountReputationDiffByAccount<T>>::insert((scorer.clone(), account.clone(), action), score_diff);
+            <AccountReputationDiffByAccount<T>>::insert((scorer, account.clone(), action), score_diff);
         }
 
         <SocialAccountById<T>>::insert(account.clone(), social_account.clone());
@@ -346,22 +346,21 @@ impl<T: Trait> Module<T> {
 
 impl<T: Trait> Post<T> {
     pub fn is_comment(&self) -> bool {
-        return match self.extension {
+        match self.extension {
             PostExtension::Comment(_) => true,
             _ => false,
         }
     }
 
     pub fn is_shared_post(&self) -> bool {
-        return match self.extension {
+        match self.extension {
             PostExtension::SharedPost(_) => true,
             _ => false,
         }
     }
 
-    // TODO: Look for cases where this function can be used
     pub fn get_comment_ext(&self) -> Result<CommentExt, DispatchError> {
-        return match self.extension {
+        match self.extension {
             PostExtension::Comment(comment_ext) => Ok(comment_ext),
             _ => Err(Error::<T>::PostIsNotAComment.into()),
         }

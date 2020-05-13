@@ -441,8 +441,10 @@ fn create_blog_should_make_handle_lowercase() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_blog(None, Some(Some(handle.clone())), None)); // BlodId 1
 
+    // Handle should be lowercase in storage and original in struct
     let blog = Social::blog_by_id(1).unwrap();
-    assert_eq!(blog.handle, Some(handle.to_ascii_lowercase()));
+    assert_eq!(blog.handle, Some(handle.clone()));
+    assert_eq!(Social::blog_id_by_handle(handle.to_ascii_lowercase()), Some(1));
   });
 }
 

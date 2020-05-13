@@ -1,4 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::string_lit_as_bytes)]
 
 pub mod functions;
 mod tests;
@@ -31,6 +32,7 @@ pub struct Blog<T: Trait> {
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[allow(clippy::option_option)]
 pub struct BlogUpdate<AccountId> {
   pub writers: Option<Vec<AccountId>>,
   pub handle: Option<Option<Vec<u8>>>,
@@ -435,7 +437,7 @@ decl_module! {
       Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
 
       let blog_id = Self::next_blog_id();
-      let ref mut new_blog: Blog<T> = Blog {
+      let new_blog: &mut Blog<T> = &mut Blog {
         id: blog_id,
         created: WhoAndWhen::<T>::new(owner.clone()),
         updated: None,
@@ -461,7 +463,7 @@ decl_module! {
       <BlogById<T>>::insert(blog_id, new_blog);
       <BlogIdsByOwner<T>>::mutate(owner.clone(), |ids| ids.push(blog_id));
       NextBlogId::mutate(|n| { *n += 1; });
-      Self::deposit_event(RawEvent::BlogCreated(owner.clone(), blog_id));
+      Self::deposit_event(RawEvent::BlogCreated(owner, blog_id));
     }
 
     pub fn update_blog(origin, blog_id: BlogId, update: BlogUpdate<T::AccountId>) {
@@ -534,25 +536,25 @@ decl_module! {
         blog.updated = Some(WhoAndWhen::<T>::new(owner.clone()));
         blog.edit_history.push(new_history_record);
         <BlogById<T>>::insert(blog_id, blog);
-        Self::deposit_event(RawEvent::BlogUpdated(owner.clone(), blog_id));
+        Self::deposit_event(RawEvent::BlogUpdated(owner, blog_id));
       }
     }
 
     pub fn follow_blog(origin, blog_id: BlogId) {
       let follower = ensure_signed(origin)?;
 
-      let ref mut blog = Self::blog_by_id(blog_id).ok_or(Error::<T>::BlogNotFound)?;
+      let blog = &mut (Self::blog_by_id(blog_id).ok_or(Error::<T>::BlogNotFound)?);
       ensure!(!Self::blog_followed_by_account((follower.clone(), blog_id)), Error::<T>::AccountIsFollowingBlog);
       ensure!(!blog.hidden, Error::<T>::BannedToFollowWhenHidden);
 
-      Self::add_blog_follower(follower.clone(), blog)?;
+      Self::add_blog_follower(follower, blog)?;
       <BlogById<T>>::insert(blog_id, blog);
     }
 
     pub fn unfollow_blog(origin, blog_id: BlogId) {
       let follower = ensure_signed(origin)?;
 
-      let ref mut blog = Self::blog_by_id(blog_id).ok_or(Error::<T>::BlogNotFound)?;
+      let blog = &mut (Self::blog_by_id(blog_id).ok_or(Error::<T>::BlogNotFound)?);
       ensure!(Self::blog_followed_by_account((follower.clone(), blog_id)), Error::<T>::AccountIsNotFollowingBlog);
 
       let mut social_account = Self::social_account_by_id(follower.clone()).ok_or(Error::<T>::SocialAccountNotFound)?;
@@ -565,7 +567,7 @@ decl_module! {
         let author = blog.created.account.clone();
         if let Some(score_diff) = Self::account_reputation_diff_by_account((follower.clone(), author.clone(), ScoringAction::FollowBlog)) {
           blog.score = blog.score.checked_sub(score_diff as i32).ok_or(Error::<T>::OutOfBoundsUpdatingBlogScore)?;
-          Self::change_social_account_reputation(author.clone(), follower.clone(), score_diff * -1, ScoringAction::FollowBlog)?;
+          Self::change_social_account_reputation(author, follower.clone(), -score_diff, ScoringAction::FollowBlog)?;
         }
       }
 
@@ -575,7 +577,7 @@ decl_module! {
       <SocialAccountById<T>>::insert(follower.clone(), social_account);
       <BlogById<T>>::insert(blog_id, blog);
 
-      Self::deposit_event(RawEvent::BlogUnfollowed(follower.clone(), blog_id));
+      Self::deposit_event(RawEvent::BlogUnfollowed(follower, blog_id));
     }
 
     pub fn follow_account(origin, account: T::AccountId) {
@@ -593,7 +595,7 @@ decl_module! {
         .checked_add(1).ok_or(Error::<T>::OverflowFollowingAccount)?;
 
       Self::change_social_account_reputation(account.clone(), follower.clone(),
-        Self::get_score_diff(follower_account.reputation.clone(), ScoringAction::FollowAccount),
+        Self::get_score_diff(follower_account.reputation, ScoringAction::FollowAccount),
         ScoringAction::FollowAccount
       )?;
 
@@ -655,10 +657,10 @@ decl_module! {
           edit_history: vec![]
         }
       );
-      <AccountByProfileUsername<T>>::insert(username.clone(), owner.clone());
-      <SocialAccountById<T>>::insert(owner.clone(), social_account.clone());
+      <AccountByProfileUsername<T>>::insert(username, owner.clone());
+      <SocialAccountById<T>>::insert(owner.clone(), social_account);
 
-      Self::deposit_event(RawEvent::ProfileCreated(owner.clone()));
+      Self::deposit_event(RawEvent::ProfileCreated(owner));
     }
 
     pub fn update_profile(origin, update: ProfileUpdate) {
@@ -704,7 +706,7 @@ decl_module! {
         social_account.profile = Some(profile);
         <SocialAccountById<T>>::insert(owner.clone(), social_account);
 
-        Self::deposit_event(RawEvent::ProfileUpdated(owner.clone()));
+        Self::deposit_event(RawEvent::ProfileUpdated(owner));
       }
     }
 
@@ -724,7 +726,7 @@ decl_module! {
           is_comment = Some(comment_ext);
         },
         PostExtension::SharedPost(post_id) => {
-          let ref mut post = Self::post_by_id(post_id).ok_or(Error::<T>::OriginalPostNotFound)?;
+          let post = &mut (Self::post_by_id(post_id).ok_or(Error::<T>::OriginalPostNotFound)?);
           ensure!(!post.is_shared_post(), Error::<T>::CannotShareSharedPost);
           Self::share_post(owner.clone(), post, new_post_id)?;
         },
@@ -748,7 +750,7 @@ decl_module! {
       };
 
       if let Some(comment_ext) = is_comment {
-        let ref mut root_post = Self::post_by_id(comment_ext.root_post_id).ok_or(Error::<T>::PostNotFound)?;
+        let root_post = &mut (Self::post_by_id(comment_ext.root_post_id).ok_or(Error::<T>::PostNotFound)?);
         ensure!(root_post.extension == PostExtension::RegularPost, Error::<T>::NotAPostByRootPostId);
 
         let blog = Self::get_blog_by_post_id(comment_ext.root_post_id)?;
@@ -794,7 +796,7 @@ decl_module! {
       <PostById<T>>::insert(new_post_id, new_post);
       NextPostId::mutate(|n| { *n += 1; });
       
-      Self::deposit_event(RawEvent::PostCreated(owner.clone(), new_post_id));
+      Self::deposit_event(RawEvent::PostCreated(owner, new_post_id));
     }
 
     pub fn update_post(origin, post_id: PostId, update: PostUpdate) {
@@ -824,10 +826,8 @@ decl_module! {
           new_history_record.old_data.ipfs_hash = Some(post.ipfs_hash);
           post.ipfs_hash = ipfs_hash;
           fields_updated += 1;
-        } else {
-          if post.is_comment() {
-            return Err(Error::<T>::CommentIPFSHashNotDiffer.into());
-          }
+        } else if post.is_comment() {
+          return Err(Error::<T>::CommentIPFSHashNotDiffer.into());
         }
       }
 
@@ -851,7 +851,7 @@ decl_module! {
             PostIdsByBlogId::mutate(post_blog_id, |post_ids| Self::vec_remove_on(post_ids, post_id));
 
             // Add post_id to its new blog:
-            PostIdsByBlogId::mutate(blog_id.clone(), |ids| ids.push(post_id));
+            PostIdsByBlogId::mutate(blog_id, |ids| ids.push(post_id));
             new_history_record.old_data.blog_id = post.blog_id;
             post.blog_id = Some(blog_id);
             fields_updated += 1;
@@ -865,14 +865,14 @@ decl_module! {
         post.edit_history.push(new_history_record);
         <PostById<T>>::insert(post_id, post.clone());
 
-        Self::deposit_event(RawEvent::PostUpdated(owner.clone(), post_id));
+        Self::deposit_event(RawEvent::PostUpdated(owner, post_id));
       }
     }
 
     pub fn create_post_reaction(origin, post_id: PostId, kind: ReactionKind) {
       let owner = ensure_signed(origin)?;
 
-      let ref mut post = Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?;
+      let post = &mut (Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?);
       ensure!(
         !<PostReactionIdByAccount<T>>::exists((owner.clone(), post_id)),
         Error::<T>::AccountAlreadyReacted
@@ -881,7 +881,7 @@ decl_module! {
       let blog = Self::get_blog_by_post_id(post.id)?;
       ensure!(!blog.hidden && !Self::is_root_post_hidden(post_id)?, Error::<T>::BannedToChangeReactionWhenHidden);
 
-      let reaction_id = Self::new_reaction(owner.clone(), kind.clone());
+      let reaction_id = Self::new_reaction(owner.clone(), kind);
 
       match kind {
         ReactionKind::Upvote => post.upvotes_count = post.upvotes_count.checked_add(1).ok_or(Error::<T>::OverflowUpvoting)?,
@@ -898,7 +898,7 @@ decl_module! {
 
       ReactionIdsByPostId::mutate(post_id, |ids| ids.push(reaction_id));
       <PostReactionIdByAccount<T>>::insert((owner.clone(), post_id), reaction_id);
-      Self::deposit_event(RawEvent::PostReactionCreated(owner.clone(), post_id, reaction_id));
+      Self::deposit_event(RawEvent::PostReactionCreated(owner, post_id, reaction_id));
     }
 
     pub fn update_post_reaction(origin, post_id: PostId, reaction_id: ReactionId, new_kind: ReactionKind) {
@@ -910,7 +910,7 @@ decl_module! {
       );
 
       let mut reaction = Self::reaction_by_id(reaction_id).ok_or(Error::<T>::ReactionNotFound)?;
-      let ref mut post = Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?;
+      let post = &mut (Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?);
 
       let blog = Self::get_blog_by_post_id(post.id)?;
       ensure!(!blog.hidden && !post.hidden, Error::<T>::BannedToChangeReactionWhenHidden);
@@ -940,7 +940,7 @@ decl_module! {
       <ReactionById<T>>::insert(reaction_id, reaction);
       <PostById<T>>::insert(post_id, post);
 
-      Self::deposit_event(RawEvent::PostReactionUpdated(owner.clone(), post_id, reaction_id));
+      Self::deposit_event(RawEvent::PostReactionUpdated(owner, post_id, reaction_id));
     }
 
     pub fn delete_post_reaction(origin, post_id: PostId, reaction_id: ReactionId) {
@@ -952,7 +952,7 @@ decl_module! {
       );
 
       let reaction = Self::reaction_by_id(reaction_id).ok_or(Error::<T>::ReactionNotFound)?;
-      let ref mut post = Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?;
+      let post = &mut (Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?);
 
       ensure!(owner == reaction.created.account, Error::<T>::NotAReactionOwner);
 
@@ -969,7 +969,7 @@ decl_module! {
       ReactionIdsByPostId::mutate(post_id, |ids| Self::vec_remove_on(ids, reaction_id));
       <PostReactionIdByAccount<T>>::remove((owner.clone(), post_id));
 
-      Self::deposit_event(RawEvent::PostReactionDeleted(owner.clone(), post_id, reaction_id));
+      Self::deposit_event(RawEvent::PostReactionDeleted(owner, post_id, reaction_id));
     }
   }
 }
