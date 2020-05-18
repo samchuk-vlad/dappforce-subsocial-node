@@ -2756,21 +2756,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-space-owners"
-version = "2.0.0"
-dependencies = [
- "frame-support",
- "frame-system",
- "pallet-timestamp",
- "pallet-utils",
- "parity-scale-codec",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-sudo"
 version = "2.0.0"
 source = "git+https://github.com/paritytech/substrate.git?rev=3e651110aa06aa835790df63410a29676243fc54#3e651110aa06aa835790df63410a29676243fc54"
@@ -5051,7 +5036,6 @@ dependencies = [
  "pallet-indices",
  "pallet-randomness-collective-flip",
  "pallet-social",
- "pallet-space-owners",
  "pallet-sudo",
  "pallet-timestamp",
  "pallet-transaction-payment",

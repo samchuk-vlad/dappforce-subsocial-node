@@ -268,23 +268,6 @@ impl pallet_social::Trait for Runtime {
   type MaxCommentDepth = MaxCommentDepth;
 }
 
-parameter_types! {
-  pub const MinSpaceOwners: u16 = 1;
-  pub const MaxSpaceOwners: u16 = 1000;
-  pub const MaxChangeNotesLength: u16 = 1024;
-  pub const BlocksToLive: BlockNumber = 7 * DAYS;
-  pub const DeleteExpiredChangesPeriod: BlockNumber = 1 * HOURS;
-}
-
-impl pallet_space_owners::Trait for Runtime {
-  type Event = Event;
-  type MinSpaceOwners = MinSpaceOwners;
-  type MaxSpaceOwners = MaxSpaceOwners;
-  type MaxChangeNotesLength = MaxChangeNotesLength;
-  type BlocksToLive = BlocksToLive;
-  type DeleteExpiredChangesPeriod = DeleteExpiredChangesPeriod;
-}
-
 construct_runtime!(
   pub enum Runtime where
     Block = Block,
@@ -300,7 +283,6 @@ construct_runtime!(
     TransactionPayment: transaction_payment::{Module, Storage},
     Sudo: sudo,
     Social: pallet_social::{Module, Call, Storage, Event<T>},
-    Multiownership: pallet_space_owners::{Module, Call, Storage, Event<T>},
     RandomnessCollectiveFlip: randomness_collective_flip::{Module, Call, Storage},
   }
 );
