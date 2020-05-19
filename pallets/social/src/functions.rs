@@ -306,28 +306,10 @@ impl<T: Trait> Module<T> {
         Ok(handle)
     }
 
-    fn get_root_post(post_id: PostId) -> Result<Post<T>, DispatchError> {
-        let mut post = Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?;
-        if post.is_comment() {
-            let comment_ext = post.get_comment_ext()?;
-            post = Self::post_by_id(comment_ext.root_post_id).ok_or(Error::<T>::PostNotFound)?;
-        }
-
-        Ok(post)
-    }
-
-    // TODO: use this function everywhere, when blog_id is needed knowing only Post or post_id
-    pub fn get_blog_by_post_id(post_id: PostId) -> Result<Blog<T>, DispatchError> {
-        let post = Self::get_root_post(post_id)?;
-        let blog_id = post.blog_id.ok_or(Error::<T>::BlogIdIsUndefined)?;
-        let blog = Self::blog_by_id(blog_id).ok_or(Error::<T>::BlogNotFound)?;
-
-        Ok(blog)
-    }
-
     pub fn is_root_post_hidden(post_id: PostId) -> Result<bool, DispatchError> {
-        let post = Self::get_root_post(post_id)?;
-        Ok(post.hidden)
+        let post = Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?;
+        let root_post = post.get_root_post()?;
+        Ok(root_post.hidden)
     }
 
     pub fn get_ancestors(post_id: PostId) -> Vec<Post<T>> {
@@ -344,7 +326,38 @@ impl<T: Trait> Module<T> {
     }
 }
 
+impl<T: Trait> Blog<T> {
+    pub fn ensure_blog_owner(&self, who: T::AccountId) -> DispatchResult {
+        ensure!(self.owner == who, Error::<T>::NotABlogOwner);
+        Ok(())
+    }
+
+    pub fn increment_posts_count(&mut self) -> DispatchResult {
+        self.posts_count = self.posts_count.checked_add(1).ok_or(Error::<T>::OverflowAddingPostOnBlog)?;
+        Ok(())
+    }
+}
+
 impl<T: Trait> Post<T> {
+    pub fn create(id: PostId, created_by: T::AccountId, blog_id_opt: Option<BlogId>, extension: PostExtension, ipfs_hash: Vec<u8>) -> Self {
+        Post {
+            id,
+            created: WhoAndWhen::<T>::new(created_by),
+            updated: None,
+            hidden: false,
+            blog_id: blog_id_opt,
+            extension,
+            ipfs_hash,
+            edit_history: vec![],
+            direct_replies_count: 0,
+            total_replies_count: 0,
+            shares_count: 0,
+            upvotes_count: 0,
+            downvotes_count: 0,
+            score: 0,
+        }
+    }
+
     pub fn is_comment(&self) -> bool {
         match self.extension {
             PostExtension::Comment(_) => true,
@@ -362,7 +375,23 @@ impl<T: Trait> Post<T> {
     pub fn get_comment_ext(&self) -> Result<CommentExt, DispatchError> {
         match self.extension {
             PostExtension::Comment(comment_ext) => Ok(comment_ext),
-            _ => Err(Error::<T>::PostIsNotAComment.into()),
+            _ => Err(Error::<T>::PostIsNotAComment.into())
         }
+    }
+
+    pub fn get_root_post(&self) -> Result<Post<T>, DispatchError> {
+        match self.extension {
+            PostExtension::RegularPost | PostExtension::SharedPost(_) => Ok(self.clone()),
+            PostExtension::Comment(comment_ext) => Module::post_by_id(comment_ext.root_post_id).ok_or(Error::<T>::PostNotFound.into()),
+        }
+    }
+
+    pub fn get_blog(&self) -> Result<Blog<T>, DispatchError> {
+        let root_post = self.get_root_post()?;
+
+        let blog_id = root_post.blog_id.ok_or(Error::<T>::BlogIdIsUndefined)?;
+        let blog = Module::blog_by_id(blog_id).ok_or(Error::<T>::BlogNotFound)?;
+
+        Ok(blog)
     }
 }

@@ -100,6 +100,7 @@ pub type AccountId = u64;
 
 const ACCOUNT1 : AccountId = 1;
 const ACCOUNT2 : AccountId = 2;
+const ACCOUNT3: AccountId = 3;
 
 fn blog_handle() -> Vec<u8> {
   b"blog_handle".to_vec()
@@ -109,10 +110,8 @@ fn blog_ipfs_hash() -> Vec<u8> {
   b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()
 }
 
-fn blog_update(writers: Option<Vec<AccountId>>, handle: Option<Option<Vec<u8>>>,
-               ipfs_hash: Option<Vec<u8>>, hidden: Option<bool>) -> BlogUpdate<u64> {
+fn blog_update(handle: Option<Option<Vec<u8>>>, ipfs_hash: Option<Vec<u8>>, hidden: Option<bool>) -> BlogUpdate {
   BlogUpdate {
-    writers,
     handle,
     ipfs_hash,
     hidden
@@ -226,11 +225,11 @@ fn _create_blog(origin: Option<Origin>, handle: Option<Option<Vec<u8>>>, ipfs_ha
   )
 }
 
-fn _update_blog(origin: Option<Origin>, blog_id: Option<u32>, update: Option<BlogUpdate<u64>>) -> DispatchResult {
+fn _update_blog(origin: Option<Origin>, blog_id: Option<u32>, update: Option<BlogUpdate>) -> DispatchResult {
   Social::update_blog(
     origin.unwrap_or(Origin::signed(ACCOUNT1)),
     blog_id.unwrap_or(1).into(),
-    update.unwrap_or(self::blog_update(None, None, None, None))
+    update.unwrap_or(self::blog_update(None, None, None))
   )
 }
 
@@ -423,7 +422,7 @@ fn create_blog_should_work() {
     assert!(blog.updated.is_none());
     assert_eq!(blog.hidden, false);
 
-    assert!(blog.writers.is_empty());
+    assert_eq!(blog.owner, ACCOUNT1);
     assert_eq!(blog.handle, Some(self::blog_handle()));
     assert_eq!(blog.ipfs_hash, self::blog_ipfs_hash());
 
@@ -536,7 +535,6 @@ fn update_blog_should_work() {
     assert_ok!(_update_blog(None, None,
       Some(
         self::blog_update(
-          None,
           Some(Some(handle.clone())),
           Some(ipfs_hash.clone()),
           Some(true)
@@ -551,7 +549,6 @@ fn update_blog_should_work() {
     assert_eq!(blog.hidden, true);
 
     // Check whether history recorded correctly
-    assert_eq!(blog.edit_history[0].old_data.writers, None);
     assert_eq!(blog.edit_history[0].old_data.handle, Some(Some(self::blog_handle())));
     assert_eq!(blog.edit_history[0].old_data.ipfs_hash, Some(self::blog_ipfs_hash()));
     assert_eq!(blog.edit_history[0].old_data.hidden, Some(false));
@@ -579,7 +576,6 @@ fn update_blog_should_fail_blog_not_found() {
     assert_noop!(_update_blog(None, Some(2),
       Some(
         self::blog_update(
-          None,
           Some(Some(handle)),
           None,
           None
@@ -600,7 +596,6 @@ fn update_blog_should_fail_not_an_owner() {
     assert_noop!(_update_blog(Some(Origin::signed(ACCOUNT2)), None,
       Some(
         self::blog_update(
-          None,
           Some(Some(handle)),
           None,
           None
@@ -621,7 +616,6 @@ fn update_blog_should_fail_short_handle() {
     assert_err!(_update_blog(None, None,
       Some(
         self::blog_update(
-          None,
           Some(Some(handle)),
           None,
           None
@@ -642,7 +636,6 @@ fn update_blog_should_fail_long_handle() {
     assert_err!(_update_blog(None, None,
       Some(
         self::blog_update(
-          None,
           Some(Some(handle)),
           None,
           None
@@ -669,7 +662,6 @@ fn update_blog_should_fail_not_unique_handle() {
     assert_err!(_update_blog(None, Some(1),
       Some(
         self::blog_update(
-          None,
           Some(Some(handle)),
           None,
           None
@@ -689,7 +681,6 @@ fn update_blog_should_fail_invalid_at_char() {
     assert_err!(_update_blog(None, None,
       Some(
         self::blog_update(
-          None,
           Some(Some(handle)),
           None,
           None
@@ -709,7 +700,6 @@ fn update_blog_should_fail_invalid_minus_char() {
     assert_err!(_update_blog(None, None,
       Some(
         self::blog_update(
-          None,
           Some(Some(handle)),
           None,
           None
@@ -729,7 +719,6 @@ fn update_blog_should_fail_invalid_space_char() {
     assert_err!(_update_blog(None, None,
       Some(
         self::blog_update(
-          None,
           Some(Some(handle)),
           None,
           None
@@ -749,7 +738,6 @@ fn update_blog_should_fail_invalid_unicode_char() {
     assert_err!(_update_blog(None, None,
       Some(
         self::blog_update(
-          None,
           Some(Some(handle)),
           None,
           None
@@ -770,7 +758,6 @@ fn update_blog_should_fail_invalid_ipfs_hash() {
     assert_noop!(_update_blog(None, None,
       Some(
         self::blog_update(
-          None,
           None,
           Some(ipfs_hash),
           None
@@ -1041,7 +1028,7 @@ fn create_comment_should_fail_blog_is_hidden() {
     assert_ok!(_update_blog(
       None,
       None,
-      Some(self::blog_update(None, None, None, Some(true)))
+      Some(self::blog_update(None, None, Some(true)))
     ));
 
     assert_noop!(_create_default_comment(), Error::<Test>::BannedToCreateWhenHidden);
@@ -1231,7 +1218,7 @@ fn create_post_reaction_should_fail_blog_is_hidden() {
     assert_ok!(_update_blog(
       None,
       None,
-      Some(self::blog_update(None, None, None, Some(true)))
+      Some(self::blog_update(None, None, Some(true)))
     ));
 
     assert_noop!(_create_default_post_reaction(), Error::<Test>::BannedToChangeReactionWhenHidden);
@@ -1331,7 +1318,7 @@ fn create_comment_reaction_should_fail_blog_is_hidden() {
     assert_ok!(_update_blog(
       None,
       None,
-      Some(self::blog_update(None, None, None, Some(true)))
+      Some(self::blog_update(None, None, Some(true)))
     ));
 
     assert_noop!(_create_default_comment_reaction(), Error::<Test>::BannedToChangeReactionWhenHidden);
@@ -1563,10 +1550,10 @@ fn change_post_score_should_fail_post_not_found() {
 fn change_social_account_reputation_should_work_max_score_diff() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog());
-    assert_ok!(_create_post(Some(Origin::signed(ACCOUNT2)), None, None, None));
+    assert_ok!(_create_post(Some(Origin::signed(ACCOUNT1)), None, None, None));
     assert_ok!(Social::change_social_account_reputation(
-      ACCOUNT2,
       ACCOUNT1,
+      ACCOUNT2,
       std::i16::MAX,
       self::scoring_action_follow_account())
     );
@@ -1577,10 +1564,10 @@ fn change_social_account_reputation_should_work_max_score_diff() {
 fn change_social_account_reputation_should_work_min_score_diff() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog());
-    assert_ok!(_create_post(Some(Origin::signed(ACCOUNT2)), None, None, None));
+    assert_ok!(_create_post(Some(Origin::signed(ACCOUNT1)), None, None, None));
     assert_ok!(Social::change_social_account_reputation(
-      ACCOUNT2,
       ACCOUNT1,
+      ACCOUNT2,
       std::i16::MIN,
       self::scoring_action_follow_account())
     );
@@ -1591,27 +1578,28 @@ fn change_social_account_reputation_should_work_min_score_diff() {
 fn change_social_account_reputation_should_work() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog());
-    assert_ok!(_create_post(Some(Origin::signed(ACCOUNT2)), None, None, None));
+    assert_ok!(_create_post(Some(Origin::signed(ACCOUNT1)), None, None, None));
     assert_ok!(Social::change_social_account_reputation(
-      ACCOUNT2,
       ACCOUNT1,
+      ACCOUNT2,
       DownvotePostActionWeight::get(),
       self::scoring_action_downvote_post())
     );
-    assert_eq!(Social::account_reputation_diff_by_account((ACCOUNT1, ACCOUNT2, self::scoring_action_downvote_post())), Some(0));
-    assert_eq!(Social::social_account_by_id(ACCOUNT2).unwrap().reputation, 1);
+    assert_eq!(Social::account_reputation_diff_by_account((ACCOUNT2, ACCOUNT1, self::scoring_action_downvote_post())), Some(0));
+    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1);
 
+    // To ensure function works correctly, multiply default UpvotePostActionWeight by two
     assert_ok!(Social::change_social_account_reputation(
-      ACCOUNT2,
       ACCOUNT1,
+      ACCOUNT2,
       UpvotePostActionWeight::get() * 2,
       self::scoring_action_upvote_post())
     );
     assert_eq!(Social::account_reputation_diff_by_account(
-      (ACCOUNT1, ACCOUNT2, self::scoring_action_upvote_post())),
+      (ACCOUNT2, ACCOUNT1, self::scoring_action_upvote_post())),
                Some(UpvotePostActionWeight::get() * 2)
     );
-    assert_eq!(Social::social_account_by_id(ACCOUNT2).unwrap().reputation, 1 + (UpvotePostActionWeight::get() * 2) as u32);
+    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + (UpvotePostActionWeight::get() * 2) as u32);
   });
 }
 
@@ -1621,15 +1609,16 @@ fn change_social_account_reputation_should_work() {
 fn change_comment_score_should_work_upvote() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_post(Some(Origin::signed(ACCOUNT2)), None, None, None)); // PostId 1
+    assert_ok!(_create_post(Some(Origin::signed(ACCOUNT1)), None, None, None)); // PostId 1
     assert_ok!(_create_comment(Some(Origin::signed(ACCOUNT2)), None, None, None)); // PostId 2
 
-    assert_ok!(_change_post_score_by_extension_with_id(ACCOUNT1, 2, self::scoring_action_upvote_comment()));
+    assert_ok!(_change_post_score_by_extension_with_id(ACCOUNT3, 2, self::scoring_action_upvote_comment()));
 
     assert_eq!(Social::post_by_id(2).unwrap().score, UpvoteCommentActionWeight::get() as i32);
-    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1);
+    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + CreateCommentActionWeight::get() as u32);
     assert_eq!(Social::social_account_by_id(ACCOUNT2).unwrap().reputation, 1 + UpvoteCommentActionWeight::get() as u32);
-    assert_eq!(Social::post_score_by_account((ACCOUNT1, 2, self::scoring_action_upvote_comment())), Some(UpvoteCommentActionWeight::get()));
+    assert_eq!(Social::social_account_by_id(ACCOUNT3).unwrap().reputation, 1);
+    assert_eq!(Social::post_score_by_account((ACCOUNT3, 2, self::scoring_action_upvote_comment())), Some(UpvoteCommentActionWeight::get()));
   });
 }
 
@@ -1637,15 +1626,16 @@ fn change_comment_score_should_work_upvote() {
 fn change_comment_score_should_work_downvote() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_post(Some(Origin::signed(ACCOUNT2)), None, None, None)); // PostId 1
+    assert_ok!(_create_post(Some(Origin::signed(ACCOUNT1)), None, None, None)); // PostId 1
     assert_ok!(_create_comment(Some(Origin::signed(ACCOUNT2)), None, None, None)); // PostId 2
 
-    assert_ok!(_change_post_score_by_extension_with_id(ACCOUNT1, 2, self::scoring_action_downvote_comment()));
+    assert_ok!(_change_post_score_by_extension_with_id(ACCOUNT3, 2, self::scoring_action_downvote_comment()));
 
     assert_eq!(Social::post_by_id(2).unwrap().score, DownvoteCommentActionWeight::get() as i32);
-    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1);
+    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + CreateCommentActionWeight::get() as u32);
     assert_eq!(Social::social_account_by_id(ACCOUNT2).unwrap().reputation, 1);
-    assert_eq!(Social::post_score_by_account((ACCOUNT1, 2, self::scoring_action_downvote_comment())), Some(DownvoteCommentActionWeight::get()));
+    assert_eq!(Social::social_account_by_id(ACCOUNT3).unwrap().reputation, 1);
+    assert_eq!(Social::post_score_by_account((ACCOUNT3, 2, self::scoring_action_downvote_comment())), Some(DownvoteCommentActionWeight::get()));
   });
 }
 
@@ -1653,15 +1643,16 @@ fn change_comment_score_should_work_downvote() {
 fn change_comment_score_should_revert_upvote() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_post(Some(Origin::signed(ACCOUNT2)), None, None, None)); // PostId 1
+    assert_ok!(_create_post(Some(Origin::signed(ACCOUNT1)), None, None, None)); // PostId 1
     assert_ok!(_create_comment(Some(Origin::signed(ACCOUNT2)), None, None, None)); // PostId 2
 
-    assert_ok!(_change_post_score_by_extension_with_id(ACCOUNT1, 2, self::scoring_action_upvote_comment()));
-    assert_ok!(_change_post_score_by_extension_with_id(ACCOUNT1, 2, self::scoring_action_upvote_comment()));
+    assert_ok!(_change_post_score_by_extension_with_id(ACCOUNT3, 2, self::scoring_action_upvote_comment()));
+    assert_ok!(_change_post_score_by_extension_with_id(ACCOUNT3, 2, self::scoring_action_upvote_comment()));
 
     assert_eq!(Social::post_by_id(2).unwrap().score, 0);
-    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1);
+    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + CreateCommentActionWeight::get() as u32);
     assert_eq!(Social::social_account_by_id(ACCOUNT2).unwrap().reputation, 1);
+    assert_eq!(Social::social_account_by_id(ACCOUNT3).unwrap().reputation, 1);
     assert_eq!(Social::post_score_by_account((ACCOUNT1, 2, self::scoring_action_upvote_comment())), None);
   });
 }
@@ -1670,15 +1661,16 @@ fn change_comment_score_should_revert_upvote() {
 fn change_comment_score_should_revert_downvote() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_post(Some(Origin::signed(ACCOUNT2)), None, None, None)); // PostId 1
+    assert_ok!(_create_post(Some(Origin::signed(ACCOUNT1)), None, None, None)); // PostId 1
     assert_ok!(_create_comment(Some(Origin::signed(ACCOUNT2)), None, None, None)); // PostId 2
 
-    assert_ok!(_change_post_score_by_extension_with_id(ACCOUNT1, 2, self::scoring_action_downvote_comment()));
-    assert_ok!(_change_post_score_by_extension_with_id(ACCOUNT1, 2, self::scoring_action_downvote_comment()));
+    assert_ok!(_change_post_score_by_extension_with_id(ACCOUNT3, 2, self::scoring_action_downvote_comment()));
+    assert_ok!(_change_post_score_by_extension_with_id(ACCOUNT3, 2, self::scoring_action_downvote_comment()));
 
     assert_eq!(Social::post_by_id(2).unwrap().score, 0);
-    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1);
+    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + CreateCommentActionWeight::get() as u32);
     assert_eq!(Social::social_account_by_id(ACCOUNT2).unwrap().reputation, 1);
+    assert_eq!(Social::social_account_by_id(ACCOUNT3).unwrap().reputation, 1);
     assert_eq!(Social::post_score_by_account((ACCOUNT1, 2, self::scoring_action_downvote_comment())), None);
   });
 }
@@ -1687,17 +1679,18 @@ fn change_comment_score_should_revert_downvote() {
 fn change_comment_score_check_cancel_upvote() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_post(Some(Origin::signed(ACCOUNT2)), None, None, None)); // PostId 1
+    assert_ok!(_create_post(Some(Origin::signed(ACCOUNT1)), None, None, None)); // PostId 1
     assert_ok!(_create_comment(Some(Origin::signed(ACCOUNT2)), None, None, None)); // PostId 2
 
-    assert_ok!(_change_post_score_by_extension_with_id(ACCOUNT1, 2, self::scoring_action_upvote_comment()));
-    assert_ok!(_change_post_score_by_extension_with_id(ACCOUNT1, 2, self::scoring_action_downvote_comment()));
+    assert_ok!(_change_post_score_by_extension_with_id(ACCOUNT3, 2, self::scoring_action_upvote_comment()));
+    assert_ok!(_change_post_score_by_extension_with_id(ACCOUNT3, 2, self::scoring_action_downvote_comment()));
 
     assert_eq!(Social::post_by_id(2).unwrap().score, DownvoteCommentActionWeight::get() as i32);
-    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1);
+    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + CreateCommentActionWeight::get() as u32);
     assert_eq!(Social::social_account_by_id(ACCOUNT2).unwrap().reputation, 1);
-    assert_eq!(Social::post_score_by_account((ACCOUNT1, 2, self::scoring_action_upvote_comment())), None);
-    assert_eq!(Social::post_score_by_account((ACCOUNT1, 2, self::scoring_action_downvote_comment())), Some(DownvoteCommentActionWeight::get()));
+    assert_eq!(Social::social_account_by_id(ACCOUNT3).unwrap().reputation, 1);
+    assert_eq!(Social::post_score_by_account((ACCOUNT3, 2, self::scoring_action_upvote_comment())), None);
+    assert_eq!(Social::post_score_by_account((ACCOUNT3, 2, self::scoring_action_downvote_comment())), Some(DownvoteCommentActionWeight::get()));
   });
 }
 
@@ -1705,17 +1698,18 @@ fn change_comment_score_check_cancel_upvote() {
 fn change_comment_score_check_cancel_downvote() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_post(Some(Origin::signed(ACCOUNT2)), None, None, None)); // PostId 1
+    assert_ok!(_create_post(Some(Origin::signed(ACCOUNT1)), None, None, None)); // PostId 1
     assert_ok!(_create_comment(Some(Origin::signed(ACCOUNT2)), None, None, None)); // PostId 2
 
-    assert_ok!(_change_post_score_by_extension_with_id(ACCOUNT1, 2, self::scoring_action_downvote_comment()));
-    assert_ok!(_change_post_score_by_extension_with_id(ACCOUNT1, 2, self::scoring_action_upvote_comment()));
+    assert_ok!(_change_post_score_by_extension_with_id(ACCOUNT3, 2, self::scoring_action_downvote_comment()));
+    assert_ok!(_change_post_score_by_extension_with_id(ACCOUNT3, 2, self::scoring_action_upvote_comment()));
 
     assert_eq!(Social::post_by_id(2).unwrap().score, UpvoteCommentActionWeight::get() as i32);
-    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1);
+    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + CreateCommentActionWeight::get() as u32);
     assert_eq!(Social::social_account_by_id(ACCOUNT2).unwrap().reputation, 1 + UpvoteCommentActionWeight::get() as u32);
-    assert_eq!(Social::post_score_by_account((ACCOUNT1, 2, self::scoring_action_downvote_comment())), None);
-    assert_eq!(Social::post_score_by_account((ACCOUNT1, 2, self::scoring_action_upvote_comment())), Some(UpvoteCommentActionWeight::get()));
+    assert_eq!(Social::social_account_by_id(ACCOUNT3).unwrap().reputation, 1);
+    assert_eq!(Social::post_score_by_account((ACCOUNT3, 2, self::scoring_action_downvote_comment())), None);
+    assert_eq!(Social::post_score_by_account((ACCOUNT3, 2, self::scoring_action_upvote_comment())), Some(UpvoteCommentActionWeight::get()));
   });
 }
 
@@ -1754,7 +1748,7 @@ fn share_post_should_work() {
       Some(Origin::signed(ACCOUNT2)),
       Some(Some(2)),
       Some(self::extension_shared_post(1)),
-      Some(vec![])
+      None
     )); // Share PostId 1 on BlogId 2 by ACCOUNT2
 
     // Check storages
@@ -1772,7 +1766,6 @@ fn share_post_should_work() {
 
     assert_eq!(shared_post.blog_id, Some(2));
     assert_eq!(shared_post.created.account, ACCOUNT2);
-    assert!(shared_post.ipfs_hash.is_empty());
     assert_eq!(shared_post.extension, self::extension_shared_post(1));
   });
 }
@@ -1786,7 +1779,7 @@ fn share_post_should_work_share_own_post() {
       Some(Origin::signed(ACCOUNT1)),
       Some(Some(1)),
       Some(self::extension_shared_post(1)),
-      Some(vec![])
+      None
     )); // Share PostId 1
 
     // Check storages
@@ -1802,7 +1795,6 @@ fn share_post_should_work_share_own_post() {
     let shared_post = Social::post_by_id(2).unwrap();
     assert_eq!(shared_post.blog_id, Some(1));
     assert_eq!(shared_post.created.account, ACCOUNT1);
-    assert!(shared_post.ipfs_hash.is_empty());
     assert_eq!(shared_post.extension, self::extension_shared_post(1));
   });
 }
@@ -1817,7 +1809,7 @@ fn share_post_should_change_score() {
       Some(Origin::signed(ACCOUNT2)),
       Some(Some(2)),
       Some(self::extension_shared_post(1)),
-      Some(vec![])
+      None
     )); // Share PostId 1 on BlogId 2 by ACCOUNT2
 
     assert_eq!(Social::post_by_id(1).unwrap().score, SharePostActionWeight::get() as i32);
@@ -1835,7 +1827,7 @@ fn share_post_should_not_change_score() {
       Some(Origin::signed(ACCOUNT1)),
       Some(Some(1)),
       Some(self::extension_shared_post(1)),
-      Some(vec![])
+      None
     )); // Share PostId
 
     assert_eq!(Social::post_by_id(1).unwrap().score, 0);
@@ -1854,7 +1846,7 @@ fn share_post_should_fail_original_post_not_found() {
       Some(Origin::signed(ACCOUNT2)),
       Some(Some(2)),
       Some(self::extension_shared_post(1)),
-      Some(vec![])
+      None
     ), Error::<Test>::OriginalPostNotFound);
   });
 }
@@ -1869,7 +1861,7 @@ fn share_post_should_fail_share_shared_post() {
       Some(Origin::signed(ACCOUNT2)),
       Some(Some(2)),
       Some(self::extension_shared_post(1)),
-      Some(vec![]))
+      None)
     );
 
     // Try to share post with extension SharedPost
@@ -1877,7 +1869,7 @@ fn share_post_should_fail_share_shared_post() {
       Some(Origin::signed(ACCOUNT1)),
       Some(Some(1)),
       Some(self::extension_shared_post(2)),
-      Some(vec![])
+      None
     ), Error::<Test>::CannotShareSharedPost);
   });
 }
@@ -1893,7 +1885,7 @@ fn share_comment_should_work() {
       Some(Origin::signed(ACCOUNT2)),
       Some(Some(2)),
       Some(self::extension_shared_post(2)),
-      Some(vec![])
+      None
     )); // Share PostId 2 comment on BlogId 2 by ACCOUNT2
 
     // Check storages
@@ -1911,7 +1903,6 @@ fn share_comment_should_work() {
 
     assert_eq!(shared_post.blog_id, Some(2));
     assert_eq!(shared_post.created.account, ACCOUNT2);
-    assert!(shared_post.ipfs_hash.is_empty());
     assert_eq!(shared_post.extension, self::extension_shared_post(2));
   });
 }
@@ -1927,7 +1918,7 @@ fn share_comment_should_change_score() {
       Some(Origin::signed(ACCOUNT2)),
       Some(Some(2)),
       Some(self::extension_shared_post(2)),
-      Some(vec![])
+      None
     )); // Share PostId 2 comment on BlogId 2 by ACCOUNT2
 
     assert_eq!(Social::post_by_id(2).unwrap().score, ShareCommentActionWeight::get() as i32);
@@ -1943,7 +1934,7 @@ fn share_comment_should_fail_original_comment_not_found() {
     assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(Some(b"blog2_handle".to_vec())), None)); // BlogId 2 by ACCOUNT2
     assert_ok!(_create_default_post()); // PostId 1
     // Skipped creating comment with PostId 2
-    assert_noop!(_create_post(
+    assert_err!(_create_post(
       Some(Origin::signed(ACCOUNT2)),
       Some(Some(2)),
       Some(self::extension_shared_post(2)),
@@ -2159,7 +2150,7 @@ fn follow_blog_should_fail_blog_is_hidden() {
     assert_ok!(_update_blog(
       None,
       None,
-      Some(self::blog_update(None, None, None, Some(true)))
+      Some(self::blog_update(None, None, Some(true)))
     ));
 
     assert_noop!(_default_follow_blog(), Error::<Test>::BannedToFollowWhenHidden);

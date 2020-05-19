@@ -19,7 +19,7 @@ pub struct Blog<T: Trait> {
   pub hidden: bool,
 
   // Can be updated by the owner:
-  pub writers: Vec<T::AccountId>,
+  pub owner: T::AccountId,
   pub handle: Option<Vec<u8>>,
   pub ipfs_hash: Vec<u8>,
 
@@ -33,8 +33,7 @@ pub struct Blog<T: Trait> {
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 #[allow(clippy::option_option)]
-pub struct BlogUpdate<AccountId> {
-  pub writers: Option<Vec<AccountId>>,
+pub struct BlogUpdate {
   pub handle: Option<Option<Vec<u8>>>,
   pub ipfs_hash: Option<Vec<u8>>,
   pub hidden: Option<bool>,
@@ -43,7 +42,7 @@ pub struct BlogUpdate<AccountId> {
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct BlogHistoryRecord<T: Trait> {
   pub edited: WhoAndWhen<T>,
-  pub old_data: BlogUpdate<T::AccountId>,
+  pub old_data: BlogUpdate,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -247,8 +246,6 @@ decl_error! {
 
     /// Unknown parent comment id
     UnknownParentComment,
-    /// Post by root_post_id is not of RegularPost extension
-    NotAPostByRootPostId,
     /// Post by parent_id is not of Comment extension
     NotACommentByParentId,
     /// New comment IPFS-hash is the same as old one
@@ -392,6 +389,8 @@ decl_storage! {
     pub SharedPostIdsByOriginalPostId get(shared_post_ids_by_original_post_id): map PostId => Vec<PostId>;
 
     pub AccountByProfileUsername get(account_by_profile_username): map Vec<u8> => Option<T::AccountId>;
+
+    pub PendingBlogOwner get(pending_blog_owner): map BlogId => Option<T::AccountId>;
   }
 }
 
@@ -442,7 +441,7 @@ decl_module! {
         created: WhoAndWhen::<T>::new(owner.clone()),
         updated: None,
         hidden: false,
-        writers: vec![],
+        owner: owner.clone(),
         handle: handle_opt.clone(),
         ipfs_hash,
         posts_count: 0,
@@ -466,11 +465,10 @@ decl_module! {
       Self::deposit_event(RawEvent::BlogCreated(owner, blog_id));
     }
 
-    pub fn update_blog(origin, blog_id: BlogId, update: BlogUpdate<T::AccountId>) {
+    pub fn update_blog(origin, blog_id: BlogId, update: BlogUpdate) {
       let owner = ensure_signed(origin)?;
 
       let has_updates =
-        update.writers.is_some() ||
         update.handle.is_some() ||
         update.ipfs_hash.is_some() ||
         update.hidden.is_some();
@@ -479,24 +477,13 @@ decl_module! {
 
       let mut blog = Self::blog_by_id(blog_id).ok_or(Error::<T>::BlogNotFound)?;
 
-      // TODO ensure: blog writers also should be able to edit this blog:
-      ensure!(owner == blog.created.account, Error::<T>::NotABlogOwner);
+      blog.ensure_blog_owner(owner.clone())?;
 
       let mut fields_updated = 0;
       let mut new_history_record = BlogHistoryRecord {
         edited: WhoAndWhen::<T>::new(owner.clone()),
-        old_data: BlogUpdate {writers: None, handle: None, ipfs_hash: None, hidden: None}
+        old_data: BlogUpdate {handle: None, ipfs_hash: None, hidden: None}
       };
-
-      if let Some(writers) = update.writers {
-        if writers != blog.writers {
-          // TODO validate writers.
-          // TODO update BlogIdsByWriter: insert new, delete removed, update only changed writers.
-          new_history_record.old_data.writers = Some(blog.writers);
-          blog.writers = writers;
-          fields_updated += 1;
-        }
-      }
 
       if let Some(ipfs_hash) = update.ipfs_hash {
         if ipfs_hash != blog.ipfs_hash {
@@ -713,87 +700,65 @@ decl_module! {
     pub fn create_post(origin, blog_id_opt: Option<BlogId>, extension: PostExtension, ipfs_hash: Vec<u8>) {
       let owner = ensure_signed(origin)?;
 
-      let new_post_id = Self::next_post_id();
-      let mut is_comment : Option<CommentExt> = None;
+      Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
 
-      // Sharing functions contain check for post/comment existence
+      let new_post_id = Self::next_post_id();
+      let new_post: Post<T> = Post::create(new_post_id, owner.clone(), blog_id_opt, extension, ipfs_hash);
+
+      // Get blog from either from blog_id_opt or extension if a Comment provided
+      let mut blog = new_post.get_blog()?;
+      ensure!(!blog.hidden, Error::<T>::BannedToCreateWhenHidden);
+
+      let root_post = &mut (new_post.get_root_post()?);
+      ensure!(!root_post.hidden, Error::<T>::BannedToCreateWhenHidden);
+
       match extension {
         PostExtension::RegularPost => {
-          Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
+          blog.ensure_blog_owner(owner.clone())?;
+          blog.increment_posts_count()?;
         },
         PostExtension::Comment(comment_ext) => {
-          Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
-          is_comment = Some(comment_ext);
+          root_post.total_replies_count = root_post.total_replies_count.checked_add(1).ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
+
+          if let Some(parent_id) = comment_ext.parent_id {
+            let mut parent_comment = Self::post_by_id(parent_id).ok_or(Error::<T>::UnknownParentComment)?;
+            ensure!(parent_comment.is_comment(), Error::<T>::NotACommentByParentId);
+            parent_comment.direct_replies_count = parent_comment.direct_replies_count.checked_add(1).ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
+
+            let mut ancestors = Self::get_ancestors(parent_id);
+            ancestors[0] = parent_comment;
+            ensure!(ancestors.len() < T::MaxCommentDepth::get() as usize, Error::<T>::MaxCommentDepthReached);
+            for mut post in ancestors {
+              post.total_replies_count = post.total_replies_count.checked_add(1).ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
+              <PostById<T>>::insert(post.id, post.clone());
+            }
+
+            ReplyIdsByPostId::mutate(parent_id, |ids| ids.push(new_post_id));
+          } else {
+            root_post.direct_replies_count = root_post.direct_replies_count.checked_add(1)
+              .ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
+
+            ReplyIdsByPostId::mutate(comment_ext.root_post_id, |ids| ids.push(new_post_id));
+          }
+
+          Self::change_post_score_by_extension(owner.clone(), root_post, ScoringAction::CreateComment)?;
+
+          <PostById<T>>::insert(comment_ext.root_post_id, root_post);
         },
         PostExtension::SharedPost(post_id) => {
           let post = &mut (Self::post_by_id(post_id).ok_or(Error::<T>::OriginalPostNotFound)?);
           ensure!(!post.is_shared_post(), Error::<T>::CannotShareSharedPost);
+          blog.posts_count = blog.posts_count.checked_add(1).ok_or(Error::<T>::OverflowAddingPostOnBlog)?;
           Self::share_post(owner.clone(), post, new_post_id)?;
         },
       }
 
-      let new_post: Post<T> = Post {
-        id: new_post_id,
-        created: WhoAndWhen::<T>::new(owner.clone()),
-        updated: None,
-        hidden: false,
-        blog_id: blog_id_opt,
-        extension,
-        ipfs_hash,
-        edit_history: vec![],
-        direct_replies_count: 0,
-        total_replies_count: 0,
-        shares_count: 0,
-        upvotes_count: 0,
-        downvotes_count: 0,
-        score: 0,
-      };
-
-      if let Some(comment_ext) = is_comment {
-        let root_post = &mut (Self::post_by_id(comment_ext.root_post_id).ok_or(Error::<T>::PostNotFound)?);
-        ensure!(root_post.extension == PostExtension::RegularPost, Error::<T>::NotAPostByRootPostId);
-
-        let blog = Self::get_blog_by_post_id(comment_ext.root_post_id)?;
-        ensure!(!blog.hidden && !root_post.hidden, Error::<T>::BannedToCreateWhenHidden);
-
-        root_post.total_replies_count = root_post.total_replies_count.checked_add(1).ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
-
-        if let Some(parent_id) = comment_ext.parent_id {
-          let mut parent_comment = Self::post_by_id(parent_id).ok_or(Error::<T>::UnknownParentComment)?;
-          ensure!(parent_comment.is_comment(), Error::<T>::NotACommentByParentId);
-          parent_comment.direct_replies_count = parent_comment.direct_replies_count.checked_add(1).ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
-
-          let mut ancestors = Self::get_ancestors(parent_id);
-          ancestors[0] = parent_comment;
-          ensure!(ancestors.len() < T::MaxCommentDepth::get() as usize, Error::<T>::MaxCommentDepthReached);
-          for mut post in ancestors {
-            post.total_replies_count = post.total_replies_count.checked_add(1).ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
-            <PostById<T>>::insert(post.id, post.clone());
-          }
-
-          ReplyIdsByPostId::mutate(parent_id, |ids| ids.push(new_post_id));
-        } else {
-          root_post.direct_replies_count = root_post.direct_replies_count.checked_add(1)
-            .ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
-
-          ReplyIdsByPostId::mutate(comment_ext.root_post_id, |ids| ids.push(new_post_id));
-        }
-
-        Self::change_post_score_by_extension(owner.clone(), root_post, ScoringAction::CreateComment)?;
-
-        <PostById<T>>::insert(comment_ext.root_post_id, root_post);
-      } else if let Some(blog_id) = blog_id_opt {
-        let mut blog = Self::blog_by_id(blog_id).ok_or(Error::<T>::BlogNotFound)?;
-        blog.posts_count = blog.posts_count.checked_add(1).ok_or(Error::<T>::OverflowAddingPostOnBlog)?;
-        ensure!(!blog.hidden, Error::<T>::BannedToCreateWhenHidden);
-
-        <BlogById<T>>::insert(blog_id, blog);
-        PostIdsByBlogId::mutate(blog_id, |ids| ids.push(new_post_id));
-      } else {
-        return Err(Error::<T>::BlogIdIsUndefined.into());
+      if !new_post.is_comment() {
+        <BlogById<T>>::insert(blog.id, blog.clone());
+        PostIdsByBlogId::mutate(blog.id, |ids| ids.push(new_post_id));
       }
-      
-      <PostById<T>>::insert(new_post_id, new_post);
+
+      <PostById<T>>::insert(new_post_id, new_post.clone());
       NextPostId::mutate(|n| { *n += 1; });
       
       Self::deposit_event(RawEvent::PostCreated(owner, new_post_id));
@@ -878,7 +843,7 @@ decl_module! {
         Error::<T>::AccountAlreadyReacted
       );
 
-      let blog = Self::get_blog_by_post_id(post.id)?;
+      let blog = post.get_blog()?;
       ensure!(!blog.hidden && !Self::is_root_post_hidden(post_id)?, Error::<T>::BannedToChangeReactionWhenHidden);
 
       let reaction_id = Self::new_reaction(owner.clone(), kind);
@@ -912,7 +877,7 @@ decl_module! {
       let mut reaction = Self::reaction_by_id(reaction_id).ok_or(Error::<T>::ReactionNotFound)?;
       let post = &mut (Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?);
 
-      let blog = Self::get_blog_by_post_id(post.id)?;
+      let blog = post.get_blog()?;
       ensure!(!blog.hidden && !post.hidden, Error::<T>::BannedToChangeReactionWhenHidden);
 
       ensure!(owner == reaction.created.account, Error::<T>::NotAReactionOwner);
