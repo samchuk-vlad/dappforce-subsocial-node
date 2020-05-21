@@ -347,7 +347,7 @@ impl<T: Trait> Post<T> {
             blog_id: blog_id_opt,
             extension,
             ipfs_hash,
-            edit_history: vec![],
+            edit_history: Vec::new(),
             direct_replies_count: 0,
             total_replies_count: 0,
             shares_count: 0,

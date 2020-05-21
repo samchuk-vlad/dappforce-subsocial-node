@@ -131,7 +131,7 @@ fn fake_post(id: PostId, created_by: AccountId, blog_id: Option<BlogId>, extensi
     blog_id,
     extension,
     ipfs_hash: self::post_ipfs_hash(),
-    edit_history: vec![],
+    edit_history: Vec::new(),
     direct_replies_count: 0,
     total_replies_count: 0,
     shares_count: 0,

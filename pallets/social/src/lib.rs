@@ -451,7 +451,7 @@ decl_module! {
         ipfs_hash,
         posts_count: 0,
         followers_count: 0,
-        edit_history: vec![],
+        edit_history: Vec::new(),
         score: 0
       };
 
@@ -643,7 +643,7 @@ decl_module! {
           updated: None,
           username: username.clone(),
           ipfs_hash,
-          edit_history: vec![]
+          edit_history: Vec::new()
         }
       );
       <AccountByProfileUsername<T>>::insert(username, owner.clone());
