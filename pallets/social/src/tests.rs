@@ -3,7 +3,7 @@
 pub use super::*;
 
 use sp_core::H256;
-use frame_support::{impl_outer_origin, assert_ok, assert_noop, assert_err, parameter_types,
+use frame_support::{impl_outer_origin, assert_ok, assert_noop, parameter_types,
                     weights::Weight, dispatch::DispatchResult};
 use sp_runtime::{
   traits::{BlakeTwo256, IdentityLookup}, testing::Header, Perbill,
@@ -452,7 +452,7 @@ fn create_blog_should_fail_short_handle() {
 
   new_test_ext().execute_with(|| {
     // Try to catch an error creating a blog with too short handle
-    assert_err!(_create_blog(None, Some(Some(handle)), None), Error::<Test>::HandleIsTooShort);
+    assert_noop!(_create_blog(None, Some(Some(handle)), None), Error::<Test>::HandleIsTooShort);
   });
 }
 
@@ -462,7 +462,7 @@ fn create_blog_should_fail_long_handle() {
 
   new_test_ext().execute_with(|| {
     // Try to catch an error creating a blog with too long handle
-    assert_err!(_create_blog(None, Some(Some(handle)), None), Error::<Test>::HandleIsTooLong);
+    assert_noop!(_create_blog(None, Some(Some(handle)), None), Error::<Test>::HandleIsTooLong);
   });
 }
 
@@ -472,7 +472,7 @@ fn create_blog_should_fail_not_unique_handle() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
     // Try to catch an error creating a blog with not unique handle
-    assert_err!(_create_default_blog(), Error::<Test>::HandleIsNotUnique);
+    assert_noop!(_create_default_blog(), Error::<Test>::HandleIsNotUnique);
   });
 }
 
@@ -481,7 +481,7 @@ fn create_blog_should_fail_invalid_at_char() {
   let handle : Vec<u8> = b"@blog_handle".to_vec();
 
   new_test_ext().execute_with(|| {
-    assert_err!(_create_blog(None, Some(Some(handle.clone())), None), Error::<Test>::HandleContainsInvalidChars);
+    assert_noop!(_create_blog(None, Some(Some(handle.clone())), None), Error::<Test>::HandleContainsInvalidChars);
   });
 }
 
@@ -490,7 +490,7 @@ fn create_blog_should_fail_invalid_minus_char() {
   let handle : Vec<u8> = b"blog-handle".to_vec();
 
   new_test_ext().execute_with(|| {
-    assert_err!(_create_blog(None, Some(Some(handle.clone())), None), Error::<Test>::HandleContainsInvalidChars);
+    assert_noop!(_create_blog(None, Some(Some(handle.clone())), None), Error::<Test>::HandleContainsInvalidChars);
   });
 }
 
@@ -499,7 +499,7 @@ fn create_blog_should_fail_invalid_space_char() {
   let handle : Vec<u8> = b"blog handle".to_vec();
 
   new_test_ext().execute_with(|| {
-    assert_err!(_create_blog(None, Some(Some(handle.clone())), None), Error::<Test>::HandleContainsInvalidChars);
+    assert_noop!(_create_blog(None, Some(Some(handle.clone())), None), Error::<Test>::HandleContainsInvalidChars);
   });
 }
 
@@ -508,7 +508,7 @@ fn create_blog_should_fail_invalid_unicode_char() {
   let handle : Vec<u8> = String::from("блог_хендл").into_bytes().to_vec();
 
   new_test_ext().execute_with(|| {
-    assert_err!(_create_blog(None, Some(Some(handle.clone())), None), Error::<Test>::HandleContainsInvalidChars);
+    assert_noop!(_create_blog(None, Some(Some(handle.clone())), None), Error::<Test>::HandleContainsInvalidChars);
   });
 }
 
@@ -612,7 +612,7 @@ fn update_blog_should_fail_short_handle() {
     assert_ok!(_create_default_blog()); // BlogId 1
 
     // Try to catch an error updating a blog with too short handle
-    assert_err!(_update_blog(None, None,
+    assert_noop!(_update_blog(None, None,
       Some(
         self::blog_update(
           Some(Some(handle)),
@@ -632,7 +632,7 @@ fn update_blog_should_fail_long_handle() {
     assert_ok!(_create_default_blog()); // BlogId 1
 
     // Try to catch an error updating a blog with too long handle
-    assert_err!(_update_blog(None, None,
+    assert_noop!(_update_blog(None, None,
       Some(
         self::blog_update(
           Some(Some(handle)),
@@ -658,7 +658,7 @@ fn update_blog_should_fail_not_unique_handle() {
     )); // BlogId 2 with a custom handle
 
     // Try to catch an error updating a blog on ID 1 with a handle of blog on ID 2
-    assert_err!(_update_blog(None, Some(1),
+    assert_noop!(_update_blog(None, Some(1),
       Some(
         self::blog_update(
           Some(Some(handle)),
@@ -677,7 +677,7 @@ fn update_blog_should_fail_invalid_at_char() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
 
-    assert_err!(_update_blog(None, None,
+    assert_noop!(_update_blog(None, None,
       Some(
         self::blog_update(
           Some(Some(handle)),
@@ -696,7 +696,7 @@ fn update_blog_should_fail_invalid_minus_char() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
 
-    assert_err!(_update_blog(None, None,
+    assert_noop!(_update_blog(None, None,
       Some(
         self::blog_update(
           Some(Some(handle)),
@@ -715,7 +715,7 @@ fn update_blog_should_fail_invalid_space_char() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
 
-    assert_err!(_update_blog(None, None,
+    assert_noop!(_update_blog(None, None,
       Some(
         self::blog_update(
           Some(Some(handle)),
@@ -734,7 +734,7 @@ fn update_blog_should_fail_invalid_unicode_char() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_blog()); // BlogId 1
 
-    assert_err!(_update_blog(None, None,
+    assert_noop!(_update_blog(None, None,
       Some(
         self::blog_update(
           Some(Some(handle)),
@@ -1933,7 +1933,7 @@ fn share_comment_should_fail_original_comment_not_found() {
     assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(Some(b"blog2_handle".to_vec())), None)); // BlogId 2 by ACCOUNT2
     assert_ok!(_create_default_post()); // PostId 1
     // Skipped creating comment with PostId 2
-    assert_err!(_create_post(
+    assert_noop!(_create_post(
       Some(Origin::signed(ACCOUNT2)),
       Some(Some(2)),
       Some(self::extension_shared_post(2)),

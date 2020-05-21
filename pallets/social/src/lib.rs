@@ -435,6 +435,11 @@ decl_module! {
 
       Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
 
+      let mut handle: Vec<u8> = Vec::new();
+      if let Some(original_handle) = handle_opt.clone() {
+        handle = Self::lowercase_and_validate_a_handle(original_handle)?;
+      }
+
       let blog_id = Self::next_blog_id();
       let new_blog: &mut Blog<T> = &mut Blog {
         id: blog_id,
@@ -442,7 +447,7 @@ decl_module! {
         updated: None,
         hidden: false,
         owner: owner.clone(),
-        handle: handle_opt.clone(),
+        handle: handle_opt,
         ipfs_hash,
         posts_count: 0,
         followers_count: 0,
@@ -453,9 +458,7 @@ decl_module! {
       // Blog creator automatically follows their blog:
       Self::add_blog_follower(owner.clone(), new_blog)?;
 
-      if let Some(mut handle) = handle_opt {
-        handle = Self::lowercase_and_validate_a_handle(handle)?;
-
+      if !handle.is_empty() {
         BlogIdByHandle::insert(handle, blog_id);
       }
 
@@ -504,13 +507,12 @@ decl_module! {
 
       if let Some(handle_opt) = update.handle {
         if handle_opt != blog.handle {
-          if let Some(blog_handle) = blog.handle.clone() {
-            BlogIdByHandle::remove(blog_handle);
-          }
           if let Some(mut handle) = handle_opt.clone() {
             handle = Self::lowercase_and_validate_a_handle(handle)?;
-
             BlogIdByHandle::insert(handle, blog_id);
+          }
+          if let Some(blog_handle) = blog.handle.clone() {
+            BlogIdByHandle::remove(blog_handle);
           }
           new_history_record.old_data.handle = Some(blog.handle);
           blog.handle = handle_opt;
@@ -760,7 +762,7 @@ decl_module! {
 
       <PostById<T>>::insert(new_post_id, new_post);
       NextPostId::mutate(|n| { *n += 1; });
-      
+
       Self::deposit_event(RawEvent::PostCreated(owner, new_post_id));
     }
 
@@ -776,7 +778,6 @@ decl_module! {
 
       let mut post = Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?;
 
-      // TODO ensure: blog writers also should be able to edit this post:
       ensure!(owner == post.created.account, Error::<T>::NotAnAuthor);
 
       let mut fields_updated = 0;
