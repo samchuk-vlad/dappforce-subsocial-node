@@ -4,11 +4,6 @@ use frame_support::{dispatch::{DispatchResult, DispatchError}};
 
 impl<T: Trait> Module<T> {
 
-    pub fn ensure_blog_exists(blog_id: BlogId) -> DispatchResult {
-        ensure!(<BlogById<T>>::exists(blog_id), Error::<T>::BlogNotFound);
-        Ok(())
-    }
-
     // TODO: maybe don't add reaction in storage before checks in 'create_reaction' are done?
     pub fn new_reaction(account: T::AccountId, kind: ReactionKind) -> ReactionId {
         let reaction_id = Self::next_reaction_id();
@@ -88,7 +83,7 @@ impl<T: Trait> Module<T> {
         <SocialAccountById<T>>::insert(account.clone(), social_account.clone());
 
         let post_id = post.id;
-        ensure!(<PostById<T>>::exists(post_id), Error::<T>::PostNotFound);
+        Post::<T>::ensure_post_stored(post_id)?;
         ensure!(!post.is_comment(), Error::<T>::PostIsAComment);
 
         if let Some(post_blog_id) = post.blog_id {
@@ -135,7 +130,7 @@ impl<T: Trait> Module<T> {
         <SocialAccountById<T>>::insert(account.clone(), social_account.clone());
 
         let comment_id = comment.id;
-        ensure!(<PostById<T>>::exists(comment_id), Error::<T>::PostNotFound);
+        Post::<T>::ensure_post_stored(comment_id)?;
         let comment_ext = comment.get_comment_ext()?;
 
         ensure!(comment.is_comment(), Error::<T>::PostIsNotAComment);
@@ -335,6 +330,11 @@ impl<T: Trait> Blog<T> {
         self.posts_count = self.posts_count.checked_add(1).ok_or(Error::<T>::OverflowAddingPostOnBlog)?;
         Ok(())
     }
+
+    pub fn ensure_blog_stored(blog_id: BlogId) -> DispatchResult {
+        ensure!(<BlogById<T>>::exists(blog_id), Error::<T>::BlogNotFound);
+        Ok(())
+    }
 }
 
 impl<T: Trait> Post<T> {
@@ -392,5 +392,10 @@ impl<T: Trait> Post<T> {
         let blog = Module::blog_by_id(blog_id).ok_or(Error::<T>::BlogNotFound)?;
 
         Ok(blog)
+    }
+
+    pub fn ensure_post_stored(post_id: PostId) -> DispatchResult {
+        ensure!(<PostById<T>>::exists(post_id), Error::<T>::PostNotFound);
+        Ok(())
     }
 }

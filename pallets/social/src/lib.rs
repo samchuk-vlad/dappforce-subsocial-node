@@ -811,7 +811,7 @@ decl_module! {
 
         if let Some(post_blog_id) = post.blog_id {
           if blog_id != post_blog_id {
-            Self::ensure_blog_exists(blog_id)?;
+            Blog::<T>::ensure_blog_stored(blog_id)?;
 
             // Remove post_id from its old blog:
             PostIdsByBlogId::mutate(post_blog_id, |post_ids| Self::vec_remove_on(post_ids, post_id));
