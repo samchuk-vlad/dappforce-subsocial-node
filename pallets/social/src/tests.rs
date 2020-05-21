@@ -96,6 +96,8 @@ fn new_test_ext() -> sp_io::TestExternalities {
   system::GenesisConfig::default().build_storage::<Test>().unwrap().into()
 }
 
+// TODO: add new externality for testing transfer ownership
+
 pub type AccountId = u64;
 
 const ACCOUNT1 : AccountId = 1;
@@ -401,6 +403,44 @@ fn _change_post_score_by_extension_with_id(account: AccountId, post_id: PostId, 
 
 fn _change_post_score_by_extension(account: AccountId, post: &mut Post<Test>, action: ScoringAction) -> DispatchResult {
   Social::change_post_score_by_extension(account, post, action)
+}
+
+fn _transfer_default_blog_ownership() -> DispatchResult {
+  _transfer_blog_ownership(None, None, None)
+}
+
+fn _transfer_blog_ownership(origin: Option<Origin>, blog_id: Option<BlogId>, transfer_to: Option<AccountId>) -> DispatchResult {
+  Social::transfer_blog_ownership(
+    origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
+    blog_id.unwrap_or(1),
+    transfer_to.unwrap_or(ACCOUNT2)
+  )
+}
+
+fn _accept_default_pending_ownership() -> DispatchResult {
+  _accept_pending_ownership(None, None)
+}
+
+fn _accept_pending_ownership(origin: Option<Origin>, blog_id: Option<BlogId>) -> DispatchResult {
+  Social::accept_pending_ownership(
+    origin.unwrap_or_else(|| Origin::signed(ACCOUNT2)),
+    blog_id.unwrap_or(1)
+  )
+}
+
+fn _reject_default_pending_ownership() -> DispatchResult {
+  _reject_pending_ownership(None, None)
+}
+
+fn _reject_default_pending_ownership_by_current_owner() -> DispatchResult {
+  _reject_pending_ownership(Some(Origin::signed(ACCOUNT1)), None)
+}
+
+fn _reject_pending_ownership(origin: Option<Origin>, blog_id: Option<BlogId>) -> DispatchResult {
+  Social::reject_pending_ownership(
+    origin.unwrap_or_else(|| Origin::signed(ACCOUNT2)),
+    blog_id.unwrap_or(1)
+  )
 }
 
 // Blog tests
@@ -827,6 +867,14 @@ fn create_post_should_fail_invalid_ipfs_hash() {
 }
 
 #[test]
+fn create_post_should_fail_not_a_blog_owner() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_noop!(_create_post(Some(Origin::signed(ACCOUNT2)), None, None, None), Error::<Test>::NotABlogOwner);
+  });
+}
+
+#[test]
 fn update_post_should_work() {
   let ipfs_hash : Vec<u8> = b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec();
 
@@ -856,6 +904,28 @@ fn update_post_should_work() {
     assert_eq!(post.edit_history[0].old_data.blog_id, None);
     assert_eq!(post.edit_history[0].old_data.ipfs_hash, Some(self::post_ipfs_hash()));
     assert_eq!(post.edit_history[0].old_data.hidden, Some(false));
+  });
+}
+
+#[test]
+fn update_post_should_work_after_transfer_blog_ownership() {
+  let ipfs_hash : Vec<u8> = b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec();
+
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_post()); // PostId 1
+    assert_ok!(_transfer_default_blog_ownership());
+
+    // Post update with ID 1 should be fine
+    assert_ok!(_update_post(None, None,
+      Some(
+        self::post_update(
+          None,
+          Some(ipfs_hash.clone()),
+          Some(true)
+        )
+      )
+    ));
   });
 }
 
@@ -2242,5 +2312,160 @@ fn unfollow_account_should_fail_is_not_followed() {
     assert_ok!(_default_unfollow_account());
 
     assert_noop!(_default_unfollow_account(), Error::<Test>::AccountIsNotFollowed);
+  });
+}
+
+// Transfer ownership tests
+
+#[test]
+fn transfer_blog_ownership_should_work() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_transfer_default_blog_ownership()); // Transfer BlogId 1 owned by ACCOUNT1 to ACCOUNT2
+
+    assert_eq!(Social::pending_blog_owner(1).unwrap(), ACCOUNT2);
+  });
+}
+
+#[test]
+fn transfer_blog_ownership_should_fail_blog_not_found() {
+  new_test_ext().execute_with(|| {
+    assert_noop!(_transfer_default_blog_ownership(), Error::<Test>::BlogNotFound);
+  });
+}
+
+#[test]
+fn transfer_blog_ownership_should_fail_not_an_owner() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_noop!(_transfer_blog_ownership(
+      Some(Origin::signed(ACCOUNT2)),
+      None,
+      Some(ACCOUNT1)
+    ), Error::<Test>::NotABlogOwner);
+  });
+}
+
+#[test]
+fn transfer_blog_ownership_should_fail_transferring_to_current_owner() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_noop!(_transfer_blog_ownership(
+      Some(Origin::signed(ACCOUNT1)),
+      None,
+      Some(ACCOUNT1)
+    ), Error::<Test>::CannotTranferToCurrentOwner);
+  });
+}
+
+#[test]
+fn accept_pending_ownership_should_work() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_transfer_default_blog_ownership()); // Transfer BlogId 1 owned by ACCOUNT1 to ACCOUNT2
+    assert_ok!(_accept_default_pending_ownership()); // Accepting a transfer from ACCOUNT2
+    // Check whether owner was changed
+    let blog = Social::blog_by_id(1).unwrap();
+    assert_eq!(blog.owner, ACCOUNT2);
+
+    // Check whether storage state is correct
+    assert!(Social::pending_blog_owner(1).is_none());
+  });
+}
+
+#[test]
+fn accept_pending_ownership_should_fail_blog_not_found() {
+  new_test_ext().execute_with(|| {
+    // TODO: after adding new test externality
+  });
+}
+
+#[test]
+fn accept_pending_ownership_should_fail_no_pending_transfer() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_noop!(_accept_default_pending_ownership(), Error::<Test>::NoPendingTransferOnBlog);
+  });
+}
+
+#[test]
+fn accept_pending_ownership_should_fail_not_allowed_to_accept() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_transfer_default_blog_ownership());
+
+    assert_noop!(_accept_pending_ownership(
+      Some(Origin::signed(ACCOUNT1)),
+      None
+    ), Error::<Test>::NotAllowedToApplyOwnershipTransfer);
+  });
+}
+
+#[test]
+fn reject_pending_ownership_should_work() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_transfer_default_blog_ownership()); // Transfer BlogId 1 owned by ACCOUNT1 to ACCOUNT2
+    assert_ok!(_reject_default_pending_ownership()); // Rejecting a transfer from ACCOUNT2
+
+    // Check whether owner was not changed
+    let blog = Social::blog_by_id(1).unwrap();
+    assert_eq!(blog.owner, ACCOUNT1);
+
+    // Check whether storage state is correct
+    assert!(Social::pending_blog_owner(1).is_none());
+  });
+}
+
+#[test]
+fn reject_pending_ownership_should_work_when_rejected_by_current_owner() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_transfer_default_blog_ownership()); // Transfer BlogId 1 owned by ACCOUNT1 to ACCOUNT2
+    assert_ok!(_reject_default_pending_ownership_by_current_owner()); // Rejecting a transfer from ACCOUNT2
+
+    // Check whether owner was not changed
+    let blog = Social::blog_by_id(1).unwrap();
+    assert_eq!(blog.owner, ACCOUNT1);
+
+    // Check whether storage state is correct
+    assert!(Social::pending_blog_owner(1).is_none());
+  });
+}
+
+#[test]
+fn reject_pending_ownership_should_fail_blog_not_found() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_transfer_default_blog_ownership()); // Transfer BlogId 1 owned by ACCOUNT1 to ACCOUNT2
+    assert_ok!(_reject_default_pending_ownership()); // Rejecting a transfer from ACCOUNT2
+
+    // Check whether owner was not changed
+    let blog = Social::blog_by_id(1).unwrap();
+    assert_eq!(blog.owner, ACCOUNT1);
+
+    // Check whether storage state is correct
+    assert!(Social::pending_blog_owner(1).is_none());
+  });
+}
+
+#[test]
+fn reject_pending_ownership_should_fail_no_pending_transfer() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_noop!(_reject_default_pending_ownership(), Error::<Test>::NoPendingTransferOnBlog); // Rejecting a transfer from ACCOUNT2
+  });
+}
+
+#[test]
+fn reject_pending_ownership_should_fail_not_allowed_to_reject() {
+  new_test_ext().execute_with(|| {
+    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_transfer_default_blog_ownership()); // Transfer BlogId 1 owned by ACCOUNT1 to ACCOUNT2
+
+    assert_noop!(_reject_pending_ownership(
+      Some(Origin::signed(ACCOUNT3)),
+      None
+    ), Error::<Test>::NotAllowedToRejectOwnershipTransfer); // Rejecting a transfer from ACCOUNT2
   });
 }
