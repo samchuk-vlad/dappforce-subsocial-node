@@ -758,7 +758,7 @@ decl_module! {
         PostIdsByBlogId::mutate(blog.id, |ids| ids.push(new_post_id));
       }
 
-      <PostById<T>>::insert(new_post_id, new_post.clone());
+      <PostById<T>>::insert(new_post_id, new_post);
       NextPostId::mutate(|n| { *n += 1; });
       
       Self::deposit_event(RawEvent::PostCreated(owner, new_post_id));
@@ -828,7 +828,7 @@ decl_module! {
       if fields_updated > 0 {
         post.updated = Some(WhoAndWhen::<T>::new(owner.clone()));
         post.edit_history.push(new_history_record);
-        <PostById<T>>::insert(post_id, post.clone());
+        <PostById<T>>::insert(post_id, post);
 
         Self::deposit_event(RawEvent::PostUpdated(owner, post_id));
       }

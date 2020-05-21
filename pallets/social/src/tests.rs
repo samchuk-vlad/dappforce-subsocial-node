@@ -219,17 +219,17 @@ fn _create_default_blog() -> DispatchResult {
 
 fn _create_blog(origin: Option<Origin>, handle: Option<Option<Vec<u8>>>, ipfs_hash: Option<Vec<u8>>) -> DispatchResult {
   Social::create_blog(
-    origin.unwrap_or(Origin::signed(ACCOUNT1)),
-    handle.unwrap_or(Some(self::blog_handle())),
-    ipfs_hash.unwrap_or(self::blog_ipfs_hash())
+    origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
+    handle.unwrap_or_else(|| Some(self::blog_handle())),
+    ipfs_hash.unwrap_or_else(self::blog_ipfs_hash)
   )
 }
 
 fn _update_blog(origin: Option<Origin>, blog_id: Option<u32>, update: Option<BlogUpdate>) -> DispatchResult {
   Social::update_blog(
-    origin.unwrap_or(Origin::signed(ACCOUNT1)),
+    origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
     blog_id.unwrap_or(1).into(),
-    update.unwrap_or(self::blog_update(None, None, None))
+    update.unwrap_or_else(|| self::blog_update(None, None, None))
   )
 }
 
@@ -239,7 +239,7 @@ fn _default_follow_blog() -> DispatchResult {
 
 fn _follow_blog(origin: Option<Origin>, blog_id: Option<BlogId>) -> DispatchResult {
   Social::follow_blog(
-    origin.unwrap_or(Origin::signed(ACCOUNT2)),
+    origin.unwrap_or_else(|| Origin::signed(ACCOUNT2)),
     blog_id.unwrap_or(1)
   )
 }
@@ -250,7 +250,7 @@ fn _default_unfollow_blog() -> DispatchResult {
 
 fn _unfollow_blog(origin: Option<Origin>, blog_id: Option<BlogId>) -> DispatchResult {
   Social::unfollow_blog(
-    origin.unwrap_or(Origin::signed(ACCOUNT2)),
+    origin.unwrap_or_else(|| Origin::signed(ACCOUNT2)),
     blog_id.unwrap_or(1)
   )
 }
@@ -261,18 +261,18 @@ fn _create_default_post() -> DispatchResult {
 
 fn _create_post(origin: Option<Origin>, blog_id_opt: Option<Option<BlogId>>, extension: Option<PostExtension>, ipfs_hash: Option<Vec<u8>>) -> DispatchResult {
   Social::create_post(
-    origin.unwrap_or(Origin::signed(ACCOUNT1)),
+    origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
     blog_id_opt.unwrap_or(Some(1)),
-    extension.unwrap_or(self::extension_regular_post()),
-    ipfs_hash.unwrap_or(self::post_ipfs_hash())
+    extension.unwrap_or_else(self::extension_regular_post),
+    ipfs_hash.unwrap_or_else(self::post_ipfs_hash)
   )
 }
 
 fn _update_post(origin: Option<Origin>, post_id: Option<PostId>, update: Option<PostUpdate>) -> DispatchResult {
   Social::update_post(
-    origin.unwrap_or(Origin::signed(ACCOUNT1)),
+    origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
     post_id.unwrap_or(1),
-    update.unwrap_or(self::post_update(None, None, None))
+    update.unwrap_or_else(|| self::post_update(None, None, None))
   )
 }
 
@@ -289,7 +289,7 @@ fn _create_comment(origin: Option<Origin>, post_id: Option<PostId>,
     Some(self::extension_comment(
       parent_id.unwrap_or(None), post_id.unwrap_or(1))
     ),
-    Some(ipfs_hash.unwrap_or(self::comment_ipfs_hash()))
+    Some(ipfs_hash.unwrap_or_else(self::comment_ipfs_hash))
   )
 }
 
@@ -297,8 +297,7 @@ fn _update_comment(origin: Option<Origin>, post_id: Option<PostId>, update: Opti
   _update_post(
     origin,
     Some(post_id.unwrap_or(2)),
-    Some(update.unwrap_or(
-      self::post_update(None, Some(self::subcomment_ipfs_hash()), None))
+    Some(update.unwrap_or_else(|| self::post_update(None, Some(self::subcomment_ipfs_hash()), None))
     )
   )
 }
@@ -313,9 +312,9 @@ fn _create_default_comment_reaction() -> DispatchResult {
 
 fn _create_post_reaction(origin: Option<Origin>, post_id: Option<PostId>, kind: Option<ReactionKind>) -> DispatchResult {
   Social::create_post_reaction(
-    origin.unwrap_or(Origin::signed(ACCOUNT1)),
+    origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
     post_id.unwrap_or(1),
-    kind.unwrap_or(self::reaction_upvote())
+    kind.unwrap_or_else(self::reaction_upvote)
   )
 }
 
@@ -325,10 +324,10 @@ fn _create_comment_reaction(origin: Option<Origin>, post_id: Option<PostId>, kin
 
 fn _update_post_reaction(origin: Option<Origin>, post_id: Option<PostId>, reaction_id: ReactionId, kind: Option<ReactionKind>) -> DispatchResult {
   Social::update_post_reaction(
-    origin.unwrap_or(Origin::signed(ACCOUNT1)),
+    origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
     post_id.unwrap_or(1),
     reaction_id,
-    kind.unwrap_or(self::reaction_upvote())
+    kind.unwrap_or_else(self::reaction_upvote)
   )
 }
 
@@ -338,7 +337,7 @@ fn _update_comment_reaction(origin: Option<Origin>, post_id: Option<PostId>, rea
 
 fn _delete_post_reaction(origin: Option<Origin>, post_id: Option<PostId>, reaction_id: ReactionId) -> DispatchResult {
   Social::delete_post_reaction(
-    origin.unwrap_or(Origin::signed(ACCOUNT1)),
+    origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
     post_id.unwrap_or(1),
     reaction_id
   )
@@ -354,15 +353,15 @@ fn _create_default_profile() -> DispatchResult {
 
 fn _create_profile(origin: Option<Origin>, username: Option<Vec<u8>>, ipfs_hash: Option<Vec<u8>>) -> DispatchResult {
   Social::create_profile(
-    origin.unwrap_or(Origin::signed(ACCOUNT1)),
-    username.unwrap_or(self::alice_username()),
-    ipfs_hash.unwrap_or(self::profile_ipfs_hash())
+    origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
+    username.unwrap_or_else(self::alice_username),
+    ipfs_hash.unwrap_or_else(self::profile_ipfs_hash)
   )
 }
 
 fn _update_profile(origin: Option<Origin>, username: Option<Vec<u8>>, ipfs_hash: Option<Vec<u8>>) -> DispatchResult {
   Social::update_profile(
-    origin.unwrap_or(Origin::signed(ACCOUNT1)),
+    origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
     ProfileUpdate {
       username,
       ipfs_hash
@@ -376,7 +375,7 @@ fn _default_follow_account() -> DispatchResult {
 
 fn _follow_account(origin: Option<Origin>, account: Option<AccountId>) -> DispatchResult {
   Social::follow_account(
-    origin.unwrap_or(Origin::signed(ACCOUNT2)),
+    origin.unwrap_or_else(|| Origin::signed(ACCOUNT2)),
     account.unwrap_or(ACCOUNT1)
   )
 }
@@ -387,7 +386,7 @@ fn _default_unfollow_account() -> DispatchResult {
 
 fn _unfollow_account(origin: Option<Origin>, account: Option<AccountId>) -> DispatchResult {
   Social::unfollow_account(
-    origin.unwrap_or(Origin::signed(ACCOUNT2)),
+    origin.unwrap_or_else(|| Origin::signed(ACCOUNT2)),
     account.unwrap_or(ACCOUNT1)
   )
 }
@@ -1530,7 +1529,7 @@ fn change_post_score_cancel_downvote_with_upvote() {
 #[test]
 fn change_post_score_should_fail_post_not_found() {
   new_test_ext().execute_with(|| {
-    let ref mut fake_post: Post<Test> = self::fake_post(
+    let fake_post = &mut self::fake_post(
       1,
       ACCOUNT1,
       None,
@@ -1716,7 +1715,7 @@ fn change_comment_score_check_cancel_downvote() {
 #[test]
 fn change_comment_score_should_fail_comment_not_found() {
   new_test_ext().execute_with(|| {
-    let ref mut fake_post: Post<Test> = self::fake_post(
+    let fake_post = &mut self::fake_post(
       3,
       ACCOUNT1,
       None,

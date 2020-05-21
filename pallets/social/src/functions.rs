@@ -382,7 +382,7 @@ impl<T: Trait> Post<T> {
     pub fn get_root_post(&self) -> Result<Post<T>, DispatchError> {
         match self.extension {
             PostExtension::RegularPost | PostExtension::SharedPost(_) => Ok(self.clone()),
-            PostExtension::Comment(comment_ext) => Module::post_by_id(comment_ext.root_post_id).ok_or(Error::<T>::PostNotFound.into()),
+            PostExtension::Comment(comment_ext) => Module::post_by_id(comment_ext.root_post_id).ok_or_else(|| Error::<T>::PostNotFound.into()),
         }
     }
 
