@@ -2397,7 +2397,7 @@ fn accept_pending_ownership_should_fail_not_allowed_to_accept() {
     assert_noop!(_accept_pending_ownership(
       Some(Origin::signed(ACCOUNT1)),
       None
-    ), Error::<Test>::NotAllowedToApplyOwnershipTransfer);
+    ), Error::<Test>::NotAllowedToAcceptOwnershipTransfer);
   });
 }
 

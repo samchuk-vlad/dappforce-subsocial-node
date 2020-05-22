@@ -231,7 +231,7 @@ decl_error! {
     /// There is no transfer ownership by blog that is provided
     NoPendingTransferOnBlog,
     /// The account is not allowed to apply transfer ownership
-    NotAllowedToApplyOwnershipTransfer,
+    NotAllowedToAcceptOwnershipTransfer,
     /// The account is not allowed to reject transfer ownership
     NotAllowedToRejectOwnershipTransfer,
 
@@ -554,18 +554,16 @@ decl_module! {
       let who = ensure_signed(origin)?;
 
       let transfer_to = Self::pending_blog_owner(blog_id).ok_or(Error::<T>::NoPendingTransferOnBlog)?;
-      ensure!(who == transfer_to, Error::<T>::NotAllowedToApplyOwnershipTransfer);
+      ensure!(who == transfer_to, Error::<T>::NotAllowedToAcceptOwnershipTransfer);
+
+      // Here we know that the origin is eligible to become a new owner of this blog.
+      <PendingBlogOwner<T>>::remove(blog_id);
 
       if let Some(mut blog) = Self::blog_by_id(blog_id) {
         blog.owner = who.clone();
         <BlogById<T>>::insert(blog_id, blog);
-      } else {
-        <PendingBlogOwner<T>>::remove(blog_id);
-        return Err(Error::<T>::BlogNotFound.into())
+        Self::deposit_event(RawEvent::BlogOwnerChanged(who, blog_id));
       }
-
-      <PendingBlogOwner<T>>::remove(blog_id);
-      Self::deposit_event(RawEvent::BlogOwnerChanged(who, blog_id));
     }
 
     pub fn reject_pending_ownership(origin, blog_id: BlogId) {
@@ -576,7 +574,7 @@ decl_module! {
       ensure!(who == transfer_to || who == blog.owner, Error::<T>::NotAllowedToRejectOwnershipTransfer);
 
       <PendingBlogOwner<T>>::remove(blog_id);
-      Self::deposit_event(RawEvent::BlogOwnershipTransferCreated(who, blog_id));
+      Self::deposit_event(RawEvent::BlogOwnershipTransferRejected(who, blog_id));
     }
 
     pub fn follow_blog(origin, blog_id: BlogId) {
