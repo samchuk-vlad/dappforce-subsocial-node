@@ -12,8 +12,8 @@ use system::ensure_signed;
 use pallet_utils::WhoAndWhen;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct Blog<T: Trait> {
-  pub id: BlogId,
+pub struct Space<T: Trait> {
+  pub id: SpaceId,
   pub created: WhoAndWhen<T>,
   pub updated: Option<WhoAndWhen<T>>,
   pub hidden: bool,
@@ -26,23 +26,23 @@ pub struct Blog<T: Trait> {
   pub posts_count: u16,
   pub followers_count: u32,
 
-  pub edit_history: Vec<BlogHistoryRecord<T>>,
+  pub edit_history: Vec<SpaceHistoryRecord<T>>,
 
   pub score: i32,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 #[allow(clippy::option_option)]
-pub struct BlogUpdate {
+pub struct SpaceUpdate {
   pub handle: Option<Option<Vec<u8>>>,
   pub ipfs_hash: Option<Vec<u8>>,
   pub hidden: Option<bool>,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct BlogHistoryRecord<T: Trait> {
+pub struct SpaceHistoryRecord<T: Trait> {
   pub edited: WhoAndWhen<T>,
-  pub old_data: BlogUpdate,
+  pub old_data: SpaceUpdate,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -52,7 +52,7 @@ pub struct Post<T: Trait> {
   pub updated: Option<WhoAndWhen<T>>,
   pub hidden: bool,
 
-  pub blog_id: Option<BlogId>,
+  pub space_id: Option<SpaceId>,
   pub extension: PostExtension,
 
   pub ipfs_hash: Vec<u8>,
@@ -70,7 +70,7 @@ pub struct Post<T: Trait> {
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct PostUpdate {
-  pub blog_id: Option<BlogId>,
+  pub space_id: Option<SpaceId>,
   pub ipfs_hash: Option<Vec<u8>>,
   pub hidden: Option<bool>,
 }
@@ -124,7 +124,7 @@ pub struct Reaction<T: Trait> {
 pub struct SocialAccount<T: Trait> {
   pub followers_count: u32,
   pub following_accounts_count: u16,
-  pub following_blogs_count: u16,
+  pub following_spaces_count: u16,
   pub reputation: u32,
   pub profile: Option<Profile<T>>,
 }
@@ -161,7 +161,7 @@ pub enum ScoringAction {
   UpvoteComment,
   DownvoteComment,
   ShareComment,
-  FollowBlog,
+  FollowSpace,
   FollowAccount,
 }
 
@@ -171,7 +171,7 @@ impl Default for ScoringAction {
   }
 }
 
-pub type BlogId = u64;
+pub type SpaceId = u64;
 pub type PostId = u64;
 pub type ReactionId = u64;
 
@@ -183,10 +183,10 @@ pub trait Trait: system::Trait + pallet_timestamp::Trait {
   /// The length in bytes of IPFS hash
   type IpfsHashLen: Get<u32>;
 
-  /// Minimal length of blog handle
+  /// Minimal length of space handle
   type MinHandleLen: Get<u32>;
 
-  /// Maximal length of blog handle
+  /// Maximal length of space handle
   type MaxHandleLen: Get<u32>;
 
   /// Minimal length of profile username
@@ -196,7 +196,7 @@ pub trait Trait: system::Trait + pallet_timestamp::Trait {
   type MaxUsernameLen: Get<u32>;
 
   /// Weights of the related social account actions
-  type FollowBlogActionWeight: Get<i16>;
+  type FollowSpaceActionWeight: Get<i16>;
   type FollowAccountActionWeight: Get<i16>;
   type UpvotePostActionWeight: Get<i16>;
   type DownvotePostActionWeight: Get<i16>;
@@ -212,24 +212,24 @@ pub trait Trait: system::Trait + pallet_timestamp::Trait {
 
 decl_error! {
   pub enum Error for Module<T: Trait> {
-    /// Blog was not found by id
-    BlogNotFound,
-    /// Blog handle is too short
+    /// Space was not found by id
+    SpaceNotFound,
+    /// Space handle is too short
     HandleIsTooShort,
-    /// Blog handle is too long
+    /// Space handle is too long
     HandleIsTooLong,
-    /// Blog handle is not unique
+    /// Space handle is not unique
     HandleIsNotUnique,
-    /// Blog handle contains invalid characters
+    /// Space handle contains invalid characters
     HandleContainsInvalidChars,
-    /// Nothing to update in blog
-    NoUpdatesInBlog,
-    /// Only blog owner can manage their blog
-    NotABlogOwner,
-    /// The current blog owner cannot transfer ownership to himself
+    /// Nothing to update in space
+    NoUpdatesInSpace,
+    /// Only space owner can manage their space
+    NotASpaceOwner,
+    /// The current space owner cannot transfer ownership to himself
     CannotTranferToCurrentOwner,
-    /// There is no transfer ownership by blog that is provided
-    NoPendingTransferOnBlog,
+    /// There is no transfer ownership by space that is provided
+    NoPendingTransferOnSpace,
     /// The account is not allowed to apply transfer ownership
     NotAllowedToAcceptOwnershipTransfer,
     /// The account is not allowed to reject transfer ownership
@@ -239,15 +239,15 @@ decl_error! {
     PostNotFound,
     /// Nothing to update in post
     NoUpdatesInPost,
-    /// Only post author can manage their blog
+    /// Only post author can manage their space
     NotAnAuthor,
-    /// Overflow caused adding post on blog
-    OverflowAddingPostOnBlog,
-    /// Cannot create post not defining blog_id
-    BlogIdIsUndefined,
+    /// Overflow caused adding post on space
+    OverflowAddingPostOnSpace,
+    /// Cannot create post not defining space_id
+    SpaceIdIsUndefined,
     /// Not allowed to create post/comment when entity is hidden
     BannedToCreateWhenHidden,
-    /// Not allowed to follow blog when it's hidden
+    /// Not allowed to follow space when it's hidden
     BannedToFollowWhenHidden,
     /// Not allowed to create/update reaction to post/comment when entity is hidden
     BannedToChangeReactionWhenHidden,
@@ -260,8 +260,8 @@ decl_error! {
     CommentIPFSHashNotDiffer,
     /// Overflow adding comment on post
     OverflowAddingCommentOnPost,
-    /// Cannot update blog id on Comment
-    CannotUpdateBlogIdOnComment,
+    /// Cannot update space id on Comment
+    CannotUpdateSpaceIdOnComment,
     /// Max comment depth reached
     MaxCommentDepthReached,
 
@@ -282,10 +282,10 @@ decl_error! {
     /// New reaction kind is the same as old one
     NewReactionKindNotDiffer,
 
-    /// Account is already following this blog
-    AccountIsFollowingBlog,
-    /// Account is not following this blog
-    AccountIsNotFollowingBlog,
+    /// Account is already following this space
+    AccountIsFollowingSpace,
+    /// Account is not following this space
+    AccountIsNotFollowingSpace,
     /// Account can not follow itself
     AccountCannotFollowItself,
     /// Account can not unfollow itself
@@ -294,10 +294,10 @@ decl_error! {
     AccountIsAlreadyFollowed,
     /// Account is not followed by current follower
     AccountIsNotFollowed,
-    /// Underflow unfollowing blog
-    UnderflowUnfollowingBlog,
-    /// Overflow caused following blog
-    OverflowFollowingBlog,
+    /// Underflow unfollowing space
+    UnderflowUnfollowingSpace,
+    /// Overflow caused following space
+    OverflowFollowingSpace,
     /// Overflow caused following account
     OverflowFollowingAccount,
     /// Underflow caused unfollowing account
@@ -313,10 +313,10 @@ decl_error! {
     /// IPFS-hash is not correct
     IpfsIsIncorrect,
 
-    /// Out of bounds updating blog score
-    OutOfBoundsUpdatingBlogScore,
-    /// Out of bounds reverting blog score
-    OutOfBoundsRevertingBlogScore,
+    /// Out of bounds updating space score
+    OutOfBoundsUpdatingSpaceScore,
+    /// Out of bounds reverting space score
+    OutOfBoundsRevertingSpaceScore,
     /// Out of bounds updating post score
     OutOfBoundsUpdatingPostScore,
     /// Out of bounds reverting post score
@@ -363,30 +363,30 @@ decl_error! {
 // This pallet's storage items.
 decl_storage! {
   trait Store for Module<T: Trait> as TemplateModule {
-    pub BlogById get(blog_by_id): map BlogId => Option<Blog<T>>;
+    pub SpaceById get(space_by_id): map SpaceId => Option<Space<T>>;
     pub PostById get(post_by_id): map PostId => Option<Post<T>>;
     pub ReactionById get(reaction_by_id): map ReactionId => Option<Reaction<T>>;
     pub SocialAccountById get(social_account_by_id): map T::AccountId => Option<SocialAccount<T>>;
 
-    pub BlogIdsByOwner get(blog_ids_by_owner): map T::AccountId => Vec<BlogId>;
-    pub PostIdsByBlogId get(post_ids_by_blog_id): map BlogId => Vec<PostId>;
+    pub SpaceIdsByOwner get(space_ids_by_owner): map T::AccountId => Vec<SpaceId>;
+    pub PostIdsBySpaceId get(post_ids_by_space_id): map SpaceId => Vec<PostId>;
 
     pub ReplyIdsByPostId get(reply_ids_by_post_id): map PostId => Vec<PostId>;
 
     pub ReactionIdsByPostId get(reaction_ids_by_post_id): map PostId => Vec<ReactionId>;
     pub PostReactionIdByAccount get(post_reaction_id_by_account): map (T::AccountId, PostId) => ReactionId;
 
-    pub BlogIdByHandle get(blog_id_by_handle): map Vec<u8> => Option<BlogId>;
+    pub SpaceIdByHandle get(space_id_by_handle): map Vec<u8> => Option<SpaceId>;
 
-    pub BlogsFollowedByAccount get(blogs_followed_by_account): map T::AccountId => Vec<BlogId>;
-    pub BlogFollowers get(blog_followers): map BlogId => Vec<T::AccountId>;
-    pub BlogFollowedByAccount get(blog_followed_by_account): map (T::AccountId, BlogId) => bool;
+    pub SpacesFollowedByAccount get(spaces_followed_by_account): map T::AccountId => Vec<SpaceId>;
+    pub SpaceFollowers get(space_followers): map SpaceId => Vec<T::AccountId>;
+    pub SpaceFollowedByAccount get(space_followed_by_account): map (T::AccountId, SpaceId) => bool;
 
     pub AccountFollowedByAccount get(account_followed_by_account): map (T::AccountId, T::AccountId) => bool;
     pub AccountsFollowedByAccount get(accounts_followed_by_account): map T::AccountId => Vec<T::AccountId>;
     pub AccountFollowers get(account_followers): map T::AccountId => Vec<T::AccountId>;
 
-    pub NextBlogId get(next_blog_id): BlogId = 1;
+    pub NextSpaceId get(next_space_id): SpaceId = 1;
     pub NextPostId get(next_post_id): PostId = 1;
     pub NextReactionId get(next_reaction_id): ReactionId = 1;
 
@@ -398,7 +398,7 @@ decl_storage! {
 
     pub AccountByProfileUsername get(account_by_profile_username): map Vec<u8> => Option<T::AccountId>;
 
-    pub PendingBlogOwner get(pending_blog_owner): map BlogId => Option<T::AccountId>;
+    pub PendingSpaceOwner get(pending_space_owner): map SpaceId => Option<T::AccountId>;
   }
 }
 
@@ -408,10 +408,10 @@ decl_module! {
     /// The length in bytes of IPFS hash
     const IpfsHashLen: u32 = T::IpfsHashLen::get();
 
-    /// Minimal length of blog handle
+    /// Minimal length of space handle
     const MinHandleLen: u32 = T::MinHandleLen::get();
 
-    /// Maximal length of blog handle
+    /// Maximal length of space handle
     const MaxHandleLen: u32 = T::MaxHandleLen::get();
 
     /// Minimal length of profile username
@@ -421,7 +421,7 @@ decl_module! {
     const MaxUsernameLen: u32 = T::MaxUsernameLen::get();
 
     /// Weights of the related social account actions
-    const FollowBlogActionWeight: i16 = T::FollowBlogActionWeight::get();
+    const FollowSpaceActionWeight: i16 = T::FollowSpaceActionWeight::get();
     const FollowAccountActionWeight: i16 = T::FollowAccountActionWeight::get();
     const UpvotePostActionWeight: i16 = T::UpvotePostActionWeight::get();
     const DownvotePostActionWeight: i16 = T::DownvotePostActionWeight::get();
@@ -438,7 +438,7 @@ decl_module! {
     // this is needed only if you are using events in your pallet
     fn deposit_event() = default;
 
-    pub fn create_blog(origin, handle_opt: Option<Vec<u8>>, ipfs_hash: Vec<u8>) {
+    pub fn create_space(origin, handle_opt: Option<Vec<u8>>, ipfs_hash: Vec<u8>) {
       let owner = ensure_signed(origin)?;
 
       Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
@@ -448,9 +448,9 @@ decl_module! {
         handle = Self::lowercase_and_validate_a_handle(original_handle)?;
       }
 
-      let blog_id = Self::next_blog_id();
-      let new_blog: &mut Blog<T> = &mut Blog {
-        id: blog_id,
+      let space_id = Self::next_space_id();
+      let new_space: &mut Space<T> = &mut Space {
+        id: space_id,
         created: WhoAndWhen::<T>::new(owner.clone()),
         updated: None,
         hidden: false,
@@ -463,20 +463,20 @@ decl_module! {
         score: 0
       };
 
-      // Blog creator automatically follows their blog:
-      Self::add_blog_follower(owner.clone(), new_blog)?;
+      // Space creator automatically follows their space:
+      Self::add_space_follower(owner.clone(), new_space)?;
 
       if !handle.is_empty() {
-        BlogIdByHandle::insert(handle, blog_id);
+        SpaceIdByHandle::insert(handle, space_id);
       }
 
-      <BlogById<T>>::insert(blog_id, new_blog);
-      <BlogIdsByOwner<T>>::mutate(owner.clone(), |ids| ids.push(blog_id));
-      NextBlogId::mutate(|n| { *n += 1; });
-      Self::deposit_event(RawEvent::BlogCreated(owner, blog_id));
+      <SpaceById<T>>::insert(space_id, new_space);
+      <SpaceIdsByOwner<T>>::mutate(owner.clone(), |ids| ids.push(space_id));
+      NextSpaceId::mutate(|n| { *n += 1; });
+      Self::deposit_event(RawEvent::SpaceCreated(owner, space_id));
     }
 
-    pub fn update_blog(origin, blog_id: BlogId, update: BlogUpdate) {
+    pub fn update_space(origin, space_id: SpaceId, update: SpaceUpdate) {
       let owner = ensure_signed(origin)?;
 
       let has_updates =
@@ -484,137 +484,137 @@ decl_module! {
         update.ipfs_hash.is_some() ||
         update.hidden.is_some();
 
-      ensure!(has_updates, Error::<T>::NoUpdatesInBlog);
+      ensure!(has_updates, Error::<T>::NoUpdatesInSpace);
 
-      let mut blog = Self::blog_by_id(blog_id).ok_or(Error::<T>::BlogNotFound)?;
+      let mut space = Self::space_by_id(space_id).ok_or(Error::<T>::SpaceNotFound)?;
 
-      blog.ensure_blog_owner(owner.clone())?;
+      space.ensure_space_owner(owner.clone())?;
 
       let mut fields_updated = 0;
-      let mut new_history_record = BlogHistoryRecord {
+      let mut new_history_record = SpaceHistoryRecord {
         edited: WhoAndWhen::<T>::new(owner.clone()),
-        old_data: BlogUpdate {handle: None, ipfs_hash: None, hidden: None}
+        old_data: SpaceUpdate {handle: None, ipfs_hash: None, hidden: None}
       };
 
       if let Some(ipfs_hash) = update.ipfs_hash {
-        if ipfs_hash != blog.ipfs_hash {
+        if ipfs_hash != space.ipfs_hash {
           Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
-          new_history_record.old_data.ipfs_hash = Some(blog.ipfs_hash);
-          blog.ipfs_hash = ipfs_hash;
+          new_history_record.old_data.ipfs_hash = Some(space.ipfs_hash);
+          space.ipfs_hash = ipfs_hash;
           fields_updated += 1;
         }
       }
 
       if let Some(hidden) = update.hidden {
-        if hidden != blog.hidden {
-          new_history_record.old_data.hidden = Some(blog.hidden);
-          blog.hidden = hidden;
+        if hidden != space.hidden {
+          new_history_record.old_data.hidden = Some(space.hidden);
+          space.hidden = hidden;
           fields_updated += 1;
         }
       }
 
       if let Some(handle_opt) = update.handle {
-        if handle_opt != blog.handle {
+        if handle_opt != space.handle {
           if let Some(mut handle) = handle_opt.clone() {
             handle = Self::lowercase_and_validate_a_handle(handle)?;
-            BlogIdByHandle::insert(handle, blog_id);
+            SpaceIdByHandle::insert(handle, space_id);
           }
-          if let Some(blog_handle) = blog.handle.clone() {
-            BlogIdByHandle::remove(blog_handle);
+          if let Some(space_handle) = space.handle.clone() {
+            SpaceIdByHandle::remove(space_handle);
           }
-          new_history_record.old_data.handle = Some(blog.handle);
-          blog.handle = handle_opt;
+          new_history_record.old_data.handle = Some(space.handle);
+          space.handle = handle_opt;
           fields_updated += 1;
         }
       }
 
-      // Update this blog only if at least one field should be updated:
+      // Update this space only if at least one field should be updated:
       if fields_updated > 0 {
-        blog.updated = Some(WhoAndWhen::<T>::new(owner.clone()));
-        blog.edit_history.push(new_history_record);
-        <BlogById<T>>::insert(blog_id, blog);
-        Self::deposit_event(RawEvent::BlogUpdated(owner, blog_id));
+        space.updated = Some(WhoAndWhen::<T>::new(owner.clone()));
+        space.edit_history.push(new_history_record);
+        <SpaceById<T>>::insert(space_id, space);
+        Self::deposit_event(RawEvent::SpaceUpdated(owner, space_id));
       }
     }
 
-    pub fn transfer_blog_ownership(origin, blog_id: BlogId, transfer_to: T::AccountId) {
+    pub fn transfer_space_ownership(origin, space_id: SpaceId, transfer_to: T::AccountId) {
       let who = ensure_signed(origin)?;
 
-      let blog = Self::blog_by_id(blog_id).ok_or(Error::<T>::BlogNotFound)?;
-      blog.ensure_blog_owner(who.clone())?;
+      let space = Self::space_by_id(space_id).ok_or(Error::<T>::SpaceNotFound)?;
+      space.ensure_space_owner(who.clone())?;
 
       ensure!(who != transfer_to, Error::<T>::CannotTranferToCurrentOwner);
-      Blog::<T>::ensure_blog_stored(blog_id)?;
+      Space::<T>::ensure_space_stored(space_id)?;
 
-      <PendingBlogOwner<T>>::insert(blog_id, transfer_to.clone());
-      Self::deposit_event(RawEvent::BlogOwnershipTransferCreated(who, blog_id, transfer_to));
+      <PendingSpaceOwner<T>>::insert(space_id, transfer_to.clone());
+      Self::deposit_event(RawEvent::SpaceOwnershipTransferCreated(who, space_id, transfer_to));
     }
 
-    pub fn accept_pending_ownership(origin, blog_id: BlogId) {
+    pub fn accept_pending_ownership(origin, space_id: SpaceId) {
       let who = ensure_signed(origin)?;
 
-      let transfer_to = Self::pending_blog_owner(blog_id).ok_or(Error::<T>::NoPendingTransferOnBlog)?;
+      let transfer_to = Self::pending_space_owner(space_id).ok_or(Error::<T>::NoPendingTransferOnSpace)?;
       ensure!(who == transfer_to, Error::<T>::NotAllowedToAcceptOwnershipTransfer);
 
-      // Here we know that the origin is eligible to become a new owner of this blog.
-      <PendingBlogOwner<T>>::remove(blog_id);
+      // Here we know that the origin is eligible to become a new owner of this space.
+      <PendingSpaceOwner<T>>::remove(space_id);
 
-      if let Some(mut blog) = Self::blog_by_id(blog_id) {
-        blog.owner = who.clone();
-        <BlogById<T>>::insert(blog_id, blog);
-        Self::deposit_event(RawEvent::BlogOwnershipTransfered(who, blog_id));
+      if let Some(mut space) = Self::space_by_id(space_id) {
+        space.owner = who.clone();
+        <SpaceById<T>>::insert(space_id, space);
+        Self::deposit_event(RawEvent::SpaceOwnershipTransfered(who, space_id));
       }
     }
 
-    pub fn reject_pending_ownership(origin, blog_id: BlogId) {
+    pub fn reject_pending_ownership(origin, space_id: SpaceId) {
       let who = ensure_signed(origin)?;
 
-      let blog = Self::blog_by_id(blog_id).ok_or(Error::<T>::BlogNotFound)?;
-      let transfer_to = Self::pending_blog_owner(blog_id).ok_or(Error::<T>::NoPendingTransferOnBlog)?;
-      ensure!(who == transfer_to || who == blog.owner, Error::<T>::NotAllowedToRejectOwnershipTransfer);
+      let space = Self::space_by_id(space_id).ok_or(Error::<T>::SpaceNotFound)?;
+      let transfer_to = Self::pending_space_owner(space_id).ok_or(Error::<T>::NoPendingTransferOnSpace)?;
+      ensure!(who == transfer_to || who == space.owner, Error::<T>::NotAllowedToRejectOwnershipTransfer);
 
-      <PendingBlogOwner<T>>::remove(blog_id);
-      Self::deposit_event(RawEvent::BlogOwnershipTransferRejected(who, blog_id));
+      <PendingSpaceOwner<T>>::remove(space_id);
+      Self::deposit_event(RawEvent::SpaceOwnershipTransferRejected(who, space_id));
     }
 
-    pub fn follow_blog(origin, blog_id: BlogId) {
+    pub fn follow_space(origin, space_id: SpaceId) {
       let follower = ensure_signed(origin)?;
 
-      let blog = &mut (Self::blog_by_id(blog_id).ok_or(Error::<T>::BlogNotFound)?);
-      ensure!(!Self::blog_followed_by_account((follower.clone(), blog_id)), Error::<T>::AccountIsFollowingBlog);
-      ensure!(!blog.hidden, Error::<T>::BannedToFollowWhenHidden);
+      let space = &mut (Self::space_by_id(space_id).ok_or(Error::<T>::SpaceNotFound)?);
+      ensure!(!Self::space_followed_by_account((follower.clone(), space_id)), Error::<T>::AccountIsFollowingSpace);
+      ensure!(!space.hidden, Error::<T>::BannedToFollowWhenHidden);
 
-      Self::add_blog_follower(follower, blog)?;
-      <BlogById<T>>::insert(blog_id, blog);
+      Self::add_space_follower(follower, space)?;
+      <SpaceById<T>>::insert(space_id, space);
     }
 
-    pub fn unfollow_blog(origin, blog_id: BlogId) {
+    pub fn unfollow_space(origin, space_id: SpaceId) {
       let follower = ensure_signed(origin)?;
 
-      let blog = &mut (Self::blog_by_id(blog_id).ok_or(Error::<T>::BlogNotFound)?);
-      ensure!(Self::blog_followed_by_account((follower.clone(), blog_id)), Error::<T>::AccountIsNotFollowingBlog);
+      let space = &mut (Self::space_by_id(space_id).ok_or(Error::<T>::SpaceNotFound)?);
+      ensure!(Self::space_followed_by_account((follower.clone(), space_id)), Error::<T>::AccountIsNotFollowingSpace);
 
       let mut social_account = Self::social_account_by_id(follower.clone()).ok_or(Error::<T>::SocialAccountNotFound)?;
-      social_account.following_blogs_count = social_account.following_blogs_count
+      social_account.following_spaces_count = social_account.following_spaces_count
         .checked_sub(1)
-        .ok_or(Error::<T>::UnderflowUnfollowingBlog)?;
-      blog.followers_count = blog.followers_count.checked_sub(1).ok_or(Error::<T>::UnderflowUnfollowingBlog)?;
+        .ok_or(Error::<T>::UnderflowUnfollowingSpace)?;
+      space.followers_count = space.followers_count.checked_sub(1).ok_or(Error::<T>::UnderflowUnfollowingSpace)?;
 
-      if blog.created.account != follower {
-        let author = blog.created.account.clone();
-        if let Some(score_diff) = Self::account_reputation_diff_by_account((follower.clone(), author.clone(), ScoringAction::FollowBlog)) {
-          blog.score = blog.score.checked_sub(score_diff as i32).ok_or(Error::<T>::OutOfBoundsUpdatingBlogScore)?;
-          Self::change_social_account_reputation(author, follower.clone(), -score_diff, ScoringAction::FollowBlog)?;
+      if space.created.account != follower {
+        let author = space.created.account.clone();
+        if let Some(score_diff) = Self::account_reputation_diff_by_account((follower.clone(), author.clone(), ScoringAction::FollowSpace)) {
+          space.score = space.score.checked_sub(score_diff as i32).ok_or(Error::<T>::OutOfBoundsUpdatingSpaceScore)?;
+          Self::change_social_account_reputation(author, follower.clone(), -score_diff, ScoringAction::FollowSpace)?;
         }
       }
 
-      <BlogsFollowedByAccount<T>>::mutate(follower.clone(), |blog_ids| Self::vec_remove_on(blog_ids, blog_id));
-      <BlogFollowers<T>>::mutate(blog_id, |account_ids| Self::vec_remove_on(account_ids, follower.clone()));
-      <BlogFollowedByAccount<T>>::remove((follower.clone(), blog_id));
+      <SpacesFollowedByAccount<T>>::mutate(follower.clone(), |space_ids| Self::vec_remove_on(space_ids, space_id));
+      <SpaceFollowers<T>>::mutate(space_id, |account_ids| Self::vec_remove_on(account_ids, follower.clone()));
+      <SpaceFollowedByAccount<T>>::remove((follower.clone(), space_id));
       <SocialAccountById<T>>::insert(follower.clone(), social_account);
-      <BlogById<T>>::insert(blog_id, blog);
+      <SpaceById<T>>::insert(space_id, space);
 
-      Self::deposit_event(RawEvent::BlogUnfollowed(follower, blog_id));
+      Self::deposit_event(RawEvent::SpaceUnfollowed(follower, space_id));
     }
 
     pub fn follow_account(origin, account: T::AccountId) {
@@ -747,25 +747,25 @@ decl_module! {
       }
     }
 
-    pub fn create_post(origin, blog_id_opt: Option<BlogId>, extension: PostExtension, ipfs_hash: Vec<u8>) {
+    pub fn create_post(origin, space_id_opt: Option<SpaceId>, extension: PostExtension, ipfs_hash: Vec<u8>) {
       let owner = ensure_signed(origin)?;
 
       Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
 
       let new_post_id = Self::next_post_id();
-      let new_post: Post<T> = Post::create(new_post_id, owner.clone(), blog_id_opt, extension, ipfs_hash);
+      let new_post: Post<T> = Post::create(new_post_id, owner.clone(), space_id_opt, extension, ipfs_hash);
 
-      // Get blog from either from blog_id_opt or extension if a Comment provided
-      let mut blog = new_post.get_blog()?;
-      ensure!(!blog.hidden, Error::<T>::BannedToCreateWhenHidden);
+      // Get space from either from space_id_opt or extension if a Comment provided
+      let mut space = new_post.get_space()?;
+      ensure!(!space.hidden, Error::<T>::BannedToCreateWhenHidden);
 
       let root_post = &mut (new_post.get_root_post()?);
       ensure!(!root_post.hidden, Error::<T>::BannedToCreateWhenHidden);
 
       match extension {
         PostExtension::RegularPost => {
-          blog.ensure_blog_owner(owner.clone())?;
-          blog.increment_posts_count()?;
+          space.ensure_space_owner(owner.clone())?;
+          space.increment_posts_count()?;
         },
         PostExtension::Comment(comment_ext) => {
           root_post.total_replies_count = root_post.total_replies_count.checked_add(1).ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
@@ -798,14 +798,14 @@ decl_module! {
         PostExtension::SharedPost(post_id) => {
           let post = &mut (Self::post_by_id(post_id).ok_or(Error::<T>::OriginalPostNotFound)?);
           ensure!(!post.is_shared_post(), Error::<T>::CannotShareSharedPost);
-          blog.posts_count = blog.posts_count.checked_add(1).ok_or(Error::<T>::OverflowAddingPostOnBlog)?;
+          space.posts_count = space.posts_count.checked_add(1).ok_or(Error::<T>::OverflowAddingPostOnSpace)?;
           Self::share_post(owner.clone(), post, new_post_id)?;
         },
       }
 
       if !new_post.is_comment() {
-        <BlogById<T>>::insert(blog.id, blog.clone());
-        PostIdsByBlogId::mutate(blog.id, |ids| ids.push(new_post_id));
+        <SpaceById<T>>::insert(space.id, space.clone());
+        PostIdsBySpaceId::mutate(space.id, |ids| ids.push(new_post_id));
       }
 
       <PostById<T>>::insert(new_post_id, new_post);
@@ -818,7 +818,7 @@ decl_module! {
       let owner = ensure_signed(origin)?;
 
       let has_updates =
-        update.blog_id.is_some() ||
+        update.space_id.is_some() ||
         update.ipfs_hash.is_some() ||
         update.hidden.is_some();
 
@@ -831,7 +831,7 @@ decl_module! {
       let mut fields_updated = 0;
       let mut new_history_record = PostHistoryRecord {
         edited: WhoAndWhen::<T>::new(owner.clone()),
-        old_data: PostUpdate {blog_id: None, ipfs_hash: None, hidden: None}
+        old_data: PostUpdate {space_id: None, ipfs_hash: None, hidden: None}
       };
 
       if let Some(ipfs_hash) = update.ipfs_hash {
@@ -853,21 +853,21 @@ decl_module! {
         }
       }
 
-      // Move this post to another blog:
-      if let Some(blog_id) = update.blog_id {
-        ensure!(!post.is_comment(), Error::<T>::CannotUpdateBlogIdOnComment);
+      // Move this post to another space:
+      if let Some(space_id) = update.space_id {
+        ensure!(!post.is_comment(), Error::<T>::CannotUpdateSpaceIdOnComment);
 
-        if let Some(post_blog_id) = post.blog_id {
-          if blog_id != post_blog_id {
-            Blog::<T>::ensure_blog_stored(blog_id)?;
+        if let Some(post_space_id) = post.space_id {
+          if space_id != post_space_id {
+            Space::<T>::ensure_space_stored(space_id)?;
 
-            // Remove post_id from its old blog:
-            PostIdsByBlogId::mutate(post_blog_id, |post_ids| Self::vec_remove_on(post_ids, post_id));
+            // Remove post_id from its old space:
+            PostIdsBySpaceId::mutate(post_space_id, |post_ids| Self::vec_remove_on(post_ids, post_id));
 
-            // Add post_id to its new blog:
-            PostIdsByBlogId::mutate(blog_id, |ids| ids.push(post_id));
-            new_history_record.old_data.blog_id = post.blog_id;
-            post.blog_id = Some(blog_id);
+            // Add post_id to its new space:
+            PostIdsBySpaceId::mutate(space_id, |ids| ids.push(post_id));
+            new_history_record.old_data.space_id = post.space_id;
+            post.space_id = Some(space_id);
             fields_updated += 1;
           }
         }
@@ -892,8 +892,8 @@ decl_module! {
         Error::<T>::AccountAlreadyReacted
       );
 
-      let blog = post.get_blog()?;
-      ensure!(!blog.hidden && !Self::is_root_post_hidden(post_id)?, Error::<T>::BannedToChangeReactionWhenHidden);
+      let space = post.get_space()?;
+      ensure!(!space.hidden && !Self::is_root_post_hidden(post_id)?, Error::<T>::BannedToChangeReactionWhenHidden);
 
       let reaction_id = Self::new_reaction(owner.clone(), kind);
 
@@ -926,8 +926,8 @@ decl_module! {
       let mut reaction = Self::reaction_by_id(reaction_id).ok_or(Error::<T>::ReactionNotFound)?;
       let post = &mut (Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?);
 
-      let blog = post.get_blog()?;
-      ensure!(!blog.hidden && !post.hidden, Error::<T>::BannedToChangeReactionWhenHidden);
+      let space = post.get_space()?;
+      ensure!(!space.hidden && !post.hidden, Error::<T>::BannedToChangeReactionWhenHidden);
 
       ensure!(owner == reaction.created.account, Error::<T>::NotAReactionOwner);
       ensure!(reaction.kind != new_kind, Error::<T>::NewReactionKindNotDiffer);
@@ -992,16 +992,16 @@ decl_event!(
   pub enum Event<T> where
     <T as system::Trait>::AccountId,
    {
-    BlogCreated(AccountId, BlogId),
-    BlogUpdated(AccountId, BlogId),
-    BlogDeleted(AccountId, BlogId),
+    SpaceCreated(AccountId, SpaceId),
+    SpaceUpdated(AccountId, SpaceId),
+    SpaceDeleted(AccountId, SpaceId),
 
-    BlogOwnershipTransferCreated(/* current owner */ AccountId, BlogId, /* new owner */ AccountId),
-    BlogOwnershipTransfered(AccountId, BlogId),
-    BlogOwnershipTransferRejected(AccountId, BlogId),
+    SpaceOwnershipTransferCreated(/* current owner */ AccountId, SpaceId, /* new owner */ AccountId),
+    SpaceOwnershipTransfered(AccountId, SpaceId),
+    SpaceOwnershipTransferRejected(AccountId, SpaceId),
 
-    BlogFollowed(AccountId, BlogId),
-    BlogUnfollowed(AccountId, BlogId),
+    SpaceFollowed(AccountId, SpaceId),
+    SpaceUnfollowed(AccountId, SpaceId),
 
     AccountReputationChanged(AccountId, ScoringAction, u32),
 

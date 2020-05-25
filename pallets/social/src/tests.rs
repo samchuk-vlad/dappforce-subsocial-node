@@ -58,7 +58,7 @@ parameter_types! {
   pub const MaxHandleLen: u32 = 50;
   pub const MinUsernameLen: u32 = 3;
   pub const MaxUsernameLen: u32 = 50;
-  pub const FollowBlogActionWeight: i16 = 7;
+  pub const FollowSpaceActionWeight: i16 = 7;
   pub const FollowAccountActionWeight: i16 = 3;
   pub const UpvotePostActionWeight: i16 = 5;
   pub const DownvotePostActionWeight: i16 = -3;
@@ -76,7 +76,7 @@ impl Trait for Test {
   type MaxHandleLen = MaxHandleLen;
   type MinUsernameLen = MinUsernameLen;
   type MaxUsernameLen = MaxUsernameLen;
-  type FollowBlogActionWeight = FollowBlogActionWeight;
+  type FollowSpaceActionWeight = FollowSpaceActionWeight;
   type FollowAccountActionWeight = FollowAccountActionWeight;
   type UpvotePostActionWeight = UpvotePostActionWeight;
   type DownvotePostActionWeight = DownvotePostActionWeight;
@@ -104,16 +104,16 @@ const ACCOUNT1 : AccountId = 1;
 const ACCOUNT2 : AccountId = 2;
 const ACCOUNT3: AccountId = 3;
 
-fn blog_handle() -> Vec<u8> {
-  b"blog_handle".to_vec()
+fn space_handle() -> Vec<u8> {
+  b"space_handle".to_vec()
 }
 
-fn blog_ipfs_hash() -> Vec<u8> {
+fn space_ipfs_hash() -> Vec<u8> {
   b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()
 }
 
-fn blog_update(handle: Option<Option<Vec<u8>>>, ipfs_hash: Option<Vec<u8>>, hidden: Option<bool>) -> BlogUpdate {
-  BlogUpdate {
+fn space_update(handle: Option<Option<Vec<u8>>>, ipfs_hash: Option<Vec<u8>>, hidden: Option<bool>) -> SpaceUpdate {
+  SpaceUpdate {
     handle,
     ipfs_hash,
     hidden
@@ -124,13 +124,13 @@ fn post_ipfs_hash() -> Vec<u8> {
   b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec()
 }
 
-fn fake_post(id: PostId, created_by: AccountId, blog_id: Option<BlogId>, extension: PostExtension) -> Post<Test> {
+fn fake_post(id: PostId, created_by: AccountId, space_id: Option<SpaceId>, extension: PostExtension) -> Post<Test> {
   Post {
     id,
     created: WhoAndWhen::<Test>::new(created_by),
     updated: None,
     hidden: false,
-    blog_id,
+    space_id,
     extension,
     ipfs_hash: self::post_ipfs_hash(),
     edit_history: Vec::new(),
@@ -143,9 +143,9 @@ fn fake_post(id: PostId, created_by: AccountId, blog_id: Option<BlogId>, extensi
   }
 }
 
-fn post_update(blog_id: Option<BlogId>, ipfs_hash: Option<Vec<u8>>, hidden: Option<bool>) -> PostUpdate {
+fn post_update(space_id: Option<SpaceId>, ipfs_hash: Option<Vec<u8>>, hidden: Option<bool>) -> PostUpdate {
   PostUpdate {
-    blog_id,
+    space_id,
     ipfs_hash,
     hidden
   }
@@ -198,8 +198,8 @@ fn scoring_action_downvote_comment() -> ScoringAction {
 fn scoring_action_share_comment() -> ScoringAction {
   ScoringAction::ShareComment
 }
-fn scoring_action_follow_blog() -> ScoringAction {
-  ScoringAction::FollowBlog
+fn scoring_action_follow_space() -> ScoringAction {
+  ScoringAction::FollowSpace
 }
 fn scoring_action_follow_account() -> ScoringAction {
   ScoringAction::FollowAccount
@@ -215,45 +215,45 @@ fn extension_shared_post(post_id: PostId) -> PostExtension {
   PostExtension::SharedPost(post_id)
 }
 
-fn _create_default_blog() -> DispatchResult {
-  _create_blog(None, None, None)
+fn _create_default_space() -> DispatchResult {
+  _create_space(None, None, None)
 }
 
-fn _create_blog(origin: Option<Origin>, handle: Option<Option<Vec<u8>>>, ipfs_hash: Option<Vec<u8>>) -> DispatchResult {
-  Social::create_blog(
+fn _create_space(origin: Option<Origin>, handle: Option<Option<Vec<u8>>>, ipfs_hash: Option<Vec<u8>>) -> DispatchResult {
+  Social::create_space(
     origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
-    handle.unwrap_or_else(|| Some(self::blog_handle())),
-    ipfs_hash.unwrap_or_else(self::blog_ipfs_hash)
+    handle.unwrap_or_else(|| Some(self::space_handle())),
+    ipfs_hash.unwrap_or_else(self::space_ipfs_hash)
   )
 }
 
-fn _update_blog(origin: Option<Origin>, blog_id: Option<u32>, update: Option<BlogUpdate>) -> DispatchResult {
-  Social::update_blog(
+fn _update_space(origin: Option<Origin>, space_id: Option<u32>, update: Option<SpaceUpdate>) -> DispatchResult {
+  Social::update_space(
     origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
-    blog_id.unwrap_or(1).into(),
-    update.unwrap_or_else(|| self::blog_update(None, None, None))
+    space_id.unwrap_or(1).into(),
+    update.unwrap_or_else(|| self::space_update(None, None, None))
   )
 }
 
-fn _default_follow_blog() -> DispatchResult {
-  _follow_blog(None, None)
+fn _default_follow_space() -> DispatchResult {
+  _follow_space(None, None)
 }
 
-fn _follow_blog(origin: Option<Origin>, blog_id: Option<BlogId>) -> DispatchResult {
-  Social::follow_blog(
+fn _follow_space(origin: Option<Origin>, space_id: Option<SpaceId>) -> DispatchResult {
+  Social::follow_space(
     origin.unwrap_or_else(|| Origin::signed(ACCOUNT2)),
-    blog_id.unwrap_or(1)
+    space_id.unwrap_or(1)
   )
 }
 
-fn _default_unfollow_blog() -> DispatchResult {
-  _unfollow_blog(None, None)
+fn _default_unfollow_space() -> DispatchResult {
+  _unfollow_space(None, None)
 }
 
-fn _unfollow_blog(origin: Option<Origin>, blog_id: Option<BlogId>) -> DispatchResult {
-  Social::unfollow_blog(
+fn _unfollow_space(origin: Option<Origin>, space_id: Option<SpaceId>) -> DispatchResult {
+  Social::unfollow_space(
     origin.unwrap_or_else(|| Origin::signed(ACCOUNT2)),
-    blog_id.unwrap_or(1)
+    space_id.unwrap_or(1)
   )
 }
 
@@ -261,10 +261,10 @@ fn _create_default_post() -> DispatchResult {
   _create_post(None, None, None, None)
 }
 
-fn _create_post(origin: Option<Origin>, blog_id_opt: Option<Option<BlogId>>, extension: Option<PostExtension>, ipfs_hash: Option<Vec<u8>>) -> DispatchResult {
+fn _create_post(origin: Option<Origin>, space_id_opt: Option<Option<SpaceId>>, extension: Option<PostExtension>, ipfs_hash: Option<Vec<u8>>) -> DispatchResult {
   Social::create_post(
     origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
-    blog_id_opt.unwrap_or(Some(1)),
+    space_id_opt.unwrap_or(Some(1)),
     extension.unwrap_or_else(self::extension_regular_post),
     ipfs_hash.unwrap_or_else(self::post_ipfs_hash)
   )
@@ -405,14 +405,14 @@ fn _change_post_score_by_extension(account: AccountId, post: &mut Post<Test>, ac
   Social::change_post_score_by_extension(account, post, action)
 }
 
-fn _transfer_default_blog_ownership() -> DispatchResult {
-  _transfer_blog_ownership(None, None, None)
+fn _transfer_default_space_ownership() -> DispatchResult {
+  _transfer_space_ownership(None, None, None)
 }
 
-fn _transfer_blog_ownership(origin: Option<Origin>, blog_id: Option<BlogId>, transfer_to: Option<AccountId>) -> DispatchResult {
-  Social::transfer_blog_ownership(
+fn _transfer_space_ownership(origin: Option<Origin>, space_id: Option<SpaceId>, transfer_to: Option<AccountId>) -> DispatchResult {
+  Social::transfer_space_ownership(
     origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
-    blog_id.unwrap_or(1),
+    space_id.unwrap_or(1),
     transfer_to.unwrap_or(ACCOUNT2)
   )
 }
@@ -421,10 +421,10 @@ fn _accept_default_pending_ownership() -> DispatchResult {
   _accept_pending_ownership(None, None)
 }
 
-fn _accept_pending_ownership(origin: Option<Origin>, blog_id: Option<BlogId>) -> DispatchResult {
+fn _accept_pending_ownership(origin: Option<Origin>, space_id: Option<SpaceId>) -> DispatchResult {
   Social::accept_pending_ownership(
     origin.unwrap_or_else(|| Origin::signed(ACCOUNT2)),
-    blog_id.unwrap_or(1)
+    space_id.unwrap_or(1)
   )
 }
 
@@ -436,144 +436,144 @@ fn _reject_default_pending_ownership_by_current_owner() -> DispatchResult {
   _reject_pending_ownership(Some(Origin::signed(ACCOUNT1)), None)
 }
 
-fn _reject_pending_ownership(origin: Option<Origin>, blog_id: Option<BlogId>) -> DispatchResult {
+fn _reject_pending_ownership(origin: Option<Origin>, space_id: Option<SpaceId>) -> DispatchResult {
   Social::reject_pending_ownership(
     origin.unwrap_or_else(|| Origin::signed(ACCOUNT2)),
-    blog_id.unwrap_or(1)
+    space_id.unwrap_or(1)
   )
 }
 
-// Blog tests
+// Space tests
 #[test]
-fn create_blog_should_work() {
+fn create_space_should_work() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
 
     // Check storages
-    assert_eq!(Social::blog_ids_by_owner(ACCOUNT1), vec![1]);
-    assert_eq!(Social::blog_id_by_handle(self::blog_handle()), Some(1));
-    assert_eq!(Social::next_blog_id(), 2);
+    assert_eq!(Social::space_ids_by_owner(ACCOUNT1), vec![1]);
+    assert_eq!(Social::space_id_by_handle(self::space_handle()), Some(1));
+    assert_eq!(Social::next_space_id(), 2);
 
     // Check whether data stored correctly
-    let blog = Social::blog_by_id(1).unwrap();
+    let space = Social::space_by_id(1).unwrap();
 
-    assert_eq!(blog.created.account, ACCOUNT1);
-    assert!(blog.updated.is_none());
-    assert_eq!(blog.hidden, false);
+    assert_eq!(space.created.account, ACCOUNT1);
+    assert!(space.updated.is_none());
+    assert_eq!(space.hidden, false);
 
-    assert_eq!(blog.owner, ACCOUNT1);
-    assert_eq!(blog.handle, Some(self::blog_handle()));
-    assert_eq!(blog.ipfs_hash, self::blog_ipfs_hash());
+    assert_eq!(space.owner, ACCOUNT1);
+    assert_eq!(space.handle, Some(self::space_handle()));
+    assert_eq!(space.ipfs_hash, self::space_ipfs_hash());
 
-    assert_eq!(blog.posts_count, 0);
-    assert_eq!(blog.followers_count, 1);
-    assert!(blog.edit_history.is_empty());
-    assert_eq!(blog.score, 0);
+    assert_eq!(space.posts_count, 0);
+    assert_eq!(space.followers_count, 1);
+    assert!(space.edit_history.is_empty());
+    assert_eq!(space.score, 0);
   });
 }
 
 #[test]
-fn create_blog_should_make_handle_lowercase() {
-  let handle : Vec<u8> = b"bLoG_hAnDlE".to_vec();
+fn create_space_should_make_handle_lowercase() {
+  let handle : Vec<u8> = b"sPaCe_hAnDlE".to_vec();
 
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_blog(None, Some(Some(handle.clone())), None)); // BlodId 1
+    assert_ok!(_create_space(None, Some(Some(handle.clone())), None)); // BlodId 1
 
     // Handle should be lowercase in storage and original in struct
-    let blog = Social::blog_by_id(1).unwrap();
-    assert_eq!(blog.handle, Some(handle.clone()));
-    assert_eq!(Social::blog_id_by_handle(handle.to_ascii_lowercase()), Some(1));
+    let space = Social::space_by_id(1).unwrap();
+    assert_eq!(space.handle, Some(handle.clone()));
+    assert_eq!(Social::space_id_by_handle(handle.to_ascii_lowercase()), Some(1));
   });
 }
 
 #[test]
-fn create_blog_should_fail_short_handle() {
+fn create_space_should_fail_short_handle() {
   let handle : Vec<u8> = vec![65; (MinHandleLen::get() - 1) as usize];
 
   new_test_ext().execute_with(|| {
-    // Try to catch an error creating a blog with too short handle
-    assert_noop!(_create_blog(None, Some(Some(handle)), None), Error::<Test>::HandleIsTooShort);
+    // Try to catch an error creating a space with too short handle
+    assert_noop!(_create_space(None, Some(Some(handle)), None), Error::<Test>::HandleIsTooShort);
   });
 }
 
 #[test]
-fn create_blog_should_fail_long_handle() {
+fn create_space_should_fail_long_handle() {
   let handle : Vec<u8> = vec![65; (MaxHandleLen::get() + 1) as usize];
 
   new_test_ext().execute_with(|| {
-    // Try to catch an error creating a blog with too long handle
-    assert_noop!(_create_blog(None, Some(Some(handle)), None), Error::<Test>::HandleIsTooLong);
+    // Try to catch an error creating a space with too long handle
+    assert_noop!(_create_space(None, Some(Some(handle)), None), Error::<Test>::HandleIsTooLong);
   });
 }
 
 #[test]
-fn create_blog_should_fail_not_unique_handle() {
+fn create_space_should_fail_not_unique_handle() {
 
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
-    // Try to catch an error creating a blog with not unique handle
-    assert_noop!(_create_default_blog(), Error::<Test>::HandleIsNotUnique);
+    assert_ok!(_create_default_space()); // SpaceId 1
+    // Try to catch an error creating a space with not unique handle
+    assert_noop!(_create_default_space(), Error::<Test>::HandleIsNotUnique);
   });
 }
 
 #[test]
-fn create_blog_should_fail_invalid_at_char() {
-  let handle : Vec<u8> = b"@blog_handle".to_vec();
+fn create_space_should_fail_invalid_at_char() {
+  let handle : Vec<u8> = b"@space_handle".to_vec();
 
   new_test_ext().execute_with(|| {
-    assert_noop!(_create_blog(None, Some(Some(handle.clone())), None), Error::<Test>::HandleContainsInvalidChars);
+    assert_noop!(_create_space(None, Some(Some(handle.clone())), None), Error::<Test>::HandleContainsInvalidChars);
   });
 }
 
 #[test]
-fn create_blog_should_fail_invalid_minus_char() {
-  let handle : Vec<u8> = b"blog-handle".to_vec();
+fn create_space_should_fail_invalid_minus_char() {
+  let handle : Vec<u8> = b"space-handle".to_vec();
 
   new_test_ext().execute_with(|| {
-    assert_noop!(_create_blog(None, Some(Some(handle.clone())), None), Error::<Test>::HandleContainsInvalidChars);
+    assert_noop!(_create_space(None, Some(Some(handle.clone())), None), Error::<Test>::HandleContainsInvalidChars);
   });
 }
 
 #[test]
-fn create_blog_should_fail_invalid_space_char() {
-  let handle : Vec<u8> = b"blog handle".to_vec();
+fn create_space_should_fail_invalid_space_char() {
+  let handle : Vec<u8> = b"space handle".to_vec();
 
   new_test_ext().execute_with(|| {
-    assert_noop!(_create_blog(None, Some(Some(handle.clone())), None), Error::<Test>::HandleContainsInvalidChars);
+    assert_noop!(_create_space(None, Some(Some(handle.clone())), None), Error::<Test>::HandleContainsInvalidChars);
   });
 }
 
 #[test]
-fn create_blog_should_fail_invalid_unicode_char() {
+fn create_space_should_fail_invalid_unicode_char() {
   let handle : Vec<u8> = String::from("блог_хендл").into_bytes().to_vec();
 
   new_test_ext().execute_with(|| {
-    assert_noop!(_create_blog(None, Some(Some(handle.clone())), None), Error::<Test>::HandleContainsInvalidChars);
+    assert_noop!(_create_space(None, Some(Some(handle.clone())), None), Error::<Test>::HandleContainsInvalidChars);
   });
 }
 
 #[test]
-fn create_blog_should_fail_invalid_ipfs_hash() {
+fn create_space_should_fail_invalid_ipfs_hash() {
   let ipfs_hash : Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
 
   new_test_ext().execute_with(|| {
-    // Try to catch an error creating a blog with invalid ipfs_hash
-    assert_noop!(_create_blog(None, None, Some(ipfs_hash)), Error::<Test>::IpfsIsIncorrect);
+    // Try to catch an error creating a space with invalid ipfs_hash
+    assert_noop!(_create_space(None, None, Some(ipfs_hash)), Error::<Test>::IpfsIsIncorrect);
   });
 }
 
 #[test]
-fn update_blog_should_work() {
+fn update_space_should_work() {
   let handle : Vec<u8> = b"new_handle".to_vec();
   let ipfs_hash : Vec<u8> = b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec();
 
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
 
-    // Blog update with ID 1 should be fine
-    assert_ok!(_update_blog(None, None,
+    // Space update with ID 1 should be fine
+    assert_ok!(_update_space(None, None,
       Some(
-        self::blog_update(
+        self::space_update(
           Some(Some(handle.clone())),
           Some(ipfs_hash.clone()),
           Some(true)
@@ -581,80 +581,80 @@ fn update_blog_should_work() {
       )
     ));
 
-    // Check whether blog updates correctly
-    let blog = Social::blog_by_id(1).unwrap();
-    assert_eq!(blog.handle, Some(handle));
-    assert_eq!(blog.ipfs_hash, ipfs_hash);
-    assert_eq!(blog.hidden, true);
+    // Check whether space updates correctly
+    let space = Social::space_by_id(1).unwrap();
+    assert_eq!(space.handle, Some(handle));
+    assert_eq!(space.ipfs_hash, ipfs_hash);
+    assert_eq!(space.hidden, true);
 
     // Check whether history recorded correctly
-    assert_eq!(blog.edit_history[0].old_data.handle, Some(Some(self::blog_handle())));
-    assert_eq!(blog.edit_history[0].old_data.ipfs_hash, Some(self::blog_ipfs_hash()));
-    assert_eq!(blog.edit_history[0].old_data.hidden, Some(false));
+    assert_eq!(space.edit_history[0].old_data.handle, Some(Some(self::space_handle())));
+    assert_eq!(space.edit_history[0].old_data.ipfs_hash, Some(self::space_ipfs_hash()));
+    assert_eq!(space.edit_history[0].old_data.hidden, Some(false));
   });
 }
 
 #[test]
-fn update_blog_should_fail_nothing_to_update() {
+fn update_space_should_fail_nothing_to_update() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
 
-    // Try to catch an error updating a blog with no changes
-    assert_noop!(_update_blog(None, None, None), Error::<Test>::NoUpdatesInBlog);
+    // Try to catch an error updating a space with no changes
+    assert_noop!(_update_space(None, None, None), Error::<Test>::NoUpdatesInSpace);
   });
 }
 
 #[test]
-fn update_blog_should_fail_blog_not_found() {
+fn update_space_should_fail_space_not_found() {
   let handle : Vec<u8> = b"new_handle".to_vec();
 
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
 
-    // Try to catch an error updating a blog with wrong blog ID
-    assert_noop!(_update_blog(None, Some(2),
+    // Try to catch an error updating a space with wrong space ID
+    assert_noop!(_update_space(None, Some(2),
       Some(
-        self::blog_update(
+        self::space_update(
           Some(Some(handle)),
           None,
           None
         )
       )
-    ), Error::<Test>::BlogNotFound);
+    ), Error::<Test>::SpaceNotFound);
   });
 }
 
 #[test]
-fn update_blog_should_fail_not_an_owner() {
+fn update_space_should_fail_not_an_owner() {
   let handle : Vec<u8> = b"new_handle".to_vec();
 
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
 
-    // Try to catch an error updating a blog with different account
-    assert_noop!(_update_blog(Some(Origin::signed(ACCOUNT2)), None,
+    // Try to catch an error updating a space with different account
+    assert_noop!(_update_space(Some(Origin::signed(ACCOUNT2)), None,
       Some(
-        self::blog_update(
+        self::space_update(
           Some(Some(handle)),
           None,
           None
         )
       )
-    ), Error::<Test>::NotABlogOwner);
+    ), Error::<Test>::NotASpaceOwner);
   });
 }
 
 #[test]
-fn update_blog_should_fail_short_handle() {
+fn update_space_should_fail_short_handle() {
   let handle : Vec<u8> = vec![65; (MinHandleLen::get() - 1) as usize];
 
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
 
-    // Try to catch an error updating a blog with too short handle
-    assert_noop!(_update_blog(None, None,
+    // Try to catch an error updating a space with too short handle
+    assert_noop!(_update_space(None, None,
       Some(
-        self::blog_update(
+        self::space_update(
           Some(Some(handle)),
           None,
           None
@@ -665,16 +665,16 @@ fn update_blog_should_fail_short_handle() {
 }
 
 #[test]
-fn update_blog_should_fail_long_handle() {
+fn update_space_should_fail_long_handle() {
   let handle : Vec<u8> = vec![65; (MaxHandleLen::get() + 1) as usize];
 
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
 
-    // Try to catch an error updating a blog with too long handle
-    assert_noop!(_update_blog(None, None,
+    // Try to catch an error updating a space with too long handle
+    assert_noop!(_update_space(None, None,
       Some(
-        self::blog_update(
+        self::space_update(
           Some(Some(handle)),
           None,
           None
@@ -685,22 +685,22 @@ fn update_blog_should_fail_long_handle() {
 }
 
 #[test]
-fn update_blog_should_fail_not_unique_handle() {
+fn update_space_should_fail_not_unique_handle() {
   let handle : Vec<u8> = b"unique_handle".to_vec();
 
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
 
-    assert_ok!(_create_blog(
+    assert_ok!(_create_space(
       None,
       Some(Some(handle.clone())),
       None
-    )); // BlogId 2 with a custom handle
+    )); // SpaceId 2 with a custom handle
 
-    // Try to catch an error updating a blog on ID 1 with a handle of blog on ID 2
-    assert_noop!(_update_blog(None, Some(1),
+    // Try to catch an error updating a space on ID 1 with a handle of space on ID 2
+    assert_noop!(_update_space(None, Some(1),
       Some(
-        self::blog_update(
+        self::space_update(
           Some(Some(handle)),
           None,
           None
@@ -711,15 +711,15 @@ fn update_blog_should_fail_not_unique_handle() {
 }
 
 #[test]
-fn update_blog_should_fail_invalid_at_char() {
-  let handle : Vec<u8> = b"@blog_handle".to_vec();
+fn update_space_should_fail_invalid_at_char() {
+  let handle : Vec<u8> = b"@space_handle".to_vec();
 
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
 
-    assert_noop!(_update_blog(None, None,
+    assert_noop!(_update_space(None, None,
       Some(
-        self::blog_update(
+        self::space_update(
           Some(Some(handle)),
           None,
           None
@@ -730,15 +730,15 @@ fn update_blog_should_fail_invalid_at_char() {
 }
 
 #[test]
-fn update_blog_should_fail_invalid_minus_char() {
-  let handle : Vec<u8> = b"blog-handle".to_vec();
+fn update_space_should_fail_invalid_minus_char() {
+  let handle : Vec<u8> = b"space-handle".to_vec();
 
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
 
-    assert_noop!(_update_blog(None, None,
+    assert_noop!(_update_space(None, None,
       Some(
-        self::blog_update(
+        self::space_update(
           Some(Some(handle)),
           None,
           None
@@ -749,15 +749,15 @@ fn update_blog_should_fail_invalid_minus_char() {
 }
 
 #[test]
-fn update_blog_should_fail_invalid_space_char() {
-  let handle : Vec<u8> = b"blog handle".to_vec();
+fn update_space_should_fail_invalid_space_char() {
+  let handle : Vec<u8> = b"space handle".to_vec();
 
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
 
-    assert_noop!(_update_blog(None, None,
+    assert_noop!(_update_space(None, None,
       Some(
-        self::blog_update(
+        self::space_update(
           Some(Some(handle)),
           None,
           None
@@ -768,15 +768,15 @@ fn update_blog_should_fail_invalid_space_char() {
 }
 
 #[test]
-fn update_blog_should_fail_invalid_unicode_char() {
+fn update_space_should_fail_invalid_unicode_char() {
   let handle : Vec<u8> = String::from("блог_хендл").into_bytes().to_vec();
 
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
 
-    assert_noop!(_update_blog(None, None,
+    assert_noop!(_update_space(None, None,
       Some(
-        self::blog_update(
+        self::space_update(
           Some(Some(handle)),
           None,
           None
@@ -787,16 +787,16 @@ fn update_blog_should_fail_invalid_unicode_char() {
 }
 
 #[test]
-fn update_blog_should_fail_invalid_ipfs_hash() {
+fn update_space_should_fail_invalid_ipfs_hash() {
   let ipfs_hash : Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
 
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
 
-    // Try to catch an error updating a blog with invalid ipfs_hash
-    assert_noop!(_update_blog(None, None,
+    // Try to catch an error updating a space with invalid ipfs_hash
+    assert_noop!(_update_space(None, None,
       Some(
-        self::blog_update(
+        self::space_update(
           None,
           Some(ipfs_hash),
           None
@@ -810,11 +810,11 @@ fn update_blog_should_fail_invalid_ipfs_hash() {
 #[test]
 fn create_post_should_work() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
 
     // Check storages
-    assert_eq!(Social::post_ids_by_blog_id(1), vec![1]);
+    assert_eq!(Social::post_ids_by_space_id(1), vec![1]);
     assert_eq!(Social::next_post_id(), 2);
 
     // Check whether data stored correctly
@@ -824,7 +824,7 @@ fn create_post_should_work() {
     assert!(post.updated.is_none());
     assert_eq!(post.hidden, false);
 
-    assert_eq!(post.blog_id, Some(1));
+    assert_eq!(post.space_id, Some(1));
     assert_eq!(post.extension, self::extension_regular_post());
 
     assert_eq!(post.ipfs_hash, self::post_ipfs_hash());
@@ -840,17 +840,17 @@ fn create_post_should_work() {
 }
 
 #[test]
-fn create_post_should_fail_blog_not_defined() {
+fn create_post_should_fail_space_not_defined() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
-    assert_noop!(_create_post(None, Some(None), None, None), Error::<Test>::BlogIdIsUndefined);
+    assert_ok!(_create_default_space()); // SpaceId 1
+    assert_noop!(_create_post(None, Some(None), None, None), Error::<Test>::SpaceIdIsUndefined);
   });
 }
 
 #[test]
-fn create_post_should_fail_blog_not_found() {
+fn create_post_should_fail_space_not_found() {
   new_test_ext().execute_with(|| {
-    assert_noop!(_create_default_post(), Error::<Test>::BlogNotFound);
+    assert_noop!(_create_default_post(), Error::<Test>::SpaceNotFound);
   });
 }
 
@@ -859,7 +859,7 @@ fn create_post_should_fail_invalid_ipfs_hash() {
   let ipfs_hash : Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
 
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
 
     // Try to catch an error creating a regular post with invalid ipfs_hash
     assert_noop!(_create_post(None, None, None, Some(ipfs_hash)), Error::<Test>::IpfsIsIncorrect);
@@ -867,10 +867,10 @@ fn create_post_should_fail_invalid_ipfs_hash() {
 }
 
 #[test]
-fn create_post_should_fail_not_a_blog_owner() {
+fn create_post_should_fail_not_a_space_owner() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
-    assert_noop!(_create_post(Some(Origin::signed(ACCOUNT2)), None, None, None), Error::<Test>::NotABlogOwner);
+    assert_ok!(_create_default_space()); // SpaceId 1
+    assert_noop!(_create_post(Some(Origin::signed(ACCOUNT2)), None, None, None), Error::<Test>::NotASpaceOwner);
   });
 }
 
@@ -879,7 +879,7 @@ fn update_post_should_work() {
   let ipfs_hash : Vec<u8> = b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec();
 
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
 
     // Post update with ID 1 should be fine
@@ -896,25 +896,25 @@ fn update_post_should_work() {
 
     // Check whether post updates correctly
     let post = Social::post_by_id(1).unwrap();
-    assert_eq!(post.blog_id, Some(1));
+    assert_eq!(post.space_id, Some(1));
     assert_eq!(post.ipfs_hash, ipfs_hash);
     assert_eq!(post.hidden, true);
 
     // Check whether history recorded correctly
-    assert_eq!(post.edit_history[0].old_data.blog_id, None);
+    assert_eq!(post.edit_history[0].old_data.space_id, None);
     assert_eq!(post.edit_history[0].old_data.ipfs_hash, Some(self::post_ipfs_hash()));
     assert_eq!(post.edit_history[0].old_data.hidden, Some(false));
   });
 }
 
 #[test]
-fn update_post_should_work_after_transfer_blog_ownership() {
+fn update_post_should_work_after_transfer_space_ownership() {
   let ipfs_hash : Vec<u8> = b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec();
 
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
-    assert_ok!(_transfer_default_blog_ownership());
+    assert_ok!(_transfer_default_space_ownership());
 
     // Post update with ID 1 should be fine
     assert_ok!(_update_post(None, None,
@@ -932,7 +932,7 @@ fn update_post_should_work_after_transfer_blog_ownership() {
 #[test]
 fn update_post_should_fail_nothing_to_update() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
 
     // Try to catch an error updating a post with no changes
@@ -943,8 +943,8 @@ fn update_post_should_fail_nothing_to_update() {
 #[test]
 fn update_post_should_fail_post_not_found() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_blog(None, Some(Some(b"blog2_handle".to_vec())), None)); // BlogId 2
+    assert_ok!(_create_default_space()); // SpaceId 1
+    assert_ok!(_create_space(None, Some(Some(b"space2_handle".to_vec())), None)); // SpaceId 2
     assert_ok!(_create_default_post()); // PostId 1
 
     // Try to catch an error updating a post with wrong post ID
@@ -963,8 +963,8 @@ fn update_post_should_fail_post_not_found() {
 #[test]
 fn update_post_should_fail_not_an_owner() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_blog(None, Some(Some(b"blog2_handle".to_vec())), None)); // BlogId 2
+    assert_ok!(_create_default_space()); // SpaceId 1
+    assert_ok!(_create_space(None, Some(Some(b"space2_handle".to_vec())), None)); // SpaceId 2
     assert_ok!(_create_default_post()); // PostId 1
 
     // Try to catch an error updating a post with different account
@@ -985,7 +985,7 @@ fn update_post_should_fail_invalid_ipfs_hash() {
   let ipfs_hash : Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
 
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
 
     // Try to catch an error updating a post with invalid ipfs_hash
@@ -1005,7 +1005,7 @@ fn update_post_should_fail_invalid_ipfs_hash() {
 #[test]
 fn create_comment_should_work() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_default_comment()); // PostId 2
 
@@ -1036,7 +1036,7 @@ fn create_comment_should_work() {
 #[test]
 fn create_comment_should_work_with_parent() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_default_comment()); // PostId 2
     assert_ok!(_create_comment(None, None, Some(Some(2)), None)); // PostId 3 with parent comment with PostId 2
@@ -1068,7 +1068,7 @@ fn create_comment_should_fail_post_not_found() {
 #[test]
 fn create_comment_should_fail_parent_not_found() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
 
     // Try to catch an error creating a comment with wrong parent
@@ -1081,7 +1081,7 @@ fn create_comment_should_fail_invalid_ipfs_hash() {
   let ipfs_hash : Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
 
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
 
     // Try to catch an error creating a comment with wrong parent
@@ -1090,14 +1090,14 @@ fn create_comment_should_fail_invalid_ipfs_hash() {
 }
 
 #[test]
-fn create_comment_should_fail_blog_is_hidden() {
+fn create_comment_should_fail_space_is_hidden() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
-    assert_ok!(_update_blog(
+    assert_ok!(_update_space(
       None,
       None,
-      Some(self::blog_update(None, None, Some(true)))
+      Some(self::space_update(None, None, Some(true)))
     ));
 
     assert_noop!(_create_default_comment(), Error::<Test>::BannedToCreateWhenHidden);
@@ -1107,7 +1107,7 @@ fn create_comment_should_fail_blog_is_hidden() {
 #[test]
 fn create_comment_should_fail_post_is_hidden() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_update_post(
       None,
@@ -1122,7 +1122,7 @@ fn create_comment_should_fail_post_is_hidden() {
 #[test]
 fn create_comment_should_fail_max_depth_reached() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_comment(None, None, Some(None), None)); // PostId 2
     assert_ok!(_create_comment(None, None, Some(Some(2)), None)); // PostId 3
@@ -1142,7 +1142,7 @@ fn create_comment_should_fail_max_depth_reached() {
 #[test]
 fn update_comment_should_work() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_default_comment()); // PostId 2
 
@@ -1169,7 +1169,7 @@ fn update_comment_should_fail_comment_not_found() {
 #[test]
 fn update_comment_should_fail_not_an_owner() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_default_comment()); // PostId 2
 
@@ -1185,7 +1185,7 @@ fn update_comment_should_fail_invalid_ipfs_hash() {
   let ipfs_hash : Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
 
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_default_comment()); // PostId 2
 
@@ -1199,7 +1199,7 @@ fn update_comment_should_fail_invalid_ipfs_hash() {
 #[test]
 fn update_comment_should_fail_ipfs_hash_dont_differ() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_default_comment()); // PostId 2
 
@@ -1214,7 +1214,7 @@ fn update_comment_should_fail_ipfs_hash_dont_differ() {
 #[test]
 fn create_post_reaction_should_work_upvote() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
 
     assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), None, None)); // ReactionId 1 by ACCOUNT2
@@ -1238,7 +1238,7 @@ fn create_post_reaction_should_work_upvote() {
 #[test]
 fn create_post_reaction_should_work_downvote() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
 
     assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), None, Some(self::reaction_downvote()))); // ReactionId 1 by ACCOUNT2
@@ -1262,7 +1262,7 @@ fn create_post_reaction_should_work_downvote() {
 #[test]
 fn create_post_reaction_should_fail_already_reacted() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_default_post_reaction()); // ReactionId1
 
@@ -1280,14 +1280,14 @@ fn create_post_reaction_should_fail_post_not_found() {
 }
 
 #[test]
-fn create_post_reaction_should_fail_blog_is_hidden() {
+fn create_post_reaction_should_fail_space_is_hidden() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
-    assert_ok!(_update_blog(
+    assert_ok!(_update_space(
       None,
       None,
-      Some(self::blog_update(None, None, Some(true)))
+      Some(self::space_update(None, None, Some(true)))
     ));
 
     assert_noop!(_create_default_post_reaction(), Error::<Test>::BannedToChangeReactionWhenHidden);
@@ -1297,7 +1297,7 @@ fn create_post_reaction_should_fail_blog_is_hidden() {
 #[test]
 fn create_post_reaction_should_fail_post_is_hidden() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_update_post(
       None,
@@ -1312,7 +1312,7 @@ fn create_post_reaction_should_fail_post_is_hidden() {
 #[test]
 fn create_comment_reaction_should_work_upvote() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_default_comment()); // PostId 2
     assert_ok!(_create_comment_reaction(Some(Origin::signed(ACCOUNT2)), None, None)); // ReactionId 1 by ACCOUNT2
@@ -1336,7 +1336,7 @@ fn create_comment_reaction_should_work_upvote() {
 #[test]
 fn create_comment_reaction_should_work_downvote() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_default_comment()); // PostId 2
     assert_ok!(_create_comment_reaction(Some(Origin::signed(ACCOUNT2)), None, Some(self::reaction_downvote()))); // ReactionId 1 by ACCOUNT2
@@ -1360,7 +1360,7 @@ fn create_comment_reaction_should_work_downvote() {
 #[test]
 fn create_comment_reaction_should_fail_already_reacted() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_default_comment()); // PostId 2
     assert_ok!(_create_default_comment_reaction()); // ReactionId 1
@@ -1379,15 +1379,15 @@ fn create_comment_reaction_should_fail_comment_not_found() {
 }
 
 #[test]
-fn create_comment_reaction_should_fail_blog_is_hidden() {
+fn create_comment_reaction_should_fail_space_is_hidden() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_default_comment()); // PostId 2
-    assert_ok!(_update_blog(
+    assert_ok!(_update_space(
       None,
       None,
-      Some(self::blog_update(None, None, Some(true)))
+      Some(self::space_update(None, None, Some(true)))
     ));
 
     assert_noop!(_create_default_comment_reaction(), Error::<Test>::BannedToChangeReactionWhenHidden);
@@ -1397,7 +1397,7 @@ fn create_comment_reaction_should_fail_blog_is_hidden() {
 #[test]
 fn create_comment_reaction_should_fail_post_is_hidden() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_default_comment()); // PostId 2
     assert_ok!(_update_post(
@@ -1422,7 +1422,7 @@ fn score_diff_by_weights_check_result() {
     assert_eq!(Social::get_score_diff(1, self::scoring_action_upvote_comment()), UpvoteCommentActionWeight::get() as i16);
     assert_eq!(Social::get_score_diff(1, self::scoring_action_downvote_comment()), DownvoteCommentActionWeight::get() as i16);
     assert_eq!(Social::get_score_diff(1, self::scoring_action_share_comment()), ShareCommentActionWeight::get() as i16);
-    assert_eq!(Social::get_score_diff(1, self::scoring_action_follow_blog()), FollowBlogActionWeight::get() as i16);
+    assert_eq!(Social::get_score_diff(1, self::scoring_action_follow_space()), FollowSpaceActionWeight::get() as i16);
     assert_eq!(Social::get_score_diff(1, self::scoring_action_follow_account()), FollowAccountActionWeight::get() as i16);
   });
 }
@@ -1440,52 +1440,52 @@ fn random_score_diff_check_result() {
 //--------------------------------------------------------------------------------------------------
 
 #[test]
-fn change_blog_score_should_work_follow_blog() {
+fn change_space_score_should_work_follow_space() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
 
-    assert_ok!(Social::follow_blog(Origin::signed(ACCOUNT2), 1));
+    assert_ok!(Social::follow_space(Origin::signed(ACCOUNT2), 1));
 
-    assert_eq!(Social::blog_by_id(1).unwrap().score, FollowBlogActionWeight::get() as i32);
-    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + FollowBlogActionWeight::get() as u32);
+    assert_eq!(Social::space_by_id(1).unwrap().score, FollowSpaceActionWeight::get() as i32);
+    assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + FollowSpaceActionWeight::get() as u32);
     assert_eq!(Social::social_account_by_id(ACCOUNT2).unwrap().reputation, 1);
   });
 }
 
 #[test]
-fn change_blog_score_should_work_revert_follow_blog() {
+fn change_space_score_should_work_revert_follow_space() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
 
-    assert_ok!(Social::follow_blog(Origin::signed(ACCOUNT2), 1));
-    assert_ok!(Social::unfollow_blog(Origin::signed(ACCOUNT2), 1));
+    assert_ok!(Social::follow_space(Origin::signed(ACCOUNT2), 1));
+    assert_ok!(Social::unfollow_space(Origin::signed(ACCOUNT2), 1));
 
-    assert_eq!(Social::blog_by_id(1).unwrap().score, 0);
+    assert_eq!(Social::space_by_id(1).unwrap().score, 0);
     assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1);
     assert_eq!(Social::social_account_by_id(ACCOUNT2).unwrap().reputation, 1);
   });
 }
 
 #[test]
-fn change_blog_score_should_work_upvote_post() {
+fn change_space_score_should_work_upvote_post() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post());
     assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), None, None)); // ReactionId 1
 
-    assert_eq!(Social::blog_by_id(1).unwrap().score, UpvotePostActionWeight::get() as i32);
+    assert_eq!(Social::space_by_id(1).unwrap().score, UpvotePostActionWeight::get() as i32);
     assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + UpvotePostActionWeight::get() as u32);
   });
 }
 
 #[test]
-fn change_blog_score_should_work_downvote_post() {
+fn change_space_score_should_work_downvote_post() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post());
     assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), None, Some(self::reaction_downvote()))); // ReactionId 1
 
-    assert_eq!(Social::blog_by_id(1).unwrap().score, DownvotePostActionWeight::get() as i32);
+    assert_eq!(Social::space_by_id(1).unwrap().score, DownvotePostActionWeight::get() as i32);
     assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1);
   });
 }
@@ -1495,12 +1495,12 @@ fn change_blog_score_should_work_downvote_post() {
 #[test]
 fn change_post_score_should_work_create_comment() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_comment(Some(Origin::signed(ACCOUNT2)), None, None, None)); // PostId 2
 
     assert_eq!(Social::post_by_id(1).unwrap().score, CreateCommentActionWeight::get() as i32);
-    assert_eq!(Social::blog_by_id(1).unwrap().score, CreateCommentActionWeight::get() as i32);
+    assert_eq!(Social::space_by_id(1).unwrap().score, CreateCommentActionWeight::get() as i32);
     assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + CreateCommentActionWeight::get() as u32);
     assert_eq!(Social::post_score_by_account((ACCOUNT2, 1, self::scoring_action_create_comment())), Some(CreateCommentActionWeight::get()));
   });
@@ -1509,7 +1509,7 @@ fn change_post_score_should_work_create_comment() {
 #[test]
 fn change_post_score_should_work_upvote() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog());
+    assert_ok!(_create_default_space());
     assert_ok!(_create_default_post()); // PostId 1
 
     assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), None, None));
@@ -1523,7 +1523,7 @@ fn change_post_score_should_work_upvote() {
 #[test]
 fn change_post_score_should_work_downvote() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog());
+    assert_ok!(_create_default_space());
     assert_ok!(_create_default_post()); // PostId 1
 
     assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), None, Some(self::reaction_downvote())));
@@ -1537,7 +1537,7 @@ fn change_post_score_should_work_downvote() {
 #[test]
 fn change_post_score_should_revert_upvote() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog());
+    assert_ok!(_create_default_space());
     assert_ok!(_create_default_post()); // PostId 1
 
     assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), None, None)); // ReactionId 1
@@ -1552,7 +1552,7 @@ fn change_post_score_should_revert_upvote() {
 #[test]
 fn change_post_score_should_revert_downvote() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog());
+    assert_ok!(_create_default_space());
     assert_ok!(_create_default_post()); // PostId 1
 
     assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), None, Some(self::reaction_downvote()))); // ReactionId 1
@@ -1567,7 +1567,7 @@ fn change_post_score_should_revert_downvote() {
 #[test]
 fn change_post_score_cancel_upvote_with_downvote() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog());
+    assert_ok!(_create_default_space());
     assert_ok!(_create_default_post()); // PostId 1
 
     assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), None, None)); // ReactionId 1
@@ -1583,7 +1583,7 @@ fn change_post_score_cancel_upvote_with_downvote() {
 #[test]
 fn change_post_score_cancel_downvote_with_upvote() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog());
+    assert_ok!(_create_default_space());
     assert_ok!(_create_default_post()); // PostId 1
 
     assert_ok!(_create_post_reaction(Some(Origin::signed(ACCOUNT2)), None, Some(self::reaction_downvote()))); // ReactionId 1
@@ -1606,7 +1606,7 @@ fn change_post_score_should_fail_post_not_found() {
       PostExtension::RegularPost
     );
 
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_noop!(_change_post_score_by_extension(
       ACCOUNT1, fake_post, self::scoring_action_upvote_post()
     ), Error::<Test>::PostNotFound);
@@ -1618,7 +1618,7 @@ fn change_post_score_should_fail_post_not_found() {
 #[test]
 fn change_social_account_reputation_should_work_max_score_diff() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog());
+    assert_ok!(_create_default_space());
     assert_ok!(_create_post(Some(Origin::signed(ACCOUNT1)), None, None, None));
     assert_ok!(Social::change_social_account_reputation(
       ACCOUNT1,
@@ -1632,7 +1632,7 @@ fn change_social_account_reputation_should_work_max_score_diff() {
 #[test]
 fn change_social_account_reputation_should_work_min_score_diff() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog());
+    assert_ok!(_create_default_space());
     assert_ok!(_create_post(Some(Origin::signed(ACCOUNT1)), None, None, None));
     assert_ok!(Social::change_social_account_reputation(
       ACCOUNT1,
@@ -1646,7 +1646,7 @@ fn change_social_account_reputation_should_work_min_score_diff() {
 #[test]
 fn change_social_account_reputation_should_work() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog());
+    assert_ok!(_create_default_space());
     assert_ok!(_create_post(Some(Origin::signed(ACCOUNT1)), None, None, None));
     assert_ok!(Social::change_social_account_reputation(
       ACCOUNT1,
@@ -1677,7 +1677,7 @@ fn change_social_account_reputation_should_work() {
 #[test]
 fn change_comment_score_should_work_upvote() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_post(Some(Origin::signed(ACCOUNT1)), None, None, None)); // PostId 1
     assert_ok!(_create_comment(Some(Origin::signed(ACCOUNT2)), None, None, None)); // PostId 2
 
@@ -1694,7 +1694,7 @@ fn change_comment_score_should_work_upvote() {
 #[test]
 fn change_comment_score_should_work_downvote() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_post(Some(Origin::signed(ACCOUNT1)), None, None, None)); // PostId 1
     assert_ok!(_create_comment(Some(Origin::signed(ACCOUNT2)), None, None, None)); // PostId 2
 
@@ -1711,7 +1711,7 @@ fn change_comment_score_should_work_downvote() {
 #[test]
 fn change_comment_score_should_revert_upvote() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_post(Some(Origin::signed(ACCOUNT1)), None, None, None)); // PostId 1
     assert_ok!(_create_comment(Some(Origin::signed(ACCOUNT2)), None, None, None)); // PostId 2
 
@@ -1729,7 +1729,7 @@ fn change_comment_score_should_revert_upvote() {
 #[test]
 fn change_comment_score_should_revert_downvote() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_post(Some(Origin::signed(ACCOUNT1)), None, None, None)); // PostId 1
     assert_ok!(_create_comment(Some(Origin::signed(ACCOUNT2)), None, None, None)); // PostId 2
 
@@ -1747,7 +1747,7 @@ fn change_comment_score_should_revert_downvote() {
 #[test]
 fn change_comment_score_check_cancel_upvote() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_post(Some(Origin::signed(ACCOUNT1)), None, None, None)); // PostId 1
     assert_ok!(_create_comment(Some(Origin::signed(ACCOUNT2)), None, None, None)); // PostId 2
 
@@ -1766,7 +1766,7 @@ fn change_comment_score_check_cancel_upvote() {
 #[test]
 fn change_comment_score_check_cancel_downvote() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_post(Some(Origin::signed(ACCOUNT1)), None, None, None)); // PostId 1
     assert_ok!(_create_comment(Some(Origin::signed(ACCOUNT2)), None, None, None)); // PostId 2
 
@@ -1795,7 +1795,7 @@ fn change_comment_score_should_fail_comment_not_found() {
       })
     );
 
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_comment(Some(Origin::signed(ACCOUNT2)), None, None, None)); // PostId 2
 
@@ -1810,19 +1810,19 @@ fn change_comment_score_should_fail_comment_not_found() {
 #[test]
 fn share_post_should_work() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(Some(b"blog2_handle".to_vec())), None)); // BlogId 2 by ACCOUNT2
+    assert_ok!(_create_default_space()); // SpaceId 1
+    assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), Some(Some(b"space2_handle".to_vec())), None)); // SpaceId 2 by ACCOUNT2
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_post(
       Some(Origin::signed(ACCOUNT2)),
       Some(Some(2)),
       Some(self::extension_shared_post(1)),
       None
-    )); // Share PostId 1 on BlogId 2 by ACCOUNT2
+    )); // Share PostId 1 on SpaceId 2 by ACCOUNT2
 
     // Check storages
-    assert_eq!(Social::post_ids_by_blog_id(1), vec![1]);
-    assert_eq!(Social::post_ids_by_blog_id(2), vec![2]);
+    assert_eq!(Social::post_ids_by_space_id(1), vec![1]);
+    assert_eq!(Social::post_ids_by_space_id(2), vec![2]);
     assert_eq!(Social::next_post_id(), 3);
 
     assert_eq!(Social::post_shares_by_account((ACCOUNT2, 1)), 1);
@@ -1833,7 +1833,7 @@ fn share_post_should_work() {
 
     let shared_post = Social::post_by_id(2).unwrap();
 
-    assert_eq!(shared_post.blog_id, Some(2));
+    assert_eq!(shared_post.space_id, Some(2));
     assert_eq!(shared_post.created.account, ACCOUNT2);
     assert_eq!(shared_post.extension, self::extension_shared_post(1));
   });
@@ -1842,7 +1842,7 @@ fn share_post_should_work() {
 #[test]
 fn share_post_should_work_share_own_post() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_post(
       Some(Origin::signed(ACCOUNT1)),
@@ -1852,7 +1852,7 @@ fn share_post_should_work_share_own_post() {
     )); // Share PostId 1
 
     // Check storages
-    assert_eq!(Social::post_ids_by_blog_id(1), vec![1, 2]);
+    assert_eq!(Social::post_ids_by_space_id(1), vec![1, 2]);
     assert_eq!(Social::next_post_id(), 3);
 
     assert_eq!(Social::post_shares_by_account((ACCOUNT1, 1)), 1);
@@ -1862,7 +1862,7 @@ fn share_post_should_work_share_own_post() {
     assert_eq!(Social::post_by_id(1).unwrap().shares_count, 1);
 
     let shared_post = Social::post_by_id(2).unwrap();
-    assert_eq!(shared_post.blog_id, Some(1));
+    assert_eq!(shared_post.space_id, Some(1));
     assert_eq!(shared_post.created.account, ACCOUNT1);
     assert_eq!(shared_post.extension, self::extension_shared_post(1));
   });
@@ -1871,15 +1871,15 @@ fn share_post_should_work_share_own_post() {
 #[test]
 fn share_post_should_change_score() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(Some(b"blog2_handle".to_vec())), None)); // BlogId 2 by ACCOUNT2
+    assert_ok!(_create_default_space()); // SpaceId 1
+    assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), Some(Some(b"space2_handle".to_vec())), None)); // SpaceId 2 by ACCOUNT2
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_post(
       Some(Origin::signed(ACCOUNT2)),
       Some(Some(2)),
       Some(self::extension_shared_post(1)),
       None
-    )); // Share PostId 1 on BlogId 2 by ACCOUNT2
+    )); // Share PostId 1 on SpaceId 2 by ACCOUNT2
 
     assert_eq!(Social::post_by_id(1).unwrap().score, SharePostActionWeight::get() as i32);
     assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + SharePostActionWeight::get() as u32);
@@ -1890,7 +1890,7 @@ fn share_post_should_change_score() {
 #[test]
 fn share_post_should_not_change_score() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_post(
       Some(Origin::signed(ACCOUNT1)),
@@ -1908,8 +1908,8 @@ fn share_post_should_not_change_score() {
 #[test]
 fn share_post_should_fail_original_post_not_found() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(Some(b"blog2_handle".to_vec())), None)); // BlogId 2 by ACCOUNT2
+    assert_ok!(_create_default_space()); // SpaceId 1
+    assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), Some(Some(b"space2_handle".to_vec())), None)); // SpaceId 2 by ACCOUNT2
     // Skipped creating PostId 1
     assert_noop!(_create_post(
       Some(Origin::signed(ACCOUNT2)),
@@ -1923,8 +1923,8 @@ fn share_post_should_fail_original_post_not_found() {
 #[test]
 fn share_post_should_fail_share_shared_post() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(Some(b"blog2_handle".to_vec())), None)); // BlogId 2 by ACCOUNT2
+    assert_ok!(_create_default_space()); // SpaceId 1
+    assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), Some(Some(b"space2_handle".to_vec())), None)); // SpaceId 2 by ACCOUNT2
     assert_ok!(_create_default_post());
     assert_ok!(_create_post(
       Some(Origin::signed(ACCOUNT2)),
@@ -1946,8 +1946,8 @@ fn share_post_should_fail_share_shared_post() {
 #[test]
 fn share_comment_should_work() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(Some(b"blog2_handle".to_vec())), None)); // BlogId 2 by ACCOUNT2
+    assert_ok!(_create_default_space()); // SpaceId 1
+    assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), Some(Some(b"space2_handle".to_vec())), None)); // SpaceId 2 by ACCOUNT2
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_default_comment()); // PostId 2
     assert_ok!(_create_post(
@@ -1955,11 +1955,11 @@ fn share_comment_should_work() {
       Some(Some(2)),
       Some(self::extension_shared_post(2)),
       None
-    )); // Share PostId 2 comment on BlogId 2 by ACCOUNT2
+    )); // Share PostId 2 comment on SpaceId 2 by ACCOUNT2
 
     // Check storages
-    assert_eq!(Social::post_ids_by_blog_id(1), vec![1]);
-    assert_eq!(Social::post_ids_by_blog_id(2), vec![3]);
+    assert_eq!(Social::post_ids_by_space_id(1), vec![1]);
+    assert_eq!(Social::post_ids_by_space_id(2), vec![3]);
     assert_eq!(Social::next_post_id(), 4);
 
     assert_eq!(Social::post_shares_by_account((ACCOUNT2, 2)), 1);
@@ -1970,7 +1970,7 @@ fn share_comment_should_work() {
 
     let shared_post = Social::post_by_id(3).unwrap();
 
-    assert_eq!(shared_post.blog_id, Some(2));
+    assert_eq!(shared_post.space_id, Some(2));
     assert_eq!(shared_post.created.account, ACCOUNT2);
     assert_eq!(shared_post.extension, self::extension_shared_post(2));
   });
@@ -1979,8 +1979,8 @@ fn share_comment_should_work() {
 #[test]
 fn share_comment_should_change_score() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(Some(b"blog2_handle".to_vec())), None)); // BlogId 2 by ACCOUNT2
+    assert_ok!(_create_default_space()); // SpaceId 1
+    assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), Some(Some(b"space2_handle".to_vec())), None)); // SpaceId 2 by ACCOUNT2
     assert_ok!(_create_default_post()); // PostId 1
     assert_ok!(_create_default_comment()); // PostId 2
     assert_ok!(_create_post(
@@ -1988,7 +1988,7 @@ fn share_comment_should_change_score() {
       Some(Some(2)),
       Some(self::extension_shared_post(2)),
       None
-    )); // Share PostId 2 comment on BlogId 2 by ACCOUNT2
+    )); // Share PostId 2 comment on SpaceId 2 by ACCOUNT2
 
     assert_eq!(Social::post_by_id(2).unwrap().score, ShareCommentActionWeight::get() as i32);
     assert_eq!(Social::social_account_by_id(ACCOUNT1).unwrap().reputation, 1 + ShareCommentActionWeight::get() as u32);
@@ -1999,8 +1999,8 @@ fn share_comment_should_change_score() {
 #[test]
 fn share_comment_should_fail_original_comment_not_found() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_create_blog(Some(Origin::signed(ACCOUNT2)), Some(Some(b"blog2_handle".to_vec())), None)); // BlogId 2 by ACCOUNT2
+    assert_ok!(_create_default_space()); // SpaceId 1
+    assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), Some(Some(b"space2_handle".to_vec())), None)); // SpaceId 2 by ACCOUNT2
     assert_ok!(_create_default_post()); // PostId 1
     // Skipped creating comment with PostId 2
     assert_noop!(_create_post(
@@ -2089,13 +2089,13 @@ fn create_profile_should_fail_invalid_username() {
 fn update_profile_should_work() {
   new_test_ext().execute_with(|| {
     assert_ok!(_create_default_profile()); // AccountId 1
-    assert_ok!(_update_profile(None, Some(self::bob_username()), Some(self::blog_ipfs_hash())));
+    assert_ok!(_update_profile(None, Some(self::bob_username()), Some(self::space_ipfs_hash())));
 
     // Check whether profile updated correctly
     let profile = Social::social_account_by_id(ACCOUNT1).unwrap().profile.unwrap();
     assert!(profile.updated.is_some());
     assert_eq!(profile.username, self::bob_username());
-    assert_eq!(profile.ipfs_hash, self::blog_ipfs_hash());
+    assert_eq!(profile.ipfs_hash, self::space_ipfs_hash());
 
     // Check storages
     assert_eq!(Social::account_by_profile_username(self::alice_username()), None);
@@ -2179,80 +2179,80 @@ fn update_profile_should_fail_invalid_ipfs_hash() {
   });
 }
 
-// Blog following tests
+// Space following tests
 
 #[test]
-fn follow_blog_should_work() {
+fn follow_space_should_work() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
 
-    assert_ok!(_default_follow_blog()); // Follow BlogId 1 by ACCOUNT2
+    assert_ok!(_default_follow_space()); // Follow SpaceId 1 by ACCOUNT2
 
-    assert_eq!(Social::blog_by_id(1).unwrap().followers_count, 2);
-    assert_eq!(Social::blogs_followed_by_account(ACCOUNT2), vec![1]);
-    assert_eq!(Social::blog_followers(1), vec![ACCOUNT1, ACCOUNT2]);
-    assert_eq!(Social::blog_followed_by_account((ACCOUNT2, 1)), true);
+    assert_eq!(Social::space_by_id(1).unwrap().followers_count, 2);
+    assert_eq!(Social::spaces_followed_by_account(ACCOUNT2), vec![1]);
+    assert_eq!(Social::space_followers(1), vec![ACCOUNT1, ACCOUNT2]);
+    assert_eq!(Social::space_followed_by_account((ACCOUNT2, 1)), true);
   });
 }
 
 #[test]
-fn follow_blog_should_fail_blog_not_found() {
+fn follow_space_should_fail_space_not_found() {
   new_test_ext().execute_with(|| {
-    assert_noop!(_default_follow_blog(), Error::<Test>::BlogNotFound);
+    assert_noop!(_default_follow_space(), Error::<Test>::SpaceNotFound);
   });
 }
 
 #[test]
-fn follow_blog_should_fail_already_following() {
+fn follow_space_should_fail_already_following() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_default_follow_blog()); // Follow BlogId 1 by ACCOUNT2
+    assert_ok!(_create_default_space()); // SpaceId 1
+    assert_ok!(_default_follow_space()); // Follow SpaceId 1 by ACCOUNT2
 
-    assert_noop!(_default_follow_blog(), Error::<Test>::AccountIsFollowingBlog);
+    assert_noop!(_default_follow_space(), Error::<Test>::AccountIsFollowingSpace);
   });
 }
 
 #[test]
-fn follow_blog_should_fail_blog_is_hidden() {
+fn follow_space_should_fail_space_is_hidden() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_update_blog(
+    assert_ok!(_create_default_space()); // SpaceId 1
+    assert_ok!(_update_space(
       None,
       None,
-      Some(self::blog_update(None, None, Some(true)))
+      Some(self::space_update(None, None, Some(true)))
     ));
 
-    assert_noop!(_default_follow_blog(), Error::<Test>::BannedToFollowWhenHidden);
+    assert_noop!(_default_follow_space(), Error::<Test>::BannedToFollowWhenHidden);
   });
 }
 
 #[test]
-fn unfollow_blog_should_work() {
+fn unfollow_space_should_work() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
 
-    assert_ok!(_default_follow_blog()); // Follow BlogId 1 by ACCOUNT2
-    assert_ok!(_default_unfollow_blog());
+    assert_ok!(_default_follow_space()); // Follow SpaceId 1 by ACCOUNT2
+    assert_ok!(_default_unfollow_space());
 
-    assert_eq!(Social::blog_by_id(1).unwrap().followers_count, 1);
-    assert!(Social::blogs_followed_by_account(ACCOUNT2).is_empty());
-    assert_eq!(Social::blog_followers(1), vec![ACCOUNT1]);
+    assert_eq!(Social::space_by_id(1).unwrap().followers_count, 1);
+    assert!(Social::spaces_followed_by_account(ACCOUNT2).is_empty());
+    assert_eq!(Social::space_followers(1), vec![ACCOUNT1]);
   });
 }
 
 #[test]
-fn unfollow_blog_should_fail_blog_not_found() {
+fn unfollow_space_should_fail_space_not_found() {
   new_test_ext().execute_with(|| {
-    assert_noop!(_default_unfollow_blog(), Error::<Test>::BlogNotFound);
+    assert_noop!(_default_unfollow_space(), Error::<Test>::SpaceNotFound);
   });
 }
 
 #[test]
-fn unfollow_blog_should_fail_already_following() {
+fn unfollow_space_should_fail_already_following() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
+    assert_ok!(_create_default_space()); // SpaceId 1
 
-    assert_noop!(_default_unfollow_blog(), Error::<Test>::AccountIsNotFollowingBlog);
+    assert_noop!(_default_unfollow_space(), Error::<Test>::AccountIsNotFollowingSpace);
   });
 }
 
@@ -2318,39 +2318,39 @@ fn unfollow_account_should_fail_is_not_followed() {
 // Transfer ownership tests
 
 #[test]
-fn transfer_blog_ownership_should_work() {
+fn transfer_space_ownership_should_work() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_transfer_default_blog_ownership()); // Transfer BlogId 1 owned by ACCOUNT1 to ACCOUNT2
+    assert_ok!(_create_default_space()); // SpaceId 1
+    assert_ok!(_transfer_default_space_ownership()); // Transfer SpaceId 1 owned by ACCOUNT1 to ACCOUNT2
 
-    assert_eq!(Social::pending_blog_owner(1).unwrap(), ACCOUNT2);
+    assert_eq!(Social::pending_space_owner(1).unwrap(), ACCOUNT2);
   });
 }
 
 #[test]
-fn transfer_blog_ownership_should_fail_blog_not_found() {
+fn transfer_space_ownership_should_fail_space_not_found() {
   new_test_ext().execute_with(|| {
-    assert_noop!(_transfer_default_blog_ownership(), Error::<Test>::BlogNotFound);
+    assert_noop!(_transfer_default_space_ownership(), Error::<Test>::SpaceNotFound);
   });
 }
 
 #[test]
-fn transfer_blog_ownership_should_fail_not_an_owner() {
+fn transfer_space_ownership_should_fail_not_an_owner() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
-    assert_noop!(_transfer_blog_ownership(
+    assert_ok!(_create_default_space()); // SpaceId 1
+    assert_noop!(_transfer_space_ownership(
       Some(Origin::signed(ACCOUNT2)),
       None,
       Some(ACCOUNT1)
-    ), Error::<Test>::NotABlogOwner);
+    ), Error::<Test>::NotASpaceOwner);
   });
 }
 
 #[test]
-fn transfer_blog_ownership_should_fail_transferring_to_current_owner() {
+fn transfer_space_ownership_should_fail_transferring_to_current_owner() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
-    assert_noop!(_transfer_blog_ownership(
+    assert_ok!(_create_default_space()); // SpaceId 1
+    assert_noop!(_transfer_space_ownership(
       Some(Origin::signed(ACCOUNT1)),
       None,
       Some(ACCOUNT1)
@@ -2361,20 +2361,20 @@ fn transfer_blog_ownership_should_fail_transferring_to_current_owner() {
 #[test]
 fn accept_pending_ownership_should_work() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_transfer_default_blog_ownership()); // Transfer BlogId 1 owned by ACCOUNT1 to ACCOUNT2
+    assert_ok!(_create_default_space()); // SpaceId 1
+    assert_ok!(_transfer_default_space_ownership()); // Transfer SpaceId 1 owned by ACCOUNT1 to ACCOUNT2
     assert_ok!(_accept_default_pending_ownership()); // Accepting a transfer from ACCOUNT2
     // Check whether owner was changed
-    let blog = Social::blog_by_id(1).unwrap();
-    assert_eq!(blog.owner, ACCOUNT2);
+    let space = Social::space_by_id(1).unwrap();
+    assert_eq!(space.owner, ACCOUNT2);
 
     // Check whether storage state is correct
-    assert!(Social::pending_blog_owner(1).is_none());
+    assert!(Social::pending_space_owner(1).is_none());
   });
 }
 
 #[test]
-fn accept_pending_ownership_should_fail_blog_not_found() {
+fn accept_pending_ownership_should_fail_space_not_found() {
   new_test_ext().execute_with(|| {
     // TODO: after adding new test externality
   });
@@ -2383,16 +2383,16 @@ fn accept_pending_ownership_should_fail_blog_not_found() {
 #[test]
 fn accept_pending_ownership_should_fail_no_pending_transfer() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
-    assert_noop!(_accept_default_pending_ownership(), Error::<Test>::NoPendingTransferOnBlog);
+    assert_ok!(_create_default_space()); // SpaceId 1
+    assert_noop!(_accept_default_pending_ownership(), Error::<Test>::NoPendingTransferOnSpace);
   });
 }
 
 #[test]
 fn accept_pending_ownership_should_fail_not_allowed_to_accept() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_transfer_default_blog_ownership());
+    assert_ok!(_create_default_space()); // SpaceId 1
+    assert_ok!(_transfer_default_space_ownership());
 
     assert_noop!(_accept_pending_ownership(
       Some(Origin::signed(ACCOUNT1)),
@@ -2404,64 +2404,64 @@ fn accept_pending_ownership_should_fail_not_allowed_to_accept() {
 #[test]
 fn reject_pending_ownership_should_work() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_transfer_default_blog_ownership()); // Transfer BlogId 1 owned by ACCOUNT1 to ACCOUNT2
+    assert_ok!(_create_default_space()); // SpaceId 1
+    assert_ok!(_transfer_default_space_ownership()); // Transfer SpaceId 1 owned by ACCOUNT1 to ACCOUNT2
     assert_ok!(_reject_default_pending_ownership()); // Rejecting a transfer from ACCOUNT2
 
     // Check whether owner was not changed
-    let blog = Social::blog_by_id(1).unwrap();
-    assert_eq!(blog.owner, ACCOUNT1);
+    let space = Social::space_by_id(1).unwrap();
+    assert_eq!(space.owner, ACCOUNT1);
 
     // Check whether storage state is correct
-    assert!(Social::pending_blog_owner(1).is_none());
+    assert!(Social::pending_space_owner(1).is_none());
   });
 }
 
 #[test]
 fn reject_pending_ownership_should_work_when_rejected_by_current_owner() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_transfer_default_blog_ownership()); // Transfer BlogId 1 owned by ACCOUNT1 to ACCOUNT2
+    assert_ok!(_create_default_space()); // SpaceId 1
+    assert_ok!(_transfer_default_space_ownership()); // Transfer SpaceId 1 owned by ACCOUNT1 to ACCOUNT2
     assert_ok!(_reject_default_pending_ownership_by_current_owner()); // Rejecting a transfer from ACCOUNT2
 
     // Check whether owner was not changed
-    let blog = Social::blog_by_id(1).unwrap();
-    assert_eq!(blog.owner, ACCOUNT1);
+    let space = Social::space_by_id(1).unwrap();
+    assert_eq!(space.owner, ACCOUNT1);
 
     // Check whether storage state is correct
-    assert!(Social::pending_blog_owner(1).is_none());
+    assert!(Social::pending_space_owner(1).is_none());
   });
 }
 
 #[test]
-fn reject_pending_ownership_should_fail_blog_not_found() {
+fn reject_pending_ownership_should_fail_space_not_found() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_transfer_default_blog_ownership()); // Transfer BlogId 1 owned by ACCOUNT1 to ACCOUNT2
+    assert_ok!(_create_default_space()); // SpaceId 1
+    assert_ok!(_transfer_default_space_ownership()); // Transfer SpaceId 1 owned by ACCOUNT1 to ACCOUNT2
     assert_ok!(_reject_default_pending_ownership()); // Rejecting a transfer from ACCOUNT2
 
     // Check whether owner was not changed
-    let blog = Social::blog_by_id(1).unwrap();
-    assert_eq!(blog.owner, ACCOUNT1);
+    let space = Social::space_by_id(1).unwrap();
+    assert_eq!(space.owner, ACCOUNT1);
 
     // Check whether storage state is correct
-    assert!(Social::pending_blog_owner(1).is_none());
+    assert!(Social::pending_space_owner(1).is_none());
   });
 }
 
 #[test]
 fn reject_pending_ownership_should_fail_no_pending_transfer() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
-    assert_noop!(_reject_default_pending_ownership(), Error::<Test>::NoPendingTransferOnBlog); // Rejecting a transfer from ACCOUNT2
+    assert_ok!(_create_default_space()); // SpaceId 1
+    assert_noop!(_reject_default_pending_ownership(), Error::<Test>::NoPendingTransferOnSpace); // Rejecting a transfer from ACCOUNT2
   });
 }
 
 #[test]
 fn reject_pending_ownership_should_fail_not_allowed_to_reject() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_blog()); // BlogId 1
-    assert_ok!(_transfer_default_blog_ownership()); // Transfer BlogId 1 owned by ACCOUNT1 to ACCOUNT2
+    assert_ok!(_create_default_space()); // SpaceId 1
+    assert_ok!(_transfer_default_space_ownership()); // Transfer SpaceId 1 owned by ACCOUNT1 to ACCOUNT2
 
     assert_noop!(_reject_pending_ownership(
       Some(Origin::signed(ACCOUNT3)),

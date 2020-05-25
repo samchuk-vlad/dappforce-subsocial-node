@@ -20,31 +20,31 @@ impl<T: Trait> Module<T> {
         reaction_id
     }
 
-    pub fn add_blog_follower(
+    pub fn add_space_follower(
         follower: T::AccountId,
-        blog: &mut Blog<T>
+        space: &mut Space<T>
     ) -> DispatchResult {
 
-        let blog_id = blog.id;
+        let space_id = space.id;
         let mut social_account = Self::get_or_new_social_account(follower.clone());
-        social_account.following_blogs_count = social_account.following_blogs_count
+        social_account.following_spaces_count = social_account.following_spaces_count
             .checked_add(1)
-            .ok_or(Error::<T>::OverflowFollowingBlog)?;
+            .ok_or(Error::<T>::OverflowFollowingSpace)?;
 
-        blog.followers_count = blog.followers_count.checked_add(1).ok_or(Error::<T>::OverflowFollowingBlog)?;
-        if blog.created.account != follower {
-            let author = blog.created.account.clone();
-            let score_diff = Self::get_score_diff(social_account.reputation, ScoringAction::FollowBlog);
-            blog.score = blog.score.checked_add(score_diff as i32).ok_or(Error::<T>::OutOfBoundsUpdatingBlogScore)?;
-            Self::change_social_account_reputation(author, follower.clone(), score_diff, ScoringAction::FollowBlog)?;
+        space.followers_count = space.followers_count.checked_add(1).ok_or(Error::<T>::OverflowFollowingSpace)?;
+        if space.created.account != follower {
+            let author = space.created.account.clone();
+            let score_diff = Self::get_score_diff(social_account.reputation, ScoringAction::FollowSpace);
+            space.score = space.score.checked_add(score_diff as i32).ok_or(Error::<T>::OutOfBoundsUpdatingSpaceScore)?;
+            Self::change_social_account_reputation(author, follower.clone(), score_diff, ScoringAction::FollowSpace)?;
         }
 
         <SocialAccountById<T>>::insert(follower.clone(), social_account);
-        <BlogsFollowedByAccount<T>>::mutate(follower.clone(), |ids| ids.push(blog_id));
-        <BlogFollowers<T>>::mutate(blog_id, |ids| ids.push(follower.clone()));
-        <BlogFollowedByAccount<T>>::insert((follower.clone(), blog_id), true);
+        <SpacesFollowedByAccount<T>>::mutate(follower.clone(), |ids| ids.push(space_id));
+        <SpaceFollowers<T>>::mutate(space_id, |ids| ids.push(follower.clone()));
+        <SpaceFollowedByAccount<T>>::insert((follower.clone(), space_id), true);
 
-        Self::deposit_event(RawEvent::BlogFollowed(follower, blog_id));
+        Self::deposit_event(RawEvent::SpaceFollowed(follower, space_id));
         Ok(())
     }
 
@@ -55,7 +55,7 @@ impl<T: Trait> Module<T> {
             SocialAccount {
                 followers_count: 0,
                 following_accounts_count: 0,
-                following_blogs_count: 0,
+                following_spaces_count: 0,
                 reputation: 1,
                 profile: None
             }
@@ -86,14 +86,14 @@ impl<T: Trait> Module<T> {
         Post::<T>::ensure_post_stored(post_id)?;
         ensure!(!post.is_comment(), Error::<T>::PostIsAComment);
 
-        if let Some(post_blog_id) = post.blog_id {
-            let mut blog = Self::blog_by_id(post_blog_id).ok_or(Error::<T>::BlogNotFound)?;
+        if let Some(post_space_id) = post.space_id {
+            let mut space = Self::space_by_id(post_space_id).ok_or(Error::<T>::SpaceNotFound)?;
 
             if post.created.account != account {
                 if let Some(score_diff) = Self::post_score_by_account((account.clone(), post_id, action)) {
                     let reputation_diff = Self::account_reputation_diff_by_account((account.clone(), post.created.account.clone(), action)).ok_or(Error::<T>::ReputationDiffNotFound)?;
                     post.score = post.score.checked_add(-(score_diff as i32)).ok_or(Error::<T>::OutOfBoundsRevertingPostScore)?;
-                    blog.score = blog.score.checked_add(-(score_diff as i32)).ok_or(Error::<T>::OutOfBoundsRevertingBlogScore)?;
+                    space.score = space.score.checked_add(-(score_diff as i32)).ok_or(Error::<T>::OutOfBoundsRevertingSpaceScore)?;
                     Self::change_social_account_reputation(post.created.account.clone(), account.clone(), -reputation_diff, action)?;
                     <PostScoreByAccount<T>>::remove((account, post_id, action));
                 } else {
@@ -112,13 +112,13 @@ impl<T: Trait> Module<T> {
                     }
                     let score_diff = Self::get_score_diff(social_account.reputation, action);
                     post.score = post.score.checked_add(score_diff as i32).ok_or(Error::<T>::OutOfBoundsUpdatingPostScore)?;
-                    blog.score = blog.score.checked_add(score_diff as i32).ok_or(Error::<T>::OutOfBoundsUpdatingBlogScore)?;
+                    space.score = space.score.checked_add(score_diff as i32).ok_or(Error::<T>::OutOfBoundsUpdatingSpaceScore)?;
                     Self::change_social_account_reputation(post.created.account.clone(), account.clone(), score_diff, action)?;
                     <PostScoreByAccount<T>>::insert((account, post_id, action), score_diff);
                 }
 
                 <PostById<T>>::insert(post_id, post.clone());
-                <BlogById<T>>::insert(post_blog_id, blog);
+                <SpaceById<T>>::insert(post_space_id, space);
             }
         }
 
@@ -214,7 +214,7 @@ impl<T: Trait> Module<T> {
             ScoringAction::UpvoteComment => T::UpvoteCommentActionWeight::get(),
             ScoringAction::DownvoteComment => T::DownvoteCommentActionWeight::get(),
             ScoringAction::ShareComment => T::ShareCommentActionWeight::get(),
-            ScoringAction::FollowBlog => T::FollowBlogActionWeight::get(),
+            ScoringAction::FollowSpace => T::FollowSpaceActionWeight::get(),
             ScoringAction::FollowAccount => T::FollowAccountActionWeight::get(),
         }
     }
@@ -290,7 +290,7 @@ impl<T: Trait> Module<T> {
     pub fn lowercase_and_validate_a_handle(mut handle: Vec<u8>) -> Result<Vec<u8>, DispatchError> {
         handle = handle.to_ascii_lowercase();
 
-        ensure!(Self::blog_id_by_handle(handle.clone()).is_none(), Error::<T>::HandleIsNotUnique);
+        ensure!(Self::space_id_by_handle(handle.clone()).is_none(), Error::<T>::HandleIsNotUnique);
 
         ensure!(handle.len() >= T::MinHandleLen::get() as usize, Error::<T>::HandleIsTooShort);
         ensure!(handle.len() <= T::MaxHandleLen::get() as usize, Error::<T>::HandleIsTooLong);
@@ -320,31 +320,31 @@ impl<T: Trait> Module<T> {
     }
 }
 
-impl<T: Trait> Blog<T> {
-    pub fn ensure_blog_owner(&self, who: T::AccountId) -> DispatchResult {
-        ensure!(self.owner == who, Error::<T>::NotABlogOwner);
+impl<T: Trait> Space<T> {
+    pub fn ensure_space_owner(&self, who: T::AccountId) -> DispatchResult {
+        ensure!(self.owner == who, Error::<T>::NotASpaceOwner);
         Ok(())
     }
 
     pub fn increment_posts_count(&mut self) -> DispatchResult {
-        self.posts_count = self.posts_count.checked_add(1).ok_or(Error::<T>::OverflowAddingPostOnBlog)?;
+        self.posts_count = self.posts_count.checked_add(1).ok_or(Error::<T>::OverflowAddingPostOnSpace)?;
         Ok(())
     }
 
-    pub fn ensure_blog_stored(blog_id: BlogId) -> DispatchResult {
-        ensure!(<BlogById<T>>::exists(blog_id), Error::<T>::BlogNotFound);
+    pub fn ensure_space_stored(space_id: SpaceId) -> DispatchResult {
+        ensure!(<SpaceById<T>>::exists(space_id), Error::<T>::SpaceNotFound);
         Ok(())
     }
 }
 
 impl<T: Trait> Post<T> {
-    pub fn create(id: PostId, created_by: T::AccountId, blog_id_opt: Option<BlogId>, extension: PostExtension, ipfs_hash: Vec<u8>) -> Self {
+    pub fn create(id: PostId, created_by: T::AccountId, space_id_opt: Option<SpaceId>, extension: PostExtension, ipfs_hash: Vec<u8>) -> Self {
         Post {
             id,
             created: WhoAndWhen::<T>::new(created_by),
             updated: None,
             hidden: false,
-            blog_id: blog_id_opt,
+            space_id: space_id_opt,
             extension,
             ipfs_hash,
             edit_history: Vec::new(),
@@ -385,13 +385,13 @@ impl<T: Trait> Post<T> {
         }
     }
 
-    pub fn get_blog(&self) -> Result<Blog<T>, DispatchError> {
+    pub fn get_space(&self) -> Result<Space<T>, DispatchError> {
         let root_post = self.get_root_post()?;
 
-        let blog_id = root_post.blog_id.ok_or(Error::<T>::BlogIdIsUndefined)?;
-        let blog = Module::blog_by_id(blog_id).ok_or(Error::<T>::BlogNotFound)?;
+        let space_id = root_post.space_id.ok_or(Error::<T>::SpaceIdIsUndefined)?;
+        let space = Module::space_by_id(space_id).ok_or(Error::<T>::SpaceNotFound)?;
 
-        Ok(blog)
+        Ok(space)
     }
 
     pub fn ensure_post_stored(post_id: PostId) -> DispatchResult {

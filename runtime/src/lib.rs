@@ -237,7 +237,7 @@ parameter_types! {
   pub const MaxHandleLen: u32 = 50;
   pub const MinUsernameLen: u32 = 3;
   pub const MaxUsernameLen: u32 = 50;
-  pub const FollowBlogActionWeight: i16 = 7;
+  pub const FollowSpaceActionWeight: i16 = 7;
   pub const FollowAccountActionWeight: i16 = 3;
   pub const UpvotePostActionWeight: i16 = 5;
   pub const DownvotePostActionWeight: i16 = -3;
@@ -256,7 +256,7 @@ impl pallet_social::Trait for Runtime {
   type MaxHandleLen = MaxHandleLen;
   type MinUsernameLen = MinUsernameLen;
   type MaxUsernameLen = MaxUsernameLen;
-  type FollowBlogActionWeight = FollowBlogActionWeight;
+  type FollowSpaceActionWeight = FollowSpaceActionWeight;
   type FollowAccountActionWeight = FollowAccountActionWeight;
   type UpvotePostActionWeight = UpvotePostActionWeight;
   type DownvotePostActionWeight = DownvotePostActionWeight;
