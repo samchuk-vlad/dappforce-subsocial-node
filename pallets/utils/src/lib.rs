@@ -22,6 +22,14 @@ impl <T: Trait> WhoAndWhen<T> {
   }
 }
 
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+pub enum User<AccountId> {
+  Account(AccountId),
+  Space(SpaceId)
+}
+
+pub type SpaceId = u64;
+
 pub trait Trait: system::Trait + pallet_timestamp::Trait {
   /// The length in bytes of IPFS hash
   type IpfsHashLen: Get<u32>;

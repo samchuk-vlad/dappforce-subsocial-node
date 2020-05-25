@@ -12,12 +12,11 @@ use frame_support::{
 };
 use sp_runtime::RuntimeDebug;
 use system::ensure_signed;
-use pallet_utils::WhoAndWhen;
 
+// TODO: import type from pallet-social after Blog will be renamed to Space
+use pallet_utils::{WhoAndWhen, User, SpaceId};
 use pallet_social::{Module as Social, Blog};
 
-// TODO: import type after Blog will be renamed to Space
-type SpaceId = u64;
 
 #[derive(Encode, Decode, Ord, PartialOrd, Clone, Eq, PartialEq, RuntimeDebug)]
 pub enum SpacePermission {
@@ -36,7 +35,7 @@ pub enum SpacePermission {
   RepresentSpaceExternally,
 
   UpdateSpace,
-  BlockUsers, // or BlockActors
+  BlockUsers, // or BlockUsers
 
   // TODO what about 'DeleteSpace'? (too dangerous)
 
@@ -97,14 +96,6 @@ pub struct RoleUpdate {
   pub permissions: Option<BTreeSet<SpacePermission>>,
 }
 
-// TODO Move this helper enum to `utils` pallet.
-// TODO Maybe this enum to 'User'?
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub enum Actor<AccountId> {
-  Account(AccountId),
-  Space(SpaceId)
-}
-
 type RoleId = u64;
 
 /// The pallet's configuration trait.
@@ -127,13 +118,13 @@ decl_storage! {
     pub RoleById get(fn role_by_id): map RoleId => Option<Role<T>>;
 
     /// A list of all account ids and space ids that have this role.
-    pub ActorsByRoleId get(fn actors_by_role_id): map RoleId => Vec<Actor<T::AccountId>>;
+    pub UsersByRoleId get(fn users_by_role_id): map RoleId => Vec<User<T::AccountId>>;
 
     /// A list of all role ids available in this space.
     pub RoleIdsBySpaceId get(fn role_ids_by_space_id): map SpaceId => Vec<RoleId>;
 
-    // A list of all role ids granted to this actor (either account of space) within this space.
-    // pub InSpaceRoleIdsByActor get(fn in_space_role_ids_by_actor): double_map hasher(blake2_128_concat) Actor, hasher(blake2_128_concat) SpaceId => Vec<RoleId>;
+    /// A list of all role ids granted to this user (either account of space) within this space.
+    pub InSpaceRoleIdsByUser get(fn in_space_role_ids_by_user): map (User<T::AccountId>, SpaceId) => Vec<RoleId>;
   }
 }
 
@@ -146,46 +137,53 @@ decl_module! {
 
     /// Create a new role within this space with the list of particular permissions.
     /// `ipfs_hash` points to the off-chain content with such role info as name, description, color.
-    /// Only the space owner or an actor with `ManageRoles` permission can execute this extrinsic.
+    /// Only the space owner or an user with `ManageRoles` permission can execute this extrinsic.
     pub fn create_role(origin, space_id: SpaceId, permissions: BTreeSet<SpacePermission>, ipfs_hash: Vec<u8>) {
       let who = ensure_signed(origin)?;
+
+      let space: Blog<T> = Social::blog_by_id(space_id).ok_or("BlogNotFound")?;
+
+      let is_user_has_permission = Self::is_user_has_permission(User::Account(who.clone()), SpacePermission::ManageRoles)?;
+      ensure!(space.owner == who || is_user_has_permission, Error::<T>::NoPermissionToManageRoles);
+
+
     }
 
     /// Update an existing role on specified space.
     /// It is possible to either update permissions by overriding existing permissions,
     /// or update IPFS hash or both.
-    /// Only the space owner or an actor with `ManageRoles` permission can execute this extrinsic.
+    /// Only the space owner or an user with `ManageRoles` permission can execute this extrinsic.
     pub fn update_role(origin, role_id: RoleId, update: RoleUpdate) {
       let who = ensure_signed(origin)?;
     }
 
     /// Delete the role from all associated storage items.
-    /// Only the space owner or an actor with `ManageRoles` permission can execute this extrinsic.
+    /// Only the space owner or an user with `ManageRoles` permission can execute this extrinsic.
     pub fn delete_role(origin, role_id: RoleId, update: RoleUpdate) {
       let who = ensure_signed(origin)?;
     }
 
-    /// Grant the role from the list of actors.
-    /// Only the space owner or an actor with `ManageRoles` permission can execute this extrinsic.
-    pub fn grant_role(origin, role_id: RoleId, actors: Vec<Actor<T::AccountId>>) {
+    /// Grant the role from the list of users.
+    /// Only the space owner or an user with `ManageRoles` permission can execute this extrinsic.
+    pub fn grant_role(origin, role_id: RoleId, users: Vec<User<T::AccountId>>) {
       let who = ensure_signed(origin)?;
     }
 
-    /// Revoke the role from the list of actors.
-    /// Only the space owner, an actor with `ManageRoles` permission or an actor that has this role can execute this extrinsic.
-    pub fn revoke_role(origin, role_id: RoleId, actors: Vec<Actor<T::AccountId>>) {
+    /// Revoke the role from the list of users.
+    /// Only the space owner, an user with `ManageRoles` permission or an user that has this role can execute this extrinsic.
+    pub fn revoke_role(origin, role_id: RoleId, users: Vec<User<T::AccountId>>) {
       let who = ensure_signed(origin)?;
     }
 
     /// Disable the role. If the role is disabled, their permissions should not be taken into account.
     /// Should throw an error if the role is not enabled.
-    /// Only the space owner or an actor with `ManageRoles` permission can execute this extrinsic.
+    /// Only the space owner or an user with `ManageRoles` permission can execute this extrinsic.
     pub fn disable_role(origin, role_id: RoleId) {
       let who = ensure_signed(origin)?;
     }
 
     /// Enable the role. Should throw an error if the role is not disabled.
-    /// Only the space owner or an actor with `ManageRoles` permission can execute this extrinsic.
+    /// Only the space owner or an user with `ManageRoles` permission can execute this extrinsic.
     pub fn enable_role(origin, role_id: RoleId) {
       let who = ensure_signed(origin)?;
     }
