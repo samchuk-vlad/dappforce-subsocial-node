@@ -13,9 +13,8 @@ use frame_support::{
 use sp_runtime::RuntimeDebug;
 use system::ensure_signed;
 
-// TODO: import type from pallet-social after Blog will be renamed to Space
-use pallet_utils::{WhoAndWhen, User, SpaceId};
-use pallet_social::{Module as Social, Blog};
+use pallet_utils::{WhoAndWhen, User};
+use pallet_social::{Module as Social, Space, SpaceId};
 
 
 #[derive(Encode, Decode, Ord, PartialOrd, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -141,7 +140,8 @@ decl_module! {
     pub fn create_role(origin, space_id: SpaceId, permissions: BTreeSet<SpacePermission>, ipfs_hash: Vec<u8>) {
       let who = ensure_signed(origin)?;
 
-      let space: Blog<T> = Social::blog_by_id(space_id).ok_or("BlogNotFound")?;
+      // TODO: import errors from pallet-social
+      let space: Space<T> = Social::space_by_id(space_id).ok_or("SpaceNotFound")?;
 
       let is_user_has_permission = Self::is_user_has_permission(User::Account(who.clone()), SpacePermission::ManageRoles)?;
       ensure!(space.owner == who || is_user_has_permission, Error::<T>::NoPermissionToManageRoles);
