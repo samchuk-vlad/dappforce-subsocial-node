@@ -546,8 +546,8 @@ decl_module! {
       ensure!(who != transfer_to, Error::<T>::CannotTranferToCurrentOwner);
       Blog::<T>::ensure_blog_stored(blog_id)?;
 
-      <PendingBlogOwner<T>>::insert(blog_id, transfer_to);
-      Self::deposit_event(RawEvent::BlogOwnershipTransferCreated(who, blog_id));
+      <PendingBlogOwner<T>>::insert(blog_id, transfer_to.clone());
+      Self::deposit_event(RawEvent::BlogOwnershipTransferCreated(who, blog_id, transfer_to));
     }
 
     pub fn accept_pending_ownership(origin, blog_id: BlogId) {
@@ -562,7 +562,7 @@ decl_module! {
       if let Some(mut blog) = Self::blog_by_id(blog_id) {
         blog.owner = who.clone();
         <BlogById<T>>::insert(blog_id, blog);
-        Self::deposit_event(RawEvent::BlogOwnerChanged(who, blog_id));
+        Self::deposit_event(RawEvent::BlogOwnershipTransfered(who, blog_id));
       }
     }
 
@@ -995,9 +995,9 @@ decl_event!(
     BlogCreated(AccountId, BlogId),
     BlogUpdated(AccountId, BlogId),
     BlogDeleted(AccountId, BlogId),
-    BlogOwnerChanged(AccountId, BlogId),
 
-    BlogOwnershipTransferCreated(AccountId, BlogId),
+    BlogOwnershipTransferCreated(/* current owner */ AccountId, BlogId, /* new owner */ AccountId),
+    BlogOwnershipTransfered(AccountId, BlogId),
     BlogOwnershipTransferRejected(AccountId, BlogId),
 
     BlogFollowed(AccountId, BlogId),
