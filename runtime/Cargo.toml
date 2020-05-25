@@ -162,6 +162,10 @@ version = '2.0.0'
 default-features = false
 path = '../pallets/social'
 
+[dependencies.pallet-utils]
+default-features = false
+path = '../pallets/utils'
+
 [dependencies.pallet-permissions]
 default-features = false
 path = '../pallets/permissions'

@@ -233,6 +233,13 @@ impl sudo::Trait for Runtime {
 
 parameter_types! {
   pub const IpfsHashLen: u32 = 46;
+}
+
+impl pallet_utils::Trait for Runtime {
+  type IpfsHashLen = IpfsHashLen;
+}
+
+parameter_types! {
   pub const MinHandleLen: u32 = 5;
   pub const MaxHandleLen: u32 = 50;
   pub const MinUsernameLen: u32 = 3;
@@ -251,7 +258,6 @@ parameter_types! {
 
 impl pallet_social::Trait for Runtime {
   type Event = Event;
-  type IpfsHashLen = IpfsHashLen;
   type MinHandleLen = MinHandleLen;
   type MaxHandleLen = MaxHandleLen;
   type MinUsernameLen = MinUsernameLen;
