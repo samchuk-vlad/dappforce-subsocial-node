@@ -2,20 +2,21 @@
 #![allow(clippy::string_lit_as_bytes)]
 
 pub mod functions;
-mod tests;
+// mod tests;
 
 use sp_std::prelude::*;
 use sp_std::collections::btree_set::BTreeSet;
 use codec::{Encode, Decode};
 use frame_support::{
-  decl_module, decl_storage, decl_event, decl_error/*, ensure*/
+  decl_module, decl_storage, decl_event, decl_error, ensure
 };
 use sp_runtime::RuntimeDebug;
 use system::ensure_signed;
 use pallet_utils::WhoAndWhen;
 
+use pallet_social::{Module as Social, Blog};
+
 // TODO: import type after Blog will be renamed to Space
-// use pallet_social::SpaceId;
 type SpaceId = u64;
 
 #[derive(Encode, Decode, Ord, PartialOrd, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -107,31 +108,32 @@ pub enum Actor<AccountId> {
 type RoleId = u64;
 
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait + pallet_timestamp::Trait {
+pub trait Trait: system::Trait + pallet_timestamp::Trait + pallet_social::Trait {
   /// The overarching event type.
   type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 }
 
 decl_error! {
   pub enum Error for Module<T: Trait> {
-    /// Error template
-    Error,
+    /// Account has not permission to manage roles on this space
+    NoPermissionToManageRoles,
   }
 }
 
 // This pallet's storage items.
 decl_storage! {
-  trait Store for Module<T: Trait> as TemplateModule {
+  trait Store for Module<T: Trait> as PermissionsModule {
     /// Get role details by ids id.
-    pub RoleById get(role_by_id): map RoleId => Option<Role<T>>;
+    pub RoleById get(fn role_by_id): map RoleId => Option<Role<T>>;
 
     /// A list of all account ids and space ids that have this role.
-    pub ActorsByRoleId get(actors_by_role_id): map RoleId => Vec<Actor<T::AccountId>>;
+    pub ActorsByRoleId get(fn actors_by_role_id): map RoleId => Vec<Actor<T::AccountId>>;
 
     /// A list of all role ids available in this space.
-    pub RoleIdsBySpaceId get(role_ids_by_space_id): map SpaceId => Vec<RoleId>;
+    pub RoleIdsBySpaceId get(fn role_ids_by_space_id): map SpaceId => Vec<RoleId>;
 
-    // pub InSpaceRoleIdsByActor get(in_space_role_ids_by_actor): double_map Actor, SpaceId => Vec<RoleId>;
+    // A list of all role ids granted to this actor (either account of space) within this space.
+    // pub InSpaceRoleIdsByActor get(fn in_space_role_ids_by_actor): double_map hasher(blake2_128_concat) Actor, hasher(blake2_128_concat) SpaceId => Vec<RoleId>;
   }
 }
 

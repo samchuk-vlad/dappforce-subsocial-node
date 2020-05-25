@@ -235,12 +235,6 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
-    pub fn is_ipfs_hash_valid(ipfs_hash: Vec<u8>) -> DispatchResult {
-        ensure!(ipfs_hash.len() == T::IpfsHashLen::get() as usize, Error::<T>::IpfsIsIncorrect);
-
-        Ok(())
-    }
-
     pub fn share_post(account: T::AccountId, original_post: &mut Post<T>, shared_post_id: PostId) -> DispatchResult {
         original_post.shares_count = original_post.shares_count.checked_add(1).ok_or(Error::<T>::OverflowTotalShares)?;
 

@@ -3,7 +3,7 @@
 pub use super::*;
 
 use sp_core::H256;
-use frame_support::{impl_outer_origin, assert_ok, assert_noop, parameter_types,
+use frame_support::{impl_outer_origin, assert_ok, /*assert_noop,*/ parameter_types,
                     weights::Weight, dispatch::DispatchResult};
 use sp_runtime::{
   traits::{BlakeTwo256, IdentityLookup}, testing::Header, Perbill,

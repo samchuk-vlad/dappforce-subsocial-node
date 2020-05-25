@@ -9,7 +9,7 @@ use codec::{Encode, Decode};
 use frame_support::{decl_module, decl_storage, decl_event, decl_error, ensure, traits::Get};
 use sp_runtime::RuntimeDebug;
 use system::ensure_signed;
-use pallet_utils::WhoAndWhen;
+use pallet_utils::{WhoAndWhen, Module as Utils};
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Space<T: Trait> {
@@ -176,14 +176,11 @@ pub type PostId = u64;
 pub type ReactionId = u64;
 
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait + pallet_timestamp::Trait {
+pub trait Trait: system::Trait + pallet_timestamp::Trait + pallet_utils::Trait {
   /// The overarching event type.
   type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
-  /// The length in bytes of IPFS hash
-  type IpfsHashLen: Get<u32>;
-
-  /// Minimal length of space handle
+  /// Minimal length of blog handle
   type MinHandleLen: Get<u32>;
 
   /// Maximal length of space handle
@@ -310,9 +307,6 @@ decl_error! {
     /// Social account that is being followed was not found by id
     FollowedAccountNotFound,
 
-    /// IPFS-hash is not correct
-    IpfsIsIncorrect,
-
     /// Out of bounds updating space score
     OutOfBoundsUpdatingSpaceScore,
     /// Out of bounds reverting space score
@@ -363,51 +357,48 @@ decl_error! {
 // This pallet's storage items.
 decl_storage! {
   trait Store for Module<T: Trait> as TemplateModule {
-    pub SpaceById get(space_by_id): map SpaceId => Option<Space<T>>;
-    pub PostById get(post_by_id): map PostId => Option<Post<T>>;
-    pub ReactionById get(reaction_by_id): map ReactionId => Option<Reaction<T>>;
-    pub SocialAccountById get(social_account_by_id): map T::AccountId => Option<SocialAccount<T>>;
+    pub SpaceById get(fn space_by_id): map SpaceId => Option<Space<T>>;
+    pub PostById get(fn post_by_id): map PostId => Option<Post<T>>;
+    pub ReactionById get(fn reaction_by_id): map ReactionId => Option<Reaction<T>>;
+    pub SocialAccountById get(fn social_account_by_id): map T::AccountId => Option<SocialAccount<T>>;
 
-    pub SpaceIdsByOwner get(space_ids_by_owner): map T::AccountId => Vec<SpaceId>;
-    pub PostIdsBySpaceId get(post_ids_by_space_id): map SpaceId => Vec<PostId>;
+    pub SpaceIdsByOwner get(fn space_ids_by_owner): map T::AccountId => Vec<SpaceId>;
+    pub PostIdsBySpaceId get(fn post_ids_by_space_id): map SpaceId => Vec<PostId>;
 
-    pub ReplyIdsByPostId get(reply_ids_by_post_id): map PostId => Vec<PostId>;
+    pub ReplyIdsByPostId get(fn reply_ids_by_post_id): map PostId => Vec<PostId>;
 
-    pub ReactionIdsByPostId get(reaction_ids_by_post_id): map PostId => Vec<ReactionId>;
-    pub PostReactionIdByAccount get(post_reaction_id_by_account): map (T::AccountId, PostId) => ReactionId;
+    pub ReactionIdsByPostId get(fn reaction_ids_by_post_id): map PostId => Vec<ReactionId>;
+    pub PostReactionIdByAccount get(fn post_reaction_id_by_account): map (T::AccountId, PostId) => ReactionId;
 
-    pub SpaceIdByHandle get(space_id_by_handle): map Vec<u8> => Option<SpaceId>;
+    pub SpaceIdByHandle get(fn space_id_by_handle): map Vec<u8> => Option<SpaceId>;
 
-    pub SpacesFollowedByAccount get(spaces_followed_by_account): map T::AccountId => Vec<SpaceId>;
-    pub SpaceFollowers get(space_followers): map SpaceId => Vec<T::AccountId>;
-    pub SpaceFollowedByAccount get(space_followed_by_account): map (T::AccountId, SpaceId) => bool;
+    pub SpacesFollowedByAccount get(fn spaces_followed_by_account): map T::AccountId => Vec<SpaceId>;
+    pub SpaceFollowers get(fn space_followers): map SpaceId => Vec<T::AccountId>;
+    pub SpaceFollowedByAccount get(fn space_followed_by_account): map (T::AccountId, SpaceId) => bool;
 
-    pub AccountFollowedByAccount get(account_followed_by_account): map (T::AccountId, T::AccountId) => bool;
-    pub AccountsFollowedByAccount get(accounts_followed_by_account): map T::AccountId => Vec<T::AccountId>;
-    pub AccountFollowers get(account_followers): map T::AccountId => Vec<T::AccountId>;
+    pub AccountFollowedByAccount get(fn account_followed_by_account): map (T::AccountId, T::AccountId) => bool;
+    pub AccountsFollowedByAccount get(fn accounts_followed_by_account): map T::AccountId => Vec<T::AccountId>;
+    pub AccountFollowers get(fn account_followers): map T::AccountId => Vec<T::AccountId>;
 
-    pub NextSpaceId get(next_space_id): SpaceId = 1;
-    pub NextPostId get(next_post_id): PostId = 1;
-    pub NextReactionId get(next_reaction_id): ReactionId = 1;
+    pub NextSpaceId get(fn next_space_id): SpaceId = 1;
+    pub NextPostId get(fn next_post_id): PostId = 1;
+    pub NextReactionId get(fn next_reaction_id): ReactionId = 1;
 
-    pub AccountReputationDiffByAccount get(account_reputation_diff_by_account): map (T::AccountId, T::AccountId, ScoringAction) => Option<i16>; // TODO shorten name (?refactor)
-    pub PostScoreByAccount get(post_score_by_account): map (T::AccountId, PostId, ScoringAction) => Option<i16>;
+    pub AccountReputationDiffByAccount get(fn account_reputation_diff_by_account): map (T::AccountId, T::AccountId, ScoringAction) => Option<i16>; // TODO shorten name (?refactor)
+    pub PostScoreByAccount get(fn post_score_by_account): map (T::AccountId, PostId, ScoringAction) => Option<i16>;
 
-    pub PostSharesByAccount get(post_shares_by_account): map (T::AccountId, PostId) => u16;
-    pub SharedPostIdsByOriginalPostId get(shared_post_ids_by_original_post_id): map PostId => Vec<PostId>;
+    pub PostSharesByAccount get(fn post_shares_by_account): map (T::AccountId, PostId) => u16;
+    pub SharedPostIdsByOriginalPostId get(fn shared_post_ids_by_original_post_id): map PostId => Vec<PostId>;
 
-    pub AccountByProfileUsername get(account_by_profile_username): map Vec<u8> => Option<T::AccountId>;
+    pub AccountByProfileUsername get(fn account_by_profile_username): map Vec<u8> => Option<T::AccountId>;
 
-    pub PendingSpaceOwner get(pending_space_owner): map SpaceId => Option<T::AccountId>;
+    pub PendingSpaceOwner get(fn pending_space_owner): map SpaceId => Option<T::AccountId>;
   }
 }
 
 // The pallet's dispatchable functions.
 decl_module! {
   pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-    /// The length in bytes of IPFS hash
-    const IpfsHashLen: u32 = T::IpfsHashLen::get();
-
     /// Minimal length of space handle
     const MinHandleLen: u32 = T::MinHandleLen::get();
 
@@ -441,7 +432,7 @@ decl_module! {
     pub fn create_space(origin, handle_opt: Option<Vec<u8>>, ipfs_hash: Vec<u8>) {
       let owner = ensure_signed(origin)?;
 
-      Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
+      Utils::<T>::is_ipfs_hash_valid(ipfs_hash.clone())?;
 
       let mut handle: Vec<u8> = Vec::new();
       if let Some(original_handle) = handle_opt.clone() {
@@ -498,7 +489,7 @@ decl_module! {
 
       if let Some(ipfs_hash) = update.ipfs_hash {
         if ipfs_hash != space.ipfs_hash {
-          Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
+          Utils::<T>::is_ipfs_hash_valid(ipfs_hash.clone())?;
           new_history_record.old_data.ipfs_hash = Some(space.ipfs_hash);
           space.ipfs_hash = ipfs_hash;
           fields_updated += 1;
@@ -683,7 +674,7 @@ decl_module! {
       let mut social_account = Self::get_or_new_social_account(owner.clone());
       ensure!(social_account.profile.is_none(), Error::<T>::ProfileAlreadyExists);
       Self::is_username_valid(username.clone())?;
-      Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
+      Utils::<T>::is_ipfs_hash_valid(ipfs_hash.clone())?;
 
       social_account.profile = Some(
         Profile {
@@ -719,7 +710,7 @@ decl_module! {
 
       if let Some(ipfs_hash) = update.ipfs_hash {
         if ipfs_hash != profile.ipfs_hash {
-          Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
+          Utils::<T>::is_ipfs_hash_valid(ipfs_hash.clone())?;
           new_history_record.old_data.ipfs_hash = Some(profile.ipfs_hash);
           profile.ipfs_hash = ipfs_hash;
           is_update_applied = true;
@@ -750,7 +741,7 @@ decl_module! {
     pub fn create_post(origin, space_id_opt: Option<SpaceId>, extension: PostExtension, ipfs_hash: Vec<u8>) {
       let owner = ensure_signed(origin)?;
 
-      Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
+      Utils::<T>::is_ipfs_hash_valid(ipfs_hash.clone())?;
 
       let new_post_id = Self::next_post_id();
       let new_post: Post<T> = Post::create(new_post_id, owner.clone(), space_id_opt, extension, ipfs_hash);
@@ -836,7 +827,7 @@ decl_module! {
 
       if let Some(ipfs_hash) = update.ipfs_hash {
         if ipfs_hash != post.ipfs_hash {
-          Self::is_ipfs_hash_valid(ipfs_hash.clone())?;
+          Utils::<T>::is_ipfs_hash_valid(ipfs_hash.clone())?;
           new_history_record.old_data.ipfs_hash = Some(post.ipfs_hash);
           post.ipfs_hash = ipfs_hash;
           fields_updated += 1;

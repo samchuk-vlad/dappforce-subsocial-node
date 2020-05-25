@@ -2714,6 +2714,7 @@ version = "2.0.0"
 dependencies = [
  "frame-support",
  "frame-system",
+ "pallet-social",
  "pallet-timestamp",
  "pallet-utils",
  "parity-scale-codec",
