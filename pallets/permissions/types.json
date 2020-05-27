@@ -1,2 +1,40 @@
 {
+  "SpacePermission":{
+    "_enum":[
+      "ManageRoles",
+      "ManageSubspaces",
+      "ManagePosts",
+      "ManageComments",
+      "RepresentSpaceInternally",
+      "RepresentSpaceExternally",
+      "UpdateSpace",
+      "BlockUsers",
+      "CreateSubspaces",
+      "UpdateOwnSubspaces",
+      "DeleteOwnSubspaces",
+      "DeleteAnySubspaces",
+      "CreatePosts",
+      "UpdateOwnPosts",
+      "DeleteOwnPosts",
+      "DeleteAnyPosts",
+      "CreateComments",
+      "UpdateOwnComments",
+      "DeleteOwnComments",
+      "DeleteAnyComments",
+      "Upvote",
+      "Downvote",
+      "Share"
+    ]
+  },
+
+  "PostPermission":{
+    "_enum":[
+      "CreateComments",
+      "UpdateOwnComments",
+      "DeleteOwnComments",
+      "Upvote",
+      "Downvote",
+      "Share"
+    ]
+  }
 }

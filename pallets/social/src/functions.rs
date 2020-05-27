@@ -348,6 +348,8 @@ impl<T: Trait> Post<T> {
             upvotes_count: 0,
             downvotes_count: 0,
             score: 0,
+            everyone_permissions: None,
+            follower_permissions: None
         }
     }
 

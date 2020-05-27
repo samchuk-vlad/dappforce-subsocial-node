@@ -22,7 +22,7 @@ impl <T: Trait> WhoAndWhen<T> {
   }
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Ord, PartialOrd, Clone, Eq, PartialEq, RuntimeDebug)]
 pub enum User<AccountId> {
   Account(AccountId),
   Space(SpaceId)

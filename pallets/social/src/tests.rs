@@ -145,6 +145,8 @@ fn fake_post(id: PostId, created_by: AccountId, space_id: Option<SpaceId>, exten
     upvotes_count: 0,
     downvotes_count: 0,
     score: 0,
+    everyone_permissions: None,
+    follower_permissions: None
   }
 }
 

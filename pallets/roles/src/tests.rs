@@ -52,6 +52,47 @@ impl pallet_timestamp::Trait for Test {
   type MinimumPeriod = MinimumPeriod;
 }
 
+parameter_types! {
+  pub const IpfsHashLen: u32 = 46;
+}
+impl pallet_utils::Trait for Test {
+  type IpfsHashLen = IpfsHashLen;
+}
+
+parameter_types! {
+  pub const MinHandleLen: u32 = 5;
+  pub const MaxHandleLen: u32 = 50;
+  pub const MinUsernameLen: u32 = 3;
+  pub const MaxUsernameLen: u32 = 50;
+  pub const FollowSpaceActionWeight: i16 = 7;
+  pub const FollowAccountActionWeight: i16 = 3;
+  pub const UpvotePostActionWeight: i16 = 5;
+  pub const DownvotePostActionWeight: i16 = -3;
+  pub const SharePostActionWeight: i16 = 5;
+  pub const CreateCommentActionWeight: i16 = 5;
+  pub const UpvoteCommentActionWeight: i16 = 4;
+  pub const DownvoteCommentActionWeight: i16 = -2;
+  pub const ShareCommentActionWeight: i16 = 3;
+  pub const MaxCommentDepth: u32 = 10;
+}
+impl pallet_social::Trait for Test {
+  type Event = ();
+  type MinHandleLen = MinHandleLen;
+  type MaxHandleLen = MaxHandleLen;
+  type MinUsernameLen = MinUsernameLen;
+  type MaxUsernameLen = MaxUsernameLen;
+  type FollowSpaceActionWeight = FollowSpaceActionWeight;
+  type FollowAccountActionWeight = FollowAccountActionWeight;
+  type UpvotePostActionWeight = UpvotePostActionWeight;
+  type DownvotePostActionWeight = DownvotePostActionWeight;
+  type SharePostActionWeight = SharePostActionWeight;
+  type CreateCommentActionWeight = CreateCommentActionWeight;
+  type UpvoteCommentActionWeight = UpvoteCommentActionWeight;
+  type DownvoteCommentActionWeight = DownvoteCommentActionWeight;
+  type ShareCommentActionWeight = ShareCommentActionWeight;
+  type MaxCommentDepth = MaxCommentDepth;
+}
+
 // parameter_types! {}
 impl Trait for Test {
   type Event = ();
@@ -75,6 +116,14 @@ fn role_ipfs_hash() -> Vec<u8> {
   b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()
 }
 
+fn permission_manage_roles() -> /*BTreeSet<SpacePermission>*/Vec<SpacePermission> {
+  /*let mut permission_set: BTreeSet<SpacePermission> = BTreeSet::new();
+  permission_set.insert(SpacePermission::ManageRoles);
+
+  permission_set*/
+  vec![SpacePermission::ManageRoles]
+}
+
 fn role_update(disabled: Option<bool>, ipfs_hash: Option<Vec<u8>>, permissions: Option<BTreeSet<SpacePermission>>) -> RoleUpdate {
   RoleUpdate {
     disabled,
@@ -88,22 +137,33 @@ fn _create_default_role() -> DispatchResult {
 }
 
 fn _create_role(origin: Option<Origin>, space_id: Option<SpaceId>,
-                permissions: Option<BTreeSet<SpacePermission>>, ipfs_hash: Option<Vec<u8>>) -> DispatchResult {
-
-  let mut permission_set: BTreeSet<SpacePermission> = BTreeSet::new();
-  permission_set.insert(SpacePermission::ManagePosts);
+                ipfs_hash: Option<Vec<u8>>, permissions: Option<Vec<SpacePermission>>) -> DispatchResult {
 
   Permissions::create_role(
     origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
     space_id.unwrap_or(1),
-    permissions.unwrap_or(permission_set),
-    ipfs_hash.unwrap_or_else(self::role_ipfs_hash)
+    ipfs_hash.unwrap_or_else(self::role_ipfs_hash),
+    permissions.unwrap_or_else(self::permission_manage_roles)
   )
 }
 
 #[test]
 fn create_role_should_work() {
   new_test_ext().execute_with(|| {
-    assert_ok!(_create_default_role()) // RoleId 1
+    // TODO: create a blog
+    assert_ok!(_create_default_role()); // RoleId 1
+
+    // Check whether Role is stored correctly
+    assert!(Permissions::role_by_id(1).is_some());
+
+    // Check whether data in Role structure is correct
+    let role = Permissions::role_by_id(1).unwrap();
+    assert_eq!(Permissions::next_role_id(), 2);
+
+    assert!(role.updated.is_none());
+    assert_eq!(role.space_id, 1);
+    assert_eq!(role.disabled, false);
+    assert_eq!(role.ipfs_hash, self::role_ipfs_hash());
+    // assert_eq!(role.roles, self::permission_manage_roles());
   });
 }

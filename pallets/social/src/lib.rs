@@ -5,11 +5,13 @@ pub mod functions;
 mod tests;
 
 use sp_std::prelude::*;
+use sp_std::collections::btree_set::BTreeSet;
 use codec::{Encode, Decode};
 use frame_support::{decl_module, decl_storage, decl_event, decl_error, ensure, traits::Get};
 use sp_runtime::RuntimeDebug;
 use system::ensure_signed;
 use pallet_utils::{WhoAndWhen, Module as Utils};
+use pallet_permissions::{SpacePermission, PostPermission};
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Space<T: Trait> {
@@ -29,6 +31,14 @@ pub struct Space<T: Trait> {
   pub edit_history: Vec<SpaceHistoryRecord<T>>,
 
   pub score: i32,
+
+  /// Overrides the default permissions for everyone on this space.
+  /// If `None` then this space does not override the default permissions for everyone.
+  pub everyone_permissions: Option<BTreeSet<SpacePermission>>,
+
+  /// Overrides the default permissions for followers on this space.
+  /// If `None` then this space does not override the default permissions for followers.
+  pub follower_permissions: Option<BTreeSet<SpacePermission>>,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -66,6 +76,14 @@ pub struct Post<T: Trait> {
   pub downvotes_count: u16,
 
   pub score: i32,
+
+  /// Overrides the default permissions for everyone on this post and its comments.
+  /// If `None` then this post does not override the default permissions for followers.
+  pub everyone_permissions: Option<BTreeSet<PostPermission>>,
+
+  /// Overrides the default permissions for followers on this post and its comments.
+  /// If `None` then this post does not override the default permissions for followers.
+  pub follower_permissions: Option<BTreeSet<PostPermission>>,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -351,6 +369,9 @@ decl_error! {
     UsernameIsTooLong,
     /// Username is not alphanumeric
     UsernameIsNotAlphanumeric,
+
+    /// IPFS-hash is not correct
+    IpfsIsIncorrect,
   }
 }
 
@@ -451,7 +472,9 @@ decl_module! {
         posts_count: 0,
         followers_count: 0,
         edit_history: Vec::new(),
-        score: 0
+        score: 0,
+        everyone_permissions: None,
+        follower_permissions: None
       };
 
       // Space creator automatically follows their space:

@@ -166,9 +166,9 @@ path = '../pallets/social'
 default-features = false
 path = '../pallets/utils'
 
-[dependencies.pallet-permissions]
+[dependencies.pallet-roles]
 default-features = false
-path = '../pallets/permissions'
+path = '../pallets/roles'
 
 [features]
 default = ['std']
@@ -200,7 +200,7 @@ std = [
     'timestamp/std',
     'transaction-payment/std',
     'pallet-social/std',
-    'pallet-permissions/std'
+    'pallet-roles/std'
 ]
 
 [package]

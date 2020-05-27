@@ -3,5 +3,11 @@
     "account": "AccountId",
     "block": "BlockNumber",
     "time": "Moment"
+  },
+  "User":{
+    "_enum":{
+      "Account": "AccountId",
+      "Space": "SpaceId"
+    }
   }
 }

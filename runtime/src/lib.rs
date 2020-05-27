@@ -274,6 +274,10 @@ impl pallet_social::Trait for Runtime {
   type MaxCommentDepth = MaxCommentDepth;
 }
 
+impl pallet_roles::Trait for Runtime {
+  type Event = Event;
+}
+
 construct_runtime!(
   pub enum Runtime where
     Block = Block,
@@ -289,6 +293,7 @@ construct_runtime!(
     TransactionPayment: transaction_payment::{Module, Storage},
     Sudo: sudo,
     Social: pallet_social::{Module, Call, Storage, Event<T>},
+    Roles: pallet_roles::{Module, Call, Storage, Event<T>},
     RandomnessCollectiveFlip: randomness_collective_flip::{Module, Call, Storage},
   }
 );

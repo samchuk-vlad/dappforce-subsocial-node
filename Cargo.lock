@@ -2714,9 +2714,6 @@ version = "2.0.0"
 dependencies = [
  "frame-support",
  "frame-system",
- "pallet-social",
- "pallet-timestamp",
- "pallet-utils",
  "parity-scale-codec",
  "sp-core",
  "sp-io",
@@ -2733,6 +2730,22 @@ dependencies = [
  "frame-system",
  "parity-scale-codec",
  "safe-mix",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-roles"
+version = "2.0.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-permissions",
+ "pallet-social",
+ "pallet-utils",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
 ]
@@ -2762,6 +2775,7 @@ version = "2.0.0"
 dependencies = [
  "frame-support",
  "frame-system",
+ "pallet-permissions",
  "pallet-timestamp",
  "pallet-utils",
  "parity-scale-codec",
@@ -5050,8 +5064,8 @@ dependencies = [
  "pallet-balances",
  "pallet-grandpa",
  "pallet-indices",
- "pallet-permissions",
  "pallet-randomness-collective-flip",
+ "pallet-roles",
  "pallet-social",
  "pallet-sudo",
  "pallet-timestamp",
