@@ -12,13 +12,13 @@ pub use sc_cli::{VersionInfo, IntoExit, error};
 
 fn main() -> Result<(), cli::error::Error> {
 	let version = VersionInfo {
-		name: "Substrate Node",
+		name: "Subsocial Node",
 		commit: env!("VERGEN_SHA_SHORT"),
 		version: env!("CARGO_PKG_VERSION"),
-		executable_name: "node-template",
-		author: "Anonymous",
-		description: "Template Node",
-		support_url: "support.anonymous.an",
+		executable_name: "subsocial-node",
+		author: "Dappforce",
+		description: "Dappforce Subsocial Substrate node",
+		support_url: "http://dappforce.io",
 	};
 
 	cli::run(std::env::args(), cli::Exit, version)
