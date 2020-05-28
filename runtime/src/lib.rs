@@ -6,8 +6,12 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-use sp_std::prelude::*;
+use sp_std::{
+  prelude::*,
+  collections::btree_set::BTreeSet
+};
 use sp_core::OpaqueMetadata;
+use core::iter::FromIterator;
 use sp_runtime::{
   ApplyExtrinsicResult, transaction_validity::TransactionValidity, generic, create_runtime_str,
   impl_opaque_keys, MultiSignature
@@ -34,6 +38,8 @@ pub use frame_support::{
   traits::Randomness,
   weights::Weight,
 };
+
+use pallet_permissions::SpacePermission;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -274,8 +280,28 @@ impl pallet_social::Trait for Runtime {
   type MaxCommentDepth = MaxCommentDepth;
 }
 
+parameter_types! {
+  pub const MaxUsersToProcessPerDeleteRole: u16 = 20;
+}
 impl pallet_roles::Trait for Runtime {
   type Event = Event;
+  type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
+}
+
+parameter_types! {
+  pub const DefaultEveryoneSpacePermissions: BTreeSet<SpacePermission> = BTreeSet::from_iter(vec![
+    SpacePermission::ManageRoles,
+    SpacePermission::ManagePosts,
+    SpacePermission::UpdateOwnComments
+  ].into_iter());
+
+  pub const DefaultFollowerSpacePermissions: BTreeSet<SpacePermission> = BTreeSet::from_iter(vec![
+    SpacePermission::DeleteOwnComments
+  ].into_iter());
+}
+impl pallet_permissions::Trait for Runtime {
+  type DefaultEveryoneSpacePermissions = DefaultEveryoneSpacePermissions;
+  type DefaultFollowerSpacePermissions = DefaultFollowerSpacePermissions;
 }
 
 construct_runtime!(
@@ -294,6 +320,7 @@ construct_runtime!(
     Sudo: sudo,
     Social: pallet_social::{Module, Call, Storage, Event<T>},
     Roles: pallet_roles::{Module, Call, Storage, Event<T>},
+    Permissions: pallet_permissions::{Module, Call},
     RandomnessCollectiveFlip: randomness_collective_flip::{Module, Call, Storage},
   }
 );

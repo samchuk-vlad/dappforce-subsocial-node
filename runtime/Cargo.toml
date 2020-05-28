@@ -170,6 +170,10 @@ path = '../pallets/utils'
 default-features = false
 path = '../pallets/roles'
 
+[dependencies.pallet-permissions]
+default-features = false
+path = '../pallets/permissions'
+
 [features]
 default = ['std']
 std = [

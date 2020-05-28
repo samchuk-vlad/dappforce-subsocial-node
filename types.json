@@ -129,8 +129,6 @@
   },
 
 
-  "RoleId": "u64",
-
   "SpacePermission":{
     "_enum":[
       "ManageRoles",
@@ -169,13 +167,17 @@
     ]
   },
 
+
+  "RoleId": "u64",
+
   "Role":{
     "created":"WhoAndWhen",
     "updated":"Option<WhoAndWhen>",
     "id":"RoleId",
     "space_id":"SpaceId",
     "disabled":"bool",
-    "ipfs_hash":"IpfsHash",
+    "expires_at": "Option<BlockNumber>",
+    "ipfs_hash":"Option<IpfsHash>",
     "permissions":"BTreeSet<SpacePermission>"
   },
   "RoleUpdate":{

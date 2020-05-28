@@ -5064,6 +5064,7 @@ dependencies = [
  "pallet-balances",
  "pallet-grandpa",
  "pallet-indices",
+ "pallet-permissions",
  "pallet-randomness-collective-flip",
  "pallet-roles",
  "pallet-social",
