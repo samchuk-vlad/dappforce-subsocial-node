@@ -63,21 +63,6 @@ impl<T: Trait> Module<T> {
 
     Err(error)
   }
-
-  pub fn users_vec_to_btree_set(users_vec: Vec<User<T::AccountId>>)
-                                -> Result<BTreeSet<User<T::AccountId>>, DispatchError> {
-    let mut users_set: BTreeSet<User<T::AccountId>> = BTreeSet::new();
-
-    if users_vec.is_empty() {
-      return Err(Error::<T>::NoUsersProvided.into());
-    }
-
-    for user in users_vec.iter() {
-      users_set.insert(*user.clone());
-    }
-
-    Ok(users_set)
-  }
 }
 
 impl<T: Trait> Role<T> {

@@ -240,7 +240,10 @@ decl_module! {
     pub fn grant_role(origin, role_id: RoleId, users: Vec<User<T::AccountId>>) {
       let who = ensure_signed(origin)?;
 
-      let users_set: BTreeSet<User<T::AccountId>> = Self::users_vec_to_btree_set(users)?;
+      let users_set: BTreeSet<User<T::AccountId>> = Utils::<T>::convert_users_vec_to_btree_set(users)?;
+      if users_set.is_empty() {
+        return Err(Error::<T>::NoUsersProvided.into());
+      }
 
       let role = Self::role_by_id(role_id).ok_or(Error::<T>::RoleNotFound)?;
       let space: Space<T> = Social::space_by_id(role.space_id).ok_or(Error::<T>::SpaceNotFound)?;
