@@ -315,6 +315,25 @@ impl<T: Trait> Module<T> {
 }
 
 impl<T: Trait> Space<T> {
+    pub fn create(id: SpaceId, created_by: T::AccountId,
+                  ipfs_hash: Vec<u8>, handle: Option<Vec<u8>>) -> Self {
+        Space {
+            id,
+            created: WhoAndWhen::<T>::new(created_by.clone()),
+            updated: None,
+            hidden: false,
+            owner: created_by,
+            handle,
+            ipfs_hash,
+            posts_count: 0,
+            followers_count: 0,
+            edit_history: Vec::new(),
+            score: 0,
+            everyone_permissions: None,
+            follower_permissions: None
+        }
+    }
+
     pub fn ensure_space_owner(&self, who: T::AccountId) -> DispatchResult {
         ensure!(self.owner == who, Error::<T>::NotASpaceOwner);
         Ok(())
@@ -332,7 +351,8 @@ impl<T: Trait> Space<T> {
 }
 
 impl<T: Trait> Post<T> {
-    pub fn create(id: PostId, created_by: T::AccountId, space_id_opt: Option<SpaceId>, extension: PostExtension, ipfs_hash: Vec<u8>) -> Self {
+    pub fn create(id: PostId, created_by: T::AccountId, space_id_opt: Option<SpaceId>,
+                  extension: PostExtension, ipfs_hash: Vec<u8>) -> Self {
         Post {
             id,
             created: WhoAndWhen::<T>::new(created_by),
@@ -393,5 +413,37 @@ impl<T: Trait> Post<T> {
     pub fn ensure_post_stored(post_id: PostId) -> DispatchResult {
         ensure!(<PostById<T>>::exists(post_id), Error::<T>::PostNotFound);
         Ok(())
+    }
+}
+
+impl<T: Trait> SpaceSupported for Module<T> {
+    type SpaceId = SpaceId;
+
+    type SpaceOwner = T::AccountId;
+
+    type EveryonePermissions = Option<BTreeSet<SpacePermission>>;
+
+    type FollowerPermissions = Option<BTreeSet<SpacePermission>>;
+
+    fn get_space_owner_by_space_id(id: Self::SpaceId) -> Result<Self::SpaceOwner, DispatchError> {
+        let space: Space<T> = Module::space_by_id(id).ok_or(Error::<T>::SpaceNotFound)?;
+
+        Ok(space.owner)
+    }
+
+    fn get_everyone_permissions_by_space_id(id: Self::SpaceId)
+        -> Result<Self::EveryonePermissions, DispatchError> {
+
+        let space: Space<T> = Module::space_by_id(id).ok_or(Error::<T>::SpaceNotFound)?;
+
+        Ok(space.everyone_permissions)
+    }
+
+    fn get_follower_permissions_by_space_id(id: Self::SpaceId)
+        -> Result<Self::FollowerPermissions, DispatchError> {
+
+        let space: Space<T> = Module::space_by_id(id).ok_or(Error::<T>::SpaceNotFound)?;
+
+        Ok(space.follower_permissions)
     }
 }

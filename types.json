@@ -133,8 +133,6 @@
     "_enum":[
       "ManageRoles",
       "ManageSubspaces",
-      "ManagePosts",
-      "ManageComments",
       "RepresentSpaceInternally",
       "RepresentSpaceExternally",
       "UpdateSpace",
@@ -156,6 +154,7 @@
       "Share"
     ]
   },
+
   "PostPermission":{
     "_enum":[
       "CreateComments",

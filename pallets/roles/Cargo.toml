@@ -12,8 +12,7 @@ std = [
     'sp-runtime/std',
     'sp-io/std',
     'sp-std/std',
-    'system/std',
-    'pallet-utils/std'
+    'system/std'
 ]
 
 [dependencies.codec]
@@ -56,11 +55,6 @@ version = '2.0.0'
 [dependencies.pallet-utils]
 default-features = false
 path = '../utils'
-version = '2.0.0'
-
-[dependencies.pallet-social]
-default-features = false
-path = '../social'
 version = '2.0.0'
 
 [dependencies.pallet-permissions]

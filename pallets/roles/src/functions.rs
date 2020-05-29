@@ -14,7 +14,7 @@ impl<T: Trait> Module<T> {
   }
 
   pub fn ensure_user_has_space_permission(
-    user: User<T::AccountId>, space: &Space<T>, permission: SpacePermission,
+    user: User<T::AccountId>, space_id: SpaceId, permission: SpacePermission,
     error: DispatchError,
   ) -> DispatchResult {
     // TODO: maybe make function as impl for Space?
@@ -22,17 +22,22 @@ impl<T: Trait> Module<T> {
     // TODO: think on checks priority
     // TODO: maybe move permissions iterations/common functions into pallet-permissions?
 
+    let space_owner = T::SpaceSource::get_space_owner_by_space_id(space_id)?;
+
     match &user {
       User::Account(account_id) => {
-        if space.owner == *account_id {
+        if space_owner == *account_id {
           return Ok(());
         }
       }
       User::Space(_) => (),
     }
 
-    if Self::has_permission_in_override(space.everyone_permissions.clone(), &permission) ||
-      Self::has_permission_in_override(space.follower_permissions.clone(), &permission) {
+    let space_everyone_permissions = T::SpaceSource::get_everyone_permissions_by_space_id(space_id)?;
+    let space_follower_permissions = T::SpaceSource::get_follower_permissions_by_space_id(space_id)?;
+
+    if Self::has_permission_in_override(space_everyone_permissions, &permission) ||
+      Self::has_permission_in_override(space_follower_permissions, &permission) {
       return Ok(());
     }
 
@@ -44,7 +49,7 @@ impl<T: Trait> Module<T> {
       return Ok(());
     }
 
-    let role_ids = Self::in_space_role_ids_by_user((user, space.id));
+    let role_ids = Self::in_space_role_ids_by_user((user, space_id));
 
     for role_id in role_ids {
       let role = Self::role_by_id(role_id).ok_or(Error::<T>::RoleNotFound)?;

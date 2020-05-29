@@ -461,21 +461,7 @@ decl_module! {
       }
 
       let space_id = Self::next_space_id();
-      let new_space: &mut Space<T> = &mut Space {
-        id: space_id,
-        created: WhoAndWhen::<T>::new(owner.clone()),
-        updated: None,
-        hidden: false,
-        owner: owner.clone(),
-        handle: handle_opt,
-        ipfs_hash,
-        posts_count: 0,
-        followers_count: 0,
-        edit_history: Vec::new(),
-        score: 0,
-        everyone_permissions: None,
-        follower_permissions: None
-      };
+      let new_space = &mut Space::create(space_id, owner.clone(), ipfs_hash, handle_opt);
 
       // Space creator automatically follows their space:
       Self::add_space_follower(owner.clone(), new_space)?;

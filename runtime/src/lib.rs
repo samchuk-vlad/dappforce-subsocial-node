@@ -8,10 +8,10 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use sp_std::{
   prelude::*,
+  iter::FromIterator,
   collections::btree_set::BTreeSet
 };
 use sp_core::OpaqueMetadata;
-use core::iter::FromIterator;
 use sp_runtime::{
   ApplyExtrinsicResult, transaction_validity::TransactionValidity, generic, create_runtime_str,
   impl_opaque_keys, MultiSignature
@@ -286,17 +286,26 @@ parameter_types! {
 impl pallet_roles::Trait for Runtime {
   type Event = Event;
   type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
+  type SpaceSource = Social;
 }
 
 parameter_types! {
   pub const DefaultEveryoneSpacePermissions: BTreeSet<SpacePermission> = BTreeSet::from_iter(vec![
-    SpacePermission::ManageRoles,
-    SpacePermission::ManagePosts,
-    SpacePermission::UpdateOwnComments
+    SpacePermission::CreateComments,
+    SpacePermission::UpdateOwnComments,
+    SpacePermission::DeleteOwnComments,
+    SpacePermission::Upvote,
+    SpacePermission::Downvote,
+    SpacePermission::Share
   ].into_iter());
 
   pub const DefaultFollowerSpacePermissions: BTreeSet<SpacePermission> = BTreeSet::from_iter(vec![
-    SpacePermission::DeleteOwnComments
+    SpacePermission::CreateComments,
+    SpacePermission::UpdateOwnComments,
+    SpacePermission::DeleteOwnComments,
+    SpacePermission::Upvote,
+    SpacePermission::Downvote,
+    SpacePermission::Share
   ].into_iter());
 }
 impl pallet_permissions::Trait for Runtime {

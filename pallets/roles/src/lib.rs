@@ -16,8 +16,10 @@ use frame_support::{
 use sp_runtime::RuntimeDebug;
 use system::ensure_signed;
 
-use pallet_utils::{Module as Utils, WhoAndWhen, User};
-use pallet_social::{Module as Social, Space, SpaceId};
+use pallet_utils::{
+  Module as Utils, WhoAndWhen, User,
+  traits::SpaceSupported
+};
 use pallet_permissions::{SpacePermission, Trait as PermissionsTrait};
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -38,14 +40,22 @@ pub struct RoleUpdate {
   pub permissions: Option<BTreeSet<SpacePermission>>,
 }
 
+type SpaceId = u64;
 type RoleId = u64;
 
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait + pallet_social::Trait + pallet_permissions::Trait {
+pub trait Trait: system::Trait + pallet_permissions::Trait + pallet_utils::Trait {
   /// The overarching event type.
   type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
   type MaxUsersToProcessPerDeleteRole: Get<u16>;
+
+  type SpaceSource: SpaceSupported<
+    SpaceId = SpaceId,
+    SpaceOwner = Self::AccountId,
+    EveryonePermissions = Option<BTreeSet<SpacePermission>>,
+    FollowerPermissions = Option<BTreeSet<SpacePermission>>
+  >;
 }
 
 decl_event!(
@@ -132,12 +142,9 @@ decl_module! {
       }
       permissions.iter().for_each(|p| { permissions_set.insert(p.clone()); });
 
-      // TODO: maybe add impl for space instead of `does_user_has_space_permission`?
-      let space: Space<T> = Social::space_by_id(space_id).ok_or(Error::<T>::SpaceNotFound)?;
-
       // TODO: what if role is created by User::Space?
       Self::ensure_user_has_space_permission(
-        User::Account(who.clone()), &space, SpacePermission::ManageRoles,
+        User::Account(who.clone()), space_id, SpacePermission::ManageRoles,
         Error::<T>::NoPermissionToManageRoles.into()
       )?;
 
@@ -165,10 +172,9 @@ decl_module! {
       ensure!(has_updates, Error::<T>::NoUpdatesInRole);
 
       let mut role = Self::role_by_id(role_id).ok_or(Error::<T>::RoleNotFound)?;
-      let space: Space<T> = Social::space_by_id(role.space_id).ok_or(Error::<T>::SpaceNotFound)?;
 
       Self::ensure_user_has_space_permission(
-        User::Account(who.clone()), &space, SpacePermission::ManageRoles,
+        User::Account(who.clone()), role.space_id, SpacePermission::ManageRoles,
         Error::<T>::NoPermissionToManageRoles.into()
       )?;
 
@@ -208,10 +214,9 @@ decl_module! {
       let who = ensure_signed(origin)?;
 
       let role = Self::role_by_id(role_id).ok_or(Error::<T>::RoleNotFound)?;
-      let space: Space<T> = Social::space_by_id(role.space_id).ok_or(Error::<T>::SpaceNotFound)?;
 
       Self::ensure_user_has_space_permission(
-        User::Account(who.clone()), &space, SpacePermission::ManageRoles,
+        User::Account(who.clone()), role.space_id, SpacePermission::ManageRoles,
         Error::<T>::NoPermissionToManageRoles.into()
       )?;
 
@@ -220,11 +225,11 @@ decl_module! {
         return Err(Error::<T>::TooManyUserAssignedToDeleteRole.into());
       }
 
-      let role_idx_by_space_opt = Self::role_ids_by_space_id(space.id).iter()
+      let role_idx_by_space_opt = Self::role_ids_by_space_id(role.space_id).iter()
         .position(|x| { *x == role_id });
 
       if let Some(role_idx) = role_idx_by_space_opt {
-        RoleIdsBySpaceId::mutate(space.id, |n| { n.swap_remove(role_idx) });
+        RoleIdsBySpaceId::mutate(role.space_id, |n| { n.swap_remove(role_idx) });
       }
 
       role.revoke_from_users(users);
@@ -246,10 +251,9 @@ decl_module! {
       }
 
       let role = Self::role_by_id(role_id).ok_or(Error::<T>::RoleNotFound)?;
-      let space: Space<T> = Social::space_by_id(role.space_id).ok_or(Error::<T>::SpaceNotFound)?;
 
       Self::ensure_user_has_space_permission(
-        User::Account(who.clone()), &space, SpacePermission::ManageRoles,
+        User::Account(who.clone()), role.space_id, SpacePermission::ManageRoles,
         Error::<T>::NoPermissionToManageRoles.into()
       )?;
 
@@ -257,8 +261,8 @@ decl_module! {
         if !Self::users_by_role_id(role_id).contains(&user) {
           <UsersByRoleId<T>>::mutate(role_id, |users| { users.push(user.clone()); });
         }
-        if !Self::in_space_role_ids_by_user((user.clone(), space.id)).contains(&role_id) {
-          <InSpaceRoleIdsByUser<T>>::mutate((user.clone(), space.id), |roles| { roles.push(role_id); })
+        if !Self::in_space_role_ids_by_user((user.clone(), role.space_id)).contains(&role_id) {
+          <InSpaceRoleIdsByUser<T>>::mutate((user.clone(), role.space_id), |roles| { roles.push(role_id); })
         }
       }
 
@@ -271,10 +275,9 @@ decl_module! {
       let who = ensure_signed(origin)?;
 
       let role = Self::role_by_id(role_id).ok_or(Error::<T>::RoleNotFound)?;
-      let space: Space<T> = Social::space_by_id(role.space_id).ok_or(Error::<T>::SpaceNotFound)?;
 
       Self::ensure_user_has_space_permission(
-        User::Account(who.clone()), &space, SpacePermission::ManageRoles,
+        User::Account(who.clone()), role.space_id, SpacePermission::ManageRoles,
         Error::<T>::NoPermissionToManageRoles.into()
       )?;
 
@@ -290,10 +293,9 @@ decl_module! {
       let who = ensure_signed(origin)?;
 
       let mut role = Self::role_by_id(role_id).ok_or(Error::<T>::RoleNotFound)?;
-      let space: Space<T> = Social::space_by_id(role.space_id).ok_or(Error::<T>::SpaceNotFound)?;
 
       Self::ensure_user_has_space_permission(
-        User::Account(who.clone()), &space, SpacePermission::ManageRoles,
+        User::Account(who.clone()), role.space_id, SpacePermission::ManageRoles,
         Error::<T>::NoPermissionToManageRoles.into()
       )?;
 
@@ -309,10 +311,9 @@ decl_module! {
       let who = ensure_signed(origin)?;
 
       let mut role = Self::role_by_id(role_id).ok_or(Error::<T>::RoleNotFound)?;
-      let space: Space<T> = Social::space_by_id(role.space_id).ok_or(Error::<T>::SpaceNotFound)?;
 
       Self::ensure_user_has_space_permission(
-        User::Account(who.clone()), &space, SpacePermission::ManageRoles,
+        User::Account(who.clone()), role.space_id, SpacePermission::ManageRoles,
         Error::<T>::NoPermissionToManageRoles.into()
       )?;
 

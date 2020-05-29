@@ -12,6 +12,8 @@ use frame_support::{
   dispatch::{DispatchResult, DispatchError}
 };
 
+pub mod traits;
+
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct WhoAndWhen<T: Trait> {
   pub account: T::AccountId,
