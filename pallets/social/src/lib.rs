@@ -2,7 +2,7 @@
 #![allow(clippy::string_lit_as_bytes)]
 
 pub mod functions;
-mod tests;
+// mod tests;
 
 use sp_std::prelude::*;
 use sp_std::collections::btree_set::BTreeSet;
@@ -12,6 +12,10 @@ use sp_runtime::RuntimeDebug;
 use system::ensure_signed;
 use pallet_utils::{WhoAndWhen, Module as Utils};
 use pallet_permissions::{SpacePermission, PostPermission};
+use pallet_utils::{SpaceId, traits::PermissionChecker};
+
+pub type PostId = u64;
+pub type ReactionId = u64;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Space<T: Trait> {
@@ -189,12 +193,8 @@ impl Default for ScoringAction {
   }
 }
 
-pub type SpaceId = u64;
-pub type PostId = u64;
-pub type ReactionId = u64;
-
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait + pallet_timestamp::Trait + pallet_utils::Trait {
+pub trait Trait: system::Trait + pallet_utils::Trait {
   /// The overarching event type.
   type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
@@ -223,6 +223,11 @@ pub trait Trait: system::Trait + pallet_timestamp::Trait + pallet_utils::Trait {
 
   /// Max comments depth
   type MaxCommentDepth: Get<u32>;
+
+  type Roles: PermissionChecker<
+    AccountId = Self::AccountId,
+    SpaceId = SpaceId
+  >;
 }
 
 decl_error! {
@@ -372,6 +377,13 @@ decl_error! {
 
     /// IPFS-hash is not correct
     IpfsIsIncorrect,
+
+    /// User has no permission to update this space
+    NoPermissionToUpdateSpace,
+    /// User has no permission to create posts in this space
+    NoPermissionToCreatePosts,
+    /// User has no permission to create comments in this space
+    NoPermissionToCreateComments,
   }
 }
 
@@ -488,7 +500,12 @@ decl_module! {
 
       let mut space = Self::space_by_id(space_id).ok_or(Error::<T>::SpaceNotFound)?;
 
-      space.ensure_space_owner(owner.clone())?;
+      T::Roles::ensure_account_has_space_permission(
+        owner.clone(),
+        space_id,
+        SpacePermission::UpdateSpace,
+        Error::<T>::NoPermissionToUpdateSpace.into()
+      )?;
 
       let mut fields_updated = 0;
       let mut new_history_record = SpaceHistoryRecord {
@@ -762,10 +779,35 @@ decl_module! {
       let root_post = &mut (new_post.get_root_post()?);
       ensure!(!root_post.hidden, Error::<T>::BannedToCreateWhenHidden);
 
+      // Check permissions
+      match extension {
+        PostExtension::RegularPost | PostExtension::SharedPost(_) => {
+          T::Roles::ensure_account_has_space_permission(
+            owner.clone(),
+            space.id,
+            SpacePermission::CreatePosts,
+            Error::<T>::NoPermissionToCreatePosts.into()
+          )?;
+        }
+        PostExtension::Comment(_) => {
+          T::Roles::ensure_account_has_space_permission(
+            owner.clone(),
+            space.id,
+            SpacePermission::CreateComments,
+            Error::<T>::NoPermissionToCreateComments.into()
+          )?;
+        },
+      }
+
       match extension {
         PostExtension::RegularPost => {
-          space.ensure_space_owner(owner.clone())?;
           space.increment_posts_count()?;
+        },
+        PostExtension::SharedPost(post_id) => {
+          let post = &mut (Self::post_by_id(post_id).ok_or(Error::<T>::OriginalPostNotFound)?);
+          ensure!(!post.is_shared_post(), Error::<T>::CannotShareSharedPost);
+          space.posts_count = space.posts_count.checked_add(1).ok_or(Error::<T>::OverflowAddingPostOnSpace)?;
+          Self::share_post(owner.clone(), post, new_post_id)?;
         },
         PostExtension::Comment(comment_ext) => {
           root_post.total_replies_count = root_post.total_replies_count.checked_add(1).ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
@@ -794,13 +836,7 @@ decl_module! {
           Self::change_post_score_by_extension(owner.clone(), root_post, ScoringAction::CreateComment)?;
 
           <PostById<T>>::insert(comment_ext.root_post_id, root_post);
-        },
-        PostExtension::SharedPost(post_id) => {
-          let post = &mut (Self::post_by_id(post_id).ok_or(Error::<T>::OriginalPostNotFound)?);
-          ensure!(!post.is_shared_post(), Error::<T>::CannotShareSharedPost);
-          space.posts_count = space.posts_count.checked_add(1).ok_or(Error::<T>::OverflowAddingPostOnSpace)?;
-          Self::share_post(owner.clone(), post, new_post_id)?;
-        },
+        }
       }
 
       if !new_post.is_comment() {
@@ -827,6 +863,8 @@ decl_module! {
       let mut post = Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?;
 
       ensure!(owner == post.created.account, Error::<T>::NotAnAuthor);
+
+      // TODO check account permissions via Roles pallet
 
       let mut fields_updated = 0;
       let mut new_history_record = PostHistoryRecord {

@@ -14,6 +14,8 @@ use frame_support::{
 
 pub mod traits;
 
+pub type SpaceId = u64;
+
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct WhoAndWhen<T: Trait> {
   pub account: T::AccountId,
@@ -36,8 +38,6 @@ pub enum User<AccountId> {
   Account(AccountId),
   Space(SpaceId)
 }
-
-pub type SpaceId = u64;
 
 pub trait Trait: system::Trait + pallet_timestamp::Trait {
   /// The length in bytes of IPFS hash
@@ -69,7 +69,7 @@ impl<T: Trait> Module<T> {
     let mut users_set: BTreeSet<User<T::AccountId>> = BTreeSet::new();
 
     for user in users_vec.iter() {
-      users_set.insert(user.clone());
+      users_set.insert(user.clone().into());
     }
 
     Ok(users_set)

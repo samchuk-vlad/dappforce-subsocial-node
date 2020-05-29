@@ -1,6 +1,7 @@
 use super::*;
 
 use frame_support::{dispatch::{DispatchResult, DispatchError}};
+use pallet_utils::traits::{SpaceForRolesProvider, SpaceForRoles};
 
 impl<T: Trait> Module<T> {
 
@@ -416,34 +417,21 @@ impl<T: Trait> Post<T> {
     }
 }
 
-impl<T: Trait> SpaceSupported for Module<T> {
+impl<T: Trait> SpaceForRolesProvider for Module<T> {
+    type AccountId = T::AccountId;
     type SpaceId = SpaceId;
 
-    type SpaceOwner = T::AccountId;
-
-    type EveryonePermissions = Option<BTreeSet<SpacePermission>>;
-
-    type FollowerPermissions = Option<BTreeSet<SpacePermission>>;
-
-    fn get_space_owner_by_space_id(id: Self::SpaceId) -> Result<Self::SpaceOwner, DispatchError> {
+    fn get_space(id: Self::SpaceId) -> Result<SpaceForRoles<Self::AccountId>, DispatchError> {
         let space: Space<T> = Module::space_by_id(id).ok_or(Error::<T>::SpaceNotFound)?;
 
-        Ok(space.owner)
+        Ok(SpaceForRoles {
+            owner: space.owner,
+            everyone_permissions: space.everyone_permissions,
+            follower_permissions: space.follower_permissions,
+        })
     }
 
-    fn get_everyone_permissions_by_space_id(id: Self::SpaceId)
-        -> Result<Self::EveryonePermissions, DispatchError> {
-
-        let space: Space<T> = Module::space_by_id(id).ok_or(Error::<T>::SpaceNotFound)?;
-
-        Ok(space.everyone_permissions)
-    }
-
-    fn get_follower_permissions_by_space_id(id: Self::SpaceId)
-        -> Result<Self::FollowerPermissions, DispatchError> {
-
-        let space: Space<T> = Module::space_by_id(id).ok_or(Error::<T>::SpaceNotFound)?;
-
-        Ok(space.follower_permissions)
+    fn is_space_follower(account: Self::AccountId, space_id: Self::SpaceId) -> bool {
+        Module::<T>::space_followed_by_account((account, space_id))
     }
 }

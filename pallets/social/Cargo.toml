@@ -13,8 +13,7 @@ std = [
     'sp-io/std',
     'sp-std/std',
     'system/std',
-    'pallet-timestamp/std',
-    'pallet-utils/std'
+    'pallet-timestamp/std'
 ]
 
 [dependencies.codec]

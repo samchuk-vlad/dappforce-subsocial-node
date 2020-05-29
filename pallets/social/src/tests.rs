@@ -8,6 +8,7 @@ use frame_support::{impl_outer_origin, assert_ok, assert_noop, parameter_types,
 use sp_runtime::{
   traits::{BlakeTwo256, IdentityLookup}, testing::Header, Perbill,
 };
+use sp_std::iter::FromIterator;
 
 impl_outer_origin! {
   pub enum Origin for Test {}

@@ -6,7 +6,8 @@ pub mod functions;
 
 use sp_std::{
   prelude::*,
-  collections::btree_set::BTreeSet
+  collections::btree_set::BTreeSet,
+  iter::FromIterator
 };
 use codec::{Encode, Decode};
 use frame_support::{
@@ -18,9 +19,12 @@ use system::ensure_signed;
 
 use pallet_utils::{
   Module as Utils, WhoAndWhen, User,
-  traits::SpaceSupported
+  traits::SpaceForRolesProvider
 };
 use pallet_permissions::{SpacePermission, Trait as PermissionsTrait};
+use pallet_utils::{SpaceId, traits::PermissionChecker};
+
+type RoleId = u64;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Role<T: Trait> {
@@ -40,9 +44,6 @@ pub struct RoleUpdate {
   pub permissions: Option<BTreeSet<SpacePermission>>,
 }
 
-type SpaceId = u64;
-type RoleId = u64;
-
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait + pallet_permissions::Trait + pallet_utils::Trait {
   /// The overarching event type.
@@ -50,11 +51,9 @@ pub trait Trait: system::Trait + pallet_permissions::Trait + pallet_utils::Trait
 
   type MaxUsersToProcessPerDeleteRole: Get<u16>;
 
-  type SpaceSource: SpaceSupported<
-    SpaceId = SpaceId,
-    SpaceOwner = Self::AccountId,
-    EveryonePermissions = Option<BTreeSet<SpacePermission>>,
-    FollowerPermissions = Option<BTreeSet<SpacePermission>>
+  type Spaces: SpaceForRolesProvider<
+    AccountId = Self::AccountId,
+    SpaceId = SpaceId
   >;
 }
 
@@ -63,10 +62,11 @@ decl_event!(
     <T as system::Trait>::AccountId {
     RoleCreated(AccountId, SpaceId, RoleId),
     RoleUpdated(AccountId, RoleId),
+    RoleDeleted(AccountId, RoleId),
     RoleGranted(AccountId, RoleId, Vec<User<AccountId>>),
+    RoleRevoked(AccountId, RoleId, Vec<User<AccountId>>),
     RoleEnabled(AccountId, RoleId),
     RoleDisabled(AccountId, RoleId),
-    RoleDeleted(AccountId, RoleId),
   }
 );
 
@@ -82,9 +82,9 @@ decl_error! {
     /// Account has not permission to manage roles on this space
     NoPermissionToManageRoles,
     /// Nothing to update in role
-    NoUpdatesInRole,
+    NoRoleUpdates,
     /// There's too many users assigned for this role to delete it
-    TooManyUserAssignedToDeleteRole,
+    TooManyUserForDeleteRole,
 
     /// No roles found for this User on specified Space
     NoAnyRolesForUserOnSpace,
@@ -93,15 +93,16 @@ decl_error! {
     /// No users provided when trying to grant them a Role
     NoUsersProvided,
     /// Trying to disable the role that is not enabled (or disabled as by default)
-    RoleIsNotEnabled,
+    RoleAlreadyDisabled,
     /// Trying to enable the role that is already enabled
-    RoleIsAlreadyEnabled,
+    RoleAlreadyEnabled,
   }
 }
 
 // This pallet's storage items.
 decl_storage! {
   trait Store for Module<T: Trait> as PermissionsModule {
+
     /// Get role details by ids id.
     pub RoleById get(fn role_by_id): map RoleId => Option<Role<T>>;
 
@@ -131,31 +132,35 @@ decl_module! {
     /// Create a new role within this space with the list of particular roles.
     /// `ipfs_hash` points to the off-chain content with such role info as name, description, color.
     /// Only the space owner or an user with `ManageRoles` permission can execute this extrinsic.
-    pub fn create_role(origin, space_id: SpaceId, ipfs_hash: Vec<u8>, permissions: Vec<SpacePermission>) {
+    pub fn create_role(
+      origin,
+      space_id: SpaceId,
+      time_to_live: Option<T::BlockNumber>,
+      ipfs_hash: Option<Vec<u8>>,
+      permissions: Vec<SpacePermission>
+    ) {
       let who = ensure_signed(origin)?;
 
-      Utils::<T>::is_ipfs_hash_valid(ipfs_hash.clone())?;
-
-      let mut permissions_set: BTreeSet<SpacePermission> = BTreeSet::new();
       if permissions.is_empty() {
         return Err(Error::<T>::NoPermissionsProvided.into());
       }
-      permissions.iter().for_each(|p| { permissions_set.insert(p.clone()); });
 
-      // TODO: what if role is created by User::Space?
-      Self::ensure_user_has_space_permission(
-        User::Account(who.clone()), space_id, SpacePermission::ManageRoles,
-        Error::<T>::NoPermissionToManageRoles.into()
-      )?;
+      if let Some(cid) = ipfs_hash.clone() {
+        Utils::<T>::is_ipfs_hash_valid(cid)?;
+      }
 
-      let (new_role, role_id) = Role::<T>::new(who.clone(), space_id, Some(ipfs_hash), None, permissions_set)?;
+      Self::ensure_role_manager(who.clone(), space_id)?;
 
-      NextRoleId::put(role_id);
+      let permissions_set = BTreeSet::from_iter(permissions.into_iter());
+      let new_role = Role::<T>::new(who.clone(), space_id, time_to_live, ipfs_hash, permissions_set)?;
+
+      let next_role_id = new_role.id.checked_add(1).ok_or(Error::<T>::OverflowCreatingNewRole)?;
+      NextRoleId::put(next_role_id);
 
       <RoleById<T>>::insert(new_role.id, new_role.clone());
       RoleIdsBySpaceId::mutate(space_id, |role_ids| { role_ids.push(new_role.id) });
 
-      Self::deposit_event(RawEvent::RoleCreated(who, space_id, role_id));
+      Self::deposit_event(RawEvent::RoleCreated(who, space_id, new_role.id));
     }
 
     /// Update an existing role on specified space.
@@ -169,14 +174,11 @@ decl_module! {
         update.ipfs_hash.is_some() ||
         update.permissions.is_some();
 
-      ensure!(has_updates, Error::<T>::NoUpdatesInRole);
+      ensure!(has_updates, Error::<T>::NoRoleUpdates);
 
       let mut role = Self::role_by_id(role_id).ok_or(Error::<T>::RoleNotFound)?;
 
-      Self::ensure_user_has_space_permission(
-        User::Account(who.clone()), role.space_id, SpacePermission::ManageRoles,
-        Error::<T>::NoPermissionToManageRoles.into()
-      )?;
+      Self::ensure_role_manager(who.clone(), role.space_id)?;
 
       let mut fields_updated = 0;
 
@@ -215,14 +217,11 @@ decl_module! {
 
       let role = Self::role_by_id(role_id).ok_or(Error::<T>::RoleNotFound)?;
 
-      Self::ensure_user_has_space_permission(
-        User::Account(who.clone()), role.space_id, SpacePermission::ManageRoles,
-        Error::<T>::NoPermissionToManageRoles.into()
-      )?;
+      Self::ensure_role_manager(who.clone(), role.space_id)?;
 
       let users = Self::users_by_role_id(role_id);
       if users.len() > T::MaxUsersToProcessPerDeleteRole::get() as usize {
-        return Err(Error::<T>::TooManyUserAssignedToDeleteRole.into());
+        return Err(Error::<T>::TooManyUserForDeleteRole.into());
       }
 
       let role_idx_by_space_opt = Self::role_ids_by_space_id(role.space_id).iter()
@@ -252,10 +251,7 @@ decl_module! {
 
       let role = Self::role_by_id(role_id).ok_or(Error::<T>::RoleNotFound)?;
 
-      Self::ensure_user_has_space_permission(
-        User::Account(who.clone()), role.space_id, SpacePermission::ManageRoles,
-        Error::<T>::NoPermissionToManageRoles.into()
-      )?;
+      Self::ensure_role_manager(who.clone(), role.space_id)?;
 
       for user in users_set.iter() {
         if !Self::users_by_role_id(role_id).contains(&user) {
@@ -276,30 +272,27 @@ decl_module! {
 
       let role = Self::role_by_id(role_id).ok_or(Error::<T>::RoleNotFound)?;
 
-      Self::ensure_user_has_space_permission(
-        User::Account(who.clone()), role.space_id, SpacePermission::ManageRoles,
-        Error::<T>::NoPermissionToManageRoles.into()
-      )?;
+      Self::ensure_role_manager(who.clone(), role.space_id)?;
 
       role.revoke_from_users(users.clone());
 
-      Self::deposit_event(RawEvent::RoleGranted(who, role_id, users));
+      Self::deposit_event(RawEvent::RoleRevoked(who, role_id, users));
     }
 
     /// Disable the role. If the role is disabled, their roles should not be taken into account.
     /// Should throw an error if the role is not enabled.
     /// Only the space owner or an user with `ManageRoles` permission can execute this extrinsic.
     pub fn disable_role(origin, role_id: RoleId) {
+
+      // TODO fix copypasta via: fn toggle_role(false)
+
       let who = ensure_signed(origin)?;
 
       let mut role = Self::role_by_id(role_id).ok_or(Error::<T>::RoleNotFound)?;
 
-      Self::ensure_user_has_space_permission(
-        User::Account(who.clone()), role.space_id, SpacePermission::ManageRoles,
-        Error::<T>::NoPermissionToManageRoles.into()
-      )?;
+      Self::ensure_role_manager(who.clone(), role.space_id)?;
 
-      role.change_disabled_state(true)?;
+      role.set_disabled(true)?;
 
       <RoleById<T>>::insert(role_id, role);
       Self::deposit_event(RawEvent::RoleDisabled(who, role_id));
@@ -308,16 +301,16 @@ decl_module! {
     /// Enable the role. Should throw an error if the role is not disabled.
     /// Only the space owner or an user with `ManageRoles` permission can execute this extrinsic.
     pub fn enable_role(origin, role_id: RoleId) {
+
+      // TODO fix copypasta via: fn toggle_role(true)
+
       let who = ensure_signed(origin)?;
 
       let mut role = Self::role_by_id(role_id).ok_or(Error::<T>::RoleNotFound)?;
 
-      Self::ensure_user_has_space_permission(
-        User::Account(who.clone()), role.space_id, SpacePermission::ManageRoles,
-        Error::<T>::NoPermissionToManageRoles.into()
-      )?;
+      Self::ensure_role_manager(who.clone(), role.space_id)?;
 
-      role.change_disabled_state(false)?;
+      role.set_disabled(false)?;
 
       <RoleById<T>>::insert(role_id, role);
       Self::deposit_event(RawEvent::RoleEnabled(who, role_id));

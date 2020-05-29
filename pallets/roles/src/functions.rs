@@ -3,6 +3,7 @@ use super::*;
 use frame_support::{dispatch::{DispatchResult, DispatchError}};
 
 impl<T: Trait> Module<T> {
+
   fn has_permission_in_override(permissions_opt: Option<BTreeSet<SpacePermission>>, permission: &SpacePermission) -> bool {
     if let Some(permissions) = permissions_opt {
       if permissions.contains(permission) {
@@ -13,56 +14,73 @@ impl<T: Trait> Module<T> {
     false
   }
 
-  pub fn ensure_user_has_space_permission(
-    user: User<T::AccountId>, space_id: SpaceId, permission: SpacePermission,
+  pub fn ensure_role_manager(account: T::AccountId, space_id: SpaceId) -> DispatchResult {
+    Self::ensure_account_has_space_permission(
+      account,
+      space_id,
+      SpacePermission::ManageRoles,
+      Error::<T>::NoPermissionToManageRoles.into()
+    )
+  }
+
+  fn ensure_user_has_space_permission(
+    user: User<T::AccountId>,
+    space_id: SpaceId,
+    permission: SpacePermission,
     error: DispatchError,
   ) -> DispatchResult {
-    // TODO: maybe make function as impl for Space?
-    // TODO: check default permissions only if no overrides found
-    // TODO: think on checks priority
+
     // TODO: maybe move permissions iterations/common functions into pallet-permissions?
 
-    let space_owner = T::SpaceSource::get_space_owner_by_space_id(space_id)?;
+    let space = T::Spaces::get_space(space_id)?;
 
     match &user {
-      User::Account(account_id) => {
-        if space_owner == *account_id {
+      User::Account(account) => {
+        if *account == space.owner {
           return Ok(());
         }
       }
-      User::Space(_) => (),
+      User::Space(_) => (/* Check for space is not implemented yet. */),
     }
 
-    let space_everyone_permissions = T::SpaceSource::get_everyone_permissions_by_space_id(space_id)?;
-    let space_follower_permissions = T::SpaceSource::get_follower_permissions_by_space_id(space_id)?;
-
-    if Self::has_permission_in_override(space_everyone_permissions, &permission) ||
-      Self::has_permission_in_override(space_follower_permissions, &permission) {
+    // Check everyone's permission:
+    if Self::has_permission_in_override(space.everyone_permissions, &permission) ||
+      <T as PermissionsTrait>::DefaultEveryoneSpacePermissions::get().contains(&permission)
+    {
       return Ok(());
-    }
-
-    let default_everyone_permissions = <T as PermissionsTrait>::DefaultEveryoneSpacePermissions::get();
-    let default_follower_permissions = <T as PermissionsTrait>::DefaultFollowerSpacePermissions::get();
-
-    if default_everyone_permissions.contains(&permission) ||
-      default_follower_permissions.contains(&permission) {
-      return Ok(());
+    } else {
+      match &user {
+        // Check follower's permission if the current user is a space follower:
+        User::Account(account) => {
+          if T::Spaces::is_space_follower(account.clone(), space_id) && (
+            Self::has_permission_in_override(space.follower_permissions, &permission) ||
+            <T as PermissionsTrait>::DefaultFollowerSpacePermissions::get().contains(&permission)
+          ) {
+            return Ok(());
+          }
+        }
+        User::Space(_) => (/* Check for space is not implemented yet. */),
+      }
     }
 
     let role_ids = Self::in_space_role_ids_by_user((user, space_id));
 
     for role_id in role_ids {
-      let role = Self::role_by_id(role_id).ok_or(Error::<T>::RoleNotFound)?;
-
-      let mut expired = false;
-      if let Some(expires_at) = role.expires_at {
-        if expires_at <= <system::Module<T>>::block_number() {
-          expired = true;
+      if let Some(role) = Self::role_by_id(role_id) {
+        if role.disabled {
+          continue;
         }
-      }
 
-      if !role.disabled && !expired && role.permissions.contains(&permission) {
-        return Ok(());
+        let mut is_expired = false;
+        if let Some(expires_at) = role.expires_at {
+          if expires_at <= <system::Module<T>>::block_number() {
+            is_expired = true;
+          }
+        }
+
+        if !is_expired && role.permissions.contains(&permission) {
+          return Ok(());
+        }
       }
     }
 
@@ -71,14 +89,22 @@ impl<T: Trait> Module<T> {
 }
 
 impl<T: Trait> Role<T> {
+
   pub fn new(
     created_by: T::AccountId,
     space_id: SpaceId,
+    time_to_live: Option<T::BlockNumber>,
     ipfs_hash: Option<Vec<u8>>,
-    expires_at: Option<T::BlockNumber>,
     permissions: BTreeSet<SpacePermission>,
-  ) -> Result<(Self, RoleId), DispatchError> {
+  ) -> Result<Self, DispatchError> {
+
     let role_id = Module::<T>::next_role_id();
+
+    let mut expires_at: Option<T::BlockNumber> = None;
+    if let Some(ttl) = time_to_live {
+      expires_at = Some(ttl + <system::Module<T>>::block_number());
+    }
+
     let new_role = Role::<T> {
       created: WhoAndWhen::new(created_by),
       updated: None,
@@ -90,19 +116,17 @@ impl<T: Trait> Role<T> {
       permissions,
     };
 
-    let next_role_id = role_id.checked_add(1).ok_or(Error::<T>::OverflowCreatingNewRole)?;
-
-    Ok((new_role, next_role_id))
+    Ok(new_role)
   }
 
-  pub fn change_disabled_state(&mut self, new_disabled_state: bool) -> DispatchResult {
-    if self.disabled && new_disabled_state {
-      return Err(Error::<T>::RoleIsNotEnabled.into());
-    } else if !self.disabled && !new_disabled_state {
-      return Err(Error::<T>::RoleIsAlreadyEnabled.into());
+  pub fn set_disabled(&mut self, disable: bool) -> DispatchResult {
+    if self.disabled && disable {
+      return Err(Error::<T>::RoleAlreadyDisabled.into());
+    } else if !self.disabled && !disable {
+      return Err(Error::<T>::RoleAlreadyEnabled.into());
     }
 
-    self.disabled = new_disabled_state;
+    self.disabled = disable;
 
     Ok(())
   }
@@ -116,5 +140,24 @@ impl<T: Trait> Role<T> {
         <InSpaceRoleIdsByUser<T>>::mutate((user, self.space_id), |n| { n.swap_remove(role_idx) });
       }
     }
+  }
+}
+
+impl<T: Trait> PermissionChecker for Module<T> {
+  type AccountId = T::AccountId;
+  type SpaceId = SpaceId;
+
+  fn ensure_user_has_space_permission(
+    user: User<Self::AccountId>,
+    space_id: Self::SpaceId,
+    permission: SpacePermission,
+    error: DispatchError,
+  ) -> DispatchResult {
+    Self::ensure_user_has_space_permission(
+      user,
+      space_id,
+      permission,
+      error,
+    )
   }
 }

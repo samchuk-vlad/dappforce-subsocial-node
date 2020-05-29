@@ -2741,7 +2741,6 @@ dependencies = [
  "frame-support",
  "frame-system",
  "pallet-permissions",
- "pallet-social",
  "pallet-utils",
  "parity-scale-codec",
  "sp-core",
@@ -2847,10 +2846,9 @@ version = "2.0.0"
 dependencies = [
  "frame-support",
  "frame-system",
+ "pallet-permissions",
  "pallet-timestamp",
  "parity-scale-codec",
- "sp-core",
- "sp-io",
  "sp-runtime",
  "sp-std",
 ]

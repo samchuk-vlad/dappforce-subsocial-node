@@ -10,12 +10,6 @@ use sp_runtime::RuntimeDebug;
 pub enum SpacePermission {
   /// Create, update, grant and revoke roles in this space.
   ManageRoles,
-  /// Create, update own and delete any subspaces in this space.
-  ManageSubspaces,
-  /// Create, update own and delete any root posts in this space.
-  ManagePosts,
-  /// Create, update own and delete any comments in this space.
-  ManageComments,
 
   /// Act on behalf of this space within this space.
   RepresentSpaceInternally,
@@ -23,9 +17,7 @@ pub enum SpacePermission {
   RepresentSpaceExternally,
 
   UpdateSpace,
-  BlockUsers, // or BlockUsers
-
-  // TODO what about 'DeleteSpace'? (too dangerous)
+  BlockUsers,
 
   // Related to subspaces in this space:
   CreateSubspaces,
@@ -69,14 +61,12 @@ pub enum PostPermission {
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait {
   type DefaultEveryoneSpacePermissions: Get<BTreeSet<SpacePermission>>;
-
   type DefaultFollowerSpacePermissions: Get<BTreeSet<SpacePermission>>;
 }
 
 decl_module! {
   pub struct Module<T: Trait> for enum Call where origin: T::Origin {
     const DefaultEveryoneSpacePermissions: BTreeSet<SpacePermission> = T::DefaultEveryoneSpacePermissions::get();
-
     const DefaultFollowerSpacePermissions: BTreeSet<SpacePermission> = T::DefaultFollowerSpacePermissions::get();
   }
 }

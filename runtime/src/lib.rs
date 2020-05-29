@@ -278,36 +278,44 @@ impl pallet_social::Trait for Runtime {
   type DownvoteCommentActionWeight = DownvoteCommentActionWeight;
   type ShareCommentActionWeight = ShareCommentActionWeight;
   type MaxCommentDepth = MaxCommentDepth;
+  type Roles = Roles;
 }
 
 parameter_types! {
   pub const MaxUsersToProcessPerDeleteRole: u16 = 20;
 }
+
 impl pallet_roles::Trait for Runtime {
   type Event = Event;
   type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
-  type SpaceSource = Social;
+  type Spaces = Social;
 }
 
 parameter_types! {
+
   pub const DefaultEveryoneSpacePermissions: BTreeSet<SpacePermission> = BTreeSet::from_iter(vec![
+    // Comments
     SpacePermission::CreateComments,
     SpacePermission::UpdateOwnComments,
     SpacePermission::DeleteOwnComments,
+    // Other
     SpacePermission::Upvote,
     SpacePermission::Downvote,
     SpacePermission::Share
   ].into_iter());
 
   pub const DefaultFollowerSpacePermissions: BTreeSet<SpacePermission> = BTreeSet::from_iter(vec![
+    // Comments
     SpacePermission::CreateComments,
     SpacePermission::UpdateOwnComments,
     SpacePermission::DeleteOwnComments,
+    // Other
     SpacePermission::Upvote,
     SpacePermission::Downvote,
     SpacePermission::Share
   ].into_iter());
 }
+
 impl pallet_permissions::Trait for Runtime {
   type DefaultEveryoneSpacePermissions = DefaultEveryoneSpacePermissions;
   type DefaultFollowerSpacePermissions = DefaultFollowerSpacePermissions;

@@ -108,8 +108,8 @@ fn new_test_ext() -> sp_io::TestExternalities {
 
 pub type AccountId = u64;
 
-const ACCOUNT1 : AccountId = 1;
-const ACCOUNT2 : AccountId = 2;
+const ACCOUNT1: AccountId = 1;
+const ACCOUNT2: AccountId = 2;
 const ACCOUNT3: AccountId = 3;
 
 fn role_ipfs_hash() -> Vec<u8> {
