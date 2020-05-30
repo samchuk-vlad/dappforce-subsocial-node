@@ -1,18 +1,19 @@
 {
   "RoleId": "u64",
 
-  "Role":{
-    "created":"WhoAndWhen",
-    "updated":"Option<WhoAndWhen>",
-    "id":"RoleId",
-    "space_id":"SpaceId",
-    "disabled":"bool",
+  "Role": {
+    "created": "WhoAndWhen",
+    "updated": "Option<WhoAndWhen>",
+    "id": "RoleId",
+    "space_id": "SpaceId",
+    "disabled": "bool",
     "expires_at": "Option<BlockNumber>",
-    "ipfs_hash":"Option<IpfsHash>",
-    "permissions":"BTreeSet<SpacePermission>"
+    "ipfs_hash": "Option<IpfsHash>",
+    "permissions": "BTreeSet<SpacePermission>"
   },
-  "RoleUpdate":{
-    "ipfs_hash":"Option<Option<IpfsHash>>",
-    "permissions":"Option<BTreeSet<SpacePermission>>"
+
+  "RoleUpdate": {
+    "ipfs_hash": "Option<Option<IpfsHash>>",
+    "permissions": "Option<BTreeSet<SpacePermission>>"
   }
 }

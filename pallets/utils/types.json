@@ -4,8 +4,8 @@
     "block": "BlockNumber",
     "time": "Moment"
   },
-  "User":{
-    "_enum":{
+  "User": {
+    "_enum": {
       "Account": "AccountId",
       "Space": "SpaceId"
     }

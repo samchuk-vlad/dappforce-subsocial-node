@@ -1,8 +1,7 @@
 {
-  "SpacePermission":{
-    "_enum":[
+  "SpacePermission": {
+    "_enum": [
       "ManageRoles",
-      "ManageSubspaces",
       "RepresentSpaceInternally",
       "RepresentSpaceExternally",
       "UpdateSpace",
@@ -25,8 +24,8 @@
     ]
   },
 
-  "PostPermission":{
-    "_enum":[
+  "PostPermission": {
+    "_enum": [
       "CreateComments",
       "UpdateOwnComments",
       "DeleteOwnComments",
