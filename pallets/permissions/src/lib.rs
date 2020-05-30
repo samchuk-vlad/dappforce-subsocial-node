@@ -29,21 +29,18 @@ pub enum SpacePermission {
 
   // Related to subspaces in this space:
   CreateSubspaces,
-  UpdateOwnSubspaces,
-  DeleteOwnSubspaces,
-  DeleteAnySubspaces,
+  UpdateSubspaces,
+  DeleteSubspaces,
 
   // Related to posts in this space:
   CreatePosts,
-  UpdateOwnPosts,
-  DeleteOwnPosts,
-  DeleteAnyPosts,
+  UpdatePosts,
+  DeletePosts,
 
   // Related to comments in this space:
   CreateComments,
-  UpdateOwnComments,
-  DeleteOwnComments,
-  DeleteAnyComments,
+  UpdateComments,
+  DeleteComments,
 
   /// Upvote on any post or comment in this space.
   Upvote,
@@ -55,10 +52,14 @@ pub enum SpacePermission {
 
 #[derive(Encode, Decode, Ord, PartialOrd, Clone, Eq, PartialEq, RuntimeDebug)]
 pub enum PostPermission {
+  // Relate to this post:
+  UpdatePost,
+  DeletePost,
+
   // Related to comments on this post:
   CreateComments,
-  UpdateOwnComments,
-  DeleteOwnComments,
+  UpdateComments,
+  DeleteComments,
 
   // Related to this post and its comments:
   Upvote,
@@ -69,9 +70,12 @@ pub enum PostPermission {
 impl Into<SpacePermission> for PostPermission {
   fn into(self) -> SpacePermission {
     match self {
+      PP::UpdatePost => SP::UpdatePosts,
+      PP::DeletePost => SP::DeletePosts,
+
       PP::CreateComments => SP::CreateComments,
-      PP::UpdateOwnComments => SP::UpdateOwnComments,
-      PP::DeleteOwnComments => SP::DeleteOwnComments,
+      PP::UpdateComments => SP::UpdateComments,
+      PP::DeleteComments => SP::DeleteComments,
 
       PP::Upvote => SP::Upvote,
       PP::Downvote => SP::Downvote,

@@ -9,7 +9,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 use sp_std::{
   prelude::*,
   iter::FromIterator,
-  collections::btree_set::BTreeSet
+  collections::btree_map::BTreeMap
 };
 use sp_core::OpaqueMetadata;
 use sp_runtime::{
@@ -39,7 +39,12 @@ pub use frame_support::{
   weights::Weight,
 };
 
-use pallet_permissions::SpacePermission;
+use pallet_permissions::{
+  SpacePermission as SP,
+  SpacePermissions,
+  PostPermission as PP,
+  PostPermissions
+};
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -293,32 +298,44 @@ impl pallet_roles::Trait for Runtime {
 
 parameter_types! {
 
-  pub const DefaultEveryoneSpacePermissions: BTreeSet<SpacePermission> = BTreeSet::from_iter(vec![
-    // Comments
-    SpacePermission::CreateComments,
-    SpacePermission::UpdateOwnComments,
-    SpacePermission::DeleteOwnComments,
-    // Other
-    SpacePermission::Upvote,
-    SpacePermission::Downvote,
-    SpacePermission::Share
+  pub const DefaultSpacePermissions: SpacePermissions = BTreeMap::from_iter(vec![
+    // Space owner permissions:
+
+    (SP::ManageRoles, Owner),
+    (SP::RepresentSpaceInternally, Owner),
+    (SP::RepresentSpaceExternally, Owner),
+    (SP::UpdateSpace, Owner),
+    (SP::BlockUsers, Owner),
+
+    (SP::CreateSubspaces, Owner),
+    (SP::UpdateSubspaces, Owner),
+    (SP::DeleteSubspaces, Owner),
+
+    (SP::CreatePosts, Owner),
+
+    // Everyone permissions:
+
+    (SP::CreateComments, Everyone),
+
+    (SP::Upvote, Everyone),
+    (SP::Downvote, Everyone),
+    (SP::Share, Everyone)
   ].into_iter());
 
-  pub const DefaultFollowerSpacePermissions: BTreeSet<SpacePermission> = BTreeSet::from_iter(vec![
-    // Comments
-    SpacePermission::CreateComments,
-    SpacePermission::UpdateOwnComments,
-    SpacePermission::DeleteOwnComments,
-    // Other
-    SpacePermission::Upvote,
-    SpacePermission::Downvote,
-    SpacePermission::Share
+  pub const DefaultPostPermissions: PostPermissions = BTreeMap::from_iter(vec![
+    // Post owner:
+    (PP::UpdatePost, Owner),
+    (PP::DeletePost, Owner),
+
+    // Comment owner:
+    (PP::UpdateComments, Owner),
+    (PP::DeleteComments, Owner),
   ].into_iter());
 }
 
 impl pallet_permissions::Trait for Runtime {
-  type DefaultEveryoneSpacePermissions = DefaultEveryoneSpacePermissions;
-  type DefaultFollowerSpacePermissions = DefaultFollowerSpacePermissions;
+  type DefaultSpacePermissions = DefaultSpacePermissions;
+  type DefaultPostPermissions = DefaultPostPermissions;
 }
 
 construct_runtime!(
