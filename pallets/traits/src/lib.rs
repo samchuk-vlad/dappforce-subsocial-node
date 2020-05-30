@@ -42,7 +42,8 @@ pub trait PermissionChecker {
   fn ensure_user_has_post_permission(
     user: User<Self::AccountId>,
     space_id: Self::SpaceId,
-    is_owner: bool,
+    is_post_owner: bool,
+    is_space_owner: bool,
     is_follower: bool,
     post_perms: PostPermissions,
     space_perms: SpacePermissions,
@@ -74,7 +75,8 @@ pub trait PermissionChecker {
   fn ensure_account_has_post_permission(
     account: Self::AccountId,
     space_id: Self::SpaceId,
-    is_owner: bool,
+    is_post_owner: bool,
+    is_space_owner: bool,
     is_follower: bool,
     post_perms: PostPermissions,
     space_perms: SpacePermissions,
@@ -85,7 +87,8 @@ pub trait PermissionChecker {
     Self::ensure_user_has_post_permission(
       User::Account(account),
       space_id,
-      is_owner,
+      is_post_owner,
+      is_space_owner,
       is_follower,
       post_perms,
       space_perms,

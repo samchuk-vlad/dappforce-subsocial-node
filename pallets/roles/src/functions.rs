@@ -76,7 +76,8 @@ impl<T: Trait> Module<T> {
   fn ensure_user_has_post_permission(
     user: User<T::AccountId>,
     space_id: SpaceId,
-    is_owner: bool,
+    is_post_owner: bool,
+    is_space_owner: bool,
     is_follower: bool,
     post_perms: PostPermissions,
     space_perms: SpacePermissions,
@@ -85,7 +86,8 @@ impl<T: Trait> Module<T> {
   ) -> DispatchResult {
 
     if Permissions::<T>::has_user_a_post_permission(
-      is_owner,
+      is_post_owner,
+      is_space_owner,
       is_follower,
       post_perms,
       space_perms,
@@ -217,7 +219,8 @@ impl<T: Trait> PermissionChecker for Module<T> {
   fn ensure_user_has_post_permission(
     user: User<T::AccountId>,
     space_id: SpaceId,
-    is_owner: bool,
+    is_post_owner: bool,
+    is_space_owner: bool,
     is_follower: bool,
     post_perms: PostPermissions,
     space_perms: SpacePermissions,
@@ -228,7 +231,8 @@ impl<T: Trait> PermissionChecker for Module<T> {
     Self::ensure_user_has_post_permission(
       user,
       space_id,
-      is_owner,
+      is_post_owner,
+      is_space_owner,
       is_follower,
       post_perms,
       space_perms,

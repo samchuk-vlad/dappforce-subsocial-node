@@ -163,7 +163,8 @@ impl<T: Trait> Module<T> {
   }
 
   pub fn has_user_a_post_permission(
-    is_owner: bool,
+    is_post_owner: bool,
+    is_space_owner: bool,
     is_follower: bool,
     post_perms: PostPermissions,
     space_perms: SpacePermissions,
@@ -181,7 +182,7 @@ impl<T: Trait> Module<T> {
     }
 
     if Self::is_user_in_role(
-      is_owner,
+      is_post_owner,
       is_follower,
       role_opt
     ) {
@@ -189,7 +190,7 @@ impl<T: Trait> Module<T> {
     }
 
     Self::has_user_a_space_permission(
-      is_owner,
+      is_space_owner,
       is_follower,
       space_perms,
       permission.into()

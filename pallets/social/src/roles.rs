@@ -33,13 +33,15 @@ impl<T: Trait> Module<T> {
     error: DispatchError,
   ) -> DispatchResult {
 
-    let is_owner = post.is_owner(&account);
+    let is_post_owner = post.is_owner(&account);
+    let is_space_owner = space.is_owner(&account);
     let is_follower = Self::space_followed_by_account((account.clone(), space.id));
 
     T::Roles::ensure_account_has_post_permission(
       account,
       space.id,
-      is_owner,
+      is_post_owner,
+      is_space_owner,
       is_follower,
       post.permissions.clone(),
       space.permissions.clone(),
