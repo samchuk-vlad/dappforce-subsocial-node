@@ -5,14 +5,14 @@ pub mod functions;
 // mod tests;
 
 use sp_std::prelude::*;
-use sp_std::collections::btree_set::BTreeSet;
 use codec::{Encode, Decode};
 use frame_support::{decl_module, decl_storage, decl_event, decl_error, ensure, traits::Get};
 use sp_runtime::RuntimeDebug;
 use system::ensure_signed;
-use pallet_utils::{WhoAndWhen, Module as Utils};
+
+use pallet_utils::{Module as Utils, WhoAndWhen, SpaceId};
 use pallet_permissions::{SpacePermission, SpacePermissions, PostPermission, PostPermissions};
-use pallet_utils::{SpaceId, traits::PermissionChecker};
+use df_traits::PermissionChecker;
 
 pub type PostId = u64;
 pub type ReactionId = u64;

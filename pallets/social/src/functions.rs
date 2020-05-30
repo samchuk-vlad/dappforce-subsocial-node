@@ -1,7 +1,8 @@
 use super::*;
 
 use frame_support::{dispatch::{DispatchResult, DispatchError}};
-use pallet_utils::traits::{SpaceForRolesProvider, SpaceForRoles};
+use df_traits::{SpaceForRolesProvider, SpaceForRoles};
+use sp_std::collections::btree_map::BTreeMap;
 
 impl<T: Trait> Module<T> {
 
@@ -92,7 +93,9 @@ impl<T: Trait> Module<T> {
 
             if post.created.account != account {
                 if let Some(score_diff) = Self::post_score_by_account((account.clone(), post_id, action)) {
-                    let reputation_diff = Self::account_reputation_diff_by_account((account.clone(), post.created.account.clone(), action)).ok_or(Error::<T>::ReputationDiffNotFound)?;
+                    let reputation_diff = Self::account_reputation_diff_by_account((account.clone(), post.created.account.clone(), action))
+                      .ok_or(Error::<T>::ReputationDiffNotFound)?;
+
                     post.score = post.score.checked_add(-(score_diff as i32)).ok_or(Error::<T>::OutOfBoundsRevertingPostScore)?;
                     space.score = space.score.checked_add(-(score_diff as i32)).ok_or(Error::<T>::OutOfBoundsRevertingSpaceScore)?;
                     Self::change_social_account_reputation(post.created.account.clone(), account.clone(), -reputation_diff, action)?;
@@ -138,7 +141,9 @@ impl<T: Trait> Module<T> {
 
         if comment.created.account != account {
             if let Some(score_diff) = Self::post_score_by_account((account.clone(), comment_id, action)) {
-                let reputation_diff = Self::account_reputation_diff_by_account((account.clone(), comment.created.account.clone(), action)).ok_or(Error::<T>::ReputationDiffNotFound)?;
+                let reputation_diff = Self::account_reputation_diff_by_account((account.clone(), comment.created.account.clone(), action))
+                  .ok_or(Error::<T>::ReputationDiffNotFound)?;
+
                 comment.score = comment.score.checked_add(-(score_diff as i32)).ok_or(Error::<T>::OutOfBoundsRevertingCommentScore)?;
                 Self::change_social_account_reputation(comment.created.account.clone(), account.clone(), -reputation_diff, action)?;
                 <PostScoreByAccount<T>>::remove((account, comment_id, action));
@@ -171,7 +176,13 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
-    pub fn change_social_account_reputation(account: T::AccountId, scorer: T::AccountId, mut score_diff: i16, action: ScoringAction) -> DispatchResult {
+    pub fn change_social_account_reputation(
+        account: T::AccountId,
+        scorer: T::AccountId,
+        mut score_diff: i16,
+        action: ScoringAction
+    ) -> DispatchResult {
+
         let mut social_account = Self::get_or_new_social_account(account.clone());
 
         if social_account.reputation as i64 + score_diff as i64 <= 1 {
@@ -180,9 +191,11 @@ impl<T: Trait> Module<T> {
         }
 
         if score_diff < 0 {
-            social_account.reputation = social_account.reputation.checked_sub(-score_diff as u32).ok_or(Error::<T>::OutOfBoundsUpdatingAccountReputation)?;
+            social_account.reputation = social_account.reputation.checked_sub(-score_diff as u32)
+              .ok_or(Error::<T>::OutOfBoundsUpdatingAccountReputation)?;
         } else {
-            social_account.reputation = social_account.reputation.checked_add(score_diff as u32).ok_or(Error::<T>::OutOfBoundsUpdatingAccountReputation)?;
+            social_account.reputation = social_account.reputation.checked_add(score_diff as u32)
+              .ok_or(Error::<T>::OutOfBoundsUpdatingAccountReputation)?;
         }
 
         if Self::account_reputation_diff_by_account((scorer.clone(), account.clone(), action)).is_some() {
@@ -316,8 +329,13 @@ impl<T: Trait> Module<T> {
 }
 
 impl<T: Trait> Space<T> {
-    pub fn create(id: SpaceId, created_by: T::AccountId,
-                  ipfs_hash: Vec<u8>, handle: Option<Vec<u8>>) -> Self {
+
+    pub fn create(
+        id: SpaceId,
+        created_by: T::AccountId,
+        ipfs_hash: Vec<u8>,
+        handle: Option<Vec<u8>>
+    ) -> Self {
         Space {
             id,
             created: WhoAndWhen::<T>::new(created_by.clone()),
@@ -330,8 +348,7 @@ impl<T: Trait> Space<T> {
             followers_count: 0,
             edit_history: Vec::new(),
             score: 0,
-            everyone_permissions: None,
-            follower_permissions: None
+            permissions: BTreeMap::new()
         }
     }
 
@@ -352,8 +369,14 @@ impl<T: Trait> Space<T> {
 }
 
 impl<T: Trait> Post<T> {
-    pub fn create(id: PostId, created_by: T::AccountId, space_id_opt: Option<SpaceId>,
-                  extension: PostExtension, ipfs_hash: Vec<u8>) -> Self {
+
+    pub fn create(
+        id: PostId,
+        created_by: T::AccountId,
+        space_id_opt: Option<SpaceId>,
+        extension: PostExtension,
+        ipfs_hash: Vec<u8>
+    ) -> Self {
         Post {
             id,
             created: WhoAndWhen::<T>::new(created_by),
@@ -369,8 +392,7 @@ impl<T: Trait> Post<T> {
             upvotes_count: 0,
             downvotes_count: 0,
             score: 0,
-            everyone_permissions: None,
-            follower_permissions: None
+            permissions: BTreeMap::new()
         }
     }
 
@@ -397,8 +419,10 @@ impl<T: Trait> Post<T> {
 
     pub fn get_root_post(&self) -> Result<Post<T>, DispatchError> {
         match self.extension {
-            PostExtension::RegularPost | PostExtension::SharedPost(_) => Ok(self.clone()),
-            PostExtension::Comment(comment_ext) => Module::post_by_id(comment_ext.root_post_id).ok_or_else(|| Error::<T>::PostNotFound.into()),
+            PostExtension::RegularPost | PostExtension::SharedPost(_) =>
+                Ok(self.clone()),
+            PostExtension::Comment(comment_ext) =>
+                Module::post_by_id(comment_ext.root_post_id).ok_or_else(|| Error::<T>::PostNotFound.into()),
         }
     }
 
@@ -426,8 +450,7 @@ impl<T: Trait> SpaceForRolesProvider for Module<T> {
 
         Ok(SpaceForRoles {
             owner: space.owner,
-            everyone_permissions: space.everyone_permissions,
-            follower_permissions: space.follower_permissions,
+            permissions: space.permissions
         })
     }
 
