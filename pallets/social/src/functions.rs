@@ -352,8 +352,12 @@ impl<T: Trait> Space<T> {
         }
     }
 
+    pub fn is_owner(&self, account: &T::AccountId) -> bool {
+        self.owner == *account
+    }
+
     pub fn ensure_space_owner(&self, who: T::AccountId) -> DispatchResult {
-        ensure!(self.owner == who, Error::<T>::NotASpaceOwner);
+        ensure!(self.is_owner(&who), Error::<T>::NotASpaceOwner);
         Ok(())
     }
 
@@ -394,6 +398,10 @@ impl<T: Trait> Post<T> {
             score: 0,
             permissions: BTreeMap::new()
         }
+    }
+
+    pub fn is_owner(&self, account: &T::AccountId) -> bool {
+        self.created.account == *account
     }
 
     pub fn is_comment(&self) -> bool {

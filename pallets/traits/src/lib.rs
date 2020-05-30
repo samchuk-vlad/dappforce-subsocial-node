@@ -2,7 +2,12 @@
 
 use frame_support::dispatch::{DispatchResult, DispatchError};
 
-use pallet_permissions::{SpacePermission, SpacePermissions};
+use pallet_permissions::{
+  SpacePermission,
+  SpacePermissions,
+  PostPermission,
+  PostPermissions
+};
 use pallet_utils::User;
 
 /// Minimal set of fields from Space struct that are required by roles pallet.
@@ -29,9 +34,20 @@ pub trait PermissionChecker {
     space_id: Self::SpaceId,
     is_owner: bool,
     is_follower: bool,
-    overrides: SpacePermissions,
+    space_perms: SpacePermissions,
     permission: SpacePermission,
     error: DispatchError,
+  ) -> DispatchResult;
+
+  fn ensure_user_has_post_permission(
+    user: User<Self::AccountId>,
+    space_id: Self::SpaceId,
+    is_owner: bool,
+    is_follower: bool,
+    post_perms: PostPermissions,
+    space_perms: SpacePermissions,
+    permission: PostPermission,
+    error: DispatchError
   ) -> DispatchResult;
 
   fn ensure_account_has_space_permission(
@@ -39,7 +55,7 @@ pub trait PermissionChecker {
     space_id: Self::SpaceId,
     is_owner: bool,
     is_follower: bool,
-    overrides: SpacePermissions,
+    space_perms: SpacePermissions,
     permission: SpacePermission,
     error: DispatchError,
   ) -> DispatchResult {
@@ -49,7 +65,30 @@ pub trait PermissionChecker {
       space_id,
       is_owner,
       is_follower,
-      overrides,
+      space_perms,
+      permission,
+      error
+    )
+  }
+
+  fn ensure_account_has_post_permission(
+    account: Self::AccountId,
+    space_id: Self::SpaceId,
+    is_owner: bool,
+    is_follower: bool,
+    post_perms: PostPermissions,
+    space_perms: SpacePermissions,
+    permission: PostPermission,
+    error: DispatchError
+  ) -> DispatchResult {
+
+    Self::ensure_user_has_post_permission(
+      User::Account(account),
+      space_id,
+      is_owner,
+      is_follower,
+      post_perms,
+      space_perms,
       permission,
       error
     )

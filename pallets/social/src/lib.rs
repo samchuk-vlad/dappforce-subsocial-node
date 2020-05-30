@@ -2,6 +2,7 @@
 #![allow(clippy::string_lit_as_bytes)]
 
 pub mod functions;
+pub mod roles;
 // mod tests;
 
 use sp_std::prelude::*;
@@ -490,9 +491,9 @@ decl_module! {
 
       let mut space = Self::space_by_id(space_id).ok_or(Error::<T>::SpaceNotFound)?;
 
-      T::Roles::ensure_account_has_space_permission(
+      Self::ensure_account_has_space_permission(
         owner.clone(),
-        space_id,
+        &space,
         SpacePermission::UpdateSpace,
         Error::<T>::NoPermissionToUpdateSpace.into()
       )?;
@@ -772,18 +773,19 @@ decl_module! {
       // Check permissions
       match extension {
         PostExtension::RegularPost | PostExtension::SharedPost(_) => {
-          T::Roles::ensure_account_has_space_permission(
+          Self::ensure_account_has_space_permission(
             owner.clone(),
-            space.id,
+            &space,
             SpacePermission::CreatePosts,
             Error::<T>::NoPermissionToCreatePosts.into()
           )?;
         }
         PostExtension::Comment(_) => {
-          T::Roles::ensure_account_has_space_permission(
+          Self::ensure_account_has_post_permission(
             owner.clone(),
-            space.id,
-            SpacePermission::CreateComments,
+            &new_post,
+            &space,
+            PostPermission::CreateComments,
             Error::<T>::NoPermissionToCreateComments.into()
           )?;
         },

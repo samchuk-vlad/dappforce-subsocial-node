@@ -11,6 +11,9 @@ use frame_support::{
 };
 use sp_runtime::RuntimeDebug;
 
+use self::PostPermission as PP;
+use self::SpacePermission as SP;
+
 #[derive(Encode, Decode, Ord, PartialOrd, Clone, Eq, PartialEq, RuntimeDebug)]
 pub enum SpacePermission {
   /// Create, update, grant and revoke roles in this space.
@@ -61,6 +64,20 @@ pub enum PostPermission {
   Upvote,
   Downvote,
   Share,
+}
+
+impl Into<SpacePermission> for PostPermission {
+  fn into(self) -> SpacePermission {
+    match self {
+      PP::CreateComments => SP::CreateComments,
+      PP::UpdateOwnComments => SP::UpdateOwnComments,
+      PP::DeleteOwnComments => SP::DeleteOwnComments,
+
+      PP::Upvote => SP::Upvote,
+      PP::Downvote => SP::Downvote,
+      PP::Share => SP::Share,
+    }
+  }
 }
 
 /*
@@ -120,12 +137,12 @@ impl<T: Trait> Module<T> {
   pub fn has_user_a_space_permission(
     is_owner: bool,
     is_follower: bool,
-    overrides: SpacePermissions,
+    space_perms: SpacePermissions,
     permission: SpacePermission,
   ) -> bool {
 
     // Try to find a permission in space overrides:
-    let mut role_opt = overrides.get(&permission);
+    let mut role_opt = space_perms.get(&permission);
 
     // Look into default space permissions,
     // if there is no permission override for this space:
@@ -134,7 +151,54 @@ impl<T: Trait> Module<T> {
       role_opt = default_perms.get(&permission);
     }
 
-    if let Some(role) = role_opt {
+    Self::is_user_in_role(
+      is_owner,
+      is_follower,
+      role_opt
+    )
+  }
+
+  pub fn has_user_a_post_permission(
+    is_owner: bool,
+    is_follower: bool,
+    post_perms: PostPermissions,
+    space_perms: SpacePermissions,
+    permission: PostPermission,
+  ) -> bool {
+
+    // Try to find a permission in post/comment overrides:
+    let mut role_opt = post_perms.get(&permission);
+
+    // Look into default post permissions,
+    // if there is no permission override for this post/comment:
+    let default_perms = T::DefaultPostPermissions::get();
+    if role_opt.is_none() {
+      role_opt = default_perms.get(&permission);
+    }
+
+    if Self::is_user_in_role(
+      is_owner,
+      is_follower,
+      role_opt
+    ) {
+      return true;
+    }
+
+    Self::has_user_a_space_permission(
+      is_owner,
+      is_follower,
+      space_perms,
+      permission.into()
+    )
+  }
+
+  pub fn is_user_in_role(
+    is_owner: bool,
+    is_follower: bool,
+    role_to_check: Option<&BuiltinRole>,
+  ) -> bool {
+
+    if let Some(role) = role_to_check {
       if *role == BuiltinRole::None {
         return false;
       } else if

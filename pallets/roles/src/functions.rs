@@ -51,7 +51,7 @@ impl<T: Trait> Module<T> {
     space_id: SpaceId,
     is_owner: bool,
     is_follower: bool,
-    overrides: SpacePermissions,
+    space_perms: SpacePermissions,
     permission: SpacePermission,
     error: DispatchError,
   ) -> DispatchResult {
@@ -59,7 +59,7 @@ impl<T: Trait> Module<T> {
     if Permissions::<T>::has_user_a_space_permission(
       is_owner,
       is_follower,
-      overrides,
+      space_perms,
       permission.clone(),
     ) {
       return Ok(());
@@ -69,6 +69,35 @@ impl<T: Trait> Module<T> {
       user,
       space_id,
       permission,
+      error
+    )
+  }
+
+  fn ensure_user_has_post_permission(
+    user: User<T::AccountId>,
+    space_id: SpaceId,
+    is_owner: bool,
+    is_follower: bool,
+    post_perms: PostPermissions,
+    space_perms: SpacePermissions,
+    permission: PostPermission,
+    error: DispatchError,
+  ) -> DispatchResult {
+
+    if Permissions::<T>::has_user_a_post_permission(
+      is_owner,
+      is_follower,
+      post_perms,
+      space_perms,
+      permission.clone(),
+    ) {
+      return Ok(());
+    }
+
+    Self::has_permission_in_space_roles(
+      user,
+      space_id,
+      permission.into(),
       error
     )
   }
@@ -169,7 +198,7 @@ impl<T: Trait> PermissionChecker for Module<T> {
     space_id: Self::SpaceId,
     is_owner: bool,
     is_follower: bool,
-    overrides: SpacePermissions,
+    space_perms: SpacePermissions,
     permission: SpacePermission,
     error: DispatchError,
   ) -> DispatchResult {
@@ -179,7 +208,30 @@ impl<T: Trait> PermissionChecker for Module<T> {
       space_id,
       is_owner,
       is_follower,
-      overrides,
+      space_perms,
+      permission,
+      error
+    )
+  }
+
+  fn ensure_user_has_post_permission(
+    user: User<T::AccountId>,
+    space_id: SpaceId,
+    is_owner: bool,
+    is_follower: bool,
+    post_perms: PostPermissions,
+    space_perms: SpacePermissions,
+    permission: PostPermission,
+    error: DispatchError,
+  ) -> DispatchResult {
+
+    Self::ensure_user_has_post_permission(
+      user,
+      space_id,
+      is_owner,
+      is_follower,
+      post_perms,
+      space_perms,
       permission,
       error
     )

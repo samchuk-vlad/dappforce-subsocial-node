@@ -20,7 +20,13 @@ use system::ensure_signed;
 use pallet_utils::{
   Module as Utils, WhoAndWhen, User, SpaceId
 };
-use pallet_permissions::{Module as Permissions, SpacePermission, SpacePermissions};
+use pallet_permissions::{
+  Module as Permissions,
+  SpacePermission,
+  SpacePermissions,
+  PostPermission,
+  PostPermissions
+};
 use df_traits::{SpaceForRolesProvider, PermissionChecker};
 
 type RoleId = u64;
