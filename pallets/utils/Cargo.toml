@@ -8,10 +8,10 @@ edition = "2018"
 default = ['std']
 std = [
     'codec/std',
-    'frame-support/std',
     'sp-runtime/std',
-    'sp-std/std',
+    'frame-support/std',
     'system/std',
+    'sp-std/std',
     'pallet-timestamp/std'
 ]
 

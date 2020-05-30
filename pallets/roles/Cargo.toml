@@ -8,13 +8,14 @@ edition = "2018"
 default = ['std']
 std = [
     'codec/std',
-    'frame-support/std',
     'sp-runtime/std',
+    'frame-support/std',
+    'system/std',
     'sp-io/std',
     'sp-std/std',
-    'system/std',
     'pallet-utils/std',
-    'pallet-permissions/std'
+    'pallet-permissions/std',
+    'df-traits/std'
 ]
 
 [dependencies.codec]
