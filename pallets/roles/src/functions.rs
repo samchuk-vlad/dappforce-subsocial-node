@@ -29,39 +29,54 @@ impl<T: Trait> Module<T> {
     permission: SpacePermission,
     error: DispatchError,
   ) -> DispatchResult {
-
-    // TODO: maybe move permissions iterations/common functions into pallet-permissions?
-
     let space = T::Spaces::get_space(space_id)?;
+
+    let mut is_owner = false;
+    let mut is_follower = false;
 
     match &user {
       User::Account(account) => {
-        if *account == space.owner {
-          return Ok(());
-        }
+        is_owner = *account == space.owner;
+        is_follower = is_owner || T::Spaces::is_space_follower(account.clone(), space_id);
       }
-      User::Space(_) => (/* Check for space is not implemented yet. */),
+      User::Space(_) => (/* Not implemented yet. */),
     }
 
-    // Check everyone's permission:
-    if Self::has_permission_in_override(space.everyone_permissions, &permission) ||
-      <T as PermissionsTrait>::DefaultEveryoneSpacePermissions::get().contains(&permission)
-    {
-      return Ok(());
-    } else {
-      match &user {
-        // Check follower's permission if the current user is a space follower:
-        User::Account(account) => {
-          if T::Spaces::is_space_follower(account.clone(), space_id) && (
-            Self::has_permission_in_override(space.follower_permissions, &permission) ||
-            <T as PermissionsTrait>::DefaultFollowerSpacePermissions::get().contains(&permission)
-          ) {
-            return Ok(());
-          }
-        }
-        User::Space(_) => (/* Check for space is not implemented yet. */),
+    // Try to find a permission in space overrides:
+    let mut role_opt = space.permissions.get(perm);
+
+    // Look into default space permissions,
+    // if there is no permission override for this space:
+    if role_opt.is_none() {
+      role_opt = DefaultSpacePermissions.get(perm);
+    }
+
+    if let Some(role) = role_opt {
+      if role == None {
+        return Err(error);
+      } else if
+        role == Owner && is_owner ||
+        role == Follower && is_follower ||
+        role == Everyone
+      {
+        return Ok(());
       }
     }
+
+    Self::has_permission_in_space_roles(
+      user,
+      space_id,
+      permission,
+      error
+    )
+  }
+
+  fn has_permission_in_space_roles(
+    user: User<T::AccountId>,
+    space_id: SpaceId,
+    permission: SpacePermission,
+    error: DispatchError,
+  ) -> DispatchResult {
 
     let role_ids = Self::in_space_role_ids_by_user((user, space_id));
 

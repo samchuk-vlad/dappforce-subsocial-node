@@ -11,7 +11,7 @@ use frame_support::{decl_module, decl_storage, decl_event, decl_error, ensure, t
 use sp_runtime::RuntimeDebug;
 use system::ensure_signed;
 use pallet_utils::{WhoAndWhen, Module as Utils};
-use pallet_permissions::{SpacePermission, PostPermission};
+use pallet_permissions::{SpacePermission, SpacePermissions, PostPermission, PostPermissions};
 use pallet_utils::{SpaceId, traits::PermissionChecker};
 
 pub type PostId = u64;
@@ -36,13 +36,8 @@ pub struct Space<T: Trait> {
 
   pub score: i32,
 
-  /// Overrides the default permissions for everyone on this space.
-  /// If `None` then this space does not override the default permissions for everyone.
-  pub everyone_permissions: Option<BTreeSet<SpacePermission>>,
-
-  /// Overrides the default permissions for followers on this space.
-  /// If `None` then this space does not override the default permissions for followers.
-  pub follower_permissions: Option<BTreeSet<SpacePermission>>,
+  /// Allows to override the default permissions for this space.
+  pub permissions: SpacePermissions,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -81,13 +76,8 @@ pub struct Post<T: Trait> {
 
   pub score: i32,
 
-  /// Overrides the default permissions for everyone on this post and its comments.
-  /// If `None` then this post does not override the default permissions for followers.
-  pub everyone_permissions: Option<BTreeSet<PostPermission>>,
-
-  /// Overrides the default permissions for followers on this post and its comments.
-  /// If `None` then this post does not override the default permissions for followers.
-  pub follower_permissions: Option<BTreeSet<PostPermission>>,
+  /// Allow to override the default permissions for this post and its comments.
+  pub permissions: PostPermissions,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
