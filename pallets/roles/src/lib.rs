@@ -18,11 +18,10 @@ use sp_runtime::RuntimeDebug;
 use system::ensure_signed;
 
 use pallet_utils::{
-  Module as Utils, WhoAndWhen, User,
-  traits::SpaceForRolesProvider
+  Module as Utils, WhoAndWhen, User, SpaceId
 };
-use pallet_permissions::{SpacePermission, Trait as PermissionsTrait};
-use pallet_utils::{SpaceId, traits::PermissionChecker};
+use pallet_permissions::{Module as Permissions, SpacePermission, SpacePermissions};
+use df_traits::{SpaceForRolesProvider, PermissionChecker};
 
 type RoleId = u64;
 

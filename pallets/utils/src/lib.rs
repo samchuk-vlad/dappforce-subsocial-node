@@ -12,8 +12,6 @@ use frame_support::{
   dispatch::{DispatchResult, DispatchError}
 };
 
-pub mod traits;
-
 pub type SpaceId = u64;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]

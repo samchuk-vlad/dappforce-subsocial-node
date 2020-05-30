@@ -4,31 +4,22 @@ use frame_support::{dispatch::{DispatchResult, DispatchError}};
 
 impl<T: Trait> Module<T> {
 
-  fn has_permission_in_override(permissions_opt: Option<BTreeSet<SpacePermission>>, permission: &SpacePermission) -> bool {
-    if let Some(permissions) = permissions_opt {
-      if permissions.contains(permission) {
-        return true;
-      }
-    }
-
-    false
-  }
-
   pub fn ensure_role_manager(account: T::AccountId, space_id: SpaceId) -> DispatchResult {
-    Self::ensure_account_has_space_permission(
-      account,
+    Self::ensure_user_has_space_permission_with_load_space(
+      User::Account(account),
       space_id,
       SpacePermission::ManageRoles,
       Error::<T>::NoPermissionToManageRoles.into()
     )
   }
 
-  fn ensure_user_has_space_permission(
+  fn ensure_user_has_space_permission_with_load_space(
     user: User<T::AccountId>,
     space_id: SpaceId,
     permission: SpacePermission,
     error: DispatchError,
   ) -> DispatchResult {
+
     let space = T::Spaces::get_space(space_id)?;
 
     let mut is_owner = false;
@@ -37,30 +28,41 @@ impl<T: Trait> Module<T> {
     match &user {
       User::Account(account) => {
         is_owner = *account == space.owner;
+
+        // No need to check if a user is follower, if they already are an owner:
         is_follower = is_owner || T::Spaces::is_space_follower(account.clone(), space_id);
       }
       User::Space(_) => (/* Not implemented yet. */),
     }
 
-    // Try to find a permission in space overrides:
-    let mut role_opt = space.permissions.get(perm);
+    Self::ensure_user_has_space_permission(
+      user,
+      space_id,
+      is_owner,
+      is_follower,
+      space.permissions,
+      permission,
+      error
+    )
+  }
 
-    // Look into default space permissions,
-    // if there is no permission override for this space:
-    if role_opt.is_none() {
-      role_opt = DefaultSpacePermissions.get(perm);
-    }
+  fn ensure_user_has_space_permission(
+    user: User<T::AccountId>,
+    space_id: SpaceId,
+    is_owner: bool,
+    is_follower: bool,
+    overrides: SpacePermissions,
+    permission: SpacePermission,
+    error: DispatchError,
+  ) -> DispatchResult {
 
-    if let Some(role) = role_opt {
-      if role == None {
-        return Err(error);
-      } else if
-        role == Owner && is_owner ||
-        role == Follower && is_follower ||
-        role == Everyone
-      {
-        return Ok(());
-      }
+    if Permissions::<T>::has_user_a_space_permission(
+      is_owner,
+      is_follower,
+      overrides,
+      permission.clone(),
+    ) {
+      return Ok(());
     }
 
     Self::has_permission_in_space_roles(
@@ -165,14 +167,21 @@ impl<T: Trait> PermissionChecker for Module<T> {
   fn ensure_user_has_space_permission(
     user: User<Self::AccountId>,
     space_id: Self::SpaceId,
+    is_owner: bool,
+    is_follower: bool,
+    overrides: SpacePermissions,
     permission: SpacePermission,
     error: DispatchError,
   ) -> DispatchResult {
+
     Self::ensure_user_has_space_permission(
       user,
       space_id,
+      is_owner,
+      is_follower,
+      overrides,
       permission,
-      error,
+      error
     )
   }
 }

@@ -1,0 +1,29 @@
+[package]
+name = "df-traits"
+version = "2.0.0"
+authors = ["Dappforce"]
+edition = "2018"
+
+[features]
+default = ['std']
+std = [
+    'frame-support/std',
+    'pallet-permissions/std',
+    'pallet-utils/std'
+]
+
+[dependencies.frame-support]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+rev = '3e651110aa06aa835790df63410a29676243fc54'
+version = '2.0.0'
+
+[dependencies.pallet-permissions]
+default-features = false
+path = '../permissions'
+version = '2.0.0'
+
+[dependencies.pallet-utils]
+default-features = false
+path = '../utils'
+version = '2.0.0'

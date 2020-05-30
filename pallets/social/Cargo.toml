@@ -13,7 +13,9 @@ std = [
     'sp-io/std',
     'sp-std/std',
     'system/std',
-    'pallet-timestamp/std'
+    'pallet-timestamp/std',
+    'pallet-utils/std',
+    'pallet-permissions/std'
 ]
 
 [dependencies.codec]
@@ -62,6 +64,11 @@ version = '2.0.0'
 [dependencies.pallet-utils]
 default-features = false
 path = '../utils'
+version = '2.0.0'
+
+[dependencies.df-traits]
+default-features = false
+path = '../traits'
 version = '2.0.0'
 
 [dependencies.pallet-permissions]
