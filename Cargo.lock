@@ -693,6 +693,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "df-traits"
+version = "2.0.0"
+dependencies = [
+ "frame-support",
+ "pallet-permissions",
+ "pallet-utils",
+]
+
+[[package]]
 name = "digest"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2714,6 +2723,7 @@ version = "2.0.0"
 dependencies = [
  "frame-support",
  "frame-system",
+ "pallet-utils",
  "parity-scale-codec",
  "sp-core",
  "sp-io",
@@ -2738,6 +2748,7 @@ dependencies = [
 name = "pallet-roles"
 version = "2.0.0"
 dependencies = [
+ "df-traits",
  "frame-support",
  "frame-system",
  "pallet-permissions",
@@ -2772,6 +2783,7 @@ dependencies = [
 name = "pallet-social"
 version = "2.0.0"
 dependencies = [
+ "df-traits",
  "frame-support",
  "frame-system",
  "pallet-permissions",
@@ -2846,7 +2858,6 @@ version = "2.0.0"
 dependencies = [
  "frame-support",
  "frame-system",
- "pallet-permissions",
  "pallet-timestamp",
  "parity-scale-codec",
  "sp-runtime",
