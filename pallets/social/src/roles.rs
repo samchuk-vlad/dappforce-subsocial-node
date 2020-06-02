@@ -1,6 +1,7 @@
 use super::*;
 
 use frame_support::{dispatch::{DispatchResult, DispatchError}};
+use pallet_permissions::{SpacePermissionsContext, PostPermissionsContext};
 
 impl<T: Trait> Module<T> {
 
@@ -16,10 +17,12 @@ impl<T: Trait> Module<T> {
 
     T::Roles::ensure_account_has_space_permission(
       account,
-      space.id,
-      is_owner,
-      is_follower,
-      space.permissions.clone(),
+      SpacePermissionsContext {
+        space_id: space.id,
+        is_space_owner: is_owner,
+        is_space_follower: is_follower,
+        space_perms: space.permissions.clone()
+      },
       permission,
       error
     )
@@ -39,12 +42,16 @@ impl<T: Trait> Module<T> {
 
     T::Roles::ensure_account_has_post_permission(
       account,
-      space.id,
-      is_post_owner,
-      is_space_owner,
-      is_follower,
-      post.permissions.clone(),
-      space.permissions.clone(),
+      SpacePermissionsContext {
+        space_id: space.id,
+        is_space_owner,
+        is_space_follower: is_follower,
+        space_perms: space.permissions.clone()
+      },
+      PostPermissionsContext {
+        is_post_owner,
+        post_perms: post.permissions.clone()
+      },
       permission,
       error
     )

@@ -11,8 +11,24 @@ use frame_support::{
 };
 use sp_runtime::RuntimeDebug;
 
+use pallet_utils::SpaceId;
+
 use self::PostPermission as PP;
 use self::SpacePermission as SP;
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+pub struct SpacePermissionsContext {
+  pub space_id: SpaceId,
+  pub is_space_owner: bool,
+  pub is_space_follower: bool,
+  pub space_perms: SpacePermissions
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+pub struct PostPermissionsContext {
+  pub is_post_owner: bool,
+  pub post_perms: PostPermissions
+}
 
 #[derive(Encode, Decode, Ord, PartialOrd, Clone, Eq, PartialEq, RuntimeDebug)]
 pub enum SpacePermission {
@@ -29,18 +45,23 @@ pub enum SpacePermission {
 
   // Related to subspaces in this space:
   CreateSubspaces,
-  UpdateSubspaces,
-  DeleteSubspaces,
+  UpdateOwnSubspaces,
+  UpdateAnySubspaces,
+  DeleteOwnSubspaces,
+  BlockSubspaces,
 
   // Related to posts in this space:
   CreatePosts,
-  UpdatePosts,
-  DeletePosts,
+  UpdateOwnPosts,
+  UpdateAnyPosts,
+  DeleteOwnPosts,
+  BlockPosts,
 
   // Related to comments in this space:
   CreateComments,
-  UpdateComments,
-  DeleteComments,
+  UpdateOwnComments,
+  DeleteOwnComments,
+  BlockComments,
 
   /// Upvote on any post or comment in this space.
   Upvote,
@@ -48,18 +69,21 @@ pub enum SpacePermission {
   Downvote,
   /// Share any post or comment from this space to another outer space.
   Share,
+
+  OverridePostPermissions,
 }
 
 #[derive(Encode, Decode, Ord, PartialOrd, Clone, Eq, PartialEq, RuntimeDebug)]
 pub enum PostPermission {
   // Relate to this post:
-  UpdatePost,
-  DeletePost,
+  UpdateOwnPost,
+  DeleteOwnPost,
 
   // Related to comments on this post:
   CreateComments,
-  UpdateComments,
-  DeleteComments,
+  UpdateOwnComments,
+  DeleteOwnComments,
+  BlockComments,
 
   // Related to this post and its comments:
   Upvote,
@@ -70,12 +94,13 @@ pub enum PostPermission {
 impl Into<SpacePermission> for PostPermission {
   fn into(self) -> SpacePermission {
     match self {
-      PP::UpdatePost => SP::UpdatePosts,
-      PP::DeletePost => SP::DeletePosts,
+      PP::UpdateOwnPost => SP::UpdateOwnPosts,
+      PP::DeleteOwnPost => SP::DeleteOwnPosts,
 
       PP::CreateComments => SP::CreateComments,
-      PP::UpdateComments => SP::UpdateComments,
-      PP::DeleteComments => SP::DeleteComments,
+      PP::UpdateOwnComments => SP::UpdateOwnComments,
+      PP::DeleteOwnComments => SP::DeleteOwnComments,
+      PP::BlockComments => SP::BlockComments,
 
       PP::Upvote => SP::Upvote,
       PP::Downvote => SP::Downvote,
@@ -139,14 +164,12 @@ decl_module! {
 impl<T: Trait> Module<T> {
 
   pub fn has_user_a_space_permission(
-    is_owner: bool,
-    is_follower: bool,
-    space_perms: SpacePermissions,
+    space_permissions_context: SpacePermissionsContext,
     permission: SpacePermission,
-  ) -> bool {
+  ) -> Option<BuiltinRole> {
 
     // Try to find a permission in space overrides:
-    let mut role_opt = space_perms.get(&permission);
+    let mut role_opt = space_permissions_context.space_perms.get(&permission);
 
     // Look into default space permissions,
     // if there is no permission override for this space:
@@ -156,23 +179,28 @@ impl<T: Trait> Module<T> {
     }
 
     Self::is_user_in_role(
-      is_owner,
-      is_follower,
+      &space_permissions_context,
       role_opt
     )
   }
 
   pub fn has_user_a_post_permission(
-    is_post_owner: bool,
-    is_space_owner: bool,
-    is_follower: bool,
-    post_perms: PostPermissions,
-    space_perms: SpacePermissions,
+    space_permissions_context: SpacePermissionsContext,
+    post_permissions_context: PostPermissionsContext,
     permission: PostPermission,
-  ) -> bool {
+  ) -> Option<BuiltinRole> {
+
+    if let Some(built_in_role) = Self::has_user_a_space_permission(
+      space_permissions_context.clone(),
+      permission.clone().into()
+    ) {
+      if built_in_role == BuiltinRole::None {
+        return Some(built_in_role);
+      }
+    }
 
     // Try to find a permission in post/comment overrides:
-    let mut role_opt = post_perms.get(&permission);
+    let mut role_opt = post_permissions_context.post_perms.get(&permission);
 
     // Look into default post permissions,
     // if there is no permission override for this post/comment:
@@ -181,40 +209,30 @@ impl<T: Trait> Module<T> {
       role_opt = default_perms.get(&permission);
     }
 
-    if Self::is_user_in_role(
-      is_post_owner,
-      is_follower,
+    Self::is_user_in_role(
+      &space_permissions_context,
       role_opt
-    ) {
-      return true;
-    }
-
-    Self::has_user_a_space_permission(
-      is_space_owner,
-      is_follower,
-      space_perms,
-      permission.into()
     )
   }
 
   pub fn is_user_in_role(
-    is_owner: bool,
-    is_follower: bool,
+    space_permissions_context: &SpacePermissionsContext,
     role_to_check: Option<&BuiltinRole>,
-  ) -> bool {
+  ) -> Option<BuiltinRole> {
+
+    let is_owner = space_permissions_context.is_space_owner;
+    let is_follower = space_permissions_context.is_space_follower;
 
     if let Some(role) = role_to_check {
-      if *role == BuiltinRole::None {
-        return false;
-      } else if
+      if *role == BuiltinRole::None ||
         *role == BuiltinRole::Owner && is_owner ||
         *role == BuiltinRole::Follower && (is_owner || is_follower) ||
         *role == BuiltinRole::Everyone
       {
-        return true;
+        return Some(role.clone());
       }
     }
 
-    false
+    None
   }
 }

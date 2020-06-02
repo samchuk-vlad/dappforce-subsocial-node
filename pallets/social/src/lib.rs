@@ -215,10 +215,7 @@ pub trait Trait: system::Trait + pallet_utils::Trait {
   /// Max comments depth
   type MaxCommentDepth: Get<u32>;
 
-  type Roles: PermissionChecker<
-    AccountId = Self::AccountId,
-    SpaceId = SpaceId
-  >;
+  type Roles: PermissionChecker<AccountId = Self::AccountId>;
 }
 
 decl_error! {

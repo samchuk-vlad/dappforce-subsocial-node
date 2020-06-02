@@ -43,7 +43,8 @@ use pallet_permissions::{
   SpacePermission as SP,
   SpacePermissions,
   PostPermission as PP,
-  PostPermissions
+  PostPermissions,
+  BuiltinRole
 };
 
 /// An index to a block.
@@ -301,35 +302,35 @@ parameter_types! {
   pub const DefaultSpacePermissions: SpacePermissions = BTreeMap::from_iter(vec![
     // Space owner permissions:
 
-    (SP::ManageRoles, Owner),
-    (SP::RepresentSpaceInternally, Owner),
-    (SP::RepresentSpaceExternally, Owner),
-    (SP::UpdateSpace, Owner),
-    (SP::BlockUsers, Owner),
+    (SP::ManageRoles, BuiltinRole::Owner),
+    (SP::RepresentSpaceInternally, BuiltinRole::Owner),
+    (SP::RepresentSpaceExternally, BuiltinRole::Owner),
+    (SP::UpdateSpace, BuiltinRole::Owner),
+    (SP::BlockUsers, BuiltinRole::Owner),
 
-    (SP::CreateSubspaces, Owner),
-    (SP::UpdateSubspaces, Owner),
-    (SP::DeleteSubspaces, Owner),
+    (SP::CreateSubspaces, BuiltinRole::Owner),
+    (SP::UpdateOwnSubspaces, BuiltinRole::Owner),
+    (SP::BlockSubspaces, BuiltinRole::Owner),
 
-    (SP::CreatePosts, Owner),
+    (SP::CreatePosts, BuiltinRole::Owner),
 
     // Everyone permissions:
 
-    (SP::CreateComments, Everyone),
+    (SP::CreateComments, BuiltinRole::Everyone),
 
-    (SP::Upvote, Everyone),
-    (SP::Downvote, Everyone),
-    (SP::Share, Everyone)
+    (SP::Upvote, BuiltinRole::Everyone),
+    (SP::Downvote, BuiltinRole::Everyone),
+    (SP::Share, BuiltinRole::Everyone)
   ].into_iter());
 
   pub const DefaultPostPermissions: PostPermissions = BTreeMap::from_iter(vec![
     // Post owner:
-    (PP::UpdatePost, Owner),
-    (PP::DeletePost, Owner),
+    (PP::UpdateOwnPost, BuiltinRole::Owner),
+    (PP::DeleteOwnPost, BuiltinRole::Owner),
 
     // Comment owner:
-    (PP::UpdateComments, Owner),
-    (PP::DeleteComments, Owner),
+    (PP::UpdateOwnComments, BuiltinRole::Owner),
+    (PP::DeleteOwnComments, BuiltinRole::Owner),
   ].into_iter());
 }
 

@@ -1,6 +1,7 @@
 use super::*;
 
 use frame_support::{dispatch::{DispatchResult, DispatchError}};
+use pallet_permissions::{SpacePermissionsContext, PostPermissionsContext, BuiltinRole};
 
 impl<T: Trait> Module<T> {
 
@@ -37,37 +38,48 @@ impl<T: Trait> Module<T> {
 
     Self::ensure_user_has_space_permission(
       user,
-      space_id,
-      is_owner,
-      is_follower,
-      space.permissions,
+      SpacePermissionsContext {
+        space_id,
+        is_space_owner: is_owner,
+        is_space_follower: is_follower,
+        space_perms: space.permissions
+      },
       permission,
       error
     )
   }
 
+  fn is_permission_not_denied(
+    built_in_role_opt: Option<BuiltinRole>,
+    error: DispatchError
+  ) -> Result<bool, DispatchError> {
+    match built_in_role_opt {
+      Some(BuiltinRole::None) => Err(error),
+      None => Ok(false),
+      _ => Ok(true)
+    }
+  }
+
   fn ensure_user_has_space_permission(
     user: User<T::AccountId>,
-    space_id: SpaceId,
-    is_owner: bool,
-    is_follower: bool,
-    space_perms: SpacePermissions,
+    space_perms_context: SpacePermissionsContext,
     permission: SpacePermission,
     error: DispatchError,
   ) -> DispatchResult {
 
-    if Permissions::<T>::has_user_a_space_permission(
-      is_owner,
-      is_follower,
-      space_perms,
-      permission.clone(),
-    ) {
+    if Self::is_permission_not_denied(
+      Permissions::<T>::has_user_a_space_permission(
+        space_perms_context.clone(),
+        permission.clone()
+      ),
+      error
+    )? {
       return Ok(());
     }
 
     Self::has_permission_in_space_roles(
       user,
-      space_id,
+      space_perms_context.space_id,
       permission,
       error
     )
@@ -75,30 +87,26 @@ impl<T: Trait> Module<T> {
 
   fn ensure_user_has_post_permission(
     user: User<T::AccountId>,
-    space_id: SpaceId,
-    is_post_owner: bool,
-    is_space_owner: bool,
-    is_follower: bool,
-    post_perms: PostPermissions,
-    space_perms: SpacePermissions,
+    space_perms_context: SpacePermissionsContext,
+    post_perms_context: PostPermissionsContext,
     permission: PostPermission,
     error: DispatchError,
   ) -> DispatchResult {
 
-    if Permissions::<T>::has_user_a_post_permission(
-      is_post_owner,
-      is_space_owner,
-      is_follower,
-      post_perms,
-      space_perms,
-      permission.clone(),
-    ) {
+    if Self::is_permission_not_denied(
+      Permissions::<T>::has_user_a_post_permission(
+        space_perms_context.clone(),
+        post_perms_context,
+        permission.clone()
+      ),
+      error
+    )? {
       return Ok(());
     }
 
     Self::has_permission_in_space_roles(
       user,
-      space_id,
+      space_perms_context.space_id,
       permission.into(),
       error
     )
@@ -193,24 +201,17 @@ impl<T: Trait> Role<T> {
 
 impl<T: Trait> PermissionChecker for Module<T> {
   type AccountId = T::AccountId;
-  type SpaceId = SpaceId;
 
   fn ensure_user_has_space_permission(
     user: User<Self::AccountId>,
-    space_id: Self::SpaceId,
-    is_owner: bool,
-    is_follower: bool,
-    space_perms: SpacePermissions,
+    space_perms_context: SpacePermissionsContext,
     permission: SpacePermission,
     error: DispatchError,
   ) -> DispatchResult {
 
     Self::ensure_user_has_space_permission(
       user,
-      space_id,
-      is_owner,
-      is_follower,
-      space_perms,
+      space_perms_context,
       permission,
       error
     )
@@ -218,24 +219,16 @@ impl<T: Trait> PermissionChecker for Module<T> {
 
   fn ensure_user_has_post_permission(
     user: User<T::AccountId>,
-    space_id: SpaceId,
-    is_post_owner: bool,
-    is_space_owner: bool,
-    is_follower: bool,
-    post_perms: PostPermissions,
-    space_perms: SpacePermissions,
+    space_perms_context: SpacePermissionsContext,
+    post_perms_context: PostPermissionsContext,
     permission: PostPermission,
     error: DispatchError,
   ) -> DispatchResult {
 
     Self::ensure_user_has_post_permission(
       user,
-      space_id,
-      is_post_owner,
-      is_space_owner,
-      is_follower,
-      post_perms,
-      space_perms,
+      space_perms_context,
+      post_perms_context,
       permission,
       error
     )

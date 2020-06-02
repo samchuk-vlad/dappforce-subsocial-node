@@ -23,9 +23,7 @@ use pallet_utils::{
 use pallet_permissions::{
   Module as Permissions,
   SpacePermission,
-  SpacePermissions,
-  PostPermission,
-  PostPermissions
+  PostPermission
 };
 use df_traits::{SpaceForRolesProvider, PermissionChecker};
 

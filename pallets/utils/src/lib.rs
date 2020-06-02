@@ -67,7 +67,7 @@ impl<T: Trait> Module<T> {
     let mut users_set: BTreeSet<User<T::AccountId>> = BTreeSet::new();
 
     for user in users_vec.iter() {
-      users_set.insert(user.clone().into());
+      users_set.insert(user.clone());
     }
 
     Ok(users_set)
