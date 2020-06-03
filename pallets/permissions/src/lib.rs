@@ -199,6 +199,8 @@ impl From<usize> for BuiltinRole {
 
 // -------------------------------------------------------------------------------------------------
 
+// Idea is to iterate BuiltinRole and return IterItem if SpacePermissionSet contains needed value
+
 /*impl BuiltinRole {
   fn get_space_permissions_set_by_role(&self, space_perms: SpacePermissions) -> SpacePermissionSet {
     match self {
@@ -258,13 +260,18 @@ impl<T: Trait> Module<T> {
   ) -> Option<BuiltinRole> {
 
     // Try to find a permission in space overrides:
-    let mut role_opt = space_permissions_context.space_perms.get(&permission);
-    /*let mut role_opt: Option<BuiltinRole> = None;
+    // let mut role_opt = space_permissions_context.space_perms.get(&permission);
+
+    /*
+    Implementation idea is to iterate through _Permissions structure and return BuiltinRole by
+    index where specified permission was found
+    */
+    let mut role_opt: Option<BuiltinRole> = None;
     for (builtin_role, space_perms_set) in space_permissions_context.space_perms.into_iter().enumerate() {
       if let Some(_) = space_perms_set.get(&permission) {
         role_opt = Option::from(builtin_role.into());
       }
-    }*/
+    }
 
     // Look into default space permissions,
     // if there is no permission override for this space:
