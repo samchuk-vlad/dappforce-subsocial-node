@@ -1,4 +1,13 @@
 {
+  "SpacePermissions": "BTreeMap<SpacePermission, BuiltinRole>",
+
+  "SpacePermissionsContext": {
+    "space_id": "SpaceId",
+    "is_space_owner": "bool",
+    "is_space_follower": "bool",
+    "space_perms": "SpacePermissions"
+  },
+
   "SpacePermission": {
     "_enum": [
       "ManageRoles",
@@ -7,28 +16,31 @@
       "UpdateSpace",
       "BlockUsers",
       "CreateSubspaces",
-      "UpdateSubspaces",
-      "DeleteSubspaces",
+      "UpdateOwnSubspaces",
+      "UpdateAnySubspaces",
+      "DeleteOwnSubspaces",
+      "BlockSubspaces",
       "CreatePosts",
-      "UpdatePosts",
-      "DeletePosts",
+      "UpdateOwnPosts",
+      "UpdateAnyPosts",
+      "DeleteOwnPosts",
+      "BlockPosts",
       "CreateComments",
-      "UpdateComments",
-      "DeleteComments",
+      "UpdateOwnComments",
+      "DeleteOwnComments",
+      "BlockComments",
       "Upvote",
       "Downvote",
       "Share"
     ]
   },
 
-  "PostPermission": {
+  "BuiltinRole": {
     "_enum": [
-      "CreateComments",
-      "UpdateComments",
-      "DeleteComments",
-      "Upvote",
-      "Downvote",
-      "Share"
+      "None",
+      "SpaceOwner",
+      "Follower",
+      "Everyone"
     ]
   }
 }

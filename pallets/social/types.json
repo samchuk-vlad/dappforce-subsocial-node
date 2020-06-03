@@ -1,6 +1,5 @@
 {
   "IpfsHash": "Text",
-  "SpaceId": "u64",
   "PostId": "u64",
   "ReactionId": "u64",
 
@@ -16,8 +15,7 @@
     "followers_count": "u32",
     "edit_history": "Vec<SpaceHistoryRecord>",
     "score": "i32",
-    "everyone_permissions": "Option<BTreeSet<SpacePermission>>",
-    "follower_permissions": "Option<BTreeSet<SpacePermission>>"
+    "permissions": "SpacePermissions"
   },
 
   "SpaceUpdate": {
@@ -45,9 +43,7 @@
     "shares_count": "u16",
     "upvotes_count": "u16",
     "downvotes_count": "u16",
-    "score": "i32",
-    "everyone_permissions": "Option<BTreeSet<SpacePermission>>",
-    "follower_permissions": "Option<BTreeSet<SpacePermission>>"
+    "score": "i32"
   },
 
   "PostUpdate": {

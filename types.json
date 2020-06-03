@@ -1,6 +1,5 @@
 {
   "IpfsHash": "Text",
-  "SpaceId": "u64",
   "PostId": "u64",
   "ReactionId": "u64",
 
@@ -16,8 +15,7 @@
     "followers_count": "u32",
     "edit_history": "Vec<SpaceHistoryRecord>",
     "score": "i32",
-    "everyone_permissions": "Option<BTreeSet<SpacePermission>>",
-    "follower_permissions": "Option<BTreeSet<SpacePermission>>"
+    "permissions": "SpacePermissions"
   },
 
   "SpaceUpdate": {
@@ -45,9 +43,7 @@
     "shares_count": "u16",
     "upvotes_count": "u16",
     "downvotes_count": "u16",
-    "score": "i32",
-    "everyone_permissions": "Option<BTreeSet<SpacePermission>>",
-    "follower_permissions": "Option<BTreeSet<SpacePermission>>"
+    "score": "i32"
   },
 
   "PostUpdate": {
@@ -129,6 +125,14 @@
   },
 
 
+  "SpaceForRoles": {
+    "owner": "AccountId",
+    "permissions": "SpacePermissions"
+  },
+
+
+  "SpaceId": "u64",
+
   "WhoAndWhen": {
     "account": "AccountId",
     "block": "BlockNumber",
@@ -142,6 +146,15 @@
   },
 
 
+  "SpacePermissions": "BTreeMap<SpacePermission, BuiltinRole>",
+
+  "SpacePermissionsContext": {
+    "space_id": "SpaceId",
+    "is_space_owner": "bool",
+    "is_space_follower": "bool",
+    "space_perms": "SpacePermissions"
+  },
+
   "SpacePermission": {
     "_enum": [
       "ManageRoles",
@@ -150,28 +163,31 @@
       "UpdateSpace",
       "BlockUsers",
       "CreateSubspaces",
-      "UpdateSubspaces",
-      "DeleteSubspaces",
+      "UpdateOwnSubspaces",
+      "UpdateAnySubspaces",
+      "DeleteOwnSubspaces",
+      "BlockSubspaces",
       "CreatePosts",
-      "UpdatePosts",
-      "DeletePosts",
+      "UpdateOwnPosts",
+      "UpdateAnyPosts",
+      "DeleteOwnPosts",
+      "BlockPosts",
       "CreateComments",
-      "UpdateComments",
-      "DeleteComments",
+      "UpdateOwnComments",
+      "DeleteOwnComments",
+      "BlockComments",
       "Upvote",
       "Downvote",
       "Share"
     ]
   },
 
-  "PostPermission": {
+  "BuiltinRole": {
     "_enum": [
-      "CreateComments",
-      "UpdateComments",
-      "DeleteComments",
-      "Upvote",
-      "Downvote",
-      "Share"
+      "None",
+      "SpaceOwner",
+      "Follower",
+      "Everyone"
     ]
   },
 
@@ -190,6 +206,7 @@
   },
 
   "RoleUpdate": {
+    "disabled": "Option<bool>",
     "ipfs_hash": "Option<Option<IpfsHash>>",
     "permissions": "Option<BTreeSet<SpacePermission>>"
   }

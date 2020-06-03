@@ -13,6 +13,7 @@
   },
 
   "RoleUpdate": {
+    "disabled": "Option<bool>",
     "ipfs_hash": "Option<Option<IpfsHash>>",
     "permissions": "Option<BTreeSet<SpacePermission>>"
   }
