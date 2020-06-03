@@ -22,8 +22,7 @@ use pallet_utils::{
 };
 use pallet_permissions::{
   Module as Permissions,
-  SpacePermission,
-  PostPermission
+  SpacePermission
 };
 use df_traits::{SpaceForRolesProvider, PermissionChecker};
 
@@ -43,6 +42,7 @@ pub struct Role<T: Trait> {
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct RoleUpdate {
+  pub disabled: Option<bool>,
   pub ipfs_hash: Option<Option<Vec<u8>>>,
   pub permissions: Option<BTreeSet<SpacePermission>>,
 }
@@ -68,8 +68,6 @@ decl_event!(
     RoleDeleted(AccountId, RoleId),
     RoleGranted(AccountId, RoleId, Vec<User<AccountId>>),
     RoleRevoked(AccountId, RoleId, Vec<User<AccountId>>),
-    RoleEnabled(AccountId, RoleId),
-    RoleDisabled(AccountId, RoleId),
   }
 );
 
@@ -174,6 +172,7 @@ decl_module! {
       let who = ensure_signed(origin)?;
 
       let has_updates =
+        update.disabled.is_some() ||
         update.ipfs_hash.is_some() ||
         update.permissions.is_some();
 
@@ -184,6 +183,13 @@ decl_module! {
       Self::ensure_role_manager(who.clone(), role.space_id)?;
 
       let mut fields_updated = 0;
+
+      if let Some(disabled) = update.disabled {
+        if disabled != role.disabled {
+          role.set_disabled(disabled)?;
+          fields_updated += 1;
+        }
+      }
 
       if let Some(ipfs_hash_opt) = update.ipfs_hash {
         if ipfs_hash_opt != role.ipfs_hash {
@@ -280,43 +286,6 @@ decl_module! {
       role.revoke_from_users(users.clone());
 
       Self::deposit_event(RawEvent::RoleRevoked(who, role_id, users));
-    }
-
-    /// Disable the role. If the role is disabled, their roles should not be taken into account.
-    /// Should throw an error if the role is not enabled.
-    /// Only the space owner or an user with `ManageRoles` permission can execute this extrinsic.
-    pub fn disable_role(origin, role_id: RoleId) {
-
-      // TODO fix copypasta via: fn toggle_role(false)
-
-      let who = ensure_signed(origin)?;
-
-      let mut role = Self::role_by_id(role_id).ok_or(Error::<T>::RoleNotFound)?;
-
-      Self::ensure_role_manager(who.clone(), role.space_id)?;
-
-      role.set_disabled(true)?;
-
-      <RoleById<T>>::insert(role_id, role);
-      Self::deposit_event(RawEvent::RoleDisabled(who, role_id));
-    }
-
-    /// Enable the role. Should throw an error if the role is not disabled.
-    /// Only the space owner or an user with `ManageRoles` permission can execute this extrinsic.
-    pub fn enable_role(origin, role_id: RoleId) {
-
-      // TODO fix copypasta via: fn toggle_role(true)
-
-      let who = ensure_signed(origin)?;
-
-      let mut role = Self::role_by_id(role_id).ok_or(Error::<T>::RoleNotFound)?;
-
-      Self::ensure_role_manager(who.clone(), role.space_id)?;
-
-      role.set_disabled(false)?;
-
-      <RoleById<T>>::insert(role_id, role);
-      Self::deposit_event(RawEvent::RoleEnabled(who, role_id));
     }
   }
 }

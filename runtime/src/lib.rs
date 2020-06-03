@@ -42,8 +42,6 @@ pub use frame_support::{
 use pallet_permissions::{
   SpacePermission as SP,
   SpacePermissions,
-  PostPermission as PP,
-  PostPermissions,
   BuiltinRole
 };
 
@@ -298,45 +296,48 @@ impl pallet_roles::Trait for Runtime {
 }
 
 parameter_types! {
-
   pub const DefaultSpacePermissions: SpacePermissions = BTreeMap::from_iter(vec![
+    // Not allowed permissions:
+    (SP::UpdateAnySubspaces, BuiltinRole::None),
+
     // Space owner permissions:
 
-    (SP::ManageRoles, BuiltinRole::Owner),
-    (SP::RepresentSpaceInternally, BuiltinRole::Owner),
-    (SP::RepresentSpaceExternally, BuiltinRole::Owner),
-    (SP::UpdateSpace, BuiltinRole::Owner),
-    (SP::BlockUsers, BuiltinRole::Owner),
+    (SP::ManageRoles, BuiltinRole::SpaceOwner),
+    (SP::RepresentSpaceInternally, BuiltinRole::SpaceOwner),
+    (SP::RepresentSpaceExternally, BuiltinRole::SpaceOwner),
+    (SP::UpdateSpace, BuiltinRole::SpaceOwner),
+    (SP::BlockUsers, BuiltinRole::SpaceOwner),
 
-    (SP::CreateSubspaces, BuiltinRole::Owner),
-    (SP::UpdateOwnSubspaces, BuiltinRole::Owner),
-    (SP::BlockSubspaces, BuiltinRole::Owner),
+    (SP::BlockSubspaces, BuiltinRole::SpaceOwner),
 
-    (SP::CreatePosts, BuiltinRole::Owner),
+    (SP::CreatePosts, BuiltinRole::SpaceOwner),
+    (SP::BlockPosts, BuiltinRole::SpaceOwner),
+
+    (SP::BlockComments, BuiltinRole::SpaceOwner),
+
+    // Follower permissions:
+    (SP::CreateSubspaces, BuiltinRole::Follower),
+    (SP::UpdateOwnSubspaces, BuiltinRole::Follower),
+    (SP::DeleteOwnSubspaces, BuiltinRole::Follower),
+
+    (SP::Share, BuiltinRole::Everyone),
 
     // Everyone permissions:
 
+    (SP::UpdateOwnPosts, BuiltinRole::Everyone),
+    (SP::DeleteOwnPosts, BuiltinRole::Everyone),
+
     (SP::CreateComments, BuiltinRole::Everyone),
+    (SP::UpdateOwnComments, BuiltinRole::Everyone),
+    (SP::DeleteOwnComments, BuiltinRole::Everyone),
 
     (SP::Upvote, BuiltinRole::Everyone),
-    (SP::Downvote, BuiltinRole::Everyone),
-    (SP::Share, BuiltinRole::Everyone)
-  ].into_iter());
-
-  pub const DefaultPostPermissions: PostPermissions = BTreeMap::from_iter(vec![
-    // Post owner:
-    (PP::UpdateOwnPost, BuiltinRole::Owner),
-    (PP::DeleteOwnPost, BuiltinRole::Owner),
-
-    // Comment owner:
-    (PP::UpdateOwnComments, BuiltinRole::Owner),
-    (PP::DeleteOwnComments, BuiltinRole::Owner),
+    (SP::Downvote, BuiltinRole::Everyone)
   ].into_iter());
 }
 
 impl pallet_permissions::Trait for Runtime {
   type DefaultSpacePermissions = DefaultSpacePermissions;
-  type DefaultPostPermissions = DefaultPostPermissions;
 }
 
 construct_runtime!(

@@ -1,12 +1,12 @@
 use super::*;
 
-use frame_support::{dispatch::{DispatchResult, DispatchError}};
+use frame_support::dispatch::DispatchResult;
 use df_traits::{SpaceForRolesProvider, SpaceForRoles};
 use sp_std::collections::btree_map::BTreeMap;
 
 impl<T: Trait> Module<T> {
 
-    // TODO: maybe don't add reaction in storage before checks in 'create_reaction' are done?
+    // FIXME: don't add reaction in storage before checks in 'create_reaction' are done
     pub fn new_reaction(account: T::AccountId, kind: ReactionKind) -> ReactionId {
         let reaction_id = Self::next_reaction_id();
         let new_reaction: Reaction<T> = Reaction {
@@ -395,8 +395,7 @@ impl<T: Trait> Post<T> {
             shares_count: 0,
             upvotes_count: 0,
             downvotes_count: 0,
-            score: 0,
-            permissions: BTreeMap::new()
+            score: 0
         }
     }
 
