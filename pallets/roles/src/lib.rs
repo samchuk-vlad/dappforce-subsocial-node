@@ -22,7 +22,8 @@ use pallet_utils::{
 };
 use pallet_permissions::{
   Module as Permissions,
-  SpacePermission
+  SpacePermission,
+  SpacePermissionSet
 };
 use df_traits::{SpaceForRolesProvider, PermissionChecker};
 
@@ -37,14 +38,14 @@ pub struct Role<T: Trait> {
   pub disabled: bool,
   pub expires_at:  Option<T::BlockNumber>,
   pub ipfs_hash: Option<Vec<u8>>,
-  pub permissions: BTreeSet<SpacePermission>,
+  pub permissions: SpacePermissionSet,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct RoleUpdate {
   pub disabled: Option<bool>,
   pub ipfs_hash: Option<Option<Vec<u8>>>,
-  pub permissions: Option<BTreeSet<SpacePermission>>,
+  pub permissions: Option<SpacePermissionSet>,
 }
 
 /// The pallet's configuration trait.

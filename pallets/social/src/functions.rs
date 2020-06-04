@@ -2,7 +2,6 @@ use super::*;
 
 use frame_support::dispatch::DispatchResult;
 use df_traits::{SpaceForRolesProvider, SpaceForRoles};
-use sp_std::collections::btree_map::BTreeMap;
 
 impl<T: Trait> Module<T> {
 
@@ -348,7 +347,7 @@ impl<T: Trait> Space<T> {
             followers_count: 0,
             edit_history: Vec::new(),
             score: 0,
-            permissions: BTreeMap::new()
+            permissions: None
         }
     }
 

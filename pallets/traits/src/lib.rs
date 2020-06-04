@@ -12,7 +12,7 @@ use pallet_utils::User;
 /// Minimal set of fields from Space struct that are required by roles pallet.
 pub struct SpaceForRoles<AccountId> {
   pub owner: AccountId,
-  pub permissions: SpacePermissions,
+  pub permissions: Option<SpacePermissions>,
 }
 
 pub trait SpaceForRolesProvider {

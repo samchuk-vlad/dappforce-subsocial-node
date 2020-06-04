@@ -42,7 +42,7 @@ pub struct Space<T: Trait> {
   pub score: i32,
 
   /// Allows to override the default permissions for this space.
-  pub permissions: SpacePermissions,
+  pub permissions: Option<SpacePermissions>,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]

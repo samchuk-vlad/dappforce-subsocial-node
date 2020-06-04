@@ -1,8 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use sp_std::prelude::*;
-use sp_std::collections::{
-  btree_map::BTreeMap
+use sp_std::{
+  prelude::*,
+  collections::btree_set::BTreeSet
 };
 use codec::{Encode, Decode};
 use frame_support::{
@@ -12,14 +12,6 @@ use frame_support::{
 use sp_runtime::RuntimeDebug;
 
 use pallet_utils::SpaceId;
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct SpacePermissionsContext {
-  pub space_id: SpaceId,
-  pub is_space_owner: bool,
-  pub is_space_follower: bool,
-  pub space_perms: SpacePermissions
-}
 
 #[derive(Encode, Decode, Ord, PartialOrd, Clone, Eq, PartialEq, RuntimeDebug)]
 pub enum SpacePermission {
@@ -60,25 +52,38 @@ pub enum SpacePermission {
   Downvote,
   /// Share any post or comment from this space to another outer space.
   Share,
+
+  OverridePostPermissions,
 }
 
-#[derive(Encode, Decode, Ord, PartialOrd, Clone, Eq, PartialEq, RuntimeDebug)]
-pub enum BuiltinRole {
+pub type SpacePermissionSet = BTreeSet<SpacePermission>;
 
-  /// None is allowed.
-  None,
-
-  /// An owner of the Space on which we are checking a permission.
-  SpaceOwner,
-
-  /// Owners and followers of this space allowed.
-  Follower,
-
-  /// Every user of this blockchain is allowed.
-  Everyone,
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+pub struct SpacePermissions {
+  pub none: Option<SpacePermissionSet>,
+  pub everyone: Option<SpacePermissionSet>,
+  pub follower: Option<SpacePermissionSet>,
+  pub space_owner: Option<SpacePermissionSet>,
 }
 
-pub type SpacePermissions = BTreeMap<SpacePermission, BuiltinRole>;
+impl Default for SpacePermissions {
+  fn default() -> SpacePermissions {
+    SpacePermissions {
+      none: None,
+      everyone: None,
+      follower: None,
+      space_owner: None,
+    }
+  }
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+pub struct SpacePermissionsContext {
+  pub space_id: SpaceId,
+  pub is_space_owner: bool,
+  pub is_space_follower: bool,
+  pub space_perms: Option<SpacePermissions>
+}
 
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait {
@@ -91,45 +96,67 @@ decl_module! {
   }
 }
 
+impl SpacePermission {
+  fn is_present_in_role(&self, perms_opt: Option<SpacePermissionSet>) -> bool {
+    if let Some(perms) = perms_opt {
+      if perms.contains(self) {
+        return true
+      }
+    }
+    false
+  }
+}
+
 impl<T: Trait> Module<T> {
 
-  pub fn has_user_a_space_permission(
-    space_permissions_context: SpacePermissionsContext,
-    permission: SpacePermission,
-  ) -> Option<BuiltinRole> {
+  fn get_overrides_or_defaults(
+    overrides: Option<SpacePermissionSet>,
+    defaults: Option<SpacePermissionSet>
+  ) -> Option<SpacePermissionSet> {
 
-    // Try to find a permission in space overrides:
-    let mut role_opt = space_permissions_context.space_perms.get(&permission);
-
-    // Look into default space permissions,
-    // if there is no permission override for this space:
-    let default_perms = T::DefaultSpacePermissions::get();
-    if role_opt.is_none() {
-      role_opt = default_perms.get(&permission);
+    return if overrides.is_some() {
+      overrides
+    } else {
+      defaults
     }
-
-    Self::is_user_in_role(
-      &space_permissions_context,
-      role_opt
-    )
   }
 
-  pub fn is_user_in_role(
-    space_permissions_context: &SpacePermissionsContext,
-    role_to_check: Option<&BuiltinRole>,
-  ) -> Option<BuiltinRole> {
+  fn resolve_space_perms(
+    space_perms: Option<SpacePermissions>,
+  ) -> SpacePermissions {
 
-    let is_owner = space_permissions_context.is_space_owner;
-    let is_follower = space_permissions_context.is_space_follower;
+    let defaults = T::DefaultSpacePermissions::get();
+    let overrides = space_perms.unwrap_or_default();
 
-    if let Some(role) = role_to_check {
-      if *role == BuiltinRole::None ||
-        *role == BuiltinRole::SpaceOwner && is_owner ||
-        *role == BuiltinRole::Follower && (is_owner || is_follower) ||
-        *role == BuiltinRole::Everyone
-      {
-        return Some(role.clone());
-      }
+    SpacePermissions {
+      none: Self::get_overrides_or_defaults(overrides.none, defaults.none),
+      everyone: Self::get_overrides_or_defaults(overrides.everyone, defaults.everyone),
+      follower: Self::get_overrides_or_defaults(overrides.follower, defaults.follower),
+      space_owner: Self::get_overrides_or_defaults(overrides.space_owner, defaults.space_owner)
+    }
+  }
+
+  pub fn has_user_a_space_permission(
+    ctx: SpacePermissionsContext,
+    permission: SpacePermission,
+  ) -> Option<bool> {
+
+    let perms_by_role = Self::resolve_space_perms(ctx.space_perms);
+
+    // Check if this permission is forbidden:
+    if permission.is_present_in_role(perms_by_role.none) {
+      return Some(false)
+    }
+
+    let is_space_owner = ctx.is_space_owner;
+    let is_follower = is_space_owner || ctx.is_space_follower;
+
+    if
+      permission.is_present_in_role(perms_by_role.everyone) ||
+      is_follower && permission.is_present_in_role(perms_by_role.follower) ||
+      is_space_owner && permission.is_present_in_role(perms_by_role.space_owner)
+    {
+      return Some(true)
     }
 
     None
