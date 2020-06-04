@@ -1,7 +1,7 @@
 use super::*;
 
 use frame_support::{dispatch::{DispatchResult, DispatchError}};
-use pallet_permissions::{SpacePermissionsContext, PostPermissionsContext, BuiltinRole};
+use pallet_permissions::SpacePermissionsContext;
 
 impl<T: Trait> Module<T> {
 
@@ -49,65 +49,26 @@ impl<T: Trait> Module<T> {
     )
   }
 
-  fn is_permission_not_denied(
-    built_in_role_opt: Option<BuiltinRole>,
-    error: DispatchError
-  ) -> Result<bool, DispatchError> {
-    match built_in_role_opt {
-      Some(BuiltinRole::None) => Err(error),
-      None => Ok(false),
-      _ => Ok(true)
-    }
-  }
-
   fn ensure_user_has_space_permission(
     user: User<T::AccountId>,
-    space_perms_context: SpacePermissionsContext,
+    ctx: SpacePermissionsContext,
     permission: SpacePermission,
     error: DispatchError,
   ) -> DispatchResult {
 
-    if Self::is_permission_not_denied(
-      Permissions::<T>::has_user_a_space_permission(
-        space_perms_context.clone(),
-        permission.clone()
-      ),
-      error
-    )? {
-      return Ok(());
+    match Permissions::<T>::has_user_a_space_permission(
+      ctx.clone(),
+      permission.clone()
+    ) {
+      Some(true) => return Ok(()),
+      Some(false) => return Err(error),
+      _ => (/* Need to check in dynamic roles */)
     }
 
     Self::has_permission_in_space_roles(
       user,
-      space_perms_context.space_id,
+      ctx.space_id,
       permission,
-      error
-    )
-  }
-
-  fn ensure_user_has_post_permission(
-    user: User<T::AccountId>,
-    space_perms_context: SpacePermissionsContext,
-    post_perms_context: PostPermissionsContext,
-    permission: PostPermission,
-    error: DispatchError,
-  ) -> DispatchResult {
-
-    if Self::is_permission_not_denied(
-      Permissions::<T>::has_user_a_post_permission(
-        space_perms_context.clone(),
-        post_perms_context,
-        permission.clone()
-      ),
-      error
-    )? {
-      return Ok(());
-    }
-
-    Self::has_permission_in_space_roles(
-      user,
-      space_perms_context.space_id,
-      permission.into(),
       error
     )
   }
@@ -212,23 +173,6 @@ impl<T: Trait> PermissionChecker for Module<T> {
     Self::ensure_user_has_space_permission(
       user,
       space_perms_context,
-      permission,
-      error
-    )
-  }
-
-  fn ensure_user_has_post_permission(
-    user: User<T::AccountId>,
-    space_perms_context: SpacePermissionsContext,
-    post_perms_context: PostPermissionsContext,
-    permission: PostPermission,
-    error: DispatchError,
-  ) -> DispatchResult {
-
-    Self::ensure_user_has_post_permission(
-      user,
-      space_perms_context,
-      post_perms_context,
       permission,
       error
     )

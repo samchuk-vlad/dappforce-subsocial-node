@@ -5,16 +5,14 @@ use frame_support::dispatch::{DispatchResult, DispatchError};
 use pallet_permissions::{
   SpacePermission,
   SpacePermissions,
-  PostPermission,
-  SpacePermissionsContext,
-  PostPermissionsContext
+  SpacePermissionsContext
 };
 use pallet_utils::User;
 
 /// Minimal set of fields from Space struct that are required by roles pallet.
 pub struct SpaceForRoles<AccountId> {
   pub owner: AccountId,
-  pub permissions: SpacePermissions,
+  pub permissions: Option<SpacePermissions>,
 }
 
 pub trait SpaceForRolesProvider {
@@ -36,14 +34,6 @@ pub trait PermissionChecker {
     error: DispatchError,
   ) -> DispatchResult;
 
-  fn ensure_user_has_post_permission(
-    user: User<Self::AccountId>,
-    space_perms_context: SpacePermissionsContext,
-    post_perms_context: PostPermissionsContext,
-    permission: PostPermission,
-    error: DispatchError
-  ) -> DispatchResult;
-
   fn ensure_account_has_space_permission(
     account: Self::AccountId,
     space_perms_context: SpacePermissionsContext,
@@ -54,23 +44,6 @@ pub trait PermissionChecker {
     Self::ensure_user_has_space_permission(
       User::Account(account),
       space_perms_context,
-      permission,
-      error
-    )
-  }
-
-  fn ensure_account_has_post_permission(
-    account: Self::AccountId,
-    space_perms_context: SpacePermissionsContext,
-    post_perms_context: PostPermissionsContext,
-    permission: PostPermission,
-    error: DispatchError
-  ) -> DispatchResult {
-
-    Self::ensure_user_has_post_permission(
-      User::Account(account),
-      space_perms_context,
-      post_perms_context,
       permission,
       error
     )

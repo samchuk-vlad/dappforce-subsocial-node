@@ -9,7 +9,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 use sp_std::{
   prelude::*,
   iter::FromIterator,
-  collections::btree_map::BTreeMap
+  collections::btree_set::BTreeSet
 };
 use sp_core::OpaqueMetadata;
 use sp_runtime::{
@@ -41,10 +41,7 @@ pub use frame_support::{
 
 use pallet_permissions::{
   SpacePermission as SP,
-  SpacePermissions,
-  PostPermission as PP,
-  PostPermissions,
-  BuiltinRole
+  SpacePermissions
 };
 
 /// An index to a block.
@@ -299,44 +296,53 @@ impl pallet_roles::Trait for Runtime {
 
 parameter_types! {
 
-  pub const DefaultSpacePermissions: SpacePermissions = BTreeMap::from_iter(vec![
-    // Space owner permissions:
+  pub const DefaultSpacePermissions: SpacePermissions = SpacePermissions {
 
-    (SP::ManageRoles, BuiltinRole::Owner),
-    (SP::RepresentSpaceInternally, BuiltinRole::Owner),
-    (SP::RepresentSpaceExternally, BuiltinRole::Owner),
-    (SP::UpdateSpace, BuiltinRole::Owner),
-    (SP::BlockUsers, BuiltinRole::Owner),
+    // No permissions disabled by default
+    none: None,
 
-    (SP::CreateSubspaces, BuiltinRole::Owner),
-    (SP::UpdateOwnSubspaces, BuiltinRole::Owner),
-    (SP::BlockSubspaces, BuiltinRole::Owner),
+    everyone: Some(BTreeSet::from_iter(vec![
+      SP::UpdateOwnSubspaces,
+      SP::DeleteOwnSubspaces,
 
-    (SP::CreatePosts, BuiltinRole::Owner),
+      SP::UpdateOwnPosts,
+      SP::DeleteOwnPosts,
 
-    // Everyone permissions:
+      SP::CreateComments,
+      SP::UpdateOwnComments,
+      SP::DeleteOwnComments,
 
-    (SP::CreateComments, BuiltinRole::Everyone),
+      SP::Upvote,
+      SP::Downvote,
+      SP::Share
+    ].into_iter())),
 
-    (SP::Upvote, BuiltinRole::Everyone),
-    (SP::Downvote, BuiltinRole::Everyone),
-    (SP::Share, BuiltinRole::Everyone)
-  ].into_iter());
+    // Followers can do everything that everyone else can.
+    follower: None,
 
-  pub const DefaultPostPermissions: PostPermissions = BTreeMap::from_iter(vec![
-    // Post owner:
-    (PP::UpdateOwnPost, BuiltinRole::Owner),
-    (PP::DeleteOwnPost, BuiltinRole::Owner),
+    space_owner: Some(BTreeSet::from_iter(vec![
+      SP::ManageRoles,
+      SP::RepresentSpaceInternally,
+      SP::RepresentSpaceExternally,
+      SP::OverridePostPermissions,
 
-    // Comment owner:
-    (PP::UpdateOwnComments, BuiltinRole::Owner),
-    (PP::DeleteOwnComments, BuiltinRole::Owner),
-  ].into_iter());
+      SP::CreateSubspaces,
+      SP::CreatePosts,
+
+      SP::UpdateSpace,
+      SP::UpdateAnySubspaces,
+      SP::UpdateAnyPosts,
+
+      SP::BlockSubspaces,
+      SP::BlockPosts,
+      SP::BlockComments,
+      SP::BlockUsers
+    ].into_iter()))
+  };
 }
 
 impl pallet_permissions::Trait for Runtime {
   type DefaultSpacePermissions = DefaultSpacePermissions;
-  type DefaultPostPermissions = DefaultPostPermissions;
 }
 
 construct_runtime!(

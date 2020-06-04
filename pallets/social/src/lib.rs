@@ -12,7 +12,7 @@ use sp_runtime::RuntimeDebug;
 use system::ensure_signed;
 
 use pallet_utils::{Module as Utils, WhoAndWhen, SpaceId};
-use pallet_permissions::{SpacePermission, SpacePermissions, PostPermission, PostPermissions};
+use pallet_permissions::{SpacePermission, SpacePermissions};
 use df_traits::PermissionChecker;
 
 pub type PostId = u64;
@@ -38,7 +38,7 @@ pub struct Space<T: Trait> {
   pub score: i32,
 
   /// Allows to override the default permissions for this space.
-  pub permissions: SpacePermissions,
+  pub permissions: Option<SpacePermissions>,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -76,9 +76,6 @@ pub struct Post<T: Trait> {
   pub downvotes_count: u16,
 
   pub score: i32,
-
-  /// Allow to override the default permissions for this post and its comments.
-  pub permissions: PostPermissions,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -778,11 +775,10 @@ decl_module! {
           )?;
         }
         PostExtension::Comment(_) => {
-          Self::ensure_account_has_post_permission(
+          Self::ensure_account_has_space_permission(
             owner.clone(),
-            &new_post,
             &space,
-            PostPermission::CreateComments,
+            SpacePermission::CreateComments,
             Error::<T>::NoPermissionToCreateComments.into()
           )?;
         },
