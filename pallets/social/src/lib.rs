@@ -378,7 +378,7 @@ decl_error! {
     /// User is an author, but has no permission to update own posts in this space
     NoPermissionToUpdateOwnPosts,
     /// User is not an author and has no permission to update posts in this space
-    NoPermissionToUpdateAnyPosts,
+    NoPermissionToUpdateAnyPost,
     /// User has no permission to update own comments in this space posts
     NoPermissionToUpdateOwnComments,
     /// User has no permission to upvote posts/comments in this space
@@ -890,8 +890,8 @@ decl_module! {
           permission_to_check = SpacePermission::UpdateOwnPosts;
           permission_error = Error::<T>::NoPermissionToUpdateOwnPosts.into();
         } else {
-          permission_to_check = SpacePermission::UpdateAnyPosts;
-          permission_error = Error::<T>::NoPermissionToUpdateAnyPosts.into();
+          permission_to_check = SpacePermission::UpdateAnyPost;
+          permission_error = Error::<T>::NoPermissionToUpdateAnyPost.into();
         }
       }
 
