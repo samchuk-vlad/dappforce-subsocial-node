@@ -8,10 +8,10 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use sp_std::{
   prelude::*,
+  iter::FromIterator,
   collections::btree_set::BTreeSet
 };
 use sp_core::OpaqueMetadata;
-use core::iter::FromIterator;
 use sp_runtime::{
   ApplyExtrinsicResult, transaction_validity::TransactionValidity, generic, create_runtime_str,
   impl_opaque_keys, MultiSignature
@@ -39,7 +39,10 @@ pub use frame_support::{
   weights::Weight,
 };
 
-use pallet_permissions::SpacePermission;
+use pallet_permissions::{
+  SpacePermission as SP,
+  SpacePermissions
+};
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -101,7 +104,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
   apis: RUNTIME_API_VERSIONS,
 };
 
-pub const MILLISECS_PER_BLOCK: u64 = 2000;
+pub const MILLISECS_PER_BLOCK: u64 = 4000;
 
 pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
 
@@ -278,30 +281,68 @@ impl pallet_social::Trait for Runtime {
   type DownvoteCommentActionWeight = DownvoteCommentActionWeight;
   type ShareCommentActionWeight = ShareCommentActionWeight;
   type MaxCommentDepth = MaxCommentDepth;
+  type Roles = Roles;
 }
 
 parameter_types! {
   pub const MaxUsersToProcessPerDeleteRole: u16 = 20;
 }
+
 impl pallet_roles::Trait for Runtime {
   type Event = Event;
   type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
+  type Spaces = Social;
 }
 
 parameter_types! {
-  pub const DefaultEveryoneSpacePermissions: BTreeSet<SpacePermission> = BTreeSet::from_iter(vec![
-    SpacePermission::ManageRoles,
-    SpacePermission::ManagePosts,
-    SpacePermission::UpdateOwnComments
-  ].into_iter());
 
-  pub const DefaultFollowerSpacePermissions: BTreeSet<SpacePermission> = BTreeSet::from_iter(vec![
-    SpacePermission::DeleteOwnComments
-  ].into_iter());
+  pub const DefaultSpacePermissions: SpacePermissions = SpacePermissions {
+
+    // No permissions disabled by default
+    none: None,
+
+    everyone: Some(BTreeSet::from_iter(vec![
+      SP::UpdateOwnSubspaces,
+      SP::DeleteOwnSubspaces,
+
+      SP::UpdateOwnPosts,
+      SP::DeleteOwnPosts,
+
+      SP::CreateComments,
+      SP::UpdateOwnComments,
+      SP::DeleteOwnComments,
+
+      SP::Upvote,
+      SP::Downvote,
+      SP::Share
+    ].into_iter())),
+
+    // Followers can do everything that everyone else can.
+    follower: None,
+
+    space_owner: Some(BTreeSet::from_iter(vec![
+      SP::ManageRoles,
+      SP::RepresentSpaceInternally,
+      SP::RepresentSpaceExternally,
+      SP::OverridePostPermissions,
+
+      SP::CreateSubspaces,
+      SP::CreatePosts,
+
+      SP::UpdateSpace,
+      SP::UpdateAnySubspaces,
+      SP::UpdateAnyPosts,
+
+      SP::BlockSubspaces,
+      SP::BlockPosts,
+      SP::BlockComments,
+      SP::BlockUsers
+    ].into_iter()))
+  };
 }
+
 impl pallet_permissions::Trait for Runtime {
-  type DefaultEveryoneSpacePermissions = DefaultEveryoneSpacePermissions;
-  type DefaultFollowerSpacePermissions = DefaultFollowerSpacePermissions;
+  type DefaultSpacePermissions = DefaultSpacePermissions;
 }
 
 construct_runtime!(

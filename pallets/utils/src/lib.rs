@@ -1,9 +1,18 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use sp_std::prelude::*;
+use sp_std::{
+  prelude::*,
+  collections::btree_set::BTreeSet
+};
 use codec::{Encode, Decode};
 use sp_runtime::RuntimeDebug;
-use frame_support::{decl_module, decl_error, ensure, traits::Get, dispatch::DispatchResult};
+use frame_support::{
+  decl_module, decl_error, ensure,
+  traits::Get,
+  dispatch::{DispatchResult, DispatchError}
+};
+
+pub type SpaceId = u64;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct WhoAndWhen<T: Trait> {
@@ -28,8 +37,6 @@ pub enum User<AccountId> {
   Space(SpaceId)
 }
 
-pub type SpaceId = u64;
-
 pub trait Trait: system::Trait + pallet_timestamp::Trait {
   /// The length in bytes of IPFS hash
   type IpfsHashLen: Get<u32>;
@@ -53,5 +60,16 @@ impl<T: Trait> Module<T> {
   pub fn is_ipfs_hash_valid(ipfs_hash: Vec<u8>) -> DispatchResult {
     ensure!(ipfs_hash.len() == T::IpfsHashLen::get() as usize, Error::<T>::IpfsIsIncorrect);
     Ok(())
+  }
+
+  pub fn convert_users_vec_to_btree_set(users_vec: Vec<User<T::AccountId>>)
+    -> Result<BTreeSet<User<T::AccountId>>, DispatchError> {
+    let mut users_set: BTreeSet<User<T::AccountId>> = BTreeSet::new();
+
+    for user in users_vec.iter() {
+      users_set.insert(user.clone());
+    }
+
+    Ok(users_set)
   }
 }

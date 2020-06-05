@@ -9,7 +9,7 @@ use codec::{Encode, Decode};
 use frame_support::{decl_module, decl_storage, decl_event, decl_error, ensure, traits::Get};
 use sp_runtime::{RuntimeDebug, traits::Zero};
 use system::ensure_signed;
-use pallet_utils::WhoAndWhen;
+use pallet_utils::{SpaceId, WhoAndWhen};
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct SpaceOwners<T: Trait> {
@@ -34,7 +34,6 @@ pub struct Change<T: Trait> {
   pub expires_at: T::BlockNumber,
 }
 
-type SpaceId = u64;
 type ChangeId = u64;
 
 /// The pallet's configuration trait.

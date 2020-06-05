@@ -2,16 +2,25 @@
 #![allow(clippy::string_lit_as_bytes)]
 
 pub mod functions;
-mod tests;
+pub mod roles;
+// mod tests;
 
 use sp_std::prelude::*;
-use sp_std::collections::btree_set::BTreeSet;
 use codec::{Encode, Decode};
-use frame_support::{decl_module, decl_storage, decl_event, decl_error, ensure, traits::Get};
+use frame_support::{
+  decl_module, decl_storage, decl_event, decl_error, ensure,
+  traits::Get,
+  dispatch::DispatchError
+};
 use sp_runtime::RuntimeDebug;
 use system::ensure_signed;
-use pallet_utils::{WhoAndWhen, Module as Utils};
-use pallet_permissions::{SpacePermission, PostPermission};
+
+use pallet_utils::{Module as Utils, WhoAndWhen, SpaceId};
+use pallet_permissions::{SpacePermission, SpacePermissions};
+use df_traits::PermissionChecker;
+
+pub type PostId = u64;
+pub type ReactionId = u64;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Space<T: Trait> {
@@ -32,13 +41,8 @@ pub struct Space<T: Trait> {
 
   pub score: i32,
 
-  /// Overrides the default permissions for everyone on this space.
-  /// If `None` then this space does not override the default permissions for everyone.
-  pub everyone_permissions: Option<BTreeSet<SpacePermission>>,
-
-  /// Overrides the default permissions for followers on this space.
-  /// If `None` then this space does not override the default permissions for followers.
-  pub follower_permissions: Option<BTreeSet<SpacePermission>>,
+  /// Allows to override the default permissions for this space.
+  pub permissions: Option<SpacePermissions>,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -75,15 +79,7 @@ pub struct Post<T: Trait> {
   pub upvotes_count: u16,
   pub downvotes_count: u16,
 
-  pub score: i32,
-
-  /// Overrides the default permissions for everyone on this post and its comments.
-  /// If `None` then this post does not override the default permissions for followers.
-  pub everyone_permissions: Option<BTreeSet<PostPermission>>,
-
-  /// Overrides the default permissions for followers on this post and its comments.
-  /// If `None` then this post does not override the default permissions for followers.
-  pub follower_permissions: Option<BTreeSet<PostPermission>>,
+  pub score: i32
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -189,12 +185,8 @@ impl Default for ScoringAction {
   }
 }
 
-pub type SpaceId = u64;
-pub type PostId = u64;
-pub type ReactionId = u64;
-
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait + pallet_timestamp::Trait + pallet_utils::Trait {
+pub trait Trait: system::Trait + pallet_utils::Trait {
   /// The overarching event type.
   type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
@@ -223,6 +215,8 @@ pub trait Trait: system::Trait + pallet_timestamp::Trait + pallet_utils::Trait {
 
   /// Max comments depth
   type MaxCommentDepth: Get<u32>;
+
+  type Roles: PermissionChecker<AccountId = Self::AccountId>;
 }
 
 decl_error! {
@@ -254,8 +248,6 @@ decl_error! {
     PostNotFound,
     /// Nothing to update in post
     NoUpdatesInPost,
-    /// Only post author can manage their space
-    NotAnAuthor,
     /// Overflow caused adding post on space
     OverflowAddingPostOnSpace,
     /// Cannot create post not defining space_id
@@ -279,6 +271,8 @@ decl_error! {
     CannotUpdateSpaceIdOnComment,
     /// Max comment depth reached
     MaxCommentDepthReached,
+    /// Only comment author can update his comment
+    NotACommentAuthor,
 
     /// Reaction was not found by id
     ReactionNotFound,
@@ -372,6 +366,25 @@ decl_error! {
 
     /// IPFS-hash is not correct
     IpfsIsIncorrect,
+
+    /// User has no permission to update this space
+    NoPermissionToUpdateSpace,
+    /// User has no permission to create posts in this space
+    NoPermissionToCreatePosts,
+    /// User has no permission to create comments in this space
+    NoPermissionToCreateComments,
+    /// User has no permission to share posts/comments from this space
+    NoPermissionToShare,
+    /// User is an author, but has no permission to update own posts in this space
+    NoPermissionToUpdateOwnPosts,
+    /// User is not an author and has no permission to update posts in this space
+    NoPermissionToUpdateAnyPosts,
+    /// User has no permission to update own comments in this space posts
+    NoPermissionToUpdateOwnComments,
+    /// User has no permission to upvote posts/comments in this space
+    NoPermissionToUpvote,
+    /// User has no permission to downvote posts/comments in this space
+    NoPermissionToDownvote
   }
 }
 
@@ -461,21 +474,7 @@ decl_module! {
       }
 
       let space_id = Self::next_space_id();
-      let new_space: &mut Space<T> = &mut Space {
-        id: space_id,
-        created: WhoAndWhen::<T>::new(owner.clone()),
-        updated: None,
-        hidden: false,
-        owner: owner.clone(),
-        handle: handle_opt,
-        ipfs_hash,
-        posts_count: 0,
-        followers_count: 0,
-        edit_history: Vec::new(),
-        score: 0,
-        everyone_permissions: None,
-        follower_permissions: None
-      };
+      let new_space = &mut Space::create(space_id, owner.clone(), ipfs_hash, handle_opt);
 
       // Space creator automatically follows their space:
       Self::add_space_follower(owner.clone(), new_space)?;
@@ -502,7 +501,12 @@ decl_module! {
 
       let mut space = Self::space_by_id(space_id).ok_or(Error::<T>::SpaceNotFound)?;
 
-      space.ensure_space_owner(owner.clone())?;
+      Self::ensure_account_has_space_permission(
+        owner.clone(),
+        &space,
+        SpacePermission::UpdateSpace,
+        Error::<T>::NoPermissionToUpdateSpace.into()
+      )?;
 
       let mut fields_updated = 0;
       let mut new_history_record = SpaceHistoryRecord {
@@ -776,10 +780,44 @@ decl_module! {
       let root_post = &mut (new_post.get_root_post()?);
       ensure!(!root_post.hidden, Error::<T>::BannedToCreateWhenHidden);
 
+      // Check permissions
+      match extension {
+        PostExtension::RegularPost | PostExtension::SharedPost(_) => {
+          Self::ensure_account_has_space_permission(
+            owner.clone(),
+            &space,
+            SpacePermission::CreatePosts,
+            Error::<T>::NoPermissionToCreatePosts.into()
+          )?;
+        },
+        PostExtension::Comment(_) => {
+          Self::ensure_account_has_space_permission(
+            owner.clone(),
+            &space,
+            SpacePermission::CreateComments,
+            Error::<T>::NoPermissionToCreateComments.into()
+          )?;
+        }
+      }
+
       match extension {
         PostExtension::RegularPost => {
-          space.ensure_space_owner(owner.clone())?;
           space.increment_posts_count()?;
+        },
+        PostExtension::SharedPost(post_id) => {
+          let post = &mut (Self::post_by_id(post_id).ok_or(Error::<T>::OriginalPostNotFound)?);
+          ensure!(!post.is_shared_post(), Error::<T>::CannotShareSharedPost);
+
+          // TODO: maybe check multiple permissions per function call?
+          Self::ensure_account_has_space_permission(
+            owner.clone(),
+            &post.get_space()?,
+            SpacePermission::Share,
+            Error::<T>::NoPermissionToShare.into()
+          )?;
+
+          space.posts_count = space.posts_count.checked_add(1).ok_or(Error::<T>::OverflowAddingPostOnSpace)?;
+          Self::share_post(owner.clone(), post, new_post_id)?;
         },
         PostExtension::Comment(comment_ext) => {
           root_post.total_replies_count = root_post.total_replies_count.checked_add(1).ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
@@ -808,13 +846,7 @@ decl_module! {
           Self::change_post_score_by_extension(owner.clone(), root_post, ScoringAction::CreateComment)?;
 
           <PostById<T>>::insert(comment_ext.root_post_id, root_post);
-        },
-        PostExtension::SharedPost(post_id) => {
-          let post = &mut (Self::post_by_id(post_id).ok_or(Error::<T>::OriginalPostNotFound)?);
-          ensure!(!post.is_shared_post(), Error::<T>::CannotShareSharedPost);
-          space.posts_count = space.posts_count.checked_add(1).ok_or(Error::<T>::OverflowAddingPostOnSpace)?;
-          Self::share_post(owner.clone(), post, new_post_id)?;
-        },
+        }
       }
 
       if !new_post.is_comment() {
@@ -840,7 +872,35 @@ decl_module! {
 
       let mut post = Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?;
 
-      ensure!(owner == post.created.account, Error::<T>::NotAnAuthor);
+      let is_owner = owner == post.created.account;
+      let is_comment = post.is_comment();
+
+      let permission_to_check: SpacePermission;
+      let permission_error: DispatchError;
+
+      if is_comment {
+        if is_owner {
+          permission_to_check = SpacePermission::UpdateOwnComments;
+          permission_error = Error::<T>::NoPermissionToUpdateOwnComments.into();
+        } else {
+          return Err(Error::<T>::NotACommentAuthor.into());
+        }
+      } else {
+        if is_owner {
+          permission_to_check = SpacePermission::UpdateOwnPosts;
+          permission_error = Error::<T>::NoPermissionToUpdateOwnPosts.into();
+        } else {
+          permission_to_check = SpacePermission::UpdateAnyPosts;
+          permission_error = Error::<T>::NoPermissionToUpdateAnyPosts.into();
+        }
+      }
+
+      Self::ensure_account_has_space_permission(
+        owner.clone(),
+        &post.get_space()?,
+        permission_to_check,
+        permission_error
+      )?;
 
       let mut fields_updated = 0;
       let mut new_history_record = PostHistoryRecord {
@@ -912,8 +972,24 @@ decl_module! {
       let reaction_id = Self::new_reaction(owner.clone(), kind);
 
       match kind {
-        ReactionKind::Upvote => post.upvotes_count = post.upvotes_count.checked_add(1).ok_or(Error::<T>::OverflowUpvoting)?,
-        ReactionKind::Downvote => post.downvotes_count = post.downvotes_count.checked_add(1).ok_or(Error::<T>::OverflowDownvoting)?,
+        ReactionKind::Upvote => {
+          Self::ensure_account_has_space_permission(
+            owner.clone(),
+            &post.get_space()?,
+            SpacePermission::Upvote,
+            Error::<T>::NoPermissionToUpvote.into()
+          )?;
+          post.upvotes_count = post.upvotes_count.checked_add(1).ok_or(Error::<T>::OverflowUpvoting)?;
+        },
+        ReactionKind::Downvote => {
+          Self::ensure_account_has_space_permission(
+            owner.clone(),
+            &post.get_space()?,
+            SpacePermission::Downvote,
+            Error::<T>::NoPermissionToDownvote.into()
+          )?;
+          post.downvotes_count = post.downvotes_count.checked_add(1).ok_or(Error::<T>::OverflowDownvoting)?;
+        }
       }
       let action = Self::scoring_action_by_post_extension(post.extension, kind, false);
 

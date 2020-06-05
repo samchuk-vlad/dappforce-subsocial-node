@@ -1,40 +1,45 @@
 {
-  "SpacePermission":{
-    "_enum":[
+  "SpacePermissionSet": "BTreeSet<SpacePermission>",
+
+  "SpacePermission": {
+    "_enum": [
       "ManageRoles",
-      "ManageSubspaces",
-      "ManagePosts",
-      "ManageComments",
       "RepresentSpaceInternally",
       "RepresentSpaceExternally",
       "UpdateSpace",
       "BlockUsers",
       "CreateSubspaces",
       "UpdateOwnSubspaces",
+      "UpdateAnySubspaces",
       "DeleteOwnSubspaces",
-      "DeleteAnySubspaces",
+      "BlockSubspaces",
       "CreatePosts",
       "UpdateOwnPosts",
+      "UpdateAnyPosts",
       "DeleteOwnPosts",
-      "DeleteAnyPosts",
+      "BlockPosts",
       "CreateComments",
       "UpdateOwnComments",
       "DeleteOwnComments",
-      "DeleteAnyComments",
+      "BlockComments",
       "Upvote",
       "Downvote",
-      "Share"
+      "Share",
+      "OverridePostPermissions"
     ]
   },
 
-  "PostPermission":{
-    "_enum":[
-      "CreateComments",
-      "UpdateOwnComments",
-      "DeleteOwnComments",
-      "Upvote",
-      "Downvote",
-      "Share"
-    ]
+  "SpacePermissions": {
+    "none": "Option<SpacePermissionSet>",
+    "everyone": "Option<SpacePermissionSet>",
+    "follower": "Option<SpacePermissionSet>",
+    "space_owner": "Option<SpacePermissionSet>"
+  },
+
+  "SpacePermissionsContext": {
+    "space_id": "SpaceId",
+    "is_space_owner": "bool",
+    "is_space_follower": "bool",
+    "space_perms": "Option<SpacePermissionSet>"
   }
 }

@@ -8,12 +8,14 @@ edition = "2018"
 default = ['std']
 std = [
     'codec/std',
-    'frame-support/std',
     'sp-runtime/std',
+    'frame-support/std',
+    'system/std',
     'sp-io/std',
     'sp-std/std',
-    'system/std',
-    'pallet-utils/std'
+    'pallet-utils/std',
+    'pallet-permissions/std',
+    'df-traits/std'
 ]
 
 [dependencies.codec]
@@ -58,14 +60,14 @@ default-features = false
 path = '../utils'
 version = '2.0.0'
 
-[dependencies.pallet-social]
-default-features = false
-path = '../social'
-version = '2.0.0'
-
 [dependencies.pallet-permissions]
 default-features = false
 path = '../permissions'
+version = '2.0.0'
+
+[dependencies.df-traits]
+default-features = false
+path = '../traits'
 version = '2.0.0'
 
 [dev-dependencies.sp-core]

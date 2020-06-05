@@ -1,108 +1,117 @@
 {
-  "IpfsHash":"Text",
-  "SpaceId":"u64",
-  "PostId":"u64",
-  "ReactionId":"u64",
+  "IpfsHash": "Text",
+  "PostId": "u64",
+  "ReactionId": "u64",
 
-  "Space":{
-    "id":"SpaceId",
-    "created":"WhoAndWhen",
-    "updated":"Option<WhoAndWhen>",
+  "Space": {
+    "id": "SpaceId",
+    "created": "WhoAndWhen",
+    "updated": "Option<WhoAndWhen>",
     "hidden": "bool",
-    "owner":"AccountId",
-    "handle":"Option<Text>",
-    "ipfs_hash":"IpfsHash",
-    "posts_count":"u16",
-    "followers_count":"u32",
-    "edit_history":"Vec<SpaceHistoryRecord>",
-    "score":"i32"
-  },
-  "SpaceUpdate":{
-    "handle":"Option<Option<Text>>",
-    "ipfs_hash":"Option<IpfsHash>",
-    "hidden": "Option<bool>"
-  },
-  "SpaceHistoryRecord":{
-    "edited":"WhoAndWhen",
-    "old_data":"SpaceUpdate"
+    "owner": "AccountId",
+    "handle": "Option<Text>",
+    "ipfs_hash": "IpfsHash",
+    "posts_count": "u16",
+    "followers_count": "u32",
+    "edit_history": "Vec<SpaceHistoryRecord>",
+    "score": "i32",
+    "permissions": "Option<SpacePermissions>"
   },
 
-  "Post":{
-    "id":"PostId",
-    "created":"WhoAndWhen",
-    "updated":"Option<WhoAndWhen>",
-    "hidden":"bool",
-    "space_id":"Option<SpaceId>",
-    "extension":"PostExtension",
-    "ipfs_hash":"IpfsHash",
-    "edit_history":"Vec<PostHistoryRecord>",
-    "direct_replies_count":"u16",
-    "total_replies_count":"u32",
-    "shares_count":"u16",
-    "upvotes_count":"u16",
-    "downvotes_count":"u16",
-    "score":"i32"
-  },
-  "PostUpdate":{
-    "space_id":"Option<SpaceId>",
-    "ipfs_hash":"Option<IpfsHash>",
+  "SpaceUpdate": {
+    "handle": "Option<Option<Text>>",
+    "ipfs_hash": "Option<IpfsHash>",
     "hidden": "Option<bool>"
   },
-  "PostHistoryRecord":{
-    "edited":"WhoAndWhen",
-    "old_data":"PostUpdate"
+
+  "SpaceHistoryRecord": {
+    "edited": "WhoAndWhen",
+    "old_data": "SpaceUpdate"
   },
-  "PostExtension":{
-    "_enum":{
-      "RegularPost":"Null",
+
+  "Post": {
+    "id": "PostId",
+    "created": "WhoAndWhen",
+    "updated": "Option<WhoAndWhen>",
+    "hidden": "bool",
+    "space_id": "Option<SpaceId>",
+    "extension": "PostExtension",
+    "ipfs_hash": "IpfsHash",
+    "edit_history": "Vec<PostHistoryRecord>",
+    "direct_replies_count": "u16",
+    "total_replies_count": "u32",
+    "shares_count": "u16",
+    "upvotes_count": "u16",
+    "downvotes_count": "u16",
+    "score": "i32"
+  },
+
+  "PostUpdate": {
+    "space_id": "Option<SpaceId>",
+    "ipfs_hash": "Option<IpfsHash>",
+    "hidden": "Option<bool>"
+  },
+
+  "PostHistoryRecord": {
+    "edited": "WhoAndWhen",
+    "old_data": "PostUpdate"
+  },
+
+  "PostExtension": {
+    "_enum": {
+      "RegularPost": "Null",
       "Comment": "CommentExt",
-      "SharedPost":"PostId"
+      "SharedPost": "PostId"
     }
   },
 
-  "CommentExt":{
+  "CommentExt": {
     "parent_id": "Option<PostId>",
     "root_post_id": "PostId"
   },
 
-  "ReactionKind":{
-    "_enum":[
+  "ReactionKind": {
+    "_enum": [
       "Upvote",
       "Downvote"
     ]
   },
-  "Reaction":{
-    "id":"ReactionId",
-    "created":"WhoAndWhen",
-    "updated":"Option<WhoAndWhen>",
-    "kind":"ReactionKind"
+
+  "Reaction": {
+    "id": "ReactionId",
+    "created": "WhoAndWhen",
+    "updated": "Option<WhoAndWhen>",
+    "kind": "ReactionKind"
   },
 
-  "SocialAccount":{
-    "followers_count":"u32",
-    "following_accounts_count":"u16",
-    "following_spaces_count":"u16",
-    "reputation":"u32",
-    "profile":"Option<Profile>"
+  "SocialAccount": {
+    "followers_count": "u32",
+    "following_accounts_count": "u16",
+    "following_spaces_count": "u16",
+    "reputation": "u32",
+    "profile": "Option<Profile>"
   },
 
-  "Profile":{
-    "created":"WhoAndWhen",
-    "updated":"Option<WhoAndWhen>",
-    "username":"Text",
-    "ipfs_hash":"IpfsHash",
-    "edit_history":"Vec<ProfileHistoryRecord>"
+  "Profile": {
+    "created": "WhoAndWhen",
+    "updated": "Option<WhoAndWhen>",
+    "username": "Text",
+    "ipfs_hash": "IpfsHash",
+    "edit_history": "Vec<ProfileHistoryRecord>"
   },
-  "ProfileUpdate":{
-    "username":"Option<Text>",
-    "ipfs_hash":"Option<IpfsHash>"
+
+  "ProfileUpdate": {
+    "username": "Option<Text>",
+    "ipfs_hash": "Option<IpfsHash>"
   },
-  "ProfileHistoryRecord":{
-    "edited":"WhoAndWhen",
-    "old_data":"ProfileUpdate"
+
+  "ProfileHistoryRecord": {
+    "edited": "WhoAndWhen",
+    "old_data": "ProfileUpdate"
   },
-  "ScoringAction":{
-    "_enum":[
+
+  "ScoringAction": {
+    "_enum": [
       "UpvotePost",
       "DownvotePost",
       "SharePost",
@@ -116,73 +125,88 @@
   },
 
 
+  "SpaceForRoles": {
+    "owner": "AccountId",
+    "permissions": "Option<SpacePermissions>"
+  },
+
+
+  "SpaceId": "u64",
+
   "WhoAndWhen": {
     "account": "AccountId",
     "block": "BlockNumber",
     "time": "Moment"
   },
-  "User":{
-    "_enum":{
+  "User": {
+    "_enum": {
       "Account": "AccountId",
       "Space": "SpaceId"
     }
   },
 
 
-  "SpacePermission":{
-    "_enum":[
+  "SpacePermissionSet": "BTreeSet<SpacePermission>",
+
+  "SpacePermission": {
+    "_enum": [
       "ManageRoles",
-      "ManageSubspaces",
-      "ManagePosts",
-      "ManageComments",
       "RepresentSpaceInternally",
       "RepresentSpaceExternally",
       "UpdateSpace",
       "BlockUsers",
       "CreateSubspaces",
       "UpdateOwnSubspaces",
+      "UpdateAnySubspaces",
       "DeleteOwnSubspaces",
-      "DeleteAnySubspaces",
+      "BlockSubspaces",
       "CreatePosts",
       "UpdateOwnPosts",
+      "UpdateAnyPosts",
       "DeleteOwnPosts",
-      "DeleteAnyPosts",
+      "BlockPosts",
       "CreateComments",
       "UpdateOwnComments",
       "DeleteOwnComments",
-      "DeleteAnyComments",
+      "BlockComments",
       "Upvote",
       "Downvote",
-      "Share"
+      "Share",
+      "OverridePostPermissions"
     ]
   },
-  "PostPermission":{
-    "_enum":[
-      "CreateComments",
-      "UpdateOwnComments",
-      "DeleteOwnComments",
-      "Upvote",
-      "Downvote",
-      "Share"
-    ]
+
+  "SpacePermissions": {
+    "none": "Option<SpacePermissionSet>",
+    "everyone": "Option<SpacePermissionSet>",
+    "follower": "Option<SpacePermissionSet>",
+    "space_owner": "Option<SpacePermissionSet>"
+  },
+
+  "SpacePermissionsContext": {
+    "space_id": "SpaceId",
+    "is_space_owner": "bool",
+    "is_space_follower": "bool",
+    "space_perms": "Option<SpacePermissionSet>"
   },
 
 
   "RoleId": "u64",
 
-  "Role":{
-    "created":"WhoAndWhen",
-    "updated":"Option<WhoAndWhen>",
-    "id":"RoleId",
-    "space_id":"SpaceId",
-    "disabled":"bool",
+  "Role": {
+    "created": "WhoAndWhen",
+    "updated": "Option<WhoAndWhen>",
+    "id": "RoleId",
+    "space_id": "SpaceId",
+    "disabled": "bool",
     "expires_at": "Option<BlockNumber>",
-    "ipfs_hash":"Option<IpfsHash>",
-    "permissions":"BTreeSet<SpacePermission>"
+    "ipfs_hash": "Option<IpfsHash>",
+    "permissions": "SpacePermissionSet"
   },
-  "RoleUpdate":{
-    "disabled":"Option<bool>",
-    "ipfs_hash":"Option<IpfsHash>",
-    "permissions":"Option<BTreeSet<SpacePermission>>"
+
+  "RoleUpdate": {
+    "disabled": "Option<bool>",
+    "ipfs_hash": "Option<Option<IpfsHash>>",
+    "permissions": "Option<SpacePermissionSet>"
   }
 }
