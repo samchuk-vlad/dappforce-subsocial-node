@@ -15,7 +15,7 @@ use pallet_utils::SpaceId;
 
 #[derive(Encode, Decode, Ord, PartialOrd, Clone, Eq, PartialEq, RuntimeDebug)]
 pub enum SpacePermission {
-  /// Create, update, grant and revoke roles in this space.
+  /// Create, update, delete, grant and revoke roles in this space.
   ManageRoles,
 
   /// Act on behalf of this space within this space.
@@ -23,21 +23,25 @@ pub enum SpacePermission {
   /// Act on behalf of this space outside of this space.
   RepresentSpaceExternally,
 
+  /// Update this space.
   UpdateSpace,
+  /// Block accounts and other spaces within this space.
   BlockUsers,
 
   // Related to subspaces in this space:
   CreateSubspaces,
   UpdateOwnSubspaces,
-  UpdateAnySubspaces,
   DeleteOwnSubspaces,
+  UpdateAnySubspace,
+  DeleteAnySubspace,
   BlockSubspaces,
 
   // Related to posts in this space:
   CreatePosts,
   UpdateOwnPosts,
-  UpdateAnyPosts,
   DeleteOwnPosts,
+  UpdateAnyPost,
+  DeleteAnyPost,
   BlockPosts,
 
   // Related to comments in this space:
@@ -46,13 +50,16 @@ pub enum SpacePermission {
   DeleteOwnComments,
   BlockComments,
 
-  /// Upvote on any post or comment in this space.
+  /// Upvote any post or comment in this space.
   Upvote,
-  /// Upvote on any post or comment in this space.
+  /// Downvote any post or comment in this space.
   Downvote,
   /// Share any post or comment from this space to another outer space.
   Share,
 
+  /// Override permissions per subspace in this space.
+  OverrideSubspacePermissions,
+  /// Override permissions per post in this space.
   OverridePostPermissions,
 }
 
