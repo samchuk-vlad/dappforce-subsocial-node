@@ -379,7 +379,7 @@ decl_error! {
     NoPermissionToUpdateOwnPosts,
     /// User is not an author and has no permission to update posts in this space
     NoPermissionToUpdateAnyPosts,
-    /// User has no permission to update his comments in this space posts
+    /// User has no permission to update own comments in this space posts
     NoPermissionToUpdateOwnComments,
     /// User has no permission to upvote posts/comments in this space
     NoPermissionToUpvote,
