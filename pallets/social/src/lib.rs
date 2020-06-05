@@ -878,17 +878,21 @@ decl_module! {
       let permission_to_check: SpacePermission;
       let permission_error: DispatchError;
 
-      if is_comment && is_owner {
-        permission_to_check = SpacePermission::UpdateOwnComments;
-        permission_error = Error::<T>::NoPermissionToUpdateOwnComments.into();
-      } else if !is_comment && is_owner {
-        permission_to_check = SpacePermission::UpdateOwnPosts;
-        permission_error = Error::<T>::NoPermissionToUpdateOwnPosts.into();
-      } else if !is_comment && !is_owner {
-        permission_to_check = SpacePermission::UpdateAnyPosts;
-        permission_error = Error::<T>::NoPermissionToUpdateAnyPosts.into();
+      if is_comment {
+        if is_owner {
+          permission_to_check = SpacePermission::UpdateOwnComments;
+          permission_error = Error::<T>::NoPermissionToUpdateOwnComments.into();
+        } else {
+          return Err(Error::<T>::NotACommentAuthor.into());
+        }
       } else {
-        return Err(Error::<T>::NotACommentAuthor.into());
+        if is_owner {
+          permission_to_check = SpacePermission::UpdateOwnPosts;
+          permission_error = Error::<T>::NoPermissionToUpdateOwnPosts.into();
+        } else {
+          permission_to_check = SpacePermission::UpdateAnyPosts;
+          permission_error = Error::<T>::NoPermissionToUpdateAnyPosts.into();
+        }
       }
 
       Self::ensure_account_has_space_permission(

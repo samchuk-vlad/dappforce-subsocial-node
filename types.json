@@ -15,7 +15,7 @@
     "followers_count": "u32",
     "edit_history": "Vec<SpaceHistoryRecord>",
     "score": "i32",
-    "permissions": "SpacePermissions"
+    "permissions": "Option<SpacePermissions>"
   },
 
   "SpaceUpdate": {
@@ -127,7 +127,7 @@
 
   "SpaceForRoles": {
     "owner": "AccountId",
-    "permissions": "SpacePermissions"
+    "permissions": "Option<SpacePermissions>"
   },
 
 
@@ -146,14 +146,7 @@
   },
 
 
-  "SpacePermissions": "BTreeMap<SpacePermission, BuiltinRole>",
-
-  "SpacePermissionsContext": {
-    "space_id": "SpaceId",
-    "is_space_owner": "bool",
-    "is_space_follower": "bool",
-    "space_perms": "SpacePermissions"
-  },
+  "SpacePermissionSet": "BTreeSet<SpacePermission>",
 
   "SpacePermission": {
     "_enum": [
@@ -178,17 +171,23 @@
       "BlockComments",
       "Upvote",
       "Downvote",
-      "Share"
+      "Share",
+      "OverridePostPermissions"
     ]
   },
 
-  "BuiltinRole": {
-    "_enum": [
-      "None",
-      "SpaceOwner",
-      "Follower",
-      "Everyone"
-    ]
+  "SpacePermissions": {
+    "none": "Option<SpacePermissionSet>",
+    "everyone": "Option<SpacePermissionSet>",
+    "follower": "Option<SpacePermissionSet>",
+    "space_owner": "Option<SpacePermissionSet>"
+  },
+
+  "SpacePermissionsContext": {
+    "space_id": "SpaceId",
+    "is_space_owner": "bool",
+    "is_space_follower": "bool",
+    "space_perms": "Option<SpacePermissionSet>"
   },
 
 
@@ -202,12 +201,12 @@
     "disabled": "bool",
     "expires_at": "Option<BlockNumber>",
     "ipfs_hash": "Option<IpfsHash>",
-    "permissions": "BTreeSet<SpacePermission>"
+    "permissions": "SpacePermissionSet"
   },
 
   "RoleUpdate": {
     "disabled": "Option<bool>",
     "ipfs_hash": "Option<Option<IpfsHash>>",
-    "permissions": "Option<BTreeSet<SpacePermission>>"
+    "permissions": "Option<SpacePermissionSet>"
   }
 }

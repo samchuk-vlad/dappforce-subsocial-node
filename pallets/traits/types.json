@@ -1,6 +1,6 @@
 {
   "SpaceForRoles": {
     "owner": "AccountId",
-    "permissions": "SpacePermissions"
+    "permissions": "Option<SpacePermissions>"
   }
 }

@@ -74,9 +74,6 @@ decl_event!(
 
 decl_error! {
   pub enum Error for Module<T: Trait> {
-    /// Space was not found by id
-    SpaceNotFound,
-
     /// Role was not found by id
     RoleNotFound,
     /// RoleId counter storage overflowed
@@ -86,10 +83,8 @@ decl_error! {
     /// Nothing to update in role
     NoRoleUpdates,
     /// There's too many users assigned for this role to delete it
-    TooManyUserForDeleteRole,
+    TooManyUsersForDeleteRole,
 
-    /// No roles found for this User on specified Space
-    NoAnyRolesForUserOnSpace,
     /// No roles provided when trying to create a new Role
     NoPermissionsProvided,
     /// No users provided when trying to grant them a Role
@@ -231,7 +226,7 @@ decl_module! {
 
       let users = Self::users_by_role_id(role_id);
       if users.len() > T::MaxUsersToProcessPerDeleteRole::get() as usize {
-        return Err(Error::<T>::TooManyUserForDeleteRole.into());
+        return Err(Error::<T>::TooManyUsersForDeleteRole.into());
       }
 
       let role_idx_by_space_opt = Self::role_ids_by_space_id(role.space_id).iter()

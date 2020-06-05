@@ -1,12 +1,5 @@
 {
-  "SpacePermissions": "BTreeMap<SpacePermission, BuiltinRole>",
-
-  "SpacePermissionsContext": {
-    "space_id": "SpaceId",
-    "is_space_owner": "bool",
-    "is_space_follower": "bool",
-    "space_perms": "SpacePermissions"
-  },
+  "SpacePermissionSet": "BTreeSet<SpacePermission>",
 
   "SpacePermission": {
     "_enum": [
@@ -31,16 +24,22 @@
       "BlockComments",
       "Upvote",
       "Downvote",
-      "Share"
+      "Share",
+      "OverridePostPermissions"
     ]
   },
 
-  "BuiltinRole": {
-    "_enum": [
-      "None",
-      "SpaceOwner",
-      "Follower",
-      "Everyone"
-    ]
+  "SpacePermissions": {
+    "none": "Option<SpacePermissionSet>",
+    "everyone": "Option<SpacePermissionSet>",
+    "follower": "Option<SpacePermissionSet>",
+    "space_owner": "Option<SpacePermissionSet>"
+  },
+
+  "SpacePermissionsContext": {
+    "space_id": "SpaceId",
+    "is_space_owner": "bool",
+    "is_space_follower": "bool",
+    "space_perms": "Option<SpacePermissionSet>"
   }
 }
