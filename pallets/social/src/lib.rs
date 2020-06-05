@@ -2,6 +2,7 @@
 #![allow(clippy::string_lit_as_bytes)]
 
 pub mod functions;
+pub mod scores;
 pub mod roles;
 // mod tests;
 
