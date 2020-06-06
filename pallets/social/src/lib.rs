@@ -256,12 +256,12 @@ decl_error! {
     OverflowAddingPostOnSpace,
     /// Cannot create post not defining space_id
     SpaceIdIsUndefined,
-    /// Not allowed to create post/comment when entity is hidden
-    BannedToCreateWhenHidden,
-    /// Not allowed to follow space when it's hidden
-    BannedToFollowWhenHidden,
-    /// Not allowed to create/update reaction to post/comment when entity is hidden
-    BannedToChangeReactionWhenHidden,
+    /// Not allowed to create a post/comment when entity is hidden.
+    CannotCreateWhenHidden,
+    /// Not allowed to follow a space when it's hidden.
+    CannotFollowWhenHidden,
+    /// Not allowed to create/update a reaction on post/comment when entity is hidden.
+    CannotChangeReactionWhenHidden,
 
     /// Unknown parent comment id
     UnknownParentComment,
@@ -604,7 +604,7 @@ decl_module! {
 
       let space = &mut (Self::space_by_id(space_id).ok_or(Error::<T>::SpaceNotFound)?);
       ensure!(!Self::space_followed_by_account((follower.clone(), space_id)), Error::<T>::AccountIsFollowingSpace);
-      ensure!(!space.hidden, Error::<T>::BannedToFollowWhenHidden);
+      ensure!(!space.hidden, Error::<T>::CannotFollowWhenHidden);
 
       Self::add_space_follower(follower, space)?;
       <SpaceById<T>>::insert(space_id, space);
@@ -779,10 +779,10 @@ decl_module! {
 
       // Get space from either from space_id_opt or extension if a Comment provided
       let mut space = new_post.get_space()?;
-      ensure!(!space.hidden, Error::<T>::BannedToCreateWhenHidden);
+      ensure!(!space.hidden, Error::<T>::CannotCreateWhenHidden);
 
       let root_post = &mut (new_post.get_root_post()?);
-      ensure!(!root_post.hidden, Error::<T>::BannedToCreateWhenHidden);
+      ensure!(!root_post.hidden, Error::<T>::CannotCreateWhenHidden);
 
       // Check permissions
       match extension {
@@ -971,7 +971,7 @@ decl_module! {
       );
 
       let space = post.get_space()?;
-      ensure!(!space.hidden && !Self::is_root_post_hidden(post_id)?, Error::<T>::BannedToChangeReactionWhenHidden);
+      ensure!(!space.hidden && !Self::is_root_post_hidden(post_id)?, Error::<T>::CannotChangeReactionWhenHidden);
 
       let reaction_id = Self::insert_new_reaction(owner.clone(), kind);
 
@@ -1021,7 +1021,7 @@ decl_module! {
       let post = &mut (Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?);
 
       let space = post.get_space()?;
-      ensure!(!space.hidden && !post.hidden, Error::<T>::BannedToChangeReactionWhenHidden);
+      ensure!(!space.hidden && !post.hidden, Error::<T>::CannotChangeReactionWhenHidden);
 
       ensure!(owner == reaction.created.account, Error::<T>::NotAReactionOwner);
       ensure!(reaction.kind != new_kind, Error::<T>::NewReactionKindNotDiffer);
