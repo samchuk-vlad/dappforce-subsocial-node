@@ -4,7 +4,7 @@ use frame_support::dispatch::DispatchResult;
 
 impl<T: Trait> Space<T> {
 
-    pub fn create(
+    pub fn new(
         id: SpaceId,
         created_by: T::AccountId,
         ipfs_hash: Vec<u8>,

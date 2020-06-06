@@ -478,7 +478,7 @@ decl_module! {
       }
 
       let space_id = Self::next_space_id();
-      let new_space = &mut Space::create(space_id, owner.clone(), ipfs_hash, handle_opt);
+      let new_space = &mut Space::new(space_id, owner.clone(), ipfs_hash, handle_opt);
 
       // Space creator automatically follows their space:
       Self::add_space_follower(owner.clone(), new_space)?;
@@ -775,7 +775,7 @@ decl_module! {
       Utils::<T>::is_ipfs_hash_valid(ipfs_hash.clone())?;
 
       let new_post_id = Self::next_post_id();
-      let new_post: Post<T> = Post::create(new_post_id, owner.clone(), space_id_opt, extension, ipfs_hash);
+      let new_post: Post<T> = Post::new(new_post_id, owner.clone(), space_id_opt, extension, ipfs_hash);
 
       // Get space from either from space_id_opt or extension if a Comment provided
       let mut space = new_post.get_space()?;

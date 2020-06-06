@@ -4,7 +4,7 @@ use frame_support::dispatch::DispatchResult;
 
 impl<T: Trait> Post<T> {
 
-    pub fn create(
+    pub fn new(
         id: PostId,
         created_by: T::AccountId,
         space_id_opt: Option<SpaceId>,
