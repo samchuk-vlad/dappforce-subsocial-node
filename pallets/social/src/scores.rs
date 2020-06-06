@@ -1,8 +1,35 @@
 use super::*;
 
 use frame_support::{dispatch::{DispatchResult}};
+use pallet_utils::{log_2};
 
 impl<T: Trait> Module<T> {
+
+    pub fn scoring_action_by_post_extension(
+        extension: PostExtension,
+        reaction_kind: ReactionKind,
+        reverse: bool
+    ) -> ScoringAction {
+
+        match extension {
+            PostExtension::RegularPost | PostExtension::SharedPost(_) => match reaction_kind {
+                ReactionKind::Upvote =>
+                    if reverse { ScoringAction::DownvotePost }
+                    else { ScoringAction::UpvotePost },
+                ReactionKind::Downvote =>
+                    if reverse { ScoringAction::UpvotePost }
+                    else { ScoringAction::DownvotePost },
+            },
+            PostExtension::Comment(_) => match reaction_kind {
+                ReactionKind::Upvote =>
+                    if reverse { ScoringAction::DownvoteComment }
+                    else { ScoringAction::UpvoteComment },
+                ReactionKind::Downvote =>
+                    if reverse { ScoringAction::UpvoteComment }
+                    else { ScoringAction::DownvoteComment },
+            },
+        }
+    }
 
     pub fn change_post_score_by_extension(account: T::AccountId, post: &mut Post<T>, action: ScoringAction) -> DispatchResult {
         if post.is_comment() {
@@ -19,7 +46,7 @@ impl<T: Trait> Module<T> {
         <SocialAccountById<T>>::insert(account.clone(), social_account.clone());
 
         let post_id = post.id;
-        Post::<T>::ensure_post_stored(post_id)?;
+        Post::<T>::ensure_post_exists(post_id)?;
         ensure!(!post.is_comment(), Error::<T>::PostIsAComment);
 
         if let Some(post_space_id) = post.space_id {
@@ -68,7 +95,7 @@ impl<T: Trait> Module<T> {
         <SocialAccountById<T>>::insert(account.clone(), social_account.clone());
 
         let comment_id = comment.id;
-        Post::<T>::ensure_post_stored(comment_id)?;
+        Post::<T>::ensure_post_exists(comment_id)?;
         let comment_ext = comment.get_comment_ext()?;
 
         ensure!(comment.is_comment(), Error::<T>::PostIsNotAComment);
@@ -146,7 +173,7 @@ impl<T: Trait> Module<T> {
     }
 
     pub fn get_score_diff(reputation: u32, action: ScoringAction) -> i16 {
-        let r = Self::log_2(reputation);
+        let r = log_2(reputation);
         let d = (reputation - (2 as u32).pow(r)) * 100 / (2 as u32).pow(r);
         let score_diff = ((r + 1) * 100 + d) / 100;
 
@@ -165,12 +192,5 @@ impl<T: Trait> Module<T> {
             ScoringAction::FollowSpace => T::FollowSpaceActionWeight::get(),
             ScoringAction::FollowAccount => T::FollowAccountActionWeight::get(),
         }
-    }
-
-    fn num_bits<P>() -> usize { sp_std::mem::size_of::<P>() * 8 }
-
-    pub fn log_2(x: u32) -> u32 {
-        assert!(x > 0);
-        Self::num_bits::<u32>() as u32 - x.leading_zeros() - 1
     }
 }

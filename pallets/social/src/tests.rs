@@ -1947,7 +1947,7 @@ fn share_post_should_fail_share_shared_post() {
       Some(Some(1)),
       Some(self::extension_shared_post(2)),
       None
-    ), Error::<Test>::CannotShareSharedPost);
+    ), Error::<Test>::CannotShareSharingPost);
   });
 }
 
