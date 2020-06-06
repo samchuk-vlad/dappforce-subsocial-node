@@ -1,31 +1,31 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::string_lit_as_bytes)]
 
-pub mod functions;
-// mod tests;
-
-use sp_std::{
-  prelude::*,
-  collections::btree_set::BTreeSet,
-  iter::FromIterator
-};
-use codec::{Encode, Decode};
+use codec::{Decode, Encode};
 use frame_support::{
-  decl_module, decl_storage, decl_event, decl_error, ensure,
+  decl_error, decl_event, decl_module, decl_storage, ensure,
   traits::Get
 };
 use sp_runtime::RuntimeDebug;
+use sp_std::{
+  collections::btree_set::BTreeSet,
+  iter::FromIterator,
+  prelude::*
+};
 use system::ensure_signed;
 
-use pallet_utils::{
-  Module as Utils, WhoAndWhen, User, SpaceId
-};
+use df_traits::{PermissionChecker, SpaceForRolesProvider};
 use pallet_permissions::{
   Module as Permissions,
   SpacePermission,
   SpacePermissionSet
 };
-use df_traits::{SpaceForRolesProvider, PermissionChecker};
+use pallet_utils::{
+  Module as Utils, SpaceId, User, WhoAndWhen
+};
+
+pub mod functions;
+// mod tests;
 
 type RoleId = u64;
 

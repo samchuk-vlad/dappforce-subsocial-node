@@ -1,15 +1,15 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use sp_std::{
-  prelude::*,
-  collections::btree_set::BTreeSet
-};
-use codec::{Encode, Decode};
-use sp_runtime::RuntimeDebug;
+use codec::{Decode, Encode};
 use frame_support::{
-  decl_module, decl_error, ensure,
-  traits::Get,
-  dispatch::{DispatchResult, DispatchError}
+  decl_error, decl_module, dispatch::{DispatchError, DispatchResult},
+  ensure,
+  traits::Get
+};
+use sp_runtime::RuntimeDebug;
+use sp_std::{
+  collections::btree_set::BTreeSet,
+  prelude::*
 };
 
 pub type SpaceId = u64;

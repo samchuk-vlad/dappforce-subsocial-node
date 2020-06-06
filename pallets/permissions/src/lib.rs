@@ -1,15 +1,15 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use sp_std::{
-  prelude::*,
-  collections::btree_set::BTreeSet
-};
-use codec::{Encode, Decode};
+use codec::{Decode, Encode};
 use frame_support::{
   decl_module,
   traits::Get
 };
 use sp_runtime::RuntimeDebug;
+use sp_std::{
+  collections::btree_set::BTreeSet,
+  prelude::*
+};
 
 use pallet_utils::SpaceId;
 
