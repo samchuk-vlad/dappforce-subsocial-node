@@ -208,7 +208,7 @@ std = [
 ]
 
 [package]
-authors = ['Dappforce']
+authors = ['DappForce']
 edition = '2018'
 name = 'subsocial-runtime'
 version = '2.0.0'

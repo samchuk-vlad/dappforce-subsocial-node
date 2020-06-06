@@ -1,4 +1,4 @@
-//! Substrate Node Template CLI library.
+//! Subsocial Node CLI library.
 
 #![warn(missing_docs)]
 #![warn(unused_extern_crates)]
@@ -16,8 +16,8 @@ fn main() -> Result<(), cli::error::Error> {
 		commit: env!("VERGEN_SHA_SHORT"),
 		version: env!("CARGO_PKG_VERSION"),
 		executable_name: "subsocial-node",
-		author: "Dappforce",
-		description: "Dappforce Subsocial Substrate node",
+		author: "DappForce",
+		description: "Subsocial full node by DappForce",
 		support_url: "http://dappforce.io",
 	};
 

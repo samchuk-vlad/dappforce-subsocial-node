@@ -2,7 +2,7 @@
 panic = 'unwind'
 
 [package]
-authors = ['Dappforce']
+authors = ['DappForce']
 build = 'build.rs'
 edition = '2018'
 name = 'subsocial-node'
