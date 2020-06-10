@@ -2,27 +2,14 @@
 #![allow(clippy::string_lit_as_bytes)]
 
 use codec::{Decode, Encode};
-use frame_support::{
-  decl_error, decl_event, decl_module, decl_storage, ensure,
-  traits::Get
-};
+use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
 use sp_runtime::RuntimeDebug;
-use sp_std::{
-  collections::btree_set::BTreeSet,
-  iter::FromIterator,
-  prelude::*
-};
+use sp_std::{collections::btree_set::BTreeSet, iter::FromIterator, prelude::*};
 use system::ensure_signed;
 
-use df_traits::{PermissionChecker, SpaceForRolesProvider};
-use pallet_permissions::{
-  Module as Permissions,
-  SpacePermission,
-  SpacePermissionSet
-};
-use pallet_utils::{
-  Module as Utils, SpaceId, User, WhoAndWhen
-};
+use df_traits::{PermissionChecker, SpaceFollowsProvider, SpaceProvider};
+use pallet_permissions::{Module as Permissions, SpacePermission, SpacePermissionSet};
+use pallet_utils::{Module as Utils, SpaceId, User, WhoAndWhen};
 
 pub mod functions;
 // mod tests;
@@ -31,104 +18,107 @@ type RoleId = u64;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Role<T: Trait> {
-  pub created: WhoAndWhen<T>,
-  pub updated: Option<WhoAndWhen<T>>,
-  pub id: RoleId,
-  pub space_id: SpaceId,
-  pub disabled: bool,
-  pub expires_at:  Option<T::BlockNumber>,
-  pub ipfs_hash: Option<Vec<u8>>,
-  pub permissions: SpacePermissionSet,
+    pub created: WhoAndWhen<T>,
+    pub updated: Option<WhoAndWhen<T>>,
+    pub id: RoleId,
+    pub space_id: SpaceId,
+    pub disabled: bool,
+    pub expires_at: Option<T::BlockNumber>,
+    pub ipfs_hash: Option<Vec<u8>>,
+    pub permissions: SpacePermissionSet,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct RoleUpdate {
-  pub disabled: Option<bool>,
-  pub ipfs_hash: Option<Option<Vec<u8>>>,
-  pub permissions: Option<SpacePermissionSet>,
+    pub disabled: Option<bool>,
+    pub ipfs_hash: Option<Option<Vec<u8>>>,
+    pub permissions: Option<SpacePermissionSet>,
 }
 
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait + pallet_permissions::Trait + pallet_utils::Trait {
-  /// The overarching event type.
-  type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+pub trait Trait: system::Trait
+    + pallet_permissions::Trait
+    + pallet_utils::Trait
+{
+    /// The overarching event type.
+    type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
-  type MaxUsersToProcessPerDeleteRole: Get<u16>;
+    type MaxUsersToProcessPerDeleteRole: Get<u16>;
 
-  type Spaces: SpaceForRolesProvider<
-    AccountId = Self::AccountId,
-    SpaceId = SpaceId
-  >;
+    type Spaces: SpaceProvider<AccountId=Self::AccountId>;
+
+    type SpaceFollows: SpaceFollowsProvider<AccountId=Self::AccountId>;
 }
 
 decl_event!(
-  pub enum Event<T> where
-    <T as system::Trait>::AccountId {
-    RoleCreated(AccountId, SpaceId, RoleId),
-    RoleUpdated(AccountId, RoleId),
-    RoleDeleted(AccountId, RoleId),
-    RoleGranted(AccountId, RoleId, Vec<User<AccountId>>),
-    RoleRevoked(AccountId, RoleId, Vec<User<AccountId>>),
-  }
+    pub enum Event<T> where
+        <T as system::Trait>::AccountId
+    {
+        RoleCreated(AccountId, SpaceId, RoleId),
+        RoleUpdated(AccountId, RoleId),
+        RoleDeleted(AccountId, RoleId),
+        RoleGranted(AccountId, RoleId, Vec<User<AccountId>>),
+        RoleRevoked(AccountId, RoleId, Vec<User<AccountId>>),
+    }
 );
 
 decl_error! {
-  pub enum Error for Module<T: Trait> {
-    /// Role was not found by id.
-    RoleNotFound,
-    /// RoleId counter storage overflowed.
-    OverflowCreatingNewRole,
-    /// Account has no permission to manage roles in this space.
-    NoPermissionToManageRoles,
-    /// Nothing to update in role.
-    NoUpdatesProvided,
-    /// No roles provided when trying to create a new Role.
-    NoPermissionsProvided,
-    /// No users provided when trying to grant them a Role.
-    NoUsersProvided,
-    /// There are too many users with this role to delete it in a single tx.
-    TooManyUsersForDeleteRole,
-    /// Trying to disable the role that is not enabled.
-    RoleAlreadyDisabled,
-    /// Trying to enable the role that is already enabled.
-    RoleAlreadyEnabled,
-  }
+    pub enum Error for Module<T: Trait> {
+        /// Role was not found by id.
+        RoleNotFound,
+        /// RoleId counter storage overflowed.
+        RoleIdOverflow,
+        /// Account has no permission to manage roles in this space.
+        NoPermissionToManageRoles,
+        /// Nothing to update in role.
+        NoUpdatesProvided,
+        /// No permissions provided when trying to create a new role.
+        NoPermissionsProvided,
+        /// No users provided when trying to grant them a role.
+        NoUsersProvided,
+        /// There are too many users with this role to delete it in a single tx.
+        TooManyUsersForRoleDeletion,
+        /// Cannot disable a role that is already disabled.
+        RoleAlreadyDisabled,
+        /// Cannot enable a role that is already enabled.
+        RoleAlreadyEnabled,
+    }
 }
 
 // This pallet's storage items.
 decl_storage! {
-  trait Store for Module<T: Trait> as PermissionsModule {
+    trait Store for Module<T: Trait> as PermissionsModule {
 
-    /// The next role id.
-    pub NextRoleId get(fn next_role_id): RoleId = 1;
+        /// The next role id.
+        pub NextRoleId get(fn next_role_id): RoleId = 1;
 
-    /// Get role details by its id.
-    pub RoleById get(fn role_by_id): map RoleId => Option<Role<T>>;
+        /// Get role details by its id.
+        pub RoleById get(fn role_by_id): map RoleId => Option<Role<T>>;
 
-    /// A list of all users (account or space ids) that have this role.
-    pub UsersByRoleId get(fn users_by_role_id): map RoleId => Vec<User<T::AccountId>>;
+        /// A list of all users (account or space ids) that have this role.
+        pub UsersByRoleId get(fn users_by_role_id): map RoleId => Vec<User<T::AccountId>>;
 
-    /// A list of all role ids available in this space.
-    pub RoleIdsBySpaceId get(fn role_ids_by_space_id): map SpaceId => Vec<RoleId>;
+        /// A list of all role ids available in this space.
+        pub RoleIdsBySpaceId get(fn role_ids_by_space_id): map SpaceId => Vec<RoleId>;
 
-    /// A list of all role ids granted to this user (account or space) within this space.
-    pub RoleIdsByUserInSpace get(fn role_ids_by_user_in_space): map (User<T::AccountId>, SpaceId) => Vec<RoleId>;
-  }
+        /// A list of all role ids granted to this user (account or space) within this space.
+        pub RoleIdsByUserInSpace get(fn role_ids_by_user_in_space): map (User<T::AccountId>, SpaceId) => Vec<RoleId>;
+    }
 }
 
 // The pallet's dispatchable functions.
 decl_module! {
   pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+
     const MaxUsersToProcessPerDeleteRole: u16 = T::MaxUsersToProcessPerDeleteRole::get();
 
     // Initializing events
-    // this is needed only if you are using events in your pallet
     fn deposit_event() = default;
 
     /// Create a new role in a space with a list of permissions.
     /// `ipfs_hash` points to the off-chain content with such additional info about this role
     /// as its name, description, color, etc.
-    /// Only the space owner or a user with `ManageRoles` permission can execute this extrinsic.
+    /// Only the space owner or a user with `ManageRoles` permission call this dispatch.
     pub fn create_role(
       origin,
       space_id: SpaceId,
@@ -151,7 +141,7 @@ decl_module! {
       let permissions_set = BTreeSet::from_iter(permissions.into_iter());
       let new_role = Role::<T>::new(who.clone(), space_id, time_to_live, ipfs_hash, permissions_set)?;
 
-      let next_role_id = new_role.id.checked_add(1).ok_or(Error::<T>::OverflowCreatingNewRole)?;
+      let next_role_id = new_role.id.checked_add(1).ok_or(Error::<T>::RoleIdOverflow)?;
       NextRoleId::put(next_role_id);
 
       <RoleById<T>>::insert(new_role.id, new_role.clone());
@@ -161,7 +151,7 @@ decl_module! {
     }
 
     /// Update an existing role by its id.
-    /// Only the space owner or a user with `ManageRoles` permission can execute this extrinsic.
+    /// Only the space owner or a user with `ManageRoles` permission call this dispatch.
     pub fn update_role(origin, role_id: RoleId, update: RoleUpdate) {
       let who = ensure_signed(origin)?;
 
@@ -214,7 +204,7 @@ decl_module! {
     }
 
     /// Delete a role from all associated storage items.
-    /// Only the space owner or a user with `ManageRoles` permission can execute this extrinsic.
+    /// Only the space owner or a user with `ManageRoles` permission call this dispatch.
     pub fn delete_role(origin, role_id: RoleId) {
       let who = ensure_signed(origin)?;
 
@@ -224,7 +214,7 @@ decl_module! {
 
       let users = Self::users_by_role_id(role_id);
       if users.len() > T::MaxUsersToProcessPerDeleteRole::get() as usize {
-        return Err(Error::<T>::TooManyUsersForDeleteRole.into());
+        return Err(Error::<T>::TooManyUsersForRoleDeletion.into());
       }
 
       let role_idx_by_space_opt = Self::role_ids_by_space_id(role.space_id).iter()
@@ -243,7 +233,7 @@ decl_module! {
     }
 
     /// Grant a role to a list of users.
-    /// Only the space owner or an user with `ManageRoles` permission can execute this extrinsic.
+    /// Only the space owner or a user with `ManageRoles` permission call this dispatch.
     pub fn grant_role(origin, role_id: RoleId, users: Vec<User<T::AccountId>>) {
       let who = ensure_signed(origin)?;
 
@@ -269,7 +259,7 @@ decl_module! {
     }
 
     /// Revoke a role from a list of users.
-    /// Only the space owner, a user with `ManageRoles` permission can execute this extrinsic.
+    /// Only the space owner or a user with `ManageRoles` permission call this dispatch.
     pub fn revoke_role(origin, role_id: RoleId, users: Vec<User<T::AccountId>>) {
       let who = ensure_signed(origin)?;
 

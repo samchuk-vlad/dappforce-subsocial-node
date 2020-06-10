@@ -2,6 +2,7 @@ use super::*;
 
 use frame_support::{dispatch::{DispatchResult, DispatchError}};
 use pallet_permissions::SpacePermissionsContext;
+use pallet_utils::SpaceId;
 
 impl<T: Trait> Module<T> {
 
@@ -31,7 +32,7 @@ impl<T: Trait> Module<T> {
         is_owner = *account == space.owner;
 
         // No need to check if a user is follower, if they already are an owner:
-        is_follower = is_owner || T::Spaces::is_space_follower(account.clone(), space_id);
+        is_follower = is_owner || T::SpaceFollows::is_space_follower(account.clone(), space_id);
       }
       User::Space(_) => (/* Not implemented yet. */),
     }
