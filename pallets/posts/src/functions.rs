@@ -1,6 +1,8 @@
-use super::*;
-
 use frame_support::dispatch::DispatchResult;
+
+use pallet_utils::SpaceId;
+
+use super::*;
 
 impl<T: Trait> Post<T> {
 
@@ -67,7 +69,7 @@ impl<T: Trait> Post<T> {
         let root_post = self.get_root_post()?;
 
         let space_id = root_post.space_id.ok_or(Error::<T>::SpaceIdIsUndefined)?;
-        let space = Module::space_by_id(space_id).ok_or(Error::<T>::SpaceNotFound)?;
+        let space = Spaces::space_by_id(space_id).ok_or(Error::<T>::SpaceNotFound)?;
 
         Ok(space)
     }
@@ -81,24 +83,30 @@ impl<T: Trait> Post<T> {
 impl<T: Trait> Module<T> {
 
     pub fn share_post(account: T::AccountId, original_post: &mut Post<T>, shared_post_id: PostId) -> DispatchResult {
-        original_post.shares_count = original_post.shares_count.checked_add(1).ok_or(Error::<T>::OverflowTotalShares)?;
+        original_post.shares_count = original_post.shares_count.checked_add(1).ok_or(Error::<T>::TotalSharesOverflow)?;
 
         let original_post_id = original_post.id;
 
         let mut shares_count = Self::post_shares_by_account((account.clone(), original_post_id));
-        shares_count = shares_count.checked_add(1).ok_or(Error::<T>::OverflowPostShares)?;
+        shares_count = shares_count.checked_add(1).ok_or(Error::<T>::PostSharesOverflow)?;
 
-        if shares_count == 1 {
-            Self::change_post_score_by_extension(account.clone(), original_post, {
-                if original_post.is_comment() { ScoringAction::ShareComment } else {ScoringAction::SharePost}
-            })?;
-        }
+        // TODO old change_post_score_by_extension
+        // if shares_count == 1 {
+        //     Self::change_post_score_by_extension(account.clone(), original_post, {
+        //         if original_post.is_comment() { ScoringAction::ShareComment }
+        //         else { ScoringAction::SharePost }
+        //     })?;
+        // }
 
         <PostById<T>>::insert(original_post_id, original_post.clone());
         <PostSharesByAccount<T>>::insert((account.clone(), original_post_id), shares_count);
         SharedPostIdsByOriginalPostId::mutate(original_post_id, |ids| ids.push(shared_post_id));
 
         Self::deposit_event(RawEvent::PostShared(account, original_post_id));
+
+        // TODO new change_post_score_by_extension
+        // T::PostHandler::on_post_shared(...);
+
         Ok(())
     }
 
@@ -106,6 +114,10 @@ impl<T: Trait> Module<T> {
         let post = Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?;
         let root_post = post.get_root_post()?;
         Ok(root_post.hidden)
+    }
+
+    pub fn is_root_post_visible(post_id: PostId) -> Result<bool, DispatchError> {
+        Self::is_root_post_hidden(post_id).map(|v| !v)
     }
 
     // TODO refactor to a tail recursion
