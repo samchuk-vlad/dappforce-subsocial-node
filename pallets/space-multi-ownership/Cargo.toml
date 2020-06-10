@@ -1,5 +1,5 @@
 [package]
-name = "pallet-space-owners"
+name = "pallet-space-multi-ownership"
 version = "2.0.0"
 authors = ["DappForce <dappforce@pm.me>"]
 edition = "2018"
