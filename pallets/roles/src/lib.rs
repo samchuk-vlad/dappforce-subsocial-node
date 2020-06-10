@@ -162,7 +162,7 @@ decl_module! {
 
       ensure!(has_updates, Error::<T>::NoUpdatesProvided);
 
-      let mut role = Self::role_by_id(role_id).ok_or(Error::<T>::RoleNotFound)?;
+      let mut role = Self::require_role(role_id)?;
 
       Self::ensure_role_manager(who.clone(), role.space_id)?;
 
@@ -208,7 +208,7 @@ decl_module! {
     pub fn delete_role(origin, role_id: RoleId) {
       let who = ensure_signed(origin)?;
 
-      let role = Self::role_by_id(role_id).ok_or(Error::<T>::RoleNotFound)?;
+      let role = Self::require_role(role_id)?;
 
       Self::ensure_role_manager(who.clone(), role.space_id)?;
 
@@ -242,7 +242,7 @@ decl_module! {
         return Err(Error::<T>::NoUsersProvided.into());
       }
 
-      let role = Self::role_by_id(role_id).ok_or(Error::<T>::RoleNotFound)?;
+      let role = Self::require_role(role_id)?;
 
       Self::ensure_role_manager(who.clone(), role.space_id)?;
 
@@ -263,7 +263,7 @@ decl_module! {
     pub fn revoke_role(origin, role_id: RoleId, users: Vec<User<T::AccountId>>) {
       let who = ensure_signed(origin)?;
 
-      let role = Self::role_by_id(role_id).ok_or(Error::<T>::RoleNotFound)?;
+      let role = Self::require_role(role_id)?;
 
       Self::ensure_role_manager(who.clone(), role.space_id)?;
 

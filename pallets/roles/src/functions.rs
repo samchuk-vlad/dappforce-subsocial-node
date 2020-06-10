@@ -6,6 +6,18 @@ use pallet_utils::SpaceId;
 
 impl<T: Trait> Module<T> {
 
+  /// Check that there is a `Role` with such `role_id` in the storage
+  /// or return`RoleNotFound` error.
+  pub fn ensure_role_exists(role_id: RoleId) -> DispatchResult {
+      ensure!(<RoleById<T>>::exists(role_id), Error::<T>::RoleNotFound);
+      Ok(())
+  }
+
+  /// Get `Role` by id from the storage or return `RoleNotFound` error.
+  pub fn require_role(role_id: SpaceId) -> Result<Role<T>, DispatchError> {
+      Ok(Self::role_by_id(role_id).ok_or(Error::<T>::RoleNotFound)?)
+  }
+
   pub fn ensure_role_manager(account: T::AccountId, space_id: SpaceId) -> DispatchResult {
     Self::ensure_user_has_space_permission_with_load_space(
       User::Account(account),
