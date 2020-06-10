@@ -60,8 +60,6 @@ pub trait Trait: system::Trait
 
 decl_error! {
     pub enum Error for Module<T: Trait> {
-        /// Space was not found by id.
-        SpaceNotFound,
         /// Post was not found by id.
         PostNotFound,
         /// Scored account reputation difference by account and action not found.
@@ -175,7 +173,7 @@ impl<T: Trait> Module<T> {
         ensure!(!post.is_comment(), Error::<T>::PostIsAComment);
 
         if let Some(post_space_id) = post.space_id {
-            let mut space = Spaces::space_by_id(post_space_id).ok_or(Error::<T>::SpaceNotFound)?;
+            let mut space = Spaces::require_space(post_space_id)?;
 
             if post.created.account != account {
                 if let Some(score_diff) = Self::post_score_by_account((account.clone(), post_id, action)) {

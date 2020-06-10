@@ -186,7 +186,7 @@ decl_module! {
 
       ensure!(has_updates, Error::<T>::NoUpdatesForSpace);
 
-      let mut space = Self::space_by_id(space_id).ok_or(Error::<T>::SpaceNotFound)?;
+      let mut space = Self::require_space(space_id)?;
 
       Self::ensure_account_has_space_permission(
         owner.clone(),
@@ -248,11 +248,11 @@ decl_module! {
     pub fn transfer_space_ownership(origin, space_id: SpaceId, transfer_to: T::AccountId) {
       let who = ensure_signed(origin)?;
 
-      let space = Self::space_by_id(space_id).ok_or(Error::<T>::SpaceNotFound)?;
+      let space = Self::require_space(space_id)?;
       space.ensure_space_owner(who.clone())?;
 
       ensure!(who != transfer_to, Error::<T>::CannotTranferToCurrentOwner);
-      Space::<T>::ensure_space_exists(space_id)?;
+      Self::ensure_space_exists(space_id)?;
 
       <PendingSpaceOwner<T>>::insert(space_id, transfer_to.clone());
       Self::deposit_event(RawEvent::SpaceOwnershipTransferCreated(who, space_id, transfer_to));
@@ -280,7 +280,7 @@ decl_module! {
     pub fn reject_pending_ownership(origin, space_id: SpaceId) {
       let who = ensure_signed(origin)?;
 
-      let space = Self::space_by_id(space_id).ok_or(Error::<T>::SpaceNotFound)?;
+      let space = Self::require_space(space_id)?;
       let transfer_to = Self::pending_space_owner(space_id).ok_or(Error::<T>::NoPendingTransferOnSpace)?;
       ensure!(who == transfer_to || who == space.owner, Error::<T>::NotAllowedToRejectOwnershipTransfer);
 
@@ -326,14 +326,21 @@ impl<T: Trait> Space<T> {
         ensure!(self.is_owner(&who), Error::<T>::NotASpaceOwner);
         Ok(())
     }
+}
 
+impl<T: Trait> Module<T> {
+
+    /// Check that there is a `Space` with such `space_id` in the storage
+    /// or return`SpaceNotFound` error.
     pub fn ensure_space_exists(space_id: SpaceId) -> DispatchResult {
         ensure!(<SpaceById<T>>::exists(space_id), Error::<T>::SpaceNotFound);
         Ok(())
     }
-}
 
-impl<T: Trait> Module<T> {
+    /// Get `Space` by id from the storage or return `SpaceNotFound` error.
+    pub fn require_space(space_id: SpaceId) -> Result<Space<T>, DispatchError> {
+        Ok(Self::space_by_id(space_id).ok_or(Error::<T>::SpaceNotFound)?)
+    }
 
     pub fn lowercase_and_validate_a_handle(mut handle: Vec<u8>) -> Result<Vec<u8>, DispatchError> {
         handle = handle.to_ascii_lowercase();
@@ -375,7 +382,7 @@ impl<T: Trait> SpaceProvider for Module<T> {
     type AccountId = T::AccountId;
 
     fn get_space(id: SpaceId) -> Result<SpaceForRoles<Self::AccountId>, DispatchError> {
-        let space: Space<T> = Module::space_by_id(id).ok_or(Error::<T>::SpaceNotFound)?;
+        let space = Module::<T>::require_space(id)?;
 
         Ok(SpaceForRoles {
             owner: space.owner,

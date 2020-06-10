@@ -12,7 +12,7 @@ use system::ensure_signed;
 
 use df_traits::PermissionChecker;
 use pallet_permissions::SpacePermission;
-use pallet_spaces::{Module as Spaces, Space, SpaceById};
+use pallet_spaces::{Module as Spaces, SpaceById};
 use pallet_utils::{Module as Utils, SpaceId, vec_remove_on, WhoAndWhen};
 
 pub mod functions;
@@ -117,8 +117,6 @@ decl_event!(
 
 decl_error! {
     pub enum Error for Module<T: Trait> {
-        /// Space was not found by id.
-        SpaceNotFound,
 
         // Post related errors:
 
@@ -144,7 +142,7 @@ decl_error! {
         /// Cannot share a post that shares another post.
         CannotShareSharingPost,
 
-        // Comments related errors:
+        // Comment related errors:
 
         /// Unknown parent comment id.
         UnknownParentComment,
@@ -358,7 +356,7 @@ decl_module! {
 
         if let Some(post_space_id) = post.space_id {
           if space_id != post_space_id {
-            Space::<T>::ensure_space_exists(space_id)?;
+            Spaces::<T>::ensure_space_exists(space_id)?;
 
             // Remove post_id from its old space:
             PostIdsBySpaceId::mutate(post_space_id, |post_ids| vec_remove_on(post_ids, post_id));

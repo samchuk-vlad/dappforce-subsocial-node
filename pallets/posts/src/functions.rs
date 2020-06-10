@@ -1,5 +1,6 @@
 use frame_support::dispatch::DispatchResult;
 
+use pallet_spaces::Space;
 use pallet_utils::SpaceId;
 
 use super::*;
@@ -67,11 +68,8 @@ impl<T: Trait> Post<T> {
 
     pub fn get_space(&self) -> Result<Space<T>, DispatchError> {
         let root_post = self.get_root_post()?;
-
         let space_id = root_post.space_id.ok_or(Error::<T>::SpaceIdIsUndefined)?;
-        let space = Spaces::space_by_id(space_id).ok_or(Error::<T>::SpaceNotFound)?;
-
-        Ok(space)
+        Spaces::require_space(space_id)
     }
 
     pub fn ensure_post_exists(post_id: PostId) -> DispatchResult {

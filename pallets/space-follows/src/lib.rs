@@ -29,8 +29,6 @@ decl_error! {
     pub enum Error for Module<T: Trait> {
         /// Social account was not found by id.
         SocialAccountNotFound,
-        /// Space was not found by id.
-        SpaceNotFound,
         /// Account is already a space follower.
         AlreadySpaceFollower,
         /// Account is not a space follower.
@@ -72,7 +70,7 @@ decl_module! {
     pub fn follow_space(origin, space_id: SpaceId) {
       let follower = ensure_signed(origin)?;
 
-      let space = &mut (Spaces::space_by_id(space_id).ok_or(Error::<T>::SpaceNotFound)?);
+      let space = &mut Spaces::require_space(space_id)?;
       ensure!(!Self::space_followed_by_account((follower.clone(), space_id)), Error::<T>::AlreadySpaceFollower);
       ensure!(!space.hidden, Error::<T>::CannotFollowHiddenSpace);
 
@@ -86,7 +84,7 @@ decl_module! {
     pub fn unfollow_space(origin, space_id: SpaceId) {
       let follower = ensure_signed(origin)?;
 
-      let space = &mut (Spaces::space_by_id(space_id).ok_or(Error::<T>::SpaceNotFound)?);
+      let space = &mut Spaces::require_space(space_id)?;
       ensure!(Self::space_followed_by_account((follower.clone(), space_id)), Error::<T>::NotSpaceFollower);
 
       space.followers_count = space.followers_count
