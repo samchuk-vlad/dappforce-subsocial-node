@@ -93,44 +93,30 @@ decl_error! {
     PostsCountOverflow,
     /// User has no permission to update this space.
     NoPermissionToUpdateSpace,
-
-    /// The current space owner cannot transfer ownership to himself.
-    CannotTranferToCurrentOwner,
-    /// There is no transfer ownership by space that is provided.
-    NoPendingTransferOnSpace,
-    /// The account is not allowed to accept transfer ownership.
-    NotAllowedToAcceptOwnershipTransfer,
-    /// The account is not allowed to reject transfer ownership.
-    NotAllowedToRejectOwnershipTransfer,
   }
 }
 
 // This pallet's storage items.
 decl_storage! {
-  trait Store for Module<T: Trait> as TemplateModule {
+    trait Store for Module<T: Trait> as TemplateModule {
 
-    // TODO reserve space id 0 (zero) for 'Abyss'.
+        // TODO reserve space id 0 (zero) for 'Abyss'.
 
-    pub NextSpaceId get(fn next_space_id): SpaceId = 1;
-    pub SpaceById get(fn space_by_id): map SpaceId => Option<Space<T>>;
-    pub SpaceIdByHandle get(fn space_id_by_handle): map Vec<u8> => Option<SpaceId>;
-    pub SpaceIdsByOwner get(fn space_ids_by_owner): map T::AccountId => Vec<SpaceId>;
-    pub PendingSpaceOwner get(fn pending_space_owner): map SpaceId => Option<T::AccountId>;
-  }
+        pub NextSpaceId get(fn next_space_id): SpaceId = 1;
+        pub SpaceById get(fn space_by_id): map SpaceId => Option<Space<T>>;
+        pub SpaceIdByHandle get(fn space_id_by_handle): map Vec<u8> => Option<SpaceId>;
+        pub SpaceIdsByOwner get(fn space_ids_by_owner): map T::AccountId => Vec<SpaceId>;
+    }
 }
 
 decl_event!(
-  pub enum Event<T> where
-    <T as system::Trait>::AccountId,
-  {
-    SpaceCreated(AccountId, SpaceId),
-    SpaceUpdated(AccountId, SpaceId),
-    SpaceDeleted(AccountId, SpaceId),
-
-    SpaceOwnershipTransferCreated(/* current owner */ AccountId, SpaceId, /* new owner */ AccountId),
-    SpaceOwnershipTransferAccepted(AccountId, SpaceId),
-    SpaceOwnershipTransferRejected(AccountId, SpaceId),
-  }
+    pub enum Event<T> where
+        <T as system::Trait>::AccountId,
+    {
+        SpaceCreated(AccountId, SpaceId),
+        SpaceUpdated(AccountId, SpaceId),
+        SpaceDeleted(AccountId, SpaceId),
+    }
 );
 
 // The pallet's dispatchable functions.
@@ -243,49 +229,6 @@ decl_module! {
         // TODO new
         // T::SpaceHandler::on_space_updated(...);
       }
-    }
-
-    pub fn transfer_space_ownership(origin, space_id: SpaceId, transfer_to: T::AccountId) {
-      let who = ensure_signed(origin)?;
-
-      let space = Self::require_space(space_id)?;
-      space.ensure_space_owner(who.clone())?;
-
-      ensure!(who != transfer_to, Error::<T>::CannotTranferToCurrentOwner);
-      Self::ensure_space_exists(space_id)?;
-
-      <PendingSpaceOwner<T>>::insert(space_id, transfer_to.clone());
-      Self::deposit_event(RawEvent::SpaceOwnershipTransferCreated(who, space_id, transfer_to));
-    }
-
-    pub fn accept_pending_ownership(origin, space_id: SpaceId) {
-      let who = ensure_signed(origin)?;
-
-      let transfer_to = Self::pending_space_owner(space_id).ok_or(Error::<T>::NoPendingTransferOnSpace)?;
-      ensure!(who == transfer_to, Error::<T>::NotAllowedToAcceptOwnershipTransfer);
-
-      // Here we know that the origin is eligible to become a new owner of this space.
-      <PendingSpaceOwner<T>>::remove(space_id);
-
-      if let Some(mut space) = Self::space_by_id(space_id) {
-        space.owner = who.clone();
-        <SpaceById<T>>::insert(space_id, space);
-        Self::deposit_event(RawEvent::SpaceOwnershipTransferAccepted(who, space_id));
-
-        // TODO new
-        // T::SpaceHandler::on_new_space_owner(...);
-      }
-    }
-
-    pub fn reject_pending_ownership(origin, space_id: SpaceId) {
-      let who = ensure_signed(origin)?;
-
-      let space = Self::require_space(space_id)?;
-      let transfer_to = Self::pending_space_owner(space_id).ok_or(Error::<T>::NoPendingTransferOnSpace)?;
-      ensure!(who == transfer_to || who == space.owner, Error::<T>::NotAllowedToRejectOwnershipTransfer);
-
-      <PendingSpaceOwner<T>>::remove(space_id);
-      Self::deposit_event(RawEvent::SpaceOwnershipTransferRejected(who, space_id));
     }
   }
 }

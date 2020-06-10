@@ -2892,6 +2892,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-space-ownership"
+version = "2.0.0"
+dependencies = [
+ "df-traits",
+ "frame-support",
+ "frame-system",
+ "pallet-permissions",
+ "pallet-spaces",
+ "pallet-timestamp",
+ "pallet-utils",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-spaces"
 version = "2.0.0"
 dependencies = [
@@ -5196,6 +5214,7 @@ dependencies = [
  "pallet-roles",
  "pallet-scores",
  "pallet-space-follows",
+ "pallet-space-ownership",
  "pallet-spaces",
  "pallet-sudo",
  "pallet-timestamp",
