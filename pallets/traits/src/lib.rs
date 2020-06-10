@@ -7,7 +7,7 @@ use pallet_permissions::{
   SpacePermissions,
   SpacePermissionsContext
 };
-use pallet_utils::User;
+use pallet_utils::{SpaceId, User};
 
 /// Minimal set of fields from Space struct that are required by roles pallet.
 pub struct SpaceForRoles<AccountId> {
@@ -15,13 +15,16 @@ pub struct SpaceForRoles<AccountId> {
   pub permissions: Option<SpacePermissions>,
 }
 
-pub trait SpaceForRolesProvider {
+pub trait SpaceProvider {
   type AccountId;
-  type SpaceId;
 
-  fn get_space(id: Self::SpaceId) -> Result<SpaceForRoles<Self::AccountId>, DispatchError>;
+  fn get_space(id: SpaceId) -> Result<SpaceForRoles<Self::AccountId>, DispatchError>;
+}
 
-  fn is_space_follower(account: Self::AccountId, space_id: Self::SpaceId) -> bool;
+pub trait SpaceFollowsProvider {
+  type AccountId;
+
+  fn is_space_follower(account: Self::AccountId, space_id: SpaceId) -> bool;
 }
 
 pub trait PermissionChecker {
