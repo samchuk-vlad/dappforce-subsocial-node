@@ -61,8 +61,8 @@ impl<T: Trait> Post<T> {
         match self.extension {
             PostExtension::RegularPost | PostExtension::SharedPost(_) =>
                 Ok(self.clone()),
-            PostExtension::Comment(comment_ext) =>
-                Module::post_by_id(comment_ext.root_post_id).ok_or_else(|| Error::<T>::PostNotFound.into()),
+            PostExtension::Comment(comment) =>
+                Module::require_post(comment.root_post_id),
         }
     }
 
@@ -71,14 +71,21 @@ impl<T: Trait> Post<T> {
         let space_id = root_post.space_id.ok_or(Error::<T>::SpaceIdIsUndefined)?;
         Spaces::require_space(space_id)
     }
+}
 
+impl<T: Trait> Module<T> {
+
+    /// Check that there is a `Post` with such `post_id` in the storage
+    /// or return`PostNotFound` error.
     pub fn ensure_post_exists(post_id: PostId) -> DispatchResult {
         ensure!(<PostById<T>>::exists(post_id), Error::<T>::PostNotFound);
         Ok(())
     }
-}
 
-impl<T: Trait> Module<T> {
+    /// Get `Post` by id from the storage or return `PostNotFound` error.
+    pub fn require_post(post_id: SpaceId) -> Result<Post<T>, DispatchError> {
+        Ok(Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?)
+    }
 
     pub fn share_post(account: T::AccountId, original_post: &mut Post<T>, shared_post_id: PostId) -> DispatchResult {
         original_post.shares_count = original_post.shares_count.checked_add(1).ok_or(Error::<T>::TotalSharesOverflow)?;
@@ -109,7 +116,7 @@ impl<T: Trait> Module<T> {
     }
 
     pub fn is_root_post_hidden(post_id: PostId) -> Result<bool, DispatchError> {
-        let post = Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?;
+        let post = Self::require_post(post_id)?;
         let root_post = post.get_root_post()?;
         Ok(root_post.hidden)
     }

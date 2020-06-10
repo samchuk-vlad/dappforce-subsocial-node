@@ -74,8 +74,6 @@ decl_event!(
 
 decl_error! {
     pub enum Error for Module<T: Trait> {
-        /// Post was not found by id.
-        PostNotFound,
         /// Reaction was not found by id.
         ReactionNotFound,
         /// Account has already reacted to this post/comment.
@@ -113,7 +111,7 @@ decl_module! {
     pub fn create_post_reaction(origin, post_id: PostId, kind: ReactionKind) {
       let owner = ensure_signed(origin)?;
 
-      let post = &mut (Posts::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?);
+      let post = &mut Posts::require_post(post_id)?;
       ensure!(
         !<PostReactionIdByAccount<T>>::exists((owner.clone(), post_id)),
         Error::<T>::AccountAlreadyReacted
@@ -171,7 +169,7 @@ decl_module! {
       );
 
       let mut reaction = Self::reaction_by_id(reaction_id).ok_or(Error::<T>::ReactionNotFound)?;
-      let post = &mut (Posts::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?);
+      let post = &mut Posts::require_post(post_id)?;
 
       ensure!(owner == reaction.created.account, Error::<T>::NotReactionOwner);
       ensure!(reaction.kind != new_kind, Error::<T>::SameReaction);
@@ -218,7 +216,7 @@ decl_module! {
       );
 
       let reaction = Self::reaction_by_id(reaction_id).ok_or(Error::<T>::ReactionNotFound)?;
-      let post = &mut (Posts::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?);
+      let post = &mut Posts::require_post(post_id)?;
 
       ensure!(owner == reaction.created.account, Error::<T>::NotReactionOwner);
 

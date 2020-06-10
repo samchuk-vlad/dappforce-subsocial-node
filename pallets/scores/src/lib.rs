@@ -60,8 +60,6 @@ pub trait Trait: system::Trait
 
 decl_error! {
     pub enum Error for Module<T: Trait> {
-        /// Post was not found by id.
-        PostNotFound,
         /// Scored account reputation difference by account and action not found.
         ReputationDiffNotFound,
         /// Post extension is a comment.
@@ -165,16 +163,22 @@ impl<T: Trait> Module<T> {
         post: &mut Post<T>,
         action: ScoringAction,
     ) -> DispatchResult {
+        ensure!(!post.is_comment(), Error::<T>::PostIsAComment);
+
         let social_account = Profiles::get_or_new_social_account(account.clone());
+
+        // TODO inspect: this insert could be redundant if the account already exists.
         <SocialAccountById<T>>::insert(account.clone(), social_account.clone());
 
         let post_id = post.id;
-        Post::<T>::ensure_post_exists(post_id)?;
-        ensure!(!post.is_comment(), Error::<T>::PostIsAComment);
+
+        // TODO inspect: maybe this check is redundant such as we use change_post_score() internally and post was already loaded.
+        Posts::<T>::ensure_post_exists(post_id)?;
 
         if let Some(post_space_id) = post.space_id {
             let mut space = Spaces::require_space(post_space_id)?;
 
+            // TODO replace with !post.is_owner(account)
             if post.created.account != account {
                 if let Some(score_diff) = Self::post_score_by_account((account.clone(), post_id, action)) {
                     let reputation_diff = Self::account_reputation_diff_by_account((account.clone(), post.created.account.clone(), action))
@@ -216,17 +220,21 @@ impl<T: Trait> Module<T> {
     fn change_comment_score(
         account: T::AccountId,
         comment: &mut Post<T>,
-        action: ScoringAction
+        action: ScoringAction,
     ) -> DispatchResult {
+        ensure!(comment.is_comment(), Error::<T>::PostIsNotAComment);
+
         let social_account = Profiles::get_or_new_social_account(account.clone());
+
+        // TODO inspect: this insert could be redundant if the account already exists.
         <SocialAccountById<T>>::insert(account.clone(), social_account.clone());
 
         let comment_id = comment.id;
-        Post::<T>::ensure_post_exists(comment_id)?;
-        let comment_ext = comment.get_comment_ext()?;
 
-        ensure!(comment.is_comment(), Error::<T>::PostIsNotAComment);
+        // TODO inspect: maybe this check is redundant such as we use change_comment_score() internally and comment was already loaded.
+        Posts::<T>::ensure_post_exists(comment_id)?;
 
+        // TODO replace with !comment.is_owner(account)
         if comment.created.account != account {
             if let Some(score_diff) = Self::post_score_by_account((account.clone(), comment_id, action)) {
                 let reputation_diff = Self::account_reputation_diff_by_account((account.clone(), comment.created.account.clone(), action))
@@ -248,8 +256,8 @@ impl<T: Trait> Module<T> {
                         }
                     }
                     ScoringAction::CreateComment => {
-                        let post = &mut (Posts::post_by_id(comment_ext.root_post_id).ok_or(Error::<T>::PostNotFound)?);
-                        Self::change_post_score(account.clone(), post, action)?;
+                        let root_post = &mut comment.get_root_post()?;
+                        Self::change_post_score(account.clone(), root_post, action)?;
                     }
                     _ => (),
                 }

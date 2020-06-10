@@ -196,7 +196,7 @@ decl_module! {
       let mut space = new_post.get_space()?;
       ensure!(!space.hidden, Error::<T>::CannotCreateInHiddenScope);
 
-      let root_post = &mut (new_post.get_root_post()?);
+      let root_post = &mut new_post.get_root_post()?;
       ensure!(!root_post.hidden, Error::<T>::CannotCreateInHiddenScope);
 
       // Check permissions
@@ -225,7 +225,7 @@ decl_module! {
         },
 
         PostExtension::SharedPost(post_id) => {
-          let post = &mut (Self::post_by_id(post_id).ok_or(Error::<T>::OriginalPostNotFound)?);
+          let post = &mut Self::post_by_id(post_id).ok_or(Error::<T>::OriginalPostNotFound)?;
           ensure!(!post.is_sharing_post(), Error::<T>::CannotShareSharingPost);
 
           // TODO: maybe check multiple permissions per function call?
@@ -295,7 +295,7 @@ decl_module! {
 
       ensure!(has_updates, Error::<T>::NoUpdatesForPost);
 
-      let mut post = Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?;
+      let mut post = Self::require_post(post_id)?;
 
       let is_owner = owner == post.created.account;
       let is_comment = post.is_comment();
@@ -357,6 +357,7 @@ decl_module! {
         if let Some(post_space_id) = post.space_id {
           if space_id != post_space_id {
             Spaces::<T>::ensure_space_exists(space_id)?;
+            // TODO check that the current user has CreatePosts permission in new space_id.
 
             // Remove post_id from its old space:
             PostIdsBySpaceId::mutate(post_space_id, |post_ids| vec_remove_on(post_ids, post_id));
