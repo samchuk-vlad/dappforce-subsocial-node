@@ -10,7 +10,6 @@ use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 use system::ensure_signed;
 
-use df_traits::PermissionChecker;
 use pallet_permissions::SpacePermission;
 use pallet_posts::{Module as Posts, PostById, PostId};
 use pallet_spaces::Module as Spaces;
@@ -48,8 +47,6 @@ pub trait Trait: system::Trait
 {
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
-
-    type Roles: PermissionChecker<AccountId=Self::AccountId>;
 }
 
 // This pallet's storage items.

@@ -10,7 +10,6 @@ use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 use system::ensure_signed;
 
-use df_traits::PermissionChecker;
 use pallet_utils::{is_valid_handle_char, Module as Utils, WhoAndWhen};
 
 // mod tests;
@@ -59,8 +58,6 @@ pub trait Trait: system::Trait
 
     /// Maximal length of profile username
     type MaxUsernameLen: Get<u32>;
-
-    type Roles: PermissionChecker<AccountId=Self::AccountId>;
 }
 
 // This pallet's storage items.

@@ -10,7 +10,6 @@ use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 use system::ensure_signed;
 
-use df_traits::PermissionChecker;
 use pallet_permissions::SpacePermission;
 use pallet_spaces::{Module as Spaces, SpaceById};
 use pallet_utils::{Module as Utils, SpaceId, vec_remove_on, WhoAndWhen};
@@ -86,8 +85,6 @@ pub trait Trait: system::Trait
 
     /// Max comments depth
     type MaxCommentDepth: Get<u32>;
-
-    type Roles: PermissionChecker<AccountId=Self::AccountId>;
 }
 
 // This pallet's storage items.
