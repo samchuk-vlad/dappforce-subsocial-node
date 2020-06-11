@@ -77,7 +77,7 @@ decl_error! {
         /// No users provided when trying to grant them a role.
         NoUsersProvided,
         /// There are too many users with this role to delete it in a single tx.
-        TooManyUsersForRoleDeletion,
+        TooManyUsersToDelete,
         /// Cannot disable a role that is already disabled.
         RoleAlreadyDisabled,
         /// Cannot enable a role that is already enabled.
@@ -214,7 +214,7 @@ decl_module! {
 
       let users = Self::users_by_role_id(role_id);
       if users.len() > T::MaxUsersToProcessPerDeleteRole::get() as usize {
-        return Err(Error::<T>::TooManyUsersForRoleDeletion.into());
+        return Err(Error::<T>::TooManyUsersToDelete.into());
       }
 
       let role_idx_by_space_opt = Self::role_ids_by_space_id(role.space_id).iter()
