@@ -38,24 +38,26 @@ impl Default for ScoringAction {
 
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait
-+ pallet_utils::Trait
-+ pallet_profiles::Trait
-+ pallet_posts::Trait
-+ pallet_spaces::Trait
+    + pallet_utils::Trait
+    + pallet_profiles::Trait
+    + pallet_posts::Trait
+    + pallet_spaces::Trait
 {
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
-    /// Weights of the related social account actions
+    // Weights of the social actions
     type FollowSpaceActionWeight: Get<i16>;
     type FollowAccountActionWeight: Get<i16>;
+
+    type SharePostActionWeight: Get<i16>;
     type UpvotePostActionWeight: Get<i16>;
     type DownvotePostActionWeight: Get<i16>;
-    type SharePostActionWeight: Get<i16>;
+
     type CreateCommentActionWeight: Get<i16>;
+    type ShareCommentActionWeight: Get<i16>;
     type UpvoteCommentActionWeight: Get<i16>;
     type DownvoteCommentActionWeight: Get<i16>;
-    type ShareCommentActionWeight: Get<i16>;
 }
 
 decl_error! {
