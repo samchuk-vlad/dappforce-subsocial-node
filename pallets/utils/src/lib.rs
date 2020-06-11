@@ -61,6 +61,7 @@ fn num_bits<P>() -> usize {
     sp_std::mem::size_of::<P>() * 8
 }
 
+// TODO write tests for x: 0, 1, 2, 128, 512, u32::MAX.
 /// Returns `None` for `x == 0`.
 pub fn log_2(x: u32) -> Option<u32> {
     if x > 0 {
@@ -72,6 +73,7 @@ pub fn log_2(x: u32) -> Option<u32> {
     } else { None }
 }
 
+// TODO write tests for valid and invalid handles.
 /// An example of a valid handle: `good_handle`.
 pub fn is_valid_handle_char(c: u8) -> bool {
     match c {
@@ -80,19 +82,23 @@ pub fn is_valid_handle_char(c: u8) -> bool {
     }
 }
 
+// TODO write tests for 0, 1 and 2 elems in a vec.
 pub fn vec_remove_on<F: PartialEq>(vector: &mut Vec<F>, element: F) {
     if let Some(index) = vector.iter().position(|x| *x == element) {
+        // TODO fix: swap_remove doesn't remove tha last element.
         vector.swap_remove(index);
     }
 }
 
 impl<T: Trait> Module<T> {
 
+    // TODO write tests for IPFS CID v0 and v1.
     pub fn is_ipfs_hash_valid(ipfs_hash: Vec<u8>) -> DispatchResult {
         ensure!(ipfs_hash.len() == T::IpfsHashLen::get() as usize, Error::<T>::InvalidIpfsCid);
         Ok(())
     }
 
+    // TODO write tests
     pub fn convert_users_vec_to_btree_set(
         users_vec: Vec<User<T::AccountId>>
     ) -> Result<BTreeSet<User<T::AccountId>>, DispatchError> {
