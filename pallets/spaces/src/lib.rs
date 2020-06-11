@@ -260,13 +260,17 @@ impl<T: Trait> Space<T> {
         self.owner == *account
     }
 
-    pub fn increment_posts_count(&mut self) -> DispatchResult {
-        self.posts_count = self.posts_count.checked_add(1).ok_or(Error::<T>::PostsCountOverflow)?;
+    pub fn is_follower(&self, account: &T::AccountId) -> bool {
+        T::SpaceFollows::is_space_follower(account.clone(), self.id)
+    }
+
+    pub fn ensure_space_owner(&self, account: T::AccountId) -> DispatchResult {
+        ensure!(self.is_owner(&account), Error::<T>::NotASpaceOwner);
         Ok(())
     }
 
-    pub fn ensure_space_owner(&self, who: T::AccountId) -> DispatchResult {
-        ensure!(self.is_owner(&who), Error::<T>::NotASpaceOwner);
+    pub fn increment_posts_count(&mut self) -> DispatchResult {
+        self.posts_count = self.posts_count.checked_add(1).ok_or(Error::<T>::PostsCountOverflow)?;
         Ok(())
     }
 }
@@ -303,7 +307,7 @@ impl<T: Trait> Module<T> {
         error: DispatchError,
     ) -> DispatchResult {
         let is_owner = space.is_owner(&account);
-        let is_follower = T::SpaceFollows::is_space_follower(account.clone(), space.id);
+        let is_follower = space.is_follower(&account);
 
         let ctx = SpacePermissionsContext {
             space_id: space.id,
