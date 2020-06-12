@@ -345,6 +345,7 @@ impl<T: Trait> OnBeforeSpaceUnfollowed<T> for Module<T> {
     fn on_before_space_unfollowed(follower: T::AccountId, space: &mut Space<T>) -> DispatchResult {
         // Change a space score only if the follower is NOT a space owner.
         if !space.is_owner(&follower) {
+            let space_owner = space.owner.clone();
             let action = ScoringAction::FollowSpace;
             if let Some(score_diff) = Self::account_reputation_diff_by_account(
                 (follower.clone(), space_owner.clone(), action)
@@ -352,7 +353,7 @@ impl<T: Trait> OnBeforeSpaceUnfollowed<T> for Module<T> {
                 // Subtract a score diff that was added when this user followed this space in the past:
                 space.change_score(-score_diff);
                 return Self::change_social_account_reputation(
-                    space.owner.clone(), follower.clone(), -score_diff, action);
+                    space_owner, follower.clone(), -score_diff, action);
             }
         }
         Ok(())
