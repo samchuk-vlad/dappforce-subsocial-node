@@ -24,6 +24,7 @@ std = [
     'df-traits/std',
     'pallet-permissions/std',
     'pallet-profiles/std',
+    'pallet-profile-follows/std',
     'pallet-posts/std',
     'pallet-spaces/std',
     'pallet-space-follows/std',
@@ -91,6 +92,11 @@ version = '2.0.0'
 [dependencies.pallet-profiles]
 default-features = false
 path = '../profiles'
+version = '2.0.0'
+
+[dependencies.pallet-profile-follows]
+default-features = false
+path = '../profile-follows'
 version = '2.0.0'
 
 [dependencies.pallet-posts]
