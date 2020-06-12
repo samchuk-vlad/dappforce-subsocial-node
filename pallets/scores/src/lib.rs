@@ -39,11 +39,11 @@ impl Default for ScoringAction {
 
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait
-+ pallet_utils::Trait
-+ pallet_profiles::Trait
-+ pallet_posts::Trait
-+ pallet_spaces::Trait
-+ pallet_space_follows::Trait
+    + pallet_utils::Trait
+    + pallet_profiles::Trait
+    + pallet_posts::Trait
+    + pallet_spaces::Trait
+    + pallet_space_follows::Trait
 {
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
