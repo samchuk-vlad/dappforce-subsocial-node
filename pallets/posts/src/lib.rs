@@ -192,12 +192,12 @@ decl_module! {
     fn deposit_event() = default;
 
     pub fn create_post(origin, space_id_opt: Option<SpaceId>, extension: PostExtension, ipfs_hash: Vec<u8>) {
-      let owner = ensure_signed(origin)?;
+      let creator = ensure_signed(origin)?;
 
       Utils::<T>::is_ipfs_hash_valid(ipfs_hash.clone())?;
 
       let new_post_id = Self::next_post_id();
-      let new_post: Post<T> = Post::new(new_post_id, owner.clone(), space_id_opt, extension, ipfs_hash);
+      let new_post: Post<T> = Post::new(new_post_id, creator.clone(), space_id_opt, extension, ipfs_hash);
 
       // Get space from either from space_id_opt or extension if a Comment provided
       let mut space = new_post.get_space()?;
@@ -210,7 +210,7 @@ decl_module! {
       match extension {
         PostExtension::RegularPost | PostExtension::SharedPost(_) => {
           Spaces::ensure_account_has_space_permission(
-            owner.clone(),
+            creator.clone(),
             &space,
             SpacePermission::CreatePosts,
             Error::<T>::NoPermissionToCreatePosts.into()
@@ -218,7 +218,7 @@ decl_module! {
         },
         PostExtension::Comment(_) => {
           Spaces::ensure_account_has_space_permission(
-            owner.clone(),
+            creator.clone(),
             &space,
             SpacePermission::CreateComments,
             Error::<T>::NoPermissionToCreateComments.into()
@@ -237,14 +237,14 @@ decl_module! {
 
           // Check if it's allowed to share a post from the space of original post.
           Spaces::ensure_account_has_space_permission(
-            owner.clone(),
+            creator.clone(),
             &original_post.get_space()?,
             SpacePermission::Share,
             Error::<T>::NoPermissionToShare.into()
           )?;
 
           space.posts_count = space.posts_count.checked_add(1).ok_or(Error::<T>::PostsCountOverflow)?;
-          Self::share_post(owner.clone(), original_post, new_post_id)?;
+          Self::share_post(creator.clone(), original_post, new_post_id)?;
         },
 
         PostExtension::Comment(comment_ext) => {
@@ -272,7 +272,7 @@ decl_module! {
           }
 
           // TODO old change root post score on new comment
-          // Self::change_post_score(owner.clone(), root_post, ScoringAction::CreateComment)?;
+          // Self::change_post_score(creator.clone(), root_post, ScoringAction::CreateComment)?;
 
           PostById::insert(comment_ext.root_post_id, root_post);
         }
@@ -286,14 +286,14 @@ decl_module! {
       PostById::insert(new_post_id, new_post);
       NextPostId::mutate(|n| { *n += 1; });
 
-      Self::deposit_event(RawEvent::PostCreated(owner, new_post_id));
+      Self::deposit_event(RawEvent::PostCreated(creator, new_post_id));
 
       // TODO new change root post score on new comment
       // T::PostHandler::on_post_created(..., post_extension);
     }
 
     pub fn update_post(origin, post_id: PostId, update: PostUpdate) {
-      let owner = ensure_signed(origin)?;
+      let editor = ensure_signed(origin)?;
 
       let has_updates =
         update.space_id.is_some() ||
@@ -304,7 +304,7 @@ decl_module! {
 
       let mut post = Self::require_post(post_id)?;
 
-      let is_owner = post.is_owner(owner);
+      let is_owner = post.is_owner(editor);
       let is_comment = post.is_comment();
 
       let permission_to_check: SpacePermission;
@@ -328,7 +328,7 @@ decl_module! {
       }
 
       Spaces::ensure_account_has_space_permission(
-        owner.clone(),
+        editor.clone(),
         &post.get_space()?,
         permission_to_check,
         permission_error
@@ -336,7 +336,7 @@ decl_module! {
 
       let mut fields_updated = 0;
       let mut new_history_record = PostHistoryRecord {
-        edited: WhoAndWhen::<T>::new(owner.clone()),
+        edited: WhoAndWhen::<T>::new(editor.clone()),
         old_data: PostUpdate {space_id: None, ipfs_hash: None, hidden: None}
       };
 
@@ -380,11 +380,11 @@ decl_module! {
 
       // Update this post only if at least one field should be updated:
       if fields_updated > 0 {
-        post.updated = Some(WhoAndWhen::<T>::new(owner.clone()));
+        post.updated = Some(WhoAndWhen::<T>::new(editor.clone()));
         post.edit_history.push(new_history_record);
         <PostById<T>>::insert(post_id, post);
 
-        Self::deposit_event(RawEvent::PostUpdated(owner, post_id));
+        Self::deposit_event(RawEvent::PostUpdated(editor, post_id));
       }
     }
   }
