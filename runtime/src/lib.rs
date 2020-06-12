@@ -352,6 +352,8 @@ parameter_types! {}
 
 impl pallet_reactions::Trait for Runtime {
   type Event = Event;
+  type BeforePostReactionCreated = Scores;
+  type BeforePostReactionDeleted = Scores;
 }
 
 parameter_types! {

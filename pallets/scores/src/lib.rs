@@ -12,7 +12,7 @@ use sp_std::prelude::*;
 use pallet_posts::{Module as Posts, OnBeforePostShared, Post, PostById, PostExtension, PostId};
 use pallet_profile_follows::{OnBeforeAccountFollowed, OnBeforeAccountUnfollowed};
 use pallet_profiles::{Module as Profiles, SocialAccountById};
-use pallet_reactions::ReactionKind;
+use pallet_reactions::{BeforePostReactionCreated, BeforePostReactionDeleted, ReactionKind};
 use pallet_space_follows::{OnBeforeSpaceFollowed, OnBeforeSpaceUnfollowed};
 use pallet_spaces::{Module as Spaces, Space, SpaceById};
 use pallet_utils::log_2;
@@ -46,6 +46,7 @@ pub trait Trait: system::Trait
     + pallet_posts::Trait
     + pallet_spaces::Trait
     + pallet_space_follows::Trait
+    + pallet_reactions::Trait
 {
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
@@ -401,5 +402,31 @@ impl<T: Trait> OnBeforePostShared<T> for Module<T> {
         } else {
             Ok(())
         }
+    }
+}
+
+impl<T: Trait> BeforePostReactionCreated<T> for Module<T> {
+    fn before_post_reaction_created(
+        _actor: T::AccountId,
+        _post: &mut Post<T>,
+        _reaction_kind: ReactionKind,
+    ) -> DispatchResult {
+
+        // TODO impl
+
+        Ok(())
+    }
+}
+
+impl<T: Trait> BeforePostReactionDeleted<T> for Module<T> {
+    fn before_post_reaction_deleted(
+        _actor: T::AccountId,
+        _post: &mut Post<T>,
+        _reaction_kind: ReactionKind,
+    ) -> DispatchResult {
+
+        // TODO impl
+
+        Ok(())
     }
 }

@@ -4,14 +4,14 @@
 use codec::{Decode, Encode};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
-    ensure,
+    dispatch::DispatchResult, ensure,
 };
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 use system::ensure_signed;
 
 use pallet_permissions::SpacePermission;
-use pallet_posts::{Module as Posts, PostById, PostId};
+use pallet_posts::{Module as Posts, Post, PostById, PostId};
 use pallet_spaces::Module as Spaces;
 use pallet_utils::{vec_remove_on, WhoAndWhen};
 
@@ -47,6 +47,10 @@ pub trait Trait: system::Trait
 {
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+
+    type BeforePostReactionCreated: BeforePostReactionCreated<Self>;
+
+    type BeforePostReactionDeleted: BeforePostReactionDeleted<Self>;
 }
 
 // This pallet's storage items.
@@ -192,8 +196,8 @@ decl_module! {
       // let action_to_cancel = Self::scoring_action_by_post_extension(post.extension, old_kind, true);
       // Self::change_post_score(owner.clone(), post, action_to_cancel)?;
       //
-      // let action = Self::scoring_action_by_post_extension(post.extension, new_kind, false);
-      // Self::change_post_score(owner.clone(), post, action)?;
+      // let new_action = Self::scoring_action_by_post_extension(post.extension, new_kind, false);
+      // Self::change_post_score(owner.clone(), post, new_action)?;
 
       <ReactionById<T>>::insert(reaction_id, reaction);
       <PostById<T>>::insert(post_id, post);
@@ -255,5 +259,27 @@ impl<T: Trait> Module<T> {
         NextReactionId::mutate(|n| { *n += 1; });
 
         id
+    }
+}
+
+/// Handler that will be called right before the post reaction is created.
+pub trait BeforePostReactionCreated<T: Trait> {
+    fn before_post_reaction_created(actor: T::AccountId, post: &mut Post<T>, reaction_kind: ReactionKind) -> DispatchResult;
+}
+
+impl<T: Trait> BeforePostReactionCreated<T> for () {
+    fn before_post_reaction_created(_actor: T::AccountId, _post: &mut Post<T>, _reaction_kind: ReactionKind) -> DispatchResult {
+        Ok(())
+    }
+}
+
+/// Handler that will be called right before the post reaction is deleted.
+pub trait BeforePostReactionDeleted<T: Trait> {
+    fn before_post_reaction_deleted(actor: T::AccountId, post: &mut Post<T>, reaction_kind: ReactionKind) -> DispatchResult;
+}
+
+impl<T: Trait> BeforePostReactionDeleted<T> for () {
+    fn before_post_reaction_deleted(_actor: T::AccountId, _post: &mut Post<T>, _reaction_kind: ReactionKind) -> DispatchResult {
+        Ok(())
     }
 }
