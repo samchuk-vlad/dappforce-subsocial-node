@@ -274,6 +274,9 @@ decl_module! {
           // TODO old change root post score on new comment
           // Self::change_post_score(creator.clone(), root_post, ScoringAction::CreateComment)?;
 
+          // TODO new before_comment_created
+          // T::BeforeCommentCreated::before_comment_created(...);
+
           PostById::insert(comment_ext.root_post_id, root_post);
         }
       }
@@ -287,9 +290,6 @@ decl_module! {
       NextPostId::mutate(|n| { *n += 1; });
 
       Self::deposit_event(RawEvent::PostCreated(creator, new_post_id));
-
-      // TODO new change root post score on new comment
-      // T::PostHandler::on_post_created(..., post_extension);
     }
 
     pub fn update_post(origin, post_id: PostId, update: PostUpdate) {

@@ -144,10 +144,12 @@ decl_module! {
       let space_id = Self::next_space_id();
       let new_space = &mut Space::new(space_id, owner.clone(), ipfs_hash, handle_opt);
 
-      // TODO from Alex: do we really need to make a space owner its first follower?
       // TODO old add_space_follower
       // Space creator automatically follows their space:
       // Self::add_space_follower(owner.clone(), new_space)?;
+
+      // TODO new from Alex: do we really need to make a space owner its first follower?
+      // SpaceFollows::follow_space(owner.clone(), new_space)?;
 
       if !handle.is_empty() {
         SpaceIdByHandle::insert(handle, space_id);
@@ -157,9 +159,6 @@ decl_module! {
       <SpaceIdsByOwner<T>>::mutate(owner.clone(), |ids| ids.push(space_id));
       NextSpaceId::mutate(|n| { *n += 1; });
       Self::deposit_event(RawEvent::SpaceCreated(owner, space_id));
-
-      // TODO new add_space_follower
-      // T::SpaceHandler::on_space_created(...);
     }
 
     pub fn update_space(origin, space_id: SpaceId, update: SpaceUpdate) {

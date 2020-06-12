@@ -149,12 +149,12 @@ decl_module! {
         // Self::change_post_score(owner.clone(), post, action)?;
       }
 
+      // TODO new before_post_reaction_created
+      // T::BeforePostReactionCreated::before_post_reaction_created(...);
+
       ReactionIdsByPostId::mutate(post_id, |ids| ids.push(reaction_id));
       <PostReactionIdByAccount<T>>::insert((owner.clone(), post_id), reaction_id);
       Self::deposit_event(RawEvent::PostReactionCreated(owner, post_id, reaction_id));
-
-      // TODO new change_post_score
-      // T::ReactionHandler::on_post_reaction_created(...);
     }
 
     pub fn update_post_reaction(origin, post_id: PostId, reaction_id: ReactionId, new_kind: ReactionKind) {
@@ -226,15 +226,15 @@ decl_module! {
       // let action_to_cancel = Self::scoring_action_by_post_extension(post.extension, reaction.kind, false);
       // Self::change_post_score(owner.clone(), post, action_to_cancel)?;
 
+      // TODO new before_post_reaction_deleted
+      // T::BeforePostReactionDeleted::before_post_reaction_deleted(...);
+
       <PostById<T>>::insert(post_id, post);
       <ReactionById<T>>::remove(reaction_id);
       ReactionIdsByPostId::mutate(post_id, |ids| vec_remove_on(ids, reaction_id));
       <PostReactionIdByAccount<T>>::remove((owner.clone(), post_id));
 
       Self::deposit_event(RawEvent::PostReactionDeleted(owner, post_id, reaction_id));
-
-      // TODO new change_post_score
-      // T::ReactionHandler::on_post_reaction_deleted(...);
     }
   }
 }
