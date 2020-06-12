@@ -326,7 +326,7 @@ parameter_types! {
 impl pallet_posts::Trait for Runtime {
   type Event = Event;
   type MaxCommentDepth = MaxCommentDepth;
-  type OnPostShared = Scores;
+  type OnBeforePostShared = Scores;
 }
 
 parameter_types! {}

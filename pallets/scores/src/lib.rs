@@ -9,7 +9,7 @@ use frame_support::{
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
-use pallet_posts::{Module as Posts, Post, PostById, PostExtension, PostId};
+use pallet_posts::{Module as Posts, OnBeforePostShared, Post, PostById, PostExtension, PostId};
 use pallet_profiles::{Module as Profiles, SocialAccountById};
 use pallet_reactions::ReactionKind;
 use pallet_spaces::{Module as Spaces, SpaceById};
@@ -68,31 +68,19 @@ decl_error! {
         PostIsAComment,
         /// Post extension is not a comment.
         PostIsNotAComment,
-
-        /// Out of bounds increasing a space score.
-        SpaceScoreOverflow,
-        /// Out of bounds decreasing a space score.
-        SpaceScoreUnderflow,
-        /// Out of bounds increasing a post score.
-        PostScoreOverflow,
-        /// Out of bounds decreasing a post score.
-        PostScoreUnderflow,
-        /// Out of bounds increasing a comment score.
-        CommentScoreOverflow,
-        /// Out of bounds decreasing a comment score.
-        CommentScoreUnderflow,
-        /// Out of bounds increasing a reputation of a social account.
-        ReputationOverflow,
-        /// Out of bounds decreasing a reputation of a social account.
-        ReputationUnderflow,
     }
 }
 
 // This pallet's storage items.
 decl_storage! {
     trait Store for Module<T: Trait> as TemplateModule {
-        pub AccountReputationDiffByAccount get(fn account_reputation_diff_by_account): map (T::AccountId, T::AccountId, ScoringAction) => Option<i16>; // TODO shorten name (?refactor)
-        pub PostScoreByAccount get(fn post_score_by_account): map (T::AccountId, PostId, ScoringAction) => Option<i16>;
+
+        // TODO shorten name? (refactor)
+        pub AccountReputationDiffByAccount get(fn account_reputation_diff_by_account):
+            map (T::AccountId, T::AccountId, ScoringAction) => Option<i16>;
+
+        pub PostScoreByAccount get(fn post_score_by_account):
+            map (T::AccountId, PostId, ScoringAction) => Option<i16>;
     }
 }
 
@@ -146,21 +134,19 @@ impl<T: Trait> Module<T> {
         }
     }
 
-    pub fn change_post_score_by_extension(
+    pub fn change_post_score(
         account: T::AccountId,
         post: &mut Post<T>,
         action: ScoringAction,
     ) -> DispatchResult {
         if post.is_comment() {
-            Self::change_comment_score(account, post, action)?;
+            Self::change_comment_score(account, post, action)
         } else {
-            Self::change_post_score(account, post, action)?;
+            Self::change_root_post_score(account, post, action)
         }
-
-        Ok(())
     }
 
-    fn change_post_score(
+    fn change_root_post_score(
         account: T::AccountId,
         post: &mut Post<T>,
         action: ScoringAction,
@@ -174,7 +160,7 @@ impl<T: Trait> Module<T> {
 
         let post_id = post.id;
 
-        // TODO inspect: maybe this check is redundant such as we use change_post_score() internally and post was already loaded.
+        // TODO inspect: maybe this check is redundant such as we use change_root_post_score() internally and post was already loaded.
         Posts::<T>::ensure_post_exists(post_id)?;
 
         if let Some(post_space_id) = post.space_id {
@@ -186,27 +172,30 @@ impl<T: Trait> Module<T> {
                     let reputation_diff = Self::account_reputation_diff_by_account((account.clone(), post.created.account.clone(), action))
                         .ok_or(Error::<T>::ReputationDiffNotFound)?;
 
-                    post.score = post.score.checked_sub(score_diff as i32).ok_or(Error::<T>::PostScoreUnderflow)?;
-                    space.score = space.score.checked_sub(score_diff as i32).ok_or(Error::<T>::SpaceScoreUnderflow)?;
+                    // Revert this score diff:
+                    post.change_score(-score_diff);
+                    space.change_score(-score_diff);
                     Self::change_social_account_reputation(post.created.account.clone(), account.clone(), -reputation_diff, action)?;
                     <PostScoreByAccount<T>>::remove((account, post_id, action));
                 } else {
                     match action {
                         ScoringAction::UpvotePost => {
                             if Self::post_score_by_account((account.clone(), post_id, ScoringAction::DownvotePost)).is_some() {
-                                Self::change_post_score(account.clone(), post, ScoringAction::DownvotePost)?;
+                                // TODO inspect this recursion. Doesn't look good:
+                                Self::change_root_post_score(account.clone(), post, ScoringAction::DownvotePost)?;
                             }
                         }
                         ScoringAction::DownvotePost => {
                             if Self::post_score_by_account((account.clone(), post_id, ScoringAction::UpvotePost)).is_some() {
-                                Self::change_post_score(account.clone(), post, ScoringAction::UpvotePost)?;
+                                // TODO inspect this recursion. Doesn't look good:
+                                Self::change_root_post_score(account.clone(), post, ScoringAction::UpvotePost)?;
                             }
                         }
                         _ => (),
                     }
                     let score_diff = Self::score_diff_for_action(social_account.reputation, action);
-                    post.score = post.score.checked_add(score_diff as i32).ok_or(Error::<T>::PostScoreOverflow)?;
-                    space.score = space.score.checked_add(score_diff as i32).ok_or(Error::<T>::SpaceScoreOverflow)?;
+                    post.change_score(score_diff);
+                    space.change_score(score_diff);
                     Self::change_social_account_reputation(post.created.account.clone(), account.clone(), score_diff, action)?;
                     <PostScoreByAccount<T>>::insert((account, post_id, action), score_diff);
                 }
@@ -242,7 +231,8 @@ impl<T: Trait> Module<T> {
                 let reputation_diff = Self::account_reputation_diff_by_account((account.clone(), comment.created.account.clone(), action))
                     .ok_or(Error::<T>::ReputationDiffNotFound)?;
 
-                comment.score = comment.score.checked_sub(score_diff as i32).ok_or(Error::<T>::CommentScoreUnderflow)?;
+                // Revert this score diff:
+                comment.change_score(-score_diff);
                 Self::change_social_account_reputation(comment.created.account.clone(), account.clone(), -reputation_diff, action)?;
                 <PostScoreByAccount<T>>::remove((account, comment_id, action));
             } else {
@@ -259,12 +249,12 @@ impl<T: Trait> Module<T> {
                     }
                     ScoringAction::CreateComment => {
                         let root_post = &mut comment.get_root_post()?;
-                        Self::change_post_score(account.clone(), root_post, action)?;
+                        Self::change_root_post_score(account.clone(), root_post, action)?;
                     }
                     _ => (),
                 }
                 let score_diff = Self::score_diff_for_action(social_account.reputation, action);
-                comment.score = comment.score.checked_add(score_diff as i32).ok_or(Error::<T>::CommentScoreOverflow)?;
+                comment.change_score(score_diff);
                 Self::change_social_account_reputation(comment.created.account.clone(), account.clone(), score_diff, action)?;
                 <PostScoreByAccount<T>>::insert((account, comment_id, action), score_diff);
             }
@@ -290,15 +280,7 @@ impl<T: Trait> Module<T> {
             score_diff = 0;
         }
 
-        if score_diff > 0 {
-            social_account.reputation = social_account.reputation
-                .checked_add(score_diff as u32)
-                .ok_or(Error::<T>::ReputationOverflow)?;
-        } else if score_diff < 0 {
-            social_account.reputation = social_account.reputation
-                .checked_sub(score_diff as u32)
-                .ok_or(Error::<T>::ReputationUnderflow)?;
-        }
+        social_account.change_reputation(score_diff);
 
         if Self::account_reputation_diff_by_account((scorer.clone(), account.clone(), action)).is_some() {
             <AccountReputationDiffByAccount<T>>::remove((scorer, account.clone(), action));
@@ -339,6 +321,26 @@ impl<T: Trait> Module<T> {
             ShareComment => T::ShareCommentActionWeight::get(),
             FollowSpace => T::FollowSpaceActionWeight::get(),
             FollowAccount => T::FollowAccountActionWeight::get(),
+        }
+    }
+}
+
+impl<T: Trait> OnBeforePostShared<T> for Module<T> {
+    fn on_before_post_shared(account: T::AccountId, original_post: &mut Post<T>) -> DispatchResult {
+        let action =
+            if original_post.is_comment() { ScoringAction::ShareComment }
+            else { ScoringAction::SharePost };
+
+        let account_never_shared_this_post =
+            Self::post_score_by_account((account.clone(), original_post.id, action.clone()))
+                .is_none();
+
+        // It makes sense to change a score of this post only once:
+        // i.e. when this account sharing it for the first time.
+        if account_never_shared_this_post {
+            Self::change_post_score(account, original_post, action)
+        } else {
+            Ok(())
         }
     }
 }

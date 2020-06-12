@@ -4,7 +4,7 @@
 use codec::{Decode, Encode};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
-    dispatch::DispatchError, ensure, traits::Get,
+    dispatch::{DispatchError, DispatchResult}, ensure, traits::Get,
 };
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
@@ -85,6 +85,19 @@ pub trait Trait: system::Trait
 
     /// Max comments depth
     type MaxCommentDepth: Get<u32>;
+
+    type OnBeforePostShared: OnBeforePostShared<Self>;
+}
+
+/// Handler that will be called right before post is shared.
+pub trait OnBeforePostShared<T: Trait> {
+    fn on_before_post_shared(account: T::AccountId, original_post: &mut Post<T>) -> DispatchResult;
+}
+
+impl<T: Trait> OnBeforePostShared<T> for () {
+    fn on_before_post_shared(_account: T::AccountId, _original_post: &mut Post<T>) -> DispatchResult {
+        Ok(())
+    }
 }
 
 // This pallet's storage items.
@@ -94,7 +107,6 @@ decl_storage! {
         pub PostById get(fn post_by_id): map PostId => Option<Post<T>>;
         pub ReplyIdsByPostId get(fn reply_ids_by_post_id): map PostId => Vec<PostId>;
         pub PostIdsBySpaceId get(fn post_ids_by_space_id): map SpaceId => Vec<PostId>;
-        pub PostSharesByAccount get(fn post_shares_by_account): map (T::AccountId, PostId) => u16;
 
         // TODO rename 'Shared...' to 'Sharing...'
         pub SharedPostIdsByOriginalPostId get(fn shared_post_ids_by_original_post_id): map PostId => Vec<PostId>;
@@ -132,9 +144,7 @@ decl_error! {
 
         /// Original post not found when sharing.
         OriginalPostNotFound,
-        /// Overflow caused on total shares counter when sharing post/comment.
-        TotalSharesOverflow,
-        /// Overflow caused on shares by account counter when sharing post/comment.
+        /// Overflow caused by total shares counter when sharing post/comment.
         PostSharesOverflow,
         /// Cannot share a post that shares another post.
         CannotShareSharingPost,
@@ -222,19 +232,19 @@ decl_module! {
         },
 
         PostExtension::SharedPost(post_id) => {
-          let post = &mut Self::post_by_id(post_id).ok_or(Error::<T>::OriginalPostNotFound)?;
-          ensure!(!post.is_sharing_post(), Error::<T>::CannotShareSharingPost);
+          let original_post = &mut Self::post_by_id(post_id).ok_or(Error::<T>::OriginalPostNotFound)?;
+          ensure!(!original_post.is_sharing_post(), Error::<T>::CannotShareSharingPost);
 
-          // TODO: maybe check multiple permissions per function call?
+          // Check if it's allowed to share a post from the space of original post.
           Spaces::ensure_account_has_space_permission(
             owner.clone(),
-            &post.get_space()?,
+            &original_post.get_space()?,
             SpacePermission::Share,
             Error::<T>::NoPermissionToShare.into()
           )?;
 
           space.posts_count = space.posts_count.checked_add(1).ok_or(Error::<T>::PostsCountOverflow)?;
-          Self::share_post(owner.clone(), post, new_post_id)?;
+          Self::share_post(owner.clone(), original_post, new_post_id)?;
         },
 
         PostExtension::Comment(comment_ext) => {
@@ -262,18 +272,18 @@ decl_module! {
           }
 
           // TODO old change root post score on new comment
-          // Self::change_post_score_by_extension(owner.clone(), root_post, ScoringAction::CreateComment)?;
+          // Self::change_post_score(owner.clone(), root_post, ScoringAction::CreateComment)?;
 
-          <PostById<T>>::insert(comment_ext.root_post_id, root_post);
+          PostById::insert(comment_ext.root_post_id, root_post);
         }
       }
 
       if !new_post.is_comment() {
-        <SpaceById<T>>::insert(space.id, space.clone());
+        SpaceById::insert(space.id, space.clone());
         PostIdsBySpaceId::mutate(space.id, |ids| ids.push(new_post_id));
       }
 
-      <PostById<T>>::insert(new_post_id, new_post);
+      PostById::insert(new_post_id, new_post);
       NextPostId::mutate(|n| { *n += 1; });
 
       Self::deposit_event(RawEvent::PostCreated(owner, new_post_id));

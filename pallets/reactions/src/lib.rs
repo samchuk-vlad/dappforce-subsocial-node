@@ -144,16 +144,16 @@ decl_module! {
       if post.is_owner(&owner) {
         <PostById<T>>::insert(post_id, post.clone());
       } else {
-        // TODO old change_post_score_by_extension
+        // TODO old change_post_score
         // let action = Self::scoring_action_by_post_extension(post.extension, kind, false);
-        // Self::change_post_score_by_extension(owner.clone(), post, action)?;
+        // Self::change_post_score(owner.clone(), post, action)?;
       }
 
       ReactionIdsByPostId::mutate(post_id, |ids| ids.push(reaction_id));
       <PostReactionIdByAccount<T>>::insert((owner.clone(), post_id), reaction_id);
       Self::deposit_event(RawEvent::PostReactionCreated(owner, post_id, reaction_id));
 
-      // TODO new change_post_score_by_extension
+      // TODO new change_post_score
       // T::ReactionHandler::on_post_reaction_created(...);
     }
 
@@ -171,7 +171,7 @@ decl_module! {
       ensure!(owner == reaction.created.account, Error::<T>::NotReactionOwner);
       ensure!(reaction.kind != new_kind, Error::<T>::SameReaction);
 
-      // TODO old change_post_score_by_extension
+      // TODO old change_post_score
       // let old_kind = reaction.kind;
 
       reaction.kind = new_kind;
@@ -188,19 +188,19 @@ decl_module! {
         },
       }
 
-      // TODO old change_post_score_by_extension
+      // TODO old change_post_score
       // let action_to_cancel = Self::scoring_action_by_post_extension(post.extension, old_kind, true);
-      // Self::change_post_score_by_extension(owner.clone(), post, action_to_cancel)?;
+      // Self::change_post_score(owner.clone(), post, action_to_cancel)?;
       //
       // let action = Self::scoring_action_by_post_extension(post.extension, new_kind, false);
-      // Self::change_post_score_by_extension(owner.clone(), post, action)?;
+      // Self::change_post_score(owner.clone(), post, action)?;
 
       <ReactionById<T>>::insert(reaction_id, reaction);
       <PostById<T>>::insert(post_id, post);
 
       Self::deposit_event(RawEvent::PostReactionUpdated(owner, post_id, reaction_id));
 
-      // TODO old change_post_score_by_extension
+      // TODO old change_post_score
       // T::ReactionHandler::on_post_reaction_updated(...);
     }
 
@@ -222,9 +222,9 @@ decl_module! {
         ReactionKind::Downvote => post.downvotes_count -= 1,
       }
 
-      // TODO old change_post_score_by_extension
+      // TODO old change_post_score
       // let action_to_cancel = Self::scoring_action_by_post_extension(post.extension, reaction.kind, false);
-      // Self::change_post_score_by_extension(owner.clone(), post, action_to_cancel)?;
+      // Self::change_post_score(owner.clone(), post, action_to_cancel)?;
 
       <PostById<T>>::insert(post_id, post);
       <ReactionById<T>>::remove(reaction_id);
@@ -233,7 +233,7 @@ decl_module! {
 
       Self::deposit_event(RawEvent::PostReactionDeleted(owner, post_id, reaction_id));
 
-      // TODO new change_post_score_by_extension
+      // TODO new change_post_score
       // T::ReactionHandler::on_post_reaction_deleted(...);
     }
   }

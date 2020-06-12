@@ -100,7 +100,8 @@ decl_module! {
       // if space.created.account != follower {
       //   let author = space.created.account.clone();
       //   if let Some(score_diff) = Self::account_reputation_diff_by_account((follower.clone(), author.clone(), ScoringAction::FollowSpace)) {
-      //     space.score = space.score.checked_sub(score_diff as i32).ok_or(Error::<T>::SpaceScoreUnderflow)?;
+      //     // Revert this score diff:
+      //     space.change_score(-score_diff);
       //     Self::change_social_account_reputation(author, follower.clone(), -score_diff, ScoringAction::FollowSpace)?;
       //   }
       // }

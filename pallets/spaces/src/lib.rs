@@ -273,6 +273,14 @@ impl<T: Trait> Space<T> {
         self.posts_count = self.posts_count.checked_add(1).ok_or(Error::<T>::PostsCountOverflow)?;
         Ok(())
     }
+
+    pub fn change_score(&mut self, diff: i16) {
+        if diff > 0 {
+            self.score = self.score.saturating_add(diff.abs() as i32);
+        } else if diff < 0 {
+            self.score = self.score.saturating_sub(diff.abs() as i32);
+        }
+    }
 }
 
 impl<T: Trait> Module<T> {

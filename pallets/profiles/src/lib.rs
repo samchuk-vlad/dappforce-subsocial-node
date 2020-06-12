@@ -184,6 +184,16 @@ decl_module! {
   }
 }
 
+impl<T: Trait> SocialAccount<T> {
+    pub fn change_reputation(&mut self, diff: i16) {
+        if diff > 0 {
+            self.reputation = self.reputation.saturating_add(diff.abs() as u32);
+        } else if diff < 0 {
+            self.reputation = self.reputation.saturating_sub(diff.abs() as u32);
+        }
+    }
+}
+
 impl<T: Trait> Module<T> {
     pub fn get_or_new_social_account(account: T::AccountId) -> SocialAccount<T> {
         if let Some(social_account) = Self::social_account_by_id(account) {

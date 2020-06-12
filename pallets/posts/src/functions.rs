@@ -71,6 +71,14 @@ impl<T: Trait> Post<T> {
         let space_id = root_post.space_id.ok_or(Error::<T>::SpaceIdIsUndefined)?;
         Spaces::require_space(space_id)
     }
+
+    pub fn change_score(&mut self, diff: i16) {
+        if diff > 0 {
+            self.score = self.score.saturating_add(diff.abs() as i32);
+        } else if diff < 0 {
+            self.score = self.score.saturating_sub(diff.abs() as i32);
+        }
+    }
 }
 
 impl<T: Trait> Module<T> {
@@ -87,30 +95,21 @@ impl<T: Trait> Module<T> {
         Ok(Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?)
     }
 
-    pub fn share_post(account: T::AccountId, original_post: &mut Post<T>, shared_post_id: PostId) -> DispatchResult {
-        original_post.shares_count = original_post.shares_count.checked_add(1).ok_or(Error::<T>::TotalSharesOverflow)?;
+    pub fn share_post(
+        account: T::AccountId,
+        original_post: &mut Post<T>,
+        shared_post_id: PostId
+    ) -> DispatchResult {
+        original_post.shares_count = original_post.shares_count.checked_add(1)
+            .ok_or(Error::<T>::PostSharesOverflow)?;
+
+        T::OnBeforePostShared::on_before_post_shared(account.clone(), original_post)?;
 
         let original_post_id = original_post.id;
-
-        let mut shares_count = Self::post_shares_by_account((account.clone(), original_post_id));
-        shares_count = shares_count.checked_add(1).ok_or(Error::<T>::PostSharesOverflow)?;
-
-        // TODO old change_post_score_by_extension
-        // if shares_count == 1 {
-        //     Self::change_post_score_by_extension(account.clone(), original_post, {
-        //         if original_post.is_comment() { ScoringAction::ShareComment }
-        //         else { ScoringAction::SharePost }
-        //     })?;
-        // }
-
-        <PostById<T>>::insert(original_post_id, original_post.clone());
-        <PostSharesByAccount<T>>::insert((account.clone(), original_post_id), shares_count);
+        PostById::insert(original_post_id, original_post.clone());
         SharedPostIdsByOriginalPostId::mutate(original_post_id, |ids| ids.push(shared_post_id));
 
         Self::deposit_event(RawEvent::PostShared(account, original_post_id));
-
-        // TODO new change_post_score_by_extension
-        // T::PostHandler::on_post_shared(...);
 
         Ok(())
     }
