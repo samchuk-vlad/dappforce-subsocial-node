@@ -397,6 +397,8 @@ parameter_types! {}
 
 impl pallet_space_follows::Trait for Runtime {
   type Event = Event;
+  type OnBeforeSpaceFollowed = Scores;
+  type OnBeforeSpaceUnfollowed = Scores;
 }
 
 parameter_types! {}

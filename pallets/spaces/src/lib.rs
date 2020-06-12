@@ -12,8 +12,7 @@ use system::ensure_signed;
 
 use df_traits::{SpaceForRoles, SpaceProvider};
 use df_traits::{PermissionChecker, SpaceFollowsProvider};
-use pallet_permissions::{SpacePermission, SpacePermissions};
-use pallet_permissions::SpacePermissionsContext;
+use pallet_permissions::{SpacePermission, SpacePermissions, SpacePermissionsContext};
 use pallet_utils::{is_valid_handle_char, Module as Utils, SpaceId, WhoAndWhen};
 
 // mod tests;
@@ -145,6 +144,7 @@ decl_module! {
       let space_id = Self::next_space_id();
       let new_space = &mut Space::new(space_id, owner.clone(), ipfs_hash, handle_opt);
 
+      // TODO from Alex: do we really need to make a space owner its first follower?
       // TODO old add_space_follower
       // Space creator automatically follows their space:
       // Self::add_space_follower(owner.clone(), new_space)?;
@@ -225,9 +225,6 @@ decl_module! {
         space.edit_history.push(new_history_record);
         <SpaceById<T>>::insert(space_id, space);
         Self::deposit_event(RawEvent::SpaceUpdated(owner, space_id));
-
-        // TODO new
-        // T::SpaceHandler::on_space_updated(...);
       }
     }
   }

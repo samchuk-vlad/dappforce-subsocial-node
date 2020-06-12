@@ -99,7 +99,7 @@ decl_module! {
       Self::deposit_event(RawEvent::AccountFollowed(follower, account));
 
       // TODO new change_social_account_reputation
-      // T::SocialAccountHandler::on_account_followed(...);
+      // T::OnBeforeAccountFollowed::on_before_account_followed(...);
     }
 
     pub fn unfollow_account(origin, account: T::AccountId) {
@@ -137,7 +137,7 @@ decl_module! {
       Self::deposit_event(RawEvent::AccountUnfollowed(follower, account));
 
       // TODO new change_social_account_reputation
-      // T::SocialAccountHandler::on_account_unfollowed(...);
+      // T::OnBeforeAccountUnfollowed::on_before_account_unfollowed(...);
     }
   }
 }

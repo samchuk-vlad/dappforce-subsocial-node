@@ -23,6 +23,10 @@ pub trait Trait: system::Trait
 {
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+
+    type OnBeforeSpaceFollowed: OnBeforeSpaceFollowed<Self>;
+
+    type OnBeforeSpaceUnfollowed: OnBeforeSpaceUnfollowed<Self>;
 }
 
 decl_error! {
@@ -76,9 +80,6 @@ decl_module! {
 
       Self::add_space_follower(follower, space)?;
       <SpaceById<T>>::insert(space_id, space);
-
-      // TODO new
-      // T::SpaceFollowsHandler::on_space_followed(...);
     }
 
     pub fn unfollow_space(origin, space_id: SpaceId) {
@@ -96,15 +97,7 @@ decl_module! {
         .checked_sub(1)
         .ok_or(Error::<T>::UnfollowSpaceUnderflow)?;
 
-      // TODO old change_social_account_reputation
-      // if space.created.account != follower {
-      //   let author = space.created.account.clone();
-      //   if let Some(score_diff) = Self::account_reputation_diff_by_account((follower.clone(), author.clone(), ScoringAction::FollowSpace)) {
-      //     // Revert this score diff:
-      //     space.change_score(-score_diff);
-      //     Self::change_social_account_reputation(author, follower.clone(), -score_diff, ScoringAction::FollowSpace)?;
-      //   }
-      // }
+      T::OnBeforeSpaceUnfollowed::on_before_space_unfollowed(follower.clone(), space)?;
 
       <SpacesFollowedByAccount<T>>::mutate(follower.clone(), |space_ids| vec_remove_on(space_ids, space_id));
       <SpaceFollowers<T>>::mutate(space_id, |account_ids| vec_remove_on(account_ids, follower.clone()));
@@ -113,9 +106,6 @@ decl_module! {
       <SpaceById<T>>::insert(space_id, space);
 
       Self::deposit_event(RawEvent::SpaceUnfollowed(follower, space_id));
-
-      // TODO new change_social_account_reputation
-      // T::SpaceFollowsHandler::on_space_unfollowed(...);
     }
   }
 }
@@ -131,13 +121,7 @@ impl<T: Trait> Module<T> {
             .checked_add(1)
             .ok_or(Error::<T>::FollowSpaceOverflow)?;
 
-        // TODO old change_social_account_reputation
-        // if space.created.account != follower {
-        //     let author = space.created.account.clone();
-        //     let score_diff = Self::score_diff_for_action(social_account.reputation, ScoringAction::FollowSpace);
-        //     space.score = space.score.checked_add(score_diff as i32).ok_or(Error::<T>::SpaceScoreOverflow)?;
-        //     Self::change_social_account_reputation(author, follower.clone(), score_diff, ScoringAction::FollowSpace)?;
-        // }
+        T::OnBeforeSpaceFollowed::on_before_space_followed(follower.clone(), social_account.reputation, space)?;
 
         let space_id = space.id;
         <SpacesFollowedByAccount<T>>::mutate(follower.clone(), |ids| ids.push(space_id));
@@ -146,9 +130,6 @@ impl<T: Trait> Module<T> {
         <SocialAccountById<T>>::insert(follower.clone(), social_account);
 
         Self::deposit_event(RawEvent::SpaceFollowed(follower, space_id));
-
-        // TODO new change_social_account_reputation
-        // T::SpaceFollows::on_space_followed(...);
 
         Ok(())
     }
@@ -159,5 +140,27 @@ impl<T: Trait> SpaceFollowsProvider for Module<T> {
 
     fn is_space_follower(account: Self::AccountId, space_id: SpaceId) -> bool {
         Module::<T>::space_followed_by_account((account, space_id))
+    }
+}
+
+/// Handler that will be called right before the space is followed.
+pub trait OnBeforeSpaceFollowed<T: Trait> {
+    fn on_before_space_followed(follower: T::AccountId, follower_reputation: u32, space: &mut Space<T>) -> DispatchResult;
+}
+
+impl<T: Trait> OnBeforeSpaceFollowed<T> for () {
+    fn on_before_space_followed(_follower: T::AccountId, _follower_reputation: u32, _space: &mut Space<T>) -> DispatchResult {
+        Ok(())
+    }
+}
+
+/// Handler that will be called right before the space is unfollowed.
+pub trait OnBeforeSpaceUnfollowed<T: Trait> {
+    fn on_before_space_unfollowed(follower: T::AccountId, space: &mut Space<T>) -> DispatchResult;
+}
+
+impl<T: Trait> OnBeforeSpaceUnfollowed<T> for () {
+    fn on_before_space_unfollowed(_follower: T::AccountId, _space: &mut Space<T>) -> DispatchResult {
+        Ok(())
     }
 }

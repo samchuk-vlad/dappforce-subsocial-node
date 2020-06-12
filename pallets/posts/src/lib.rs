@@ -304,7 +304,7 @@ decl_module! {
 
       let mut post = Self::require_post(post_id)?;
 
-      let is_owner = owner == post.created.account;
+      let is_owner = post.is_owner(owner);
       let is_comment = post.is_comment();
 
       let permission_to_check: SpacePermission;

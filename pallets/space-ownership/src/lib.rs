@@ -85,9 +85,6 @@ decl_module! {
         space.owner = who.clone();
         <SpaceById<T>>::insert(space_id, space);
         Self::deposit_event(RawEvent::SpaceOwnershipTransferAccepted(who, space_id));
-
-        // TODO new
-        // T::SpaceHandler::on_space_owner_changed(...);
       }
     }
 

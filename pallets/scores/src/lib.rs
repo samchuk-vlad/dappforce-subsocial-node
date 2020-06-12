@@ -12,7 +12,8 @@ use sp_std::prelude::*;
 use pallet_posts::{Module as Posts, OnBeforePostShared, Post, PostById, PostExtension, PostId};
 use pallet_profiles::{Module as Profiles, SocialAccountById};
 use pallet_reactions::ReactionKind;
-use pallet_spaces::{Module as Spaces, SpaceById};
+use pallet_space_follows::{OnBeforeSpaceFollowed, OnBeforeSpaceUnfollowed};
+use pallet_spaces::{Module as Spaces, Space, SpaceById};
 use pallet_utils::log_2;
 
 // mod tests;
@@ -38,10 +39,11 @@ impl Default for ScoringAction {
 
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait
-    + pallet_utils::Trait
-    + pallet_profiles::Trait
-    + pallet_posts::Trait
-    + pallet_spaces::Trait
++ pallet_utils::Trait
++ pallet_profiles::Trait
++ pallet_posts::Trait
++ pallet_spaces::Trait
++ pallet_space_follows::Trait
 {
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
@@ -166,8 +168,7 @@ impl<T: Trait> Module<T> {
         if let Some(post_space_id) = post.space_id {
             let mut space = Spaces::require_space(post_space_id)?;
 
-            // TODO replace with !post.is_owner(account)
-            if post.created.account != account {
+            if !post.is_owner(&account) {
                 if let Some(score_diff) = Self::post_score_by_account((account.clone(), post_id, action)) {
                     let reputation_diff = Self::account_reputation_diff_by_account((account.clone(), post.created.account.clone(), action))
                         .ok_or(Error::<T>::ReputationDiffNotFound)?;
@@ -225,8 +226,7 @@ impl<T: Trait> Module<T> {
         // TODO inspect: maybe this check is redundant such as we use change_comment_score() internally and comment was already loaded.
         Posts::<T>::ensure_post_exists(comment_id)?;
 
-        // TODO replace with !comment.is_owner(account)
-        if comment.created.account != account {
+        if !comment.is_owner(&account) {
             if let Some(score_diff) = Self::post_score_by_account((account.clone(), comment_id, action)) {
                 let reputation_diff = Self::account_reputation_diff_by_account((account.clone(), comment.created.account.clone(), action))
                     .ok_or(Error::<T>::ReputationDiffNotFound)?;
@@ -273,6 +273,7 @@ impl<T: Trait> Module<T> {
 
         // TODO return Ok(()) if score_diff == 0?
 
+        // TODO seems like we can pass a &mut social account as an arg to this func
         let mut social_account = Profiles::get_or_new_social_account(account.clone());
 
         if social_account.reputation as i64 + score_diff as i64 <= 1 {
@@ -325,6 +326,39 @@ impl<T: Trait> Module<T> {
     }
 }
 
+impl<T: Trait> OnBeforeSpaceFollowed<T> for Module<T> {
+    fn on_before_space_followed(follower: T::AccountId, follower_reputation: u32, space: &mut Space<T>) -> DispatchResult {
+        // Change a space score only if the follower is NOT a space owner.
+        if !space.is_owner(&follower) {
+            let space_owner = space.owner.clone();
+            let action = ScoringAction::FollowSpace;
+            let score_diff = Self::score_diff_for_action(follower_reputation, action);
+            space.change_score(score_diff);
+            return Self::change_social_account_reputation(
+                space_owner, follower.clone(), score_diff, action);
+        }
+        Ok(())
+    }
+}
+
+impl<T: Trait> OnBeforeSpaceUnfollowed<T> for Module<T> {
+    fn on_before_space_unfollowed(follower: T::AccountId, space: &mut Space<T>) -> DispatchResult {
+        // Change a space score only if the follower is NOT a space owner.
+        if !space.is_owner(&follower) {
+            let action = ScoringAction::FollowSpace;
+            if let Some(score_diff) = Self::account_reputation_diff_by_account(
+                (follower.clone(), space_owner.clone(), action)
+            ) {
+                // Subtract a score diff that was added when this user followed this space in the past:
+                space.change_score(-score_diff);
+                return Self::change_social_account_reputation(
+                    space.owner.clone(), follower.clone(), -score_diff, action);
+            }
+        }
+        Ok(())
+    }
+}
+
 impl<T: Trait> OnBeforePostShared<T> for Module<T> {
     fn on_before_post_shared(account: T::AccountId, original_post: &mut Post<T>) -> DispatchResult {
         let action =
@@ -332,8 +366,9 @@ impl<T: Trait> OnBeforePostShared<T> for Module<T> {
             else { ScoringAction::SharePost };
 
         let account_never_shared_this_post =
-            Self::post_score_by_account((account.clone(), original_post.id, action.clone()))
-                .is_none();
+            Self::post_score_by_account(
+                (account.clone(), original_post.id, action.clone())
+            ).is_none();
 
         // It makes sense to change a score of this post only once:
         // i.e. when this account sharing it for the first time.
