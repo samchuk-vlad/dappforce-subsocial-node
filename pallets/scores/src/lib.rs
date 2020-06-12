@@ -10,6 +10,7 @@ use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
 use pallet_posts::{Module as Posts, OnBeforePostShared, Post, PostById, PostExtension, PostId};
+use pallet_profile_follows::{OnBeforeAccountFollowed, OnBeforeAccountUnfollowed};
 use pallet_profiles::{Module as Profiles, SocialAccountById};
 use pallet_reactions::ReactionKind;
 use pallet_space_follows::{OnBeforeSpaceFollowed, OnBeforeSpaceUnfollowed};
@@ -41,6 +42,7 @@ impl Default for ScoringAction {
 pub trait Trait: system::Trait
     + pallet_utils::Trait
     + pallet_profiles::Trait
+    + pallet_profile_follows::Trait
     + pallet_posts::Trait
     + pallet_spaces::Trait
     + pallet_space_follows::Trait
@@ -79,10 +81,10 @@ decl_storage! {
 
         // TODO shorten name? (refactor)
         pub AccountReputationDiffByAccount get(fn account_reputation_diff_by_account):
-            map (T::AccountId, T::AccountId, ScoringAction) => Option<i16>;
+            map (/* actor */ T::AccountId, /* subject */ T::AccountId, ScoringAction) => Option<i16>;
 
         pub PostScoreByAccount get(fn post_score_by_account):
-            map (T::AccountId, PostId, ScoringAction) => Option<i16>;
+            map (/* actor */ T::AccountId, /* subject */ PostId, ScoringAction) => Option<i16>;
     }
 }
 
@@ -264,6 +266,7 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
+    // TODO change order of args to: actor (scorer), subject (account), ...
     pub fn change_social_account_reputation(
         account: T::AccountId,
         scorer: T::AccountId,
@@ -335,7 +338,7 @@ impl<T: Trait> OnBeforeSpaceFollowed<T> for Module<T> {
             let score_diff = Self::score_diff_for_action(follower_reputation, action);
             space.change_score(score_diff);
             return Self::change_social_account_reputation(
-                space_owner, follower.clone(), score_diff, action);
+                space_owner, follower.clone(), score_diff, action)
         }
         Ok(())
     }
@@ -353,10 +356,30 @@ impl<T: Trait> OnBeforeSpaceUnfollowed<T> for Module<T> {
                 // Subtract a score diff that was added when this user followed this space in the past:
                 space.change_score(-score_diff);
                 return Self::change_social_account_reputation(
-                    space_owner, follower.clone(), -score_diff, action);
+                    space_owner, follower.clone(), -score_diff, action)
             }
         }
         Ok(())
+    }
+}
+
+impl<T: Trait> OnBeforeAccountFollowed<T> for Module<T> {
+    fn on_before_account_followed(follower: T::AccountId, follower_reputation: u32, following: T::AccountId) -> DispatchResult {
+        let action = ScoringAction::FollowAccount;
+        let score_diff = Self::score_diff_for_action(follower_reputation, action);
+        Self::change_social_account_reputation(following, follower, score_diff, action)
+    }
+}
+
+impl<T: Trait> OnBeforeAccountUnfollowed<T> for Module<T> {
+    fn on_before_account_unfollowed(follower: T::AccountId, following: T::AccountId) -> DispatchResult {
+        let action = ScoringAction::FollowAccount;
+
+        let rep_diff = Self::account_reputation_diff_by_account(
+            (follower.clone(), following.clone(), action)
+        ).ok_or(Error::<T>::ReputationDiffNotFound)?;
+
+        Self::change_social_account_reputation(following, follower, rep_diff, action)
     }
 }
 

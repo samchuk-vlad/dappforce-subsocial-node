@@ -121,7 +121,8 @@ impl<T: Trait> Module<T> {
             .checked_add(1)
             .ok_or(Error::<T>::FollowSpaceOverflow)?;
 
-        T::OnBeforeSpaceFollowed::on_before_space_followed(follower.clone(), social_account.reputation, space)?;
+        T::OnBeforeSpaceFollowed::on_before_space_followed(
+            follower.clone(), social_account.reputation, space)?;
 
         let space_id = space.id;
         <SpacesFollowedByAccount<T>>::mutate(follower.clone(), |ids| ids.push(space_id));

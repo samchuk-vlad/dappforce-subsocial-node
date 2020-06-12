@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::string_lit_as_bytes)]
 
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
+use frame_support::{decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure};
 use sp_std::prelude::*;
 use system::ensure_signed;
 
@@ -17,6 +17,10 @@ pub trait Trait: system::Trait
 {
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+
+    type OnBeforeAccountFollowed: OnBeforeAccountFollowed<Self>;
+
+    type OnBeforeAccountUnfollowed: OnBeforeAccountUnfollowed<Self>;
 }
 
 // This pallet's storage items.
@@ -82,13 +86,8 @@ decl_module! {
       followed_account.followers_count = followed_account.followers_count
         .checked_add(1).ok_or(Error::<T>::FollowAccountOverflow)?;
 
-      // TODO old change_social_account_reputation
-      // Self::change_social_account_reputation(
-      //   account.clone(),
-      //   follower.clone(),
-      //   Self::score_diff_for_action(follower_account.reputation, ScoringAction::FollowAccount),
-      //   ScoringAction::FollowAccount
-      // )?;
+      T::OnBeforeAccountFollowed::on_before_account_followed(
+        follower.clone(), follower_account.reputation, account.clone())?;
 
       <SocialAccountById<T>>::insert(follower.clone(), follower_account);
       <SocialAccountById<T>>::insert(account.clone(), followed_account);
@@ -97,9 +96,6 @@ decl_module! {
       <AccountFollowedByAccount<T>>::insert((follower.clone(), account.clone()), true);
 
       Self::deposit_event(RawEvent::AccountFollowed(follower, account));
-
-      // TODO new change_social_account_reputation
-      // T::OnBeforeAccountFollowed::on_before_account_followed(...);
     }
 
     pub fn unfollow_account(origin, account: T::AccountId) {
@@ -117,16 +113,7 @@ decl_module! {
       followed_account.followers_count = followed_account.followers_count
         .checked_sub(1).ok_or(Error::<T>::UnfollowAccountUnderflow)?;
 
-      // TODO old change_social_account_reputation
-      // let reputation_diff = Self::account_reputation_diff_by_account(
-      //   (follower.clone(), account.clone(), ScoringAction::FollowAccount)
-      // ).ok_or(Error::<T>::ReputationDiffNotFound)?;
-      // Self::change_social_account_reputation(
-      //   account.clone(),
-      //   follower.clone(),
-      //   reputation_diff,
-      //   ScoringAction::FollowAccount
-      // )?;
+      T::OnBeforeAccountUnfollowed::on_before_account_unfollowed(follower.clone(), account.clone())?;
 
       <SocialAccountById<T>>::insert(follower.clone(), follower_account);
       <SocialAccountById<T>>::insert(account.clone(), followed_account);
@@ -135,9 +122,28 @@ decl_module! {
       <AccountFollowedByAccount<T>>::remove((follower.clone(), account.clone()));
 
       Self::deposit_event(RawEvent::AccountUnfollowed(follower, account));
-
-      // TODO new change_social_account_reputation
-      // T::OnBeforeAccountUnfollowed::on_before_account_unfollowed(...);
     }
   }
+}
+
+/// Handler that will be called right before the account is followed.
+pub trait OnBeforeAccountFollowed<T: Trait> {
+    fn on_before_account_followed(follower: T::AccountId, follower_reputation: u32, following: T::AccountId) -> DispatchResult;
+}
+
+impl<T: Trait> OnBeforeAccountFollowed<T> for () {
+    fn on_before_account_followed(_follower: T::AccountId, _follower_reputation: u32, _following: T::AccountId) -> DispatchResult {
+        Ok(())
+    }
+}
+
+/// Handler that will be called right before the account is unfollowed.
+pub trait OnBeforeAccountUnfollowed<T: Trait> {
+    fn on_before_account_unfollowed(follower: T::AccountId, following: T::AccountId) -> DispatchResult;
+}
+
+impl<T: Trait> OnBeforeAccountUnfollowed<T> for () {
+    fn on_before_account_unfollowed(_follower: T::AccountId, _following: T::AccountId) -> DispatchResult {
+        Ok(())
+    }
 }

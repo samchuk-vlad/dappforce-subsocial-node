@@ -333,6 +333,8 @@ parameter_types! {}
 
 impl pallet_profile_follows::Trait for Runtime {
   type Event = Event;
+  type OnBeforeAccountFollowed = Scores;
+  type OnBeforeAccountUnfollowed = Scores;
 }
 
 parameter_types! {
