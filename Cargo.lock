@@ -2738,6 +2738,7 @@ dependencies = [
  "df-traits",
  "frame-support",
  "frame-system",
+ "impl-trait-for-tuples",
  "pallet-permissions",
  "pallet-spaces",
  "pallet-timestamp",
