@@ -103,7 +103,7 @@ impl<T: Trait> Module<T> {
         original_post.shares_count = original_post.shares_count.checked_add(1)
             .ok_or(Error::<T>::PostSharesOverflow)?;
 
-        T::OnBeforePostShared::on_before_post_shared(account.clone(), original_post)?;
+        T::BeforePostShared::before_post_shared(account.clone(), original_post)?;
 
         let original_post_id = original_post.id;
         PostById::insert(original_post_id, original_post.clone());

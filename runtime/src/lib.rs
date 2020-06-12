@@ -326,15 +326,15 @@ parameter_types! {
 impl pallet_posts::Trait for Runtime {
   type Event = Event;
   type MaxCommentDepth = MaxCommentDepth;
-  type OnBeforePostShared = Scores;
+  type BeforePostShared = Scores;
 }
 
 parameter_types! {}
 
 impl pallet_profile_follows::Trait for Runtime {
   type Event = Event;
-  type OnBeforeAccountFollowed = Scores;
-  type OnBeforeAccountUnfollowed = Scores;
+  type BeforeAccountFollowed = Scores;
+  type BeforeAccountUnfollowed = Scores;
 }
 
 parameter_types! {
@@ -401,8 +401,8 @@ parameter_types! {}
 
 impl pallet_space_follows::Trait for Runtime {
   type Event = Event;
-  type OnBeforeSpaceFollowed = Scores;
-  type OnBeforeSpaceUnfollowed = Scores;
+  type BeforeSpaceFollowed = Scores;
+  type BeforeSpaceUnfollowed = Scores;
 }
 
 parameter_types! {}

@@ -24,9 +24,9 @@ pub trait Trait: system::Trait
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
-    type OnBeforeSpaceFollowed: OnBeforeSpaceFollowed<Self>;
+    type BeforeSpaceFollowed: BeforeSpaceFollowed<Self>;
 
-    type OnBeforeSpaceUnfollowed: OnBeforeSpaceUnfollowed<Self>;
+    type BeforeSpaceUnfollowed: BeforeSpaceUnfollowed<Self>;
 }
 
 decl_error! {
@@ -97,7 +97,7 @@ decl_module! {
         .checked_sub(1)
         .ok_or(Error::<T>::UnfollowSpaceUnderflow)?;
 
-      T::OnBeforeSpaceUnfollowed::on_before_space_unfollowed(follower.clone(), space)?;
+      T::BeforeSpaceUnfollowed::before_space_unfollowed(follower.clone(), space)?;
 
       <SpacesFollowedByAccount<T>>::mutate(follower.clone(), |space_ids| vec_remove_on(space_ids, space_id));
       <SpaceFollowers<T>>::mutate(space_id, |account_ids| vec_remove_on(account_ids, follower.clone()));
@@ -121,7 +121,7 @@ impl<T: Trait> Module<T> {
             .checked_add(1)
             .ok_or(Error::<T>::FollowSpaceOverflow)?;
 
-        T::OnBeforeSpaceFollowed::on_before_space_followed(
+        T::BeforeSpaceFollowed::before_space_followed(
             follower.clone(), social_account.reputation, space)?;
 
         let space_id = space.id;
@@ -145,23 +145,23 @@ impl<T: Trait> SpaceFollowsProvider for Module<T> {
 }
 
 /// Handler that will be called right before the space is followed.
-pub trait OnBeforeSpaceFollowed<T: Trait> {
-    fn on_before_space_followed(follower: T::AccountId, follower_reputation: u32, space: &mut Space<T>) -> DispatchResult;
+pub trait BeforeSpaceFollowed<T: Trait> {
+    fn before_space_followed(follower: T::AccountId, follower_reputation: u32, space: &mut Space<T>) -> DispatchResult;
 }
 
-impl<T: Trait> OnBeforeSpaceFollowed<T> for () {
-    fn on_before_space_followed(_follower: T::AccountId, _follower_reputation: u32, _space: &mut Space<T>) -> DispatchResult {
+impl<T: Trait> BeforeSpaceFollowed<T> for () {
+    fn before_space_followed(_follower: T::AccountId, _follower_reputation: u32, _space: &mut Space<T>) -> DispatchResult {
         Ok(())
     }
 }
 
 /// Handler that will be called right before the space is unfollowed.
-pub trait OnBeforeSpaceUnfollowed<T: Trait> {
-    fn on_before_space_unfollowed(follower: T::AccountId, space: &mut Space<T>) -> DispatchResult;
+pub trait BeforeSpaceUnfollowed<T: Trait> {
+    fn before_space_unfollowed(follower: T::AccountId, space: &mut Space<T>) -> DispatchResult;
 }
 
-impl<T: Trait> OnBeforeSpaceUnfollowed<T> for () {
-    fn on_before_space_unfollowed(_follower: T::AccountId, _space: &mut Space<T>) -> DispatchResult {
+impl<T: Trait> BeforeSpaceUnfollowed<T> for () {
+    fn before_space_unfollowed(_follower: T::AccountId, _space: &mut Space<T>) -> DispatchResult {
         Ok(())
     }
 }

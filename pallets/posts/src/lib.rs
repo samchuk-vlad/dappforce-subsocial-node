@@ -86,16 +86,16 @@ pub trait Trait: system::Trait
     /// Max comments depth
     type MaxCommentDepth: Get<u32>;
 
-    type OnBeforePostShared: OnBeforePostShared<Self>;
+    type BeforePostShared: BeforePostShared<Self>;
 }
 
 /// Handler that will be called right before post is shared.
-pub trait OnBeforePostShared<T: Trait> {
-    fn on_before_post_shared(account: T::AccountId, original_post: &mut Post<T>) -> DispatchResult;
+pub trait BeforePostShared<T: Trait> {
+    fn before_post_shared(account: T::AccountId, original_post: &mut Post<T>) -> DispatchResult;
 }
 
-impl<T: Trait> OnBeforePostShared<T> for () {
-    fn on_before_post_shared(_account: T::AccountId, _original_post: &mut Post<T>) -> DispatchResult {
+impl<T: Trait> BeforePostShared<T> for () {
+    fn before_post_shared(_account: T::AccountId, _original_post: &mut Post<T>) -> DispatchResult {
         Ok(())
     }
 }

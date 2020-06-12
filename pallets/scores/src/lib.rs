@@ -9,11 +9,11 @@ use frame_support::{
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
-use pallet_posts::{Module as Posts, OnBeforePostShared, Post, PostById, PostExtension, PostId};
-use pallet_profile_follows::{OnBeforeAccountFollowed, OnBeforeAccountUnfollowed};
+use pallet_posts::{Module as Posts, BeforePostShared, Post, PostById, PostExtension, PostId};
+use pallet_profile_follows::{BeforeAccountFollowed, BeforeAccountUnfollowed};
 use pallet_profiles::{Module as Profiles, SocialAccountById};
 use pallet_reactions::{BeforePostReactionCreated, BeforePostReactionDeleted, ReactionKind};
-use pallet_space_follows::{OnBeforeSpaceFollowed, OnBeforeSpaceUnfollowed};
+use pallet_space_follows::{BeforeSpaceFollowed, BeforeSpaceUnfollowed};
 use pallet_spaces::{Module as Spaces, Space, SpaceById};
 use pallet_utils::log_2;
 
@@ -330,8 +330,8 @@ impl<T: Trait> Module<T> {
     }
 }
 
-impl<T: Trait> OnBeforeSpaceFollowed<T> for Module<T> {
-    fn on_before_space_followed(follower: T::AccountId, follower_reputation: u32, space: &mut Space<T>) -> DispatchResult {
+impl<T: Trait> BeforeSpaceFollowed<T> for Module<T> {
+    fn before_space_followed(follower: T::AccountId, follower_reputation: u32, space: &mut Space<T>) -> DispatchResult {
         // Change a space score only if the follower is NOT a space owner.
         if !space.is_owner(&follower) {
             let space_owner = space.owner.clone();
@@ -345,8 +345,8 @@ impl<T: Trait> OnBeforeSpaceFollowed<T> for Module<T> {
     }
 }
 
-impl<T: Trait> OnBeforeSpaceUnfollowed<T> for Module<T> {
-    fn on_before_space_unfollowed(follower: T::AccountId, space: &mut Space<T>) -> DispatchResult {
+impl<T: Trait> BeforeSpaceUnfollowed<T> for Module<T> {
+    fn before_space_unfollowed(follower: T::AccountId, space: &mut Space<T>) -> DispatchResult {
         // Change a space score only if the follower is NOT a space owner.
         if !space.is_owner(&follower) {
             let space_owner = space.owner.clone();
@@ -364,16 +364,16 @@ impl<T: Trait> OnBeforeSpaceUnfollowed<T> for Module<T> {
     }
 }
 
-impl<T: Trait> OnBeforeAccountFollowed<T> for Module<T> {
-    fn on_before_account_followed(follower: T::AccountId, follower_reputation: u32, following: T::AccountId) -> DispatchResult {
+impl<T: Trait> BeforeAccountFollowed<T> for Module<T> {
+    fn before_account_followed(follower: T::AccountId, follower_reputation: u32, following: T::AccountId) -> DispatchResult {
         let action = ScoringAction::FollowAccount;
         let score_diff = Self::score_diff_for_action(follower_reputation, action);
         Self::change_social_account_reputation(following, follower, score_diff, action)
     }
 }
 
-impl<T: Trait> OnBeforeAccountUnfollowed<T> for Module<T> {
-    fn on_before_account_unfollowed(follower: T::AccountId, following: T::AccountId) -> DispatchResult {
+impl<T: Trait> BeforeAccountUnfollowed<T> for Module<T> {
+    fn before_account_unfollowed(follower: T::AccountId, following: T::AccountId) -> DispatchResult {
         let action = ScoringAction::FollowAccount;
 
         let rep_diff = Self::account_reputation_diff_by_account(
@@ -384,8 +384,8 @@ impl<T: Trait> OnBeforeAccountUnfollowed<T> for Module<T> {
     }
 }
 
-impl<T: Trait> OnBeforePostShared<T> for Module<T> {
-    fn on_before_post_shared(account: T::AccountId, original_post: &mut Post<T>) -> DispatchResult {
+impl<T: Trait> BeforePostShared<T> for Module<T> {
+    fn before_post_shared(account: T::AccountId, original_post: &mut Post<T>) -> DispatchResult {
         let action =
             if original_post.is_comment() { ScoringAction::ShareComment }
             else { ScoringAction::SharePost };

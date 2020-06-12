@@ -18,9 +18,9 @@ pub trait Trait: system::Trait
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
-    type OnBeforeAccountFollowed: OnBeforeAccountFollowed<Self>;
+    type BeforeAccountFollowed: BeforeAccountFollowed<Self>;
 
-    type OnBeforeAccountUnfollowed: OnBeforeAccountUnfollowed<Self>;
+    type BeforeAccountUnfollowed: BeforeAccountUnfollowed<Self>;
 }
 
 // This pallet's storage items.
@@ -86,7 +86,7 @@ decl_module! {
       followed_account.followers_count = followed_account.followers_count
         .checked_add(1).ok_or(Error::<T>::FollowAccountOverflow)?;
 
-      T::OnBeforeAccountFollowed::on_before_account_followed(
+      T::BeforeAccountFollowed::before_account_followed(
         follower.clone(), follower_account.reputation, account.clone())?;
 
       <SocialAccountById<T>>::insert(follower.clone(), follower_account);
@@ -113,7 +113,7 @@ decl_module! {
       followed_account.followers_count = followed_account.followers_count
         .checked_sub(1).ok_or(Error::<T>::UnfollowAccountUnderflow)?;
 
-      T::OnBeforeAccountUnfollowed::on_before_account_unfollowed(follower.clone(), account.clone())?;
+      T::BeforeAccountUnfollowed::before_account_unfollowed(follower.clone(), account.clone())?;
 
       <SocialAccountById<T>>::insert(follower.clone(), follower_account);
       <SocialAccountById<T>>::insert(account.clone(), followed_account);
@@ -127,23 +127,23 @@ decl_module! {
 }
 
 /// Handler that will be called right before the account is followed.
-pub trait OnBeforeAccountFollowed<T: Trait> {
-    fn on_before_account_followed(follower: T::AccountId, follower_reputation: u32, following: T::AccountId) -> DispatchResult;
+pub trait BeforeAccountFollowed<T: Trait> {
+    fn before_account_followed(follower: T::AccountId, follower_reputation: u32, following: T::AccountId) -> DispatchResult;
 }
 
-impl<T: Trait> OnBeforeAccountFollowed<T> for () {
-    fn on_before_account_followed(_follower: T::AccountId, _follower_reputation: u32, _following: T::AccountId) -> DispatchResult {
+impl<T: Trait> BeforeAccountFollowed<T> for () {
+    fn before_account_followed(_follower: T::AccountId, _follower_reputation: u32, _following: T::AccountId) -> DispatchResult {
         Ok(())
     }
 }
 
 /// Handler that will be called right before the account is unfollowed.
-pub trait OnBeforeAccountUnfollowed<T: Trait> {
-    fn on_before_account_unfollowed(follower: T::AccountId, following: T::AccountId) -> DispatchResult;
+pub trait BeforeAccountUnfollowed<T: Trait> {
+    fn before_account_unfollowed(follower: T::AccountId, following: T::AccountId) -> DispatchResult;
 }
 
-impl<T: Trait> OnBeforeAccountUnfollowed<T> for () {
-    fn on_before_account_unfollowed(_follower: T::AccountId, _following: T::AccountId) -> DispatchResult {
+impl<T: Trait> BeforeAccountUnfollowed<T> for () {
+    fn before_account_unfollowed(_follower: T::AccountId, _following: T::AccountId) -> DispatchResult {
         Ok(())
     }
 }
