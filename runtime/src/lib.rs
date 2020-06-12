@@ -260,19 +260,27 @@ parameter_types! {
     none: None,
 
     everyone: Some(BTreeSet::from_iter(vec![
+      SP::ReportUsers,
+
       SP::UpdateOwnSubspaces,
       SP::DeleteOwnSubspaces,
+      SP::HideOwnSubspaces,
+      SP::ReportSubspaces,
 
       SP::UpdateOwnPosts,
       SP::DeleteOwnPosts,
+      SP::HideOwnPosts,
+      SP::ReportPosts,
 
       SP::CreateComments,
       SP::UpdateOwnComments,
       SP::DeleteOwnComments,
+      SP::HideOwnComments,
+      SP::ReportComments,
 
       SP::Upvote,
       SP::Downvote,
-      SP::Share
+      SP::Share,
     ].into_iter())),
 
     // Followers can do everything that everyone else can.
@@ -295,10 +303,14 @@ parameter_types! {
       SP::DeleteAnySubspace,
       SP::DeleteAnyPost,
 
+      SP::HideAnySubspace,
+      SP::HideAnyPost,
+      SP::HideAnyComment,
+
+      SP::BlockUsers,
       SP::BlockSubspaces,
       SP::BlockPosts,
       SP::BlockComments,
-      SP::BlockUsers
     ].into_iter())),
   };
 }
@@ -314,6 +326,7 @@ parameter_types! {
 impl pallet_posts::Trait for Runtime {
   type Event = Event;
   type MaxCommentDepth = MaxCommentDepth;
+  type OnPostShared = Scores;
 }
 
 parameter_types! {}
