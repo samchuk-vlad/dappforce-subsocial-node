@@ -26,6 +26,7 @@ std = [
     'pallet-profiles/std',
     'pallet-posts/std',
     'pallet-spaces/std',
+    'pallet-space-follows/std',
     'pallet-reactions/std',
 ]
 
@@ -100,6 +101,11 @@ version = '2.0.0'
 [dependencies.pallet-spaces]
 default-features = false
 path = '../spaces'
+version = '2.0.0'
+
+[dependencies.pallet-space-follows]
+default-features = false
+path = '../space-follows'
 version = '2.0.0'
 
 [dependencies.pallet-reactions]
