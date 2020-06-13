@@ -9,12 +9,12 @@ use frame_support::{
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
-use pallet_posts::{Module as Posts, BeforePostShared, Post, PostById, PostExtension, PostId};
+use pallet_posts::{BeforePostShared, Post, PostById, PostExtension, PostId};
 use pallet_profile_follows::{BeforeAccountFollowed, BeforeAccountUnfollowed};
 use pallet_profiles::{Module as Profiles, SocialAccountById};
-use pallet_reactions::{BeforePostReactionCreated, BeforePostReactionDeleted, ReactionKind};
+use pallet_reactions::{PostReactionScores, ReactionKind};
 use pallet_space_follows::{BeforeSpaceFollowed, BeforeSpaceUnfollowed};
-use pallet_spaces::{Module as Spaces, Space, SpaceById};
+use pallet_spaces::{Space, SpaceById};
 use pallet_utils::log_2;
 
 // mod tests;
@@ -70,9 +70,9 @@ decl_error! {
         /// Scored account reputation difference by account and action not found.
         ReputationDiffNotFound,
         /// Post extension is a comment.
-        PostIsAComment,
+        NotRootPost,
         /// Post extension is not a comment.
-        PostIsNotAComment,
+        NotComment,
     }
 }
 
@@ -118,25 +118,36 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
+
     pub fn scoring_action_by_post_extension(
         extension: PostExtension,
         reaction_kind: ReactionKind,
-        reverse: bool,
     ) -> ScoringAction {
         match extension {
             PostExtension::RegularPost | PostExtension::SharedPost(_) => match reaction_kind {
-                ReactionKind::Upvote =>
-                    if reverse { ScoringAction::DownvotePost } else { ScoringAction::UpvotePost },
-                ReactionKind::Downvote =>
-                    if reverse { ScoringAction::UpvotePost } else { ScoringAction::DownvotePost },
+                ReactionKind::Upvote => ScoringAction::UpvotePost,
+                ReactionKind::Downvote => ScoringAction::DownvotePost,
             },
             PostExtension::Comment(_) => match reaction_kind {
-                ReactionKind::Upvote =>
-                    if reverse { ScoringAction::DownvoteComment } else { ScoringAction::UpvoteComment },
-                ReactionKind::Downvote =>
-                    if reverse { ScoringAction::UpvoteComment } else { ScoringAction::DownvoteComment },
+                ReactionKind::Upvote => ScoringAction::UpvoteComment,
+                ReactionKind::Downvote => ScoringAction::DownvoteComment,
             },
         }
+    }
+
+    fn change_post_score_with_reaction(
+        actor: T::AccountId,
+        post: &mut Post<T>,
+        reaction_kind: ReactionKind,
+    ) -> DispatchResult {
+
+        // Post owner should not be able to change the score of their post.
+        if post.is_owner(&actor) {
+            return Ok(())
+        }
+
+        let action = Self::scoring_action_by_post_extension(post.extension, reaction_kind);
+        Self::change_post_score(actor, post, action)
     }
 
     pub fn change_post_score(
@@ -156,7 +167,7 @@ impl<T: Trait> Module<T> {
         post: &mut Post<T>,
         action: ScoringAction,
     ) -> DispatchResult {
-        ensure!(!post.is_comment(), Error::<T>::PostIsAComment);
+        ensure!(post.is_root_post(), Error::<T>::NotRootPost);
 
         let social_account = Profiles::get_or_new_social_account(account.clone());
 
@@ -166,48 +177,49 @@ impl<T: Trait> Module<T> {
         let post_id = post.id;
 
         // TODO inspect: maybe this check is redundant such as we use change_root_post_score() internally and post was already loaded.
-        Posts::<T>::ensure_post_exists(post_id)?;
+        // Posts::<T>::ensure_post_exists(post_id)?;
 
-        if let Some(post_space_id) = post.space_id {
-            let mut space = Spaces::require_space(post_space_id)?;
-
-            if !post.is_owner(&account) {
-                if let Some(score_diff) = Self::post_score_by_account((account.clone(), post_id, action)) {
-                    let reputation_diff = Self::account_reputation_diff_by_account((account.clone(), post.created.account.clone(), action))
-                        .ok_or(Error::<T>::ReputationDiffNotFound)?;
-
-                    // Revert this score diff:
-                    post.change_score(-score_diff);
-                    space.change_score(-score_diff);
-                    Self::change_social_account_reputation(post.created.account.clone(), account.clone(), -reputation_diff, action)?;
-                    <PostScoreByAccount<T>>::remove((account, post_id, action));
-                } else {
-                    match action {
-                        ScoringAction::UpvotePost => {
-                            if Self::post_score_by_account((account.clone(), post_id, ScoringAction::DownvotePost)).is_some() {
-                                // TODO inspect this recursion. Doesn't look good:
-                                Self::change_root_post_score(account.clone(), post, ScoringAction::DownvotePost)?;
-                            }
-                        }
-                        ScoringAction::DownvotePost => {
-                            if Self::post_score_by_account((account.clone(), post_id, ScoringAction::UpvotePost)).is_some() {
-                                // TODO inspect this recursion. Doesn't look good:
-                                Self::change_root_post_score(account.clone(), post, ScoringAction::UpvotePost)?;
-                            }
-                        }
-                        _ => (),
-                    }
-                    let score_diff = Self::score_diff_for_action(social_account.reputation, action);
-                    post.change_score(score_diff);
-                    space.change_score(score_diff);
-                    Self::change_social_account_reputation(post.created.account.clone(), account.clone(), score_diff, action)?;
-                    <PostScoreByAccount<T>>::insert((account, post_id, action), score_diff);
-                }
-
-                <PostById<T>>::insert(post_id, post.clone());
-                <SpaceById<T>>::insert(post_space_id, space);
-            }
+        // Post owner should not have any impact on their post score.
+        if post.is_owner(&account) {
+            return Ok(())
         }
+
+        let mut space = post.get_space()?;
+
+        if let Some(score_diff) = Self::post_score_by_account((account.clone(), post_id, action)) {
+            let reputation_diff = Self::account_reputation_diff_by_account((account.clone(), post.created.account.clone(), action))
+                .ok_or(Error::<T>::ReputationDiffNotFound)?;
+
+            // Revert this score diff:
+            post.change_score(-score_diff);
+            space.change_score(-score_diff);
+            Self::change_social_account_reputation(post.created.account.clone(), account.clone(), -reputation_diff, action)?;
+            <PostScoreByAccount<T>>::remove((account, post_id, action));
+        } else {
+            match action {
+                ScoringAction::UpvotePost => {
+                    if Self::post_score_by_account((account.clone(), post_id, ScoringAction::DownvotePost)).is_some() {
+                        // TODO inspect this recursion. Doesn't look good:
+                        Self::change_root_post_score(account.clone(), post, ScoringAction::DownvotePost)?;
+                    }
+                }
+                ScoringAction::DownvotePost => {
+                    if Self::post_score_by_account((account.clone(), post_id, ScoringAction::UpvotePost)).is_some() {
+                        // TODO inspect this recursion. Doesn't look good:
+                        Self::change_root_post_score(account.clone(), post, ScoringAction::UpvotePost)?;
+                    }
+                }
+                _ => (),
+            }
+            let score_diff = Self::score_diff_for_action(social_account.reputation, action);
+            post.change_score(score_diff);
+            space.change_score(score_diff);
+            Self::change_social_account_reputation(post.created.account.clone(), account.clone(), score_diff, action)?;
+            <PostScoreByAccount<T>>::insert((account, post_id, action), score_diff);
+        }
+
+        <PostById<T>>::insert(post_id, post.clone());
+        <SpaceById<T>>::insert(space.id, space);
 
         Ok(())
     }
@@ -217,7 +229,7 @@ impl<T: Trait> Module<T> {
         comment: &mut Post<T>,
         action: ScoringAction,
     ) -> DispatchResult {
-        ensure!(comment.is_comment(), Error::<T>::PostIsNotAComment);
+        ensure!(comment.is_comment(), Error::<T>::NotComment);
 
         let social_account = Profiles::get_or_new_social_account(account.clone());
 
@@ -227,42 +239,45 @@ impl<T: Trait> Module<T> {
         let comment_id = comment.id;
 
         // TODO inspect: maybe this check is redundant such as we use change_comment_score() internally and comment was already loaded.
-        Posts::<T>::ensure_post_exists(comment_id)?;
+        // Posts::<T>::ensure_post_exists(comment_id)?;
 
-        if !comment.is_owner(&account) {
-            if let Some(score_diff) = Self::post_score_by_account((account.clone(), comment_id, action)) {
-                let reputation_diff = Self::account_reputation_diff_by_account((account.clone(), comment.created.account.clone(), action))
-                    .ok_or(Error::<T>::ReputationDiffNotFound)?;
-
-                // Revert this score diff:
-                comment.change_score(-score_diff);
-                Self::change_social_account_reputation(comment.created.account.clone(), account.clone(), -reputation_diff, action)?;
-                <PostScoreByAccount<T>>::remove((account, comment_id, action));
-            } else {
-                match action {
-                    ScoringAction::UpvoteComment => {
-                        if Self::post_score_by_account((account.clone(), comment_id, ScoringAction::DownvoteComment)).is_some() {
-                            Self::change_comment_score(account.clone(), comment, ScoringAction::DownvoteComment)?;
-                        }
-                    }
-                    ScoringAction::DownvoteComment => {
-                        if Self::post_score_by_account((account.clone(), comment_id, ScoringAction::UpvoteComment)).is_some() {
-                            Self::change_comment_score(account.clone(), comment, ScoringAction::UpvoteComment)?;
-                        }
-                    }
-                    ScoringAction::CreateComment => {
-                        let root_post = &mut comment.get_root_post()?;
-                        Self::change_root_post_score(account.clone(), root_post, action)?;
-                    }
-                    _ => (),
-                }
-                let score_diff = Self::score_diff_for_action(social_account.reputation, action);
-                comment.change_score(score_diff);
-                Self::change_social_account_reputation(comment.created.account.clone(), account.clone(), score_diff, action)?;
-                <PostScoreByAccount<T>>::insert((account, comment_id, action), score_diff);
-            }
-            <PostById<T>>::insert(comment_id, comment.clone());
+        // Comment owner should not have any impact on their comment score.
+        if comment.is_owner(&account) {
+            return Ok(())
         }
+
+        if let Some(score_diff) = Self::post_score_by_account((account.clone(), comment_id, action)) {
+            let reputation_diff = Self::account_reputation_diff_by_account((account.clone(), comment.created.account.clone(), action))
+                .ok_or(Error::<T>::ReputationDiffNotFound)?;
+
+            // Revert this score diff:
+            comment.change_score(-score_diff);
+            Self::change_social_account_reputation(comment.created.account.clone(), account.clone(), -reputation_diff, action)?;
+            <PostScoreByAccount<T>>::remove((account, comment_id, action));
+        } else {
+            match action {
+                ScoringAction::UpvoteComment => {
+                    if Self::post_score_by_account((account.clone(), comment_id, ScoringAction::DownvoteComment)).is_some() {
+                        Self::change_comment_score(account.clone(), comment, ScoringAction::DownvoteComment)?;
+                    }
+                }
+                ScoringAction::DownvoteComment => {
+                    if Self::post_score_by_account((account.clone(), comment_id, ScoringAction::UpvoteComment)).is_some() {
+                        Self::change_comment_score(account.clone(), comment, ScoringAction::UpvoteComment)?;
+                    }
+                }
+                ScoringAction::CreateComment => {
+                    let root_post = &mut comment.get_root_post()?;
+                    Self::change_root_post_score(account.clone(), root_post, action)?;
+                }
+                _ => (),
+            }
+            let score_diff = Self::score_diff_for_action(social_account.reputation, action);
+            comment.change_score(score_diff);
+            Self::change_social_account_reputation(comment.created.account.clone(), account.clone(), score_diff, action)?;
+            <PostScoreByAccount<T>>::insert((account, comment_id, action), score_diff);
+        }
+        <PostById<T>>::insert(comment_id, comment.clone());
 
         Ok(())
     }
@@ -405,28 +420,12 @@ impl<T: Trait> BeforePostShared<T> for Module<T> {
     }
 }
 
-impl<T: Trait> BeforePostReactionCreated<T> for Module<T> {
-    fn before_post_reaction_created(
-        _actor: T::AccountId,
-        _post: &mut Post<T>,
-        _reaction_kind: ReactionKind,
+impl<T: Trait> PostReactionScores<T> for Module<T> {
+    fn score_post_on_reaction(
+        actor: T::AccountId,
+        post: &mut Post<T>,
+        reaction_kind: ReactionKind,
     ) -> DispatchResult {
-
-        // TODO impl
-
-        Ok(())
-    }
-}
-
-impl<T: Trait> BeforePostReactionDeleted<T> for Module<T> {
-    fn before_post_reaction_deleted(
-        _actor: T::AccountId,
-        _post: &mut Post<T>,
-        _reaction_kind: ReactionKind,
-    ) -> DispatchResult {
-
-        // TODO impl
-
-        Ok(())
+        Self::change_post_score_with_reaction(actor, post, reaction_kind)
     }
 }

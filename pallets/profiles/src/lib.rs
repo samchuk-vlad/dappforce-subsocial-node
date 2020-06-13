@@ -184,6 +184,32 @@ decl_module! {
   }
 }
 
+impl <T: Trait> SocialAccount<T> {
+    pub fn inc_followers(&mut self) {
+        self.followers_count = self.followers_count.saturating_add(1);
+    }
+
+    pub fn dec_followers(&mut self) {
+        self.followers_count = self.followers_count.saturating_sub(1);
+    }
+
+    pub fn inc_following_accounts(&mut self) {
+        self.following_accounts_count = self.following_accounts_count.saturating_add(1);
+    }
+
+    pub fn dec_following_accounts(&mut self) {
+        self.following_accounts_count = self.following_accounts_count.saturating_sub(1);
+    }
+
+    pub fn inc_following_spaces(&mut self) {
+        self.following_spaces_count = self.following_spaces_count.saturating_add(1);
+    }
+
+    pub fn dec_following_spaces(&mut self) {
+        self.following_spaces_count = self.following_spaces_count.saturating_sub(1);
+    }
+}
+
 impl<T: Trait> SocialAccount<T> {
     pub fn change_reputation(&mut self, diff: i16) {
         if diff > 0 {
@@ -196,9 +222,7 @@ impl<T: Trait> SocialAccount<T> {
 
 impl<T: Trait> Module<T> {
     pub fn get_or_new_social_account(account: T::AccountId) -> SocialAccount<T> {
-        if let Some(social_account) = Self::social_account_by_id(account) {
-            social_account
-        } else {
+        Self::social_account_by_id(account).unwrap_or(
             SocialAccount {
                 followers_count: 0,
                 following_accounts_count: 0,
@@ -206,7 +230,7 @@ impl<T: Trait> Module<T> {
                 reputation: 1,
                 profile: None,
             }
-        }
+        )
     }
 
     // TODO replace with code from ::lowercase_and_validate_a_handle()

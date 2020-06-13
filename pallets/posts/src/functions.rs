@@ -36,6 +36,10 @@ impl<T: Trait> Post<T> {
         self.created.account == *account
     }
 
+    pub fn is_root_post(&self) -> bool {
+        !self.is_comment()
+    }
+
     pub fn is_comment(&self) -> bool {
         match self.extension {
             PostExtension::Comment(_) => true,
@@ -53,7 +57,7 @@ impl<T: Trait> Post<T> {
     pub fn get_comment_ext(&self) -> Result<CommentExt, DispatchError> {
         match self.extension {
             PostExtension::Comment(comment_ext) => Ok(comment_ext),
-            _ => Err(Error::<T>::PostIsNotAComment.into())
+            _ => Err(Error::<T>::NotComment.into())
         }
     }
 
@@ -68,8 +72,50 @@ impl<T: Trait> Post<T> {
 
     pub fn get_space(&self) -> Result<Space<T>, DispatchError> {
         let root_post = self.get_root_post()?;
-        let space_id = root_post.space_id.ok_or(Error::<T>::SpaceIdIsUndefined)?;
+        let space_id = root_post.space_id.ok_or(Error::<T>::PostHasNoSpaceId)?;
         Spaces::require_space(space_id)
+    }
+
+    // TODO use macros to generate inc/dec fns for Space, Post.
+
+    pub fn inc_direct_replies(&mut self) {
+        self.direct_replies_count = self.direct_replies_count.saturating_add(1);
+    }
+
+    pub fn dec_direct_replies(&mut self) {
+        self.direct_replies_count = self.direct_replies_count.saturating_sub(1);
+    }
+
+    pub fn inc_total_replies(&mut self) {
+        self.total_replies_count = self.total_replies_count.saturating_add(1);
+    }
+
+    pub fn dec_total_replies(&mut self) {
+        self.total_replies_count = self.total_replies_count.saturating_sub(1);
+    }
+
+    pub fn inc_shares(&mut self) {
+        self.shares_count = self.shares_count.saturating_add(1);
+    }
+
+    pub fn dec_shares(&mut self) {
+        self.shares_count = self.shares_count.saturating_sub(1);
+    }
+
+    pub fn inc_upvotes(&mut self) {
+        self.upvotes_count = self.upvotes_count.saturating_add(1);
+    }
+
+    pub fn dec_upvotes(&mut self) {
+        self.upvotes_count = self.upvotes_count.saturating_sub(1);
+    }
+
+    pub fn inc_downvotes(&mut self) {
+        self.downvotes_count = self.downvotes_count.saturating_add(1);
+    }
+
+    pub fn dec_downvotes(&mut self) {
+        self.downvotes_count = self.downvotes_count.saturating_sub(1);
     }
 
     pub fn change_score(&mut self, diff: i16) {
@@ -100,8 +146,7 @@ impl<T: Trait> Module<T> {
         original_post: &mut Post<T>,
         shared_post_id: PostId
     ) -> DispatchResult {
-        original_post.shares_count = original_post.shares_count.checked_add(1)
-            .ok_or(Error::<T>::PostSharesOverflow)?;
+        original_post.inc_shares();
 
         T::BeforePostShared::before_post_shared(account.clone(), original_post)?;
 

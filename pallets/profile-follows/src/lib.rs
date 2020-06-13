@@ -57,11 +57,6 @@ decl_error! {
         AlreadyAccountFollower,
         /// Account (Alice) is not a follower of another account (Bob).
         NotAccountFollower,
-        
-        /// Overflow caused following account.
-        FollowAccountOverflow,
-        /// Underflow caused unfollowing account.
-        UnfollowAccountUnderflow,
     }
 }
 
@@ -81,10 +76,8 @@ decl_module! {
       let mut follower_account = Profiles::get_or_new_social_account(follower.clone());
       let mut followed_account = Profiles::get_or_new_social_account(account.clone());
 
-      follower_account.following_accounts_count = follower_account.following_accounts_count
-        .checked_add(1).ok_or(Error::<T>::FollowAccountOverflow)?;
-      followed_account.followers_count = followed_account.followers_count
-        .checked_add(1).ok_or(Error::<T>::FollowAccountOverflow)?;
+      follower_account.inc_following_accounts();
+      followed_account.inc_followers();
 
       T::BeforeAccountFollowed::before_account_followed(
         follower.clone(), follower_account.reputation, account.clone())?;
@@ -102,16 +95,13 @@ decl_module! {
       let follower = ensure_signed(origin)?;
 
       ensure!(follower != account, Error::<T>::AccountCannotUnfollowItself);
+      ensure!(<AccountFollowedByAccount<T>>::exists((follower.clone(), account.clone())), Error::<T>::NotAccountFollower);
 
       let mut follower_account = Profiles::social_account_by_id(follower.clone()).ok_or(Error::<T>::FollowerAccountNotFound)?;
       let mut followed_account = Profiles::social_account_by_id(account.clone()).ok_or(Error::<T>::FollowedAccountNotFound)?;
 
-      ensure!(<AccountFollowedByAccount<T>>::exists((follower.clone(), account.clone())), Error::<T>::NotAccountFollower);
-
-      follower_account.following_accounts_count = follower_account.following_accounts_count
-        .checked_sub(1).ok_or(Error::<T>::UnfollowAccountUnderflow)?;
-      followed_account.followers_count = followed_account.followers_count
-        .checked_sub(1).ok_or(Error::<T>::UnfollowAccountUnderflow)?;
+      follower_account.dec_following_accounts();
+      followed_account.dec_followers();
 
       T::BeforeAccountUnfollowed::before_account_unfollowed(follower.clone(), account.clone())?;
 

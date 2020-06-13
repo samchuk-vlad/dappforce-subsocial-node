@@ -105,9 +105,7 @@ decl_error! {
     NotAChangeCreator,
 
     /// Overflow when incrementing a counter of executed changes
-    OverflowExecutingChange,
-    /// Underflow when decrementing a counter of executed changes
-    UnderflowExecutingChange,
+    ChangesCountOverflow,
   }
 }
 

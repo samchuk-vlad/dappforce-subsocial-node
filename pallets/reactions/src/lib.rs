@@ -48,9 +48,7 @@ pub trait Trait: system::Trait
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
-    type BeforePostReactionCreated: BeforePostReactionCreated<Self>;
-
-    type BeforePostReactionDeleted: BeforePostReactionDeleted<Self>;
+    type PostReactionScores: PostReactionScores<Self>;
 }
 
 // This pallet's storage items.
@@ -85,11 +83,6 @@ decl_error! {
         NotReactionOwner,
         /// New reaction kind is the same as old one on this post/comment.
         SameReaction,
-
-        /// Overflow caused by upvoting a post/comment.
-        UpvoteOverflow,
-        /// Overflow caused by downvoting a post/comment.
-        DownvoteOverflow,
 
         /// Not allowed to react on a post/comment in a hidden space.
         CannotReactWhenSpaceHidden,
@@ -132,7 +125,7 @@ decl_module! {
             SpacePermission::Upvote,
             Error::<T>::NoPermissionToUpvote.into()
           )?;
-          post.upvotes_count = post.upvotes_count.checked_add(1).ok_or(Error::<T>::UpvoteOverflow)?;
+          post.inc_upvotes();
         },
         ReactionKind::Downvote => {
           Spaces::ensure_account_has_space_permission(
@@ -141,20 +134,15 @@ decl_module! {
             SpacePermission::Downvote,
             Error::<T>::NoPermissionToDownvote.into()
           )?;
-          post.downvotes_count = post.downvotes_count.checked_add(1).ok_or(Error::<T>::DownvoteOverflow)?;
+          post.inc_downvotes();
         }
       }
 
       if post.is_owner(&owner) {
         <PostById<T>>::insert(post_id, post.clone());
-      } else {
-        // TODO old change_post_score
-        // let action = Self::scoring_action_by_post_extension(post.extension, kind, false);
-        // Self::change_post_score(owner.clone(), post, action)?;
       }
 
-      // TODO new before_post_reaction_created
-      // T::BeforePostReactionCreated::before_post_reaction_created(...);
+      T::PostReactionScores::score_post_on_reaction(owner.clone(), post, kind)?;
 
       ReactionIdsByPostId::mutate(post_id, |ids| ids.push(reaction_id));
       <PostReactionIdByAccount<T>>::insert((owner.clone(), post_id), reaction_id);
@@ -175,37 +163,28 @@ decl_module! {
       ensure!(owner == reaction.created.account, Error::<T>::NotReactionOwner);
       ensure!(reaction.kind != new_kind, Error::<T>::SameReaction);
 
-      // TODO old change_post_score
-      // let old_kind = reaction.kind;
-
+      let old_kind = reaction.kind;
       reaction.kind = new_kind;
       reaction.updated = Some(WhoAndWhen::<T>::new(owner.clone()));
 
       match new_kind {
         ReactionKind::Upvote => {
-          post.upvotes_count += 1;
-          post.downvotes_count -= 1;
+          post.inc_upvotes();
+          post.dec_downvotes();
         },
         ReactionKind::Downvote => {
-          post.downvotes_count += 1;
-          post.upvotes_count -= 1;
+          post.inc_downvotes();
+          post.dec_upvotes();
         },
       }
 
-      // TODO old change_post_score
-      // let action_to_cancel = Self::scoring_action_by_post_extension(post.extension, old_kind, true);
-      // Self::change_post_score(owner.clone(), post, action_to_cancel)?;
-      //
-      // let new_action = Self::scoring_action_by_post_extension(post.extension, new_kind, false);
-      // Self::change_post_score(owner.clone(), post, new_action)?;
+      T::PostReactionScores::score_post_on_reaction(owner.clone(), post, old_kind)?;
+      T::PostReactionScores::score_post_on_reaction(owner.clone(), post, new_kind)?;
 
       <ReactionById<T>>::insert(reaction_id, reaction);
       <PostById<T>>::insert(post_id, post);
 
       Self::deposit_event(RawEvent::PostReactionUpdated(owner, post_id, reaction_id));
-
-      // TODO old change_post_score
-      // T::ReactionHandler::on_post_reaction_updated(...);
     }
 
     pub fn delete_post_reaction(origin, post_id: PostId, reaction_id: ReactionId) {
@@ -216,22 +195,18 @@ decl_module! {
         Error::<T>::ReactionByAccountNotFound
       );
 
+      // TODO extract Self::require_reaction(reaction_id)?;
       let reaction = Self::reaction_by_id(reaction_id).ok_or(Error::<T>::ReactionNotFound)?;
       let post = &mut Posts::require_post(post_id)?;
 
       ensure!(owner == reaction.created.account, Error::<T>::NotReactionOwner);
 
       match reaction.kind {
-        ReactionKind::Upvote => post.upvotes_count -= 1,
-        ReactionKind::Downvote => post.downvotes_count -= 1,
+        ReactionKind::Upvote => post.dec_upvotes(),
+        ReactionKind::Downvote => post.dec_downvotes(),
       }
 
-      // TODO old change_post_score
-      // let action_to_cancel = Self::scoring_action_by_post_extension(post.extension, reaction.kind, false);
-      // Self::change_post_score(owner.clone(), post, action_to_cancel)?;
-
-      // TODO new before_post_reaction_deleted
-      // T::BeforePostReactionDeleted::before_post_reaction_deleted(...);
+      T::PostReactionScores::score_post_on_reaction(owner.clone(), post, reaction.kind)?;
 
       <PostById<T>>::insert(post_id, post);
       <ReactionById<T>>::remove(reaction_id);
@@ -262,24 +237,13 @@ impl<T: Trait> Module<T> {
     }
 }
 
-/// Handler that will be called right before the post reaction is created.
-pub trait BeforePostReactionCreated<T: Trait> {
-    fn before_post_reaction_created(actor: T::AccountId, post: &mut Post<T>, reaction_kind: ReactionKind) -> DispatchResult;
+/// Handler that will be called right before the post reaction is toggled.
+pub trait PostReactionScores<T: Trait> {
+    fn score_post_on_reaction(actor: T::AccountId, post: &mut Post<T>, reaction_kind: ReactionKind) -> DispatchResult;
 }
 
-impl<T: Trait> BeforePostReactionCreated<T> for () {
-    fn before_post_reaction_created(_actor: T::AccountId, _post: &mut Post<T>, _reaction_kind: ReactionKind) -> DispatchResult {
-        Ok(())
-    }
-}
-
-/// Handler that will be called right before the post reaction is deleted.
-pub trait BeforePostReactionDeleted<T: Trait> {
-    fn before_post_reaction_deleted(actor: T::AccountId, post: &mut Post<T>, reaction_kind: ReactionKind) -> DispatchResult;
-}
-
-impl<T: Trait> BeforePostReactionDeleted<T> for () {
-    fn before_post_reaction_deleted(_actor: T::AccountId, _post: &mut Post<T>, _reaction_kind: ReactionKind) -> DispatchResult {
+impl<T: Trait> PostReactionScores<T> for () {
+    fn score_post_on_reaction(_actor: T::AccountId, _post: &mut Post<T>, _reaction_kind: ReactionKind) -> DispatchResult {
         Ok(())
     }
 }

@@ -133,10 +133,8 @@ decl_error! {
         PostNotFound,
         /// Nothing to update in post.
         NoUpdatesForPost,
-        /// Overflow caused adding post to space.
-        PostsCountOverflow,
-        /// Cannot create post not defining space_id.
-        SpaceIdIsUndefined,
+        /// Root post should have a space id.
+        PostHasNoSpaceId,
         /// Not allowed to create a post/comment when a scope (space or root post) is hidden.
         CannotCreateInHiddenScope,
 
@@ -144,8 +142,6 @@ decl_error! {
 
         /// Original post not found when sharing.
         OriginalPostNotFound,
-        /// Overflow caused by total shares counter when sharing post/comment.
-        PostSharesOverflow,
         /// Cannot share a post that shares another post.
         CannotShareSharingPost,
 
@@ -155,8 +151,6 @@ decl_error! {
         UnknownParentComment,
         /// Post by parent_id is not of Comment extension.
         NotACommentByParentId,
-        /// Overflow adding comment on post.
-        OverflowAddingCommentOnPost,
         /// Cannot update space id on comment.
         CannotUpdateSpaceIdOnComment,
         /// Max comment depth reached.
@@ -164,7 +158,7 @@ decl_error! {
         /// Only comment author can update his comment.
         NotACommentAuthor,
         /// Post extension is not a comment.
-        PostIsNotAComment,
+        NotComment,
 
         // Permissions related errors:
 
@@ -228,7 +222,7 @@ decl_module! {
 
       match extension {
         PostExtension::RegularPost => {
-          space.increment_posts_count()?;
+          space.inc_posts();
         },
 
         PostExtension::SharedPost(post_id) => {
@@ -243,31 +237,29 @@ decl_module! {
             Error::<T>::NoPermissionToShare.into()
           )?;
 
-          space.posts_count = space.posts_count.checked_add(1).ok_or(Error::<T>::PostsCountOverflow)?;
+          space.inc_posts();
           Self::share_post(creator.clone(), original_post, new_post_id)?;
         },
 
         PostExtension::Comment(comment_ext) => {
-          root_post.total_replies_count = root_post.total_replies_count.checked_add(1).ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
+          root_post.inc_total_replies();
 
           if let Some(parent_id) = comment_ext.parent_id {
             let mut parent_comment = Self::post_by_id(parent_id).ok_or(Error::<T>::UnknownParentComment)?;
             ensure!(parent_comment.is_comment(), Error::<T>::NotACommentByParentId);
-            parent_comment.direct_replies_count = parent_comment.direct_replies_count.checked_add(1).ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
+            parent_comment.inc_direct_replies();
 
             let mut ancestors = Self::get_post_ancestors(parent_id);
             ancestors[0] = parent_comment;
             ensure!(ancestors.len() < T::MaxCommentDepth::get() as usize, Error::<T>::MaxCommentDepthReached);
             for mut post in ancestors {
-              post.total_replies_count = post.total_replies_count.checked_add(1).ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
+              post.inc_total_replies();
               <PostById<T>>::insert(post.id, post.clone());
             }
 
             ReplyIdsByPostId::mutate(parent_id, |ids| ids.push(new_post_id));
           } else {
-            root_post.direct_replies_count = root_post.direct_replies_count.checked_add(1)
-              .ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
-
+            root_post.inc_direct_replies();
             ReplyIdsByPostId::mutate(comment_ext.root_post_id, |ids| ids.push(new_post_id));
           }
 
@@ -281,7 +273,7 @@ decl_module! {
         }
       }
 
-      if !new_post.is_comment() {
+      if new_post.is_root_post() {
         SpaceById::insert(space.id, space.clone());
         PostIdsBySpaceId::mutate(space.id, |ids| ids.push(new_post_id));
       }
@@ -359,7 +351,7 @@ decl_module! {
 
       // Move this post to another space:
       if let Some(space_id) = update.space_id {
-        ensure!(!post.is_comment(), Error::<T>::CannotUpdateSpaceIdOnComment);
+        ensure!(post.is_root_post(), Error::<T>::CannotUpdateSpaceIdOnComment);
 
         if let Some(post_space_id) = post.space_id {
           if space_id != post_space_id {

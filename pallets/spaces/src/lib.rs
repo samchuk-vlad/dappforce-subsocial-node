@@ -88,8 +88,6 @@ decl_error! {
     NoUpdatesForSpace,
     /// Only space owner can manage their space.
     NotASpaceOwner,
-    /// Overflow caused adding post to space
-    PostsCountOverflow,
     /// User has no permission to update this space.
     NoPermissionToUpdateSpace,
   }
@@ -265,9 +263,20 @@ impl<T: Trait> Space<T> {
         Ok(())
     }
 
-    pub fn increment_posts_count(&mut self) -> DispatchResult {
-        self.posts_count = self.posts_count.checked_add(1).ok_or(Error::<T>::PostsCountOverflow)?;
-        Ok(())
+    pub fn inc_posts(&mut self) {
+        self.posts_count = self.posts_count.saturating_add(1);
+    }
+
+    pub fn dec_posts(&mut self) {
+        self.posts_count = self.posts_count.saturating_sub(1);
+    }
+
+    pub fn inc_followers(&mut self) {
+        self.followers_count = self.followers_count.saturating_add(1);
+    }
+
+    pub fn dec_followers(&mut self) {
+        self.followers_count = self.followers_count.saturating_sub(1);
     }
 
     pub fn change_score(&mut self, diff: i16) {

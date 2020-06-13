@@ -39,10 +39,6 @@ decl_error! {
         NotSpaceFollower,
         /// Not allowed to follow a hidden space.
         CannotFollowHiddenSpace,
-        /// Overflow caused by following a space.
-        FollowSpaceOverflow,
-        /// Underflow caused by unfollowing a space.
-        UnfollowSpaceUnderflow,
     }
 }
 
@@ -88,14 +84,10 @@ decl_module! {
       let space = &mut Spaces::require_space(space_id)?;
       ensure!(Self::space_followed_by_account((follower.clone(), space_id)), Error::<T>::NotSpaceFollower);
 
-      space.followers_count = space.followers_count
-        .checked_sub(1)
-        .ok_or(Error::<T>::UnfollowSpaceUnderflow)?;
+      space.dec_followers();
 
       let mut social_account = Profiles::social_account_by_id(follower.clone()).ok_or(Error::<T>::SocialAccountNotFound)?;
-      social_account.following_spaces_count = social_account.following_spaces_count
-        .checked_sub(1)
-        .ok_or(Error::<T>::UnfollowSpaceUnderflow)?;
+      social_account.dec_following_spaces();
 
       T::BeforeSpaceUnfollowed::before_space_unfollowed(follower.clone(), space)?;
 
@@ -112,14 +104,10 @@ decl_module! {
 
 impl<T: Trait> Module<T> {
     pub fn add_space_follower(follower: T::AccountId, space: &mut Space<T>) -> DispatchResult {
-        space.followers_count = space.followers_count
-            .checked_add(1)
-            .ok_or(Error::<T>::FollowSpaceOverflow)?;
+        space.inc_followers();
 
         let mut social_account = Profiles::get_or_new_social_account(follower.clone());
-        social_account.following_spaces_count = social_account.following_spaces_count
-            .checked_add(1)
-            .ok_or(Error::<T>::FollowSpaceOverflow)?;
+        social_account.inc_following_spaces();
 
         T::BeforeSpaceFollowed::before_space_followed(
             follower.clone(), social_account.reputation, space)?;
