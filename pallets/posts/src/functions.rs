@@ -148,7 +148,7 @@ impl<T: Trait> Module<T> {
     ) -> DispatchResult {
         original_post.inc_shares();
 
-        T::BeforePostShared::before_post_shared(account.clone(), original_post)?;
+        T::PostScores::score_post_on_new_share(account.clone(), original_post)?;
 
         let original_post_id = original_post.id;
         PostById::insert(original_post_id, original_post.clone());

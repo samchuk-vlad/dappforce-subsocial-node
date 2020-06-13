@@ -9,7 +9,7 @@ use frame_support::{
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
-use pallet_posts::{BeforePostShared, Post, PostById, PostExtension, PostId};
+use pallet_posts::{PostScores, Post, PostById, PostExtension, PostId};
 use pallet_profile_follows::{BeforeAccountFollowed, BeforeAccountUnfollowed};
 use pallet_profiles::{Module as Profiles, SocialAccountById};
 use pallet_reactions::{PostReactionScores, ReactionKind};
@@ -399,8 +399,8 @@ impl<T: Trait> BeforeAccountUnfollowed<T> for Module<T> {
     }
 }
 
-impl<T: Trait> BeforePostShared<T> for Module<T> {
-    fn before_post_shared(account: T::AccountId, original_post: &mut Post<T>) -> DispatchResult {
+impl<T: Trait> PostScores<T> for Module<T> {
+    fn score_post_on_new_share(account: T::AccountId, original_post: &mut Post<T>) -> DispatchResult {
         let action =
             if original_post.is_comment() { ScoringAction::ShareComment }
             else { ScoringAction::SharePost };
@@ -417,6 +417,10 @@ impl<T: Trait> BeforePostShared<T> for Module<T> {
         } else {
             Ok(())
         }
+    }
+
+    fn score_root_post_on_new_comment(account: T::AccountId, root_post: &mut Post<T>) -> DispatchResult {
+        Self::change_post_score(account.clone(), root_post, ScoringAction::CreateComment)
     }
 }
 

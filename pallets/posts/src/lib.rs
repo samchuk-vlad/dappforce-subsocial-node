@@ -86,16 +86,19 @@ pub trait Trait: system::Trait
     /// Max comments depth
     type MaxCommentDepth: Get<u32>;
 
-    type BeforePostShared: BeforePostShared<Self>;
+    type PostScores: PostScores<Self>;
 }
 
-/// Handler that will be called right before post is shared.
-pub trait BeforePostShared<T: Trait> {
-    fn before_post_shared(account: T::AccountId, original_post: &mut Post<T>) -> DispatchResult;
+pub trait PostScores<T: Trait> {
+    fn score_post_on_new_share(account: T::AccountId, original_post: &mut Post<T>) -> DispatchResult;
+    fn score_root_post_on_new_comment(account: T::AccountId, root_post: &mut Post<T>) -> DispatchResult;
 }
 
-impl<T: Trait> BeforePostShared<T> for () {
-    fn before_post_shared(_account: T::AccountId, _original_post: &mut Post<T>) -> DispatchResult {
+impl<T: Trait> PostScores<T> for () {
+    fn score_post_on_new_share(_account: T::AccountId, _original_post: &mut Post<T>) -> DispatchResult {
+        Ok(())
+    }
+    fn score_root_post_on_new_comment(_account: T::AccountId, _root_post: &mut Post<T>) -> DispatchResult {
         Ok(())
     }
 }
@@ -263,11 +266,7 @@ decl_module! {
             ReplyIdsByPostId::mutate(comment_ext.root_post_id, |ids| ids.push(new_post_id));
           }
 
-          // TODO old change root post score on new comment
-          // Self::change_post_score(creator.clone(), root_post, ScoringAction::CreateComment)?;
-
-          // TODO new before_comment_created
-          // T::BeforeCommentCreated::before_comment_created(...);
+          T::PostScores::score_root_post_on_new_comment(creator.clone(), root_post)?;
 
           PostById::insert(comment_ext.root_post_id, root_post);
         }
