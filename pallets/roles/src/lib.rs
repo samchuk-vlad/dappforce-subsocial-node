@@ -7,7 +7,7 @@ use sp_runtime::RuntimeDebug;
 use sp_std::{collections::btree_set::BTreeSet, iter::FromIterator, prelude::*};
 use system::ensure_signed;
 
-use df_traits::{PermissionChecker, SpaceFollowsProvider, SpaceProvider};
+use df_traits::{PermissionChecker, SpaceFollowsProvider, SpaceForRolesProvider};
 use pallet_permissions::{Module as Permissions, SpacePermission, SpacePermissionSet};
 use pallet_utils::{Module as Utils, SpaceId, User, WhoAndWhen};
 
@@ -45,7 +45,7 @@ pub trait Trait: system::Trait
 
     type MaxUsersToProcessPerDeleteRole: Get<u16>;
 
-    type Spaces: SpaceProvider<AccountId=Self::AccountId>;
+    type Spaces: SpaceForRolesProvider<AccountId=Self::AccountId>;
 
     type SpaceFollows: SpaceFollowsProvider<AccountId=Self::AccountId>;
 }

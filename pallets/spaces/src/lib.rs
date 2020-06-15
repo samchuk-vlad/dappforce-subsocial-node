@@ -10,7 +10,7 @@ use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 use system::ensure_signed;
 
-use df_traits::{SpaceForRoles, SpaceProvider};
+use df_traits::{SpaceForRoles, SpaceForRolesProvider};
 use df_traits::{PermissionChecker, SpaceFollowsProvider};
 use pallet_permissions::{SpacePermission, SpacePermissions, SpacePermissionsContext};
 use pallet_utils::{is_valid_handle_char, Module as Utils, SpaceId, WhoAndWhen};
@@ -70,6 +70,8 @@ pub trait Trait: system::Trait
     type Roles: PermissionChecker<AccountId=Self::AccountId>;
 
     type SpaceFollows: SpaceFollowsProvider<AccountId=Self::AccountId>;
+
+    type AddSpaceFollower: AddSpaceFollower<Self>;
 }
 
 decl_error! {
@@ -134,23 +136,19 @@ decl_module! {
 
       Utils::<T>::is_ipfs_hash_valid(ipfs_hash.clone())?;
 
-      let mut handle: Vec<u8> = Vec::new();
+      let mut handle_in_lowercase: Vec<u8> = Vec::new();
       if let Some(original_handle) = handle_opt.clone() {
-        handle = Self::lowercase_and_validate_a_handle(original_handle)?;
+        handle_in_lowercase = Self::lowercase_and_validate_a_handle(original_handle)?;
       }
 
       let space_id = Self::next_space_id();
       let new_space = &mut Space::new(space_id, owner.clone(), ipfs_hash, handle_opt);
 
-      // TODO old add_space_follower
-      // Space creator automatically follows their space:
-      // Self::add_space_follower(owner.clone(), new_space)?;
+      // Make a space creator the first follower of this space:
+      T::AddSpaceFollower::add_space_follower(owner.clone(), new_space)?;
 
-      // TODO new from Alex: do we really need to make a space owner its first follower?
-      // SpaceFollows::follow_space(owner.clone(), new_space)?;
-
-      if !handle.is_empty() {
-        SpaceIdByHandle::insert(handle, space_id);
+      if !handle_in_lowercase.is_empty() {
+        SpaceIdByHandle::insert(handle_in_lowercase, space_id);
       }
 
       <SpaceById<T>>::insert(space_id, new_space);
@@ -181,7 +179,11 @@ decl_module! {
       let mut fields_updated = 0;
       let mut new_history_record = SpaceHistoryRecord {
         edited: WhoAndWhen::<T>::new(owner.clone()),
-        old_data: SpaceUpdate {handle: None, ipfs_hash: None, hidden: None}
+        old_data: SpaceUpdate {
+            handle: None,
+            ipfs_hash: None,
+            hidden: None
+        }
       };
 
       if let Some(ipfs_hash) = update.ipfs_hash {
@@ -203,12 +205,12 @@ decl_module! {
 
       if let Some(handle_opt) = update.handle {
         if handle_opt != space.handle {
-          if let Some(mut handle) = handle_opt.clone() {
-            handle = Self::lowercase_and_validate_a_handle(handle)?;
-            SpaceIdByHandle::insert(handle, space_id);
+          if let Some(new_handle) = handle_opt.clone() {
+            let handle_in_lowercase = Self::lowercase_and_validate_a_handle(new_handle)?;
+            SpaceIdByHandle::insert(handle_in_lowercase, space_id);
           }
-          if let Some(space_handle) = space.handle.clone() {
-            SpaceIdByHandle::remove(space_handle);
+          if let Some(old_handle) = space.handle.clone() {
+            SpaceIdByHandle::remove(old_handle);
           }
           new_history_record.old_data.handle = Some(space.handle);
           space.handle = handle_opt;
@@ -302,15 +304,24 @@ impl<T: Trait> Module<T> {
         Ok(Self::space_by_id(space_id).ok_or(Error::<T>::SpaceNotFound)?)
     }
 
-    pub fn lowercase_and_validate_a_handle(mut handle: Vec<u8>) -> Result<Vec<u8>, DispatchError> {
-        handle = handle.to_ascii_lowercase();
-
-        ensure!(Self::space_id_by_handle(handle.clone()).is_none(), Error::<T>::HandleIsNotUnique);
+    /// Check if a handle length fits into min/max values.
+    /// Lowercase a provided handle.
+    /// Check if a handle consists of valid chars: 0-9, a-z, _.
+    /// Check if a handle is unique across all spaces' handles (required one a storage read).
+    pub fn lowercase_and_validate_a_handle(handle: Vec<u8>) -> Result<Vec<u8>, DispatchError> {
+        // Check min and max lengths of a handle:
         ensure!(handle.len() >= T::MinHandleLen::get() as usize, Error::<T>::HandleIsTooShort);
         ensure!(handle.len() <= T::MaxHandleLen::get() as usize, Error::<T>::HandleIsTooLong);
-        ensure!(handle.iter().all(|&x| is_valid_handle_char(x)), Error::<T>::HandleContainsInvalidChars);
 
-        Ok(handle)
+        let handle_in_lowercase = handle.to_ascii_lowercase();
+
+        // Check if a handle consists of valid chars: 0-9, a-z, _.
+        ensure!(handle_in_lowercase.iter().all(|&x| is_valid_handle_char(x)), Error::<T>::HandleContainsInvalidChars);
+
+        // Check if a handle is unique across all spaces' handles:
+        ensure!(Self::space_id_by_handle(handle_in_lowercase.clone()).is_none(), Error::<T>::HandleIsNotUnique);
+
+        Ok(handle_in_lowercase)
     }
 
     pub fn ensure_account_has_space_permission(
@@ -338,7 +349,7 @@ impl<T: Trait> Module<T> {
     }
 }
 
-impl<T: Trait> SpaceProvider for Module<T> {
+impl<T: Trait> SpaceForRolesProvider for Module<T> {
     type AccountId = T::AccountId;
 
     fn get_space(id: SpaceId) -> Result<SpaceForRoles<Self::AccountId>, DispatchError> {
@@ -348,5 +359,15 @@ impl<T: Trait> SpaceProvider for Module<T> {
             owner: space.owner,
             permissions: space.permissions,
         })
+    }
+}
+
+pub trait AddSpaceFollower<T: Trait> {
+    fn add_space_follower(follower: T::AccountId, space: &mut Space<T>) -> DispatchResult;
+}
+
+impl<T: Trait> AddSpaceFollower<T> for () {
+    fn add_space_follower(_follower: T::AccountId, _space: &mut Space<T>) -> DispatchResult {
+        Ok(())
     }
 }

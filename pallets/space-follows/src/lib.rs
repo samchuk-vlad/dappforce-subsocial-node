@@ -10,7 +10,7 @@ use system::ensure_signed;
 
 use df_traits::SpaceFollowsProvider;
 use pallet_profiles::{Module as Profiles, SocialAccountById};
-use pallet_spaces::{Module as Spaces, Space, SpaceById};
+use pallet_spaces::{AddSpaceFollower, Module as Spaces, Space, SpaceById};
 use pallet_utils::{SpaceId, vec_remove_on};
 
 // mod tests;
@@ -70,8 +70,9 @@ decl_module! {
     pub fn follow_space(origin, space_id: SpaceId) {
       let follower = ensure_signed(origin)?;
 
-      let space = &mut Spaces::require_space(space_id)?;
       ensure!(!Self::space_followed_by_account((follower.clone(), space_id)), Error::<T>::AlreadySpaceFollower);
+
+      let space = &mut Spaces::require_space(space_id)?;
       ensure!(!space.hidden, Error::<T>::CannotFollowHiddenSpace);
 
       Self::add_space_follower(follower, space)?;
@@ -102,8 +103,8 @@ decl_module! {
   }
 }
 
-impl<T: Trait> Module<T> {
-    pub fn add_space_follower(follower: T::AccountId, space: &mut Space<T>) -> DispatchResult {
+impl<T: Trait> AddSpaceFollower<T> for Module<T> {
+    fn add_space_follower(follower: T::AccountId, space: &mut Space<T>) -> DispatchResult {
         space.inc_followers();
 
         let mut social_account = Profiles::get_or_new_social_account(follower.clone());
@@ -113,9 +114,9 @@ impl<T: Trait> Module<T> {
             follower.clone(), social_account.reputation, space)?;
 
         let space_id = space.id;
-        <SpacesFollowedByAccount<T>>::mutate(follower.clone(), |ids| ids.push(space_id));
-        <SpaceFollowers<T>>::mutate(space_id, |ids| ids.push(follower.clone()));
+        <SpaceFollowers<T>>::mutate(space_id, |followers| followers.push(follower.clone()));
         <SpaceFollowedByAccount<T>>::insert((follower.clone(), space_id), true);
+        <SpacesFollowedByAccount<T>>::mutate(follower.clone(), |space_ids| space_ids.push(space_id));
         <SocialAccountById<T>>::insert(follower.clone(), social_account);
 
         Self::deposit_event(RawEvent::SpaceFollowed(follower, space_id));

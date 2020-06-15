@@ -15,7 +15,7 @@ pub struct SpaceForRoles<AccountId> {
   pub permissions: Option<SpacePermissions>,
 }
 
-pub trait SpaceProvider {
+pub trait SpaceForRolesProvider {
   type AccountId;
 
   fn get_space(id: SpaceId) -> Result<SpaceForRoles<Self::AccountId>, DispatchError>;
