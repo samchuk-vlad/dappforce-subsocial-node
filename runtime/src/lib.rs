@@ -421,7 +421,7 @@ impl pallet_spaces::Trait for Runtime {
   type MaxHandleLen = MaxHandleLen;
   type Roles = Roles;
   type SpaceFollows = SpaceFollows;
-  type AddSpaceFollower = SpaceFollows;
+  type BeforeSpaceCreated = SpaceFollows;
 }
 
 construct_runtime!(

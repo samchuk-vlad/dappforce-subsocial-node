@@ -71,7 +71,7 @@ pub trait Trait: system::Trait
 
     type SpaceFollows: SpaceFollowsProvider<AccountId=Self::AccountId>;
 
-    type AddSpaceFollower: AddSpaceFollower<Self>;
+    type BeforeSpaceCreated: BeforeSpaceCreated<Self>;
 }
 
 decl_error! {
@@ -144,16 +144,16 @@ decl_module! {
       let space_id = Self::next_space_id();
       let new_space = &mut Space::new(space_id, owner.clone(), ipfs_hash, handle_opt);
 
-      // Make a space creator the first follower of this space:
-      T::AddSpaceFollower::add_space_follower(owner.clone(), new_space)?;
+      T::BeforeSpaceCreated::before_space_created(owner.clone(), new_space)?;
+
+      <SpaceById<T>>::insert(space_id, new_space);
+      <SpaceIdsByOwner<T>>::mutate(owner.clone(), |ids| ids.push(space_id));
+      NextSpaceId::mutate(|n| { *n += 1; });
 
       if !handle_in_lowercase.is_empty() {
         SpaceIdByHandle::insert(handle_in_lowercase, space_id);
       }
 
-      <SpaceById<T>>::insert(space_id, new_space);
-      <SpaceIdsByOwner<T>>::mutate(owner.clone(), |ids| ids.push(space_id));
-      NextSpaceId::mutate(|n| { *n += 1; });
       Self::deposit_event(RawEvent::SpaceCreated(owner, space_id));
     }
 
@@ -362,12 +362,12 @@ impl<T: Trait> SpaceForRolesProvider for Module<T> {
     }
 }
 
-pub trait AddSpaceFollower<T: Trait> {
-    fn add_space_follower(follower: T::AccountId, space: &mut Space<T>) -> DispatchResult;
+pub trait BeforeSpaceCreated<T: Trait> {
+    fn before_space_created(follower: T::AccountId, space: &mut Space<T>) -> DispatchResult;
 }
 
-impl<T: Trait> AddSpaceFollower<T> for () {
-    fn add_space_follower(_follower: T::AccountId, _space: &mut Space<T>) -> DispatchResult {
+impl<T: Trait> BeforeSpaceCreated<T> for () {
+    fn before_space_created(_follower: T::AccountId, _space: &mut Space<T>) -> DispatchResult {
         Ok(())
     }
 }

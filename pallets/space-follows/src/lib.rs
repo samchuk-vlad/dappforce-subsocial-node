@@ -10,7 +10,7 @@ use system::ensure_signed;
 
 use df_traits::SpaceFollowsProvider;
 use pallet_profiles::{Module as Profiles, SocialAccountById};
-use pallet_spaces::{AddSpaceFollower, Module as Spaces, Space, SpaceById};
+use pallet_spaces::{BeforeSpaceCreated, Module as Spaces, Space, SpaceById};
 use pallet_utils::{SpaceId, vec_remove_on};
 
 // mod tests;
@@ -103,7 +103,7 @@ decl_module! {
   }
 }
 
-impl<T: Trait> AddSpaceFollower<T> for Module<T> {
+impl<T: Trait> Module<T> {
     fn add_space_follower(follower: T::AccountId, space: &mut Space<T>) -> DispatchResult {
         space.inc_followers();
 
@@ -130,6 +130,13 @@ impl<T: Trait> SpaceFollowsProvider for Module<T> {
 
     fn is_space_follower(account: Self::AccountId, space_id: SpaceId) -> bool {
         Module::<T>::space_followed_by_account((account, space_id))
+    }
+}
+
+impl<T: Trait> BeforeSpaceCreated<T> for Module<T> {
+    fn before_space_created(creator: T::AccountId, space: &mut Space<T>) -> DispatchResult {
+        // Make a space creator the first follower of this space:
+        Module::<T>::add_space_follower(creator, space)
     }
 }
 
