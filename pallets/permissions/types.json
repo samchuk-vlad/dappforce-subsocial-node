@@ -4,29 +4,46 @@
   "SpacePermission": {
     "_enum": [
       "ManageRoles",
+
       "RepresentSpaceInternally",
       "RepresentSpaceExternally",
+
       "UpdateSpace",
+
       "BlockUsers",
+      "ReportUsers",
 
       "CreateSubspaces",
       "UpdateOwnSubspaces",
       "DeleteOwnSubspaces",
+      "HideOwnSubspaces",
+
       "UpdateAnySubspace",
       "DeleteAnySubspace",
+      "HideAnySubspace",
+
       "BlockSubspaces",
+      "ReportSubspaces",
 
       "CreatePosts",
       "UpdateOwnPosts",
       "DeleteOwnPosts",
+
       "UpdateAnyPost",
       "DeleteAnyPost",
+      "HideAnyPost",
+
       "BlockPosts",
+      "ReportPosts",
 
       "CreateComments",
       "UpdateOwnComments",
       "DeleteOwnComments",
+      "HideOwnComments",
+
+      "HideAnyComment",
       "BlockComments",
+      "ReportComments",
 
       "Upvote",
       "Downvote",
@@ -48,6 +65,6 @@
     "space_id": "SpaceId",
     "is_space_owner": "bool",
     "is_space_follower": "bool",
-    "space_perms": "Option<SpacePermissionSet>"
+    "space_perms": "Option<SpacePermissions>"
   }
 }

@@ -1,5 +1,4 @@
 {
-  "SpaceId": "u64",
   "ChangeId": "u64",
 
   "SpaceOwners": {
@@ -7,6 +6,7 @@
     "space_id": "SpaceId",
     "owners": "Vec<AccountId>",
     "threshold": "u16",
+
     "changes_count": "u64"
   },
   "Change": {

@@ -1,20 +1,44 @@
 {
   "IpfsHash": "Text",
-  "PostId": "u64",
-  "ReactionId": "u64",
+  "SpaceId": "u64",
+
+  "WhoAndWhen": {
+    "account": "AccountId",
+    "block": "BlockNumber",
+    "time": "Moment"
+  },
+
+  "User": {
+    "_enum": {
+      "Account": "AccountId",
+      "Space": "SpaceId"
+    }
+  },
+
+
+  "SpaceForRoles": {
+    "owner": "AccountId",
+    "permissions": "Option<SpacePermissions>"
+  },
+
 
   "Space": {
     "id": "SpaceId",
     "created": "WhoAndWhen",
     "updated": "Option<WhoAndWhen>",
     "hidden": "bool",
+
     "owner": "AccountId",
     "handle": "Option<Text>",
     "ipfs_hash": "IpfsHash",
+
     "posts_count": "u16",
     "followers_count": "u32",
+
     "edit_history": "Vec<SpaceHistoryRecord>",
+
     "score": "i32",
+
     "permissions": "Option<SpacePermissions>"
   },
 
@@ -29,20 +53,28 @@
     "old_data": "SpaceUpdate"
   },
 
+
+  "PostId": "u64",
+
   "Post": {
     "id": "PostId",
     "created": "WhoAndWhen",
     "updated": "Option<WhoAndWhen>",
     "hidden": "bool",
+
     "space_id": "Option<SpaceId>",
     "extension": "PostExtension",
+
     "ipfs_hash": "IpfsHash",
     "edit_history": "Vec<PostHistoryRecord>",
+
     "direct_replies_count": "u16",
     "total_replies_count": "u32",
+
     "shares_count": "u16",
     "upvotes_count": "u16",
     "downvotes_count": "u16",
+
     "score": "i32"
   },
 
@@ -70,33 +102,14 @@
     "root_post_id": "PostId"
   },
 
-  "ReactionKind": {
-    "_enum": [
-      "Upvote",
-      "Downvote"
-    ]
-  },
-
-  "Reaction": {
-    "id": "ReactionId",
-    "created": "WhoAndWhen",
-    "updated": "Option<WhoAndWhen>",
-    "kind": "ReactionKind"
-  },
-
-  "SocialAccount": {
-    "followers_count": "u32",
-    "following_accounts_count": "u16",
-    "following_spaces_count": "u16",
-    "reputation": "u32",
-    "profile": "Option<Profile>"
-  },
 
   "Profile": {
     "created": "WhoAndWhen",
     "updated": "Option<WhoAndWhen>",
+
     "username": "Text",
     "ipfs_hash": "IpfsHash",
+
     "edit_history": "Vec<ProfileHistoryRecord>"
   },
 
@@ -110,6 +123,7 @@
     "old_data": "ProfileUpdate"
   },
 
+
   "ScoringAction": {
     "_enum": [
       "UpvotePost",
@@ -122,80 +136,6 @@
       "FollowSpace",
       "FollowAccount"
     ]
-  },
-
-
-  "SpaceForRoles": {
-    "owner": "AccountId",
-    "permissions": "Option<SpacePermissions>"
-  },
-
-
-  "SpaceId": "u64",
-
-  "WhoAndWhen": {
-    "account": "AccountId",
-    "block": "BlockNumber",
-    "time": "Moment"
-  },
-  "User": {
-    "_enum": {
-      "Account": "AccountId",
-      "Space": "SpaceId"
-    }
-  },
-
-
-  "SpacePermissionSet": "BTreeSet<SpacePermission>",
-
-  "SpacePermission": {
-    "_enum": [
-      "ManageRoles",
-      "RepresentSpaceInternally",
-      "RepresentSpaceExternally",
-      "UpdateSpace",
-      "BlockUsers",
-
-      "CreateSubspaces",
-      "UpdateOwnSubspaces",
-      "DeleteOwnSubspaces",
-      "UpdateAnySubspace",
-      "DeleteAnySubspace",
-      "BlockSubspaces",
-
-      "CreatePosts",
-      "UpdateOwnPosts",
-      "DeleteOwnPosts",
-      "UpdateAnyPost",
-      "DeleteAnyPost",
-      "BlockPosts",
-
-      "CreateComments",
-      "UpdateOwnComments",
-      "DeleteOwnComments",
-      "BlockComments",
-
-      "Upvote",
-      "Downvote",
-      "Share",
-
-      "OverrideSubspacePermissions",
-      "OverridePostPermissions"
-    ]
-  },
-
-  "SpacePermissions": {
-    "none": "Option<SpacePermissionSet>",
-    "everyone": "Option<SpacePermissionSet>",
-    "follower": "Option<SpacePermissionSet>",
-    "space_owner": "Option<SpacePermissionSet>"
-  },
-
-  "SpacePermissionsContext": {
-    "space_id": "SpaceId",
-    "is_space_owner": "bool",
-    "is_space_follower": "bool",
-    "space_perms": "Option<SpacePermissionSet>"
   },
 
 
@@ -216,5 +156,31 @@
     "disabled": "Option<bool>",
     "ipfs_hash": "Option<Option<IpfsHash>>",
     "permissions": "Option<SpacePermissionSet>"
+  },
+
+
+  "ReactionId": "u64",
+
+  "ReactionKind": {
+    "_enum": [
+      "Upvote",
+      "Downvote"
+    ]
+  },
+
+  "Reaction": {
+    "id": "ReactionId",
+    "created": "WhoAndWhen",
+    "updated": "Option<WhoAndWhen>",
+    "kind": "ReactionKind"
+  },
+
+
+  "SocialAccount": {
+    "followers_count": "u32",
+    "following_accounts_count": "u16",
+    "following_spaces_count": "u16",
+    "reputation": "u32",
+    "profile": "Option<Profile>"
   }
 }
