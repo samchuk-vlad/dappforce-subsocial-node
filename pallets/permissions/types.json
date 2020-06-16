@@ -28,6 +28,7 @@
       "CreatePosts",
       "UpdateOwnPosts",
       "DeleteOwnPosts",
+      "HideOwnPosts",
 
       "UpdateAnyPost",
       "DeleteAnyPost",

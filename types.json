@@ -103,6 +103,14 @@
   },
 
 
+  "SocialAccount": {
+    "followers_count": "u32",
+    "following_accounts_count": "u16",
+    "following_spaces_count": "u16",
+    "reputation": "u32",
+    "profile": "Option<Profile>"
+  },
+
   "Profile": {
     "created": "WhoAndWhen",
     "updated": "Option<WhoAndWhen>",
@@ -124,6 +132,23 @@
   },
 
 
+  "ReactionId": "u64",
+
+  "ReactionKind": {
+    "_enum": [
+      "Upvote",
+      "Downvote"
+    ]
+  },
+
+  "Reaction": {
+    "id": "ReactionId",
+    "created": "WhoAndWhen",
+    "updated": "Option<WhoAndWhen>",
+    "kind": "ReactionKind"
+  },
+
+
   "ScoringAction": {
     "_enum": [
       "UpvotePost",
@@ -136,6 +161,77 @@
       "FollowSpace",
       "FollowAccount"
     ]
+  },
+
+
+  "SpacePermissionSet": "BTreeSet<SpacePermission>",
+
+  "SpacePermission": {
+    "_enum": [
+      "ManageRoles",
+
+      "RepresentSpaceInternally",
+      "RepresentSpaceExternally",
+
+      "UpdateSpace",
+
+      "BlockUsers",
+      "ReportUsers",
+
+      "CreateSubspaces",
+      "UpdateOwnSubspaces",
+      "DeleteOwnSubspaces",
+      "HideOwnSubspaces",
+
+      "UpdateAnySubspace",
+      "DeleteAnySubspace",
+      "HideAnySubspace",
+
+      "BlockSubspaces",
+      "ReportSubspaces",
+
+      "CreatePosts",
+      "UpdateOwnPosts",
+      "DeleteOwnPosts",
+      "HideOwnPosts",
+
+      "UpdateAnyPost",
+      "DeleteAnyPost",
+      "HideAnyPost",
+
+      "BlockPosts",
+      "ReportPosts",
+
+      "CreateComments",
+      "UpdateOwnComments",
+      "DeleteOwnComments",
+      "HideOwnComments",
+
+      "HideAnyComment",
+      "BlockComments",
+      "ReportComments",
+
+      "Upvote",
+      "Downvote",
+      "Share",
+
+      "OverrideSubspacePermissions",
+      "OverridePostPermissions"
+    ]
+  },
+
+  "SpacePermissions": {
+    "none": "Option<SpacePermissionSet>",
+    "everyone": "Option<SpacePermissionSet>",
+    "follower": "Option<SpacePermissionSet>",
+    "space_owner": "Option<SpacePermissionSet>"
+  },
+
+  "SpacePermissionsContext": {
+    "space_id": "SpaceId",
+    "is_space_owner": "bool",
+    "is_space_follower": "bool",
+    "space_perms": "Option<SpacePermissions>"
   },
 
 
@@ -156,31 +252,5 @@
     "disabled": "Option<bool>",
     "ipfs_hash": "Option<Option<IpfsHash>>",
     "permissions": "Option<SpacePermissionSet>"
-  },
-
-
-  "ReactionId": "u64",
-
-  "ReactionKind": {
-    "_enum": [
-      "Upvote",
-      "Downvote"
-    ]
-  },
-
-  "Reaction": {
-    "id": "ReactionId",
-    "created": "WhoAndWhen",
-    "updated": "Option<WhoAndWhen>",
-    "kind": "ReactionKind"
-  },
-
-
-  "SocialAccount": {
-    "followers_count": "u32",
-    "following_accounts_count": "u16",
-    "following_spaces_count": "u16",
-    "reputation": "u32",
-    "profile": "Option<Profile>"
   }
 }
