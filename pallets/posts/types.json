@@ -6,15 +6,20 @@
     "created": "WhoAndWhen",
     "updated": "Option<WhoAndWhen>",
     "hidden": "bool",
+
     "space_id": "Option<SpaceId>",
     "extension": "PostExtension",
+
     "ipfs_hash": "IpfsHash",
     "edit_history": "Vec<PostHistoryRecord>",
+
     "direct_replies_count": "u16",
     "total_replies_count": "u32",
+
     "shares_count": "u16",
     "upvotes_count": "u16",
     "downvotes_count": "u16",
+
     "score": "i32"
   },
 

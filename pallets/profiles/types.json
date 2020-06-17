@@ -10,8 +10,10 @@
   "Profile": {
     "created": "WhoAndWhen",
     "updated": "Option<WhoAndWhen>",
+
     "username": "Text",
     "ipfs_hash": "IpfsHash",
+
     "edit_history": "Vec<ProfileHistoryRecord>"
   },
 
