@@ -80,7 +80,7 @@ impl<T: Trait> Module<T> {
     error: DispatchError,
   ) -> DispatchResult {
 
-    let role_ids = Self::in_space_role_ids_by_user((user, space_id));
+    let role_ids = Self::role_ids_by_user_in_space((user, space_id));
 
     for role_id in role_ids {
       if let Some(role) = Self::role_by_id(role_id) {
@@ -150,11 +150,11 @@ impl<T: Trait> Role<T> {
 
   pub fn revoke_from_users(&self, users: Vec<User<T::AccountId>>) {
     for user in users.iter() {
-      let role_idx_by_user_opt = Module::<T>::in_space_role_ids_by_user((&user, self.space_id)).iter()
+      let role_idx_by_user_opt = Module::<T>::role_ids_by_user_in_space((&user, self.space_id)).iter()
         .position(|x| { *x == self.id });
 
       if let Some(role_idx) = role_idx_by_user_opt {
-        <InSpaceRoleIdsByUser<T>>::mutate((user, self.space_id), |n| { n.swap_remove(role_idx) });
+        <RoleIdsByUserInSpace<T>>::mutate((user, self.space_id), |n| { n.swap_remove(role_idx) });
       }
     }
   }
@@ -165,14 +165,14 @@ impl<T: Trait> PermissionChecker for Module<T> {
 
   fn ensure_user_has_space_permission(
     user: User<Self::AccountId>,
-    space_perms_context: SpacePermissionsContext,
+    ctx: SpacePermissionsContext,
     permission: SpacePermission,
     error: DispatchError,
   ) -> DispatchResult {
 
     Self::ensure_user_has_space_permission(
       user,
-      space_perms_context,
+      ctx,
       permission,
       error
     )

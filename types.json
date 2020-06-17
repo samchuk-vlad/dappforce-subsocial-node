@@ -155,23 +155,31 @@
       "RepresentSpaceExternally",
       "UpdateSpace",
       "BlockUsers",
+
       "CreateSubspaces",
       "UpdateOwnSubspaces",
-      "UpdateAnySubspaces",
       "DeleteOwnSubspaces",
+      "UpdateAnySubspace",
+      "DeleteAnySubspace",
       "BlockSubspaces",
+
       "CreatePosts",
       "UpdateOwnPosts",
-      "UpdateAnyPosts",
       "DeleteOwnPosts",
+      "UpdateAnyPost",
+      "DeleteAnyPost",
       "BlockPosts",
+
       "CreateComments",
       "UpdateOwnComments",
       "DeleteOwnComments",
       "BlockComments",
+
       "Upvote",
       "Downvote",
       "Share",
+
+      "OverrideSubspacePermissions",
       "OverridePostPermissions"
     ]
   },

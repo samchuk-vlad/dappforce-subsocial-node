@@ -1,23 +1,27 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::string_lit_as_bytes)]
 
-pub mod functions;
-pub mod roles;
-// mod tests;
-
-use sp_std::prelude::*;
-use codec::{Encode, Decode};
+use codec::{Decode, Encode};
 use frame_support::{
-  decl_module, decl_storage, decl_event, decl_error, ensure,
-  traits::Get,
-  dispatch::DispatchError
+  decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchError,
+  ensure,
+  traits::Get
 };
 use sp_runtime::RuntimeDebug;
+use sp_std::prelude::*;
 use system::ensure_signed;
 
-use pallet_utils::{Module as Utils, WhoAndWhen, SpaceId};
-use pallet_permissions::{SpacePermission, SpacePermissions};
 use df_traits::PermissionChecker;
+use pallet_permissions::{SpacePermission, SpacePermissions};
+use pallet_utils::{Module as Utils, SpaceId, vec_remove_on, WhoAndWhen};
+
+pub mod roles;
+pub mod spaces;
+pub mod posts;
+pub mod reactions;
+pub mod scores;
+pub mod follows;
+// mod tests;
 
 pub type PostId = u64;
 pub type ReactionId = u64;
@@ -252,12 +256,12 @@ decl_error! {
     OverflowAddingPostOnSpace,
     /// Cannot create post not defining space_id
     SpaceIdIsUndefined,
-    /// Not allowed to create post/comment when entity is hidden
-    BannedToCreateWhenHidden,
-    /// Not allowed to follow space when it's hidden
-    BannedToFollowWhenHidden,
-    /// Not allowed to create/update reaction to post/comment when entity is hidden
-    BannedToChangeReactionWhenHidden,
+    /// Not allowed to create a post/comment when entity is hidden.
+    CannotCreateWhenHidden,
+    /// Not allowed to follow a space when it's hidden.
+    CannotFollowWhenHidden,
+    /// Not allowed to create/update a reaction on post/comment when entity is hidden.
+    CannotChangeReactionWhenHidden,
 
     /// Unknown parent comment id
     UnknownParentComment,
@@ -346,8 +350,8 @@ decl_error! {
     OverflowTotalShares,
     /// Overflow caused on shares by account counter when sharing post/comment
     OverflowPostShares,
-    /// Cannot share post that is not a RegularPost
-    CannotShareSharedPost,
+    /// Cannot share a post that shares another post.
+    CannotShareSharingPost,
 
     /// Profile for this account already exists
     ProfileAlreadyExists,
@@ -378,7 +382,7 @@ decl_error! {
     /// User is an author, but has no permission to update own posts in this space
     NoPermissionToUpdateOwnPosts,
     /// User is not an author and has no permission to update posts in this space
-    NoPermissionToUpdateAnyPosts,
+    NoPermissionToUpdateAnyPost,
     /// User has no permission to update own comments in this space posts
     NoPermissionToUpdateOwnComments,
     /// User has no permission to upvote posts/comments in this space
@@ -474,7 +478,7 @@ decl_module! {
       }
 
       let space_id = Self::next_space_id();
-      let new_space = &mut Space::create(space_id, owner.clone(), ipfs_hash, handle_opt);
+      let new_space = &mut Space::new(space_id, owner.clone(), ipfs_hash, handle_opt);
 
       // Space creator automatically follows their space:
       Self::add_space_follower(owner.clone(), new_space)?;
@@ -562,7 +566,7 @@ decl_module! {
       space.ensure_space_owner(who.clone())?;
 
       ensure!(who != transfer_to, Error::<T>::CannotTranferToCurrentOwner);
-      Space::<T>::ensure_space_stored(space_id)?;
+      Space::<T>::ensure_space_exists(space_id)?;
 
       <PendingSpaceOwner<T>>::insert(space_id, transfer_to.clone());
       Self::deposit_event(RawEvent::SpaceOwnershipTransferCreated(who, space_id, transfer_to));
@@ -600,7 +604,7 @@ decl_module! {
 
       let space = &mut (Self::space_by_id(space_id).ok_or(Error::<T>::SpaceNotFound)?);
       ensure!(!Self::space_followed_by_account((follower.clone(), space_id)), Error::<T>::AccountIsFollowingSpace);
-      ensure!(!space.hidden, Error::<T>::BannedToFollowWhenHidden);
+      ensure!(!space.hidden, Error::<T>::CannotFollowWhenHidden);
 
       Self::add_space_follower(follower, space)?;
       <SpaceById<T>>::insert(space_id, space);
@@ -626,8 +630,8 @@ decl_module! {
         }
       }
 
-      <SpacesFollowedByAccount<T>>::mutate(follower.clone(), |space_ids| Self::vec_remove_on(space_ids, space_id));
-      <SpaceFollowers<T>>::mutate(space_id, |account_ids| Self::vec_remove_on(account_ids, follower.clone()));
+      <SpacesFollowedByAccount<T>>::mutate(follower.clone(), |space_ids| vec_remove_on(space_ids, space_id));
+      <SpaceFollowers<T>>::mutate(space_id, |account_ids| vec_remove_on(account_ids, follower.clone()));
       <SpaceFollowedByAccount<T>>::remove((follower.clone(), space_id));
       <SocialAccountById<T>>::insert(follower.clone(), social_account);
       <SpaceById<T>>::insert(space_id, space);
@@ -688,8 +692,8 @@ decl_module! {
 
       <SocialAccountById<T>>::insert(follower.clone(), follower_account);
       <SocialAccountById<T>>::insert(account.clone(), followed_account);
-      <AccountsFollowedByAccount<T>>::mutate(follower.clone(), |account_ids| Self::vec_remove_on(account_ids, account.clone()));
-      <AccountFollowers<T>>::mutate(account.clone(), |account_ids| Self::vec_remove_on(account_ids, follower.clone()));
+      <AccountsFollowedByAccount<T>>::mutate(follower.clone(), |account_ids| vec_remove_on(account_ids, account.clone()));
+      <AccountFollowers<T>>::mutate(account.clone(), |account_ids| vec_remove_on(account_ids, follower.clone()));
       <AccountFollowedByAccount<T>>::remove((follower.clone(), account.clone()));
 
       Self::deposit_event(RawEvent::AccountUnfollowed(follower, account));
@@ -771,14 +775,14 @@ decl_module! {
       Utils::<T>::is_ipfs_hash_valid(ipfs_hash.clone())?;
 
       let new_post_id = Self::next_post_id();
-      let new_post: Post<T> = Post::create(new_post_id, owner.clone(), space_id_opt, extension, ipfs_hash);
+      let new_post: Post<T> = Post::new(new_post_id, owner.clone(), space_id_opt, extension, ipfs_hash);
 
       // Get space from either from space_id_opt or extension if a Comment provided
       let mut space = new_post.get_space()?;
-      ensure!(!space.hidden, Error::<T>::BannedToCreateWhenHidden);
+      ensure!(!space.hidden, Error::<T>::CannotCreateWhenHidden);
 
       let root_post = &mut (new_post.get_root_post()?);
-      ensure!(!root_post.hidden, Error::<T>::BannedToCreateWhenHidden);
+      ensure!(!root_post.hidden, Error::<T>::CannotCreateWhenHidden);
 
       // Check permissions
       match extension {
@@ -806,7 +810,7 @@ decl_module! {
         },
         PostExtension::SharedPost(post_id) => {
           let post = &mut (Self::post_by_id(post_id).ok_or(Error::<T>::OriginalPostNotFound)?);
-          ensure!(!post.is_shared_post(), Error::<T>::CannotShareSharedPost);
+          ensure!(!post.is_sharing_post(), Error::<T>::CannotShareSharingPost);
 
           // TODO: maybe check multiple permissions per function call?
           Self::ensure_account_has_space_permission(
@@ -827,7 +831,7 @@ decl_module! {
             ensure!(parent_comment.is_comment(), Error::<T>::NotACommentByParentId);
             parent_comment.direct_replies_count = parent_comment.direct_replies_count.checked_add(1).ok_or(Error::<T>::OverflowAddingCommentOnPost)?;
 
-            let mut ancestors = Self::get_ancestors(parent_id);
+            let mut ancestors = Self::get_post_ancestors(parent_id);
             ancestors[0] = parent_comment;
             ensure!(ancestors.len() < T::MaxCommentDepth::get() as usize, Error::<T>::MaxCommentDepthReached);
             for mut post in ancestors {
@@ -890,8 +894,8 @@ decl_module! {
           permission_to_check = SpacePermission::UpdateOwnPosts;
           permission_error = Error::<T>::NoPermissionToUpdateOwnPosts.into();
         } else {
-          permission_to_check = SpacePermission::UpdateAnyPosts;
-          permission_error = Error::<T>::NoPermissionToUpdateAnyPosts.into();
+          permission_to_check = SpacePermission::UpdateAnyPost;
+          permission_error = Error::<T>::NoPermissionToUpdateAnyPost.into();
         }
       }
 
@@ -933,10 +937,10 @@ decl_module! {
 
         if let Some(post_space_id) = post.space_id {
           if space_id != post_space_id {
-            Space::<T>::ensure_space_stored(space_id)?;
+            Space::<T>::ensure_space_exists(space_id)?;
 
             // Remove post_id from its old space:
-            PostIdsBySpaceId::mutate(post_space_id, |post_ids| Self::vec_remove_on(post_ids, post_id));
+            PostIdsBySpaceId::mutate(post_space_id, |post_ids| vec_remove_on(post_ids, post_id));
 
             // Add post_id to its new space:
             PostIdsBySpaceId::mutate(space_id, |ids| ids.push(post_id));
@@ -967,9 +971,9 @@ decl_module! {
       );
 
       let space = post.get_space()?;
-      ensure!(!space.hidden && !Self::is_root_post_hidden(post_id)?, Error::<T>::BannedToChangeReactionWhenHidden);
+      ensure!(!space.hidden && !Self::is_root_post_hidden(post_id)?, Error::<T>::CannotChangeReactionWhenHidden);
 
-      let reaction_id = Self::new_reaction(owner.clone(), kind);
+      let reaction_id = Self::insert_new_reaction(owner.clone(), kind);
 
       match kind {
         ReactionKind::Upvote => {
@@ -1017,7 +1021,7 @@ decl_module! {
       let post = &mut (Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?);
 
       let space = post.get_space()?;
-      ensure!(!space.hidden && !post.hidden, Error::<T>::BannedToChangeReactionWhenHidden);
+      ensure!(!space.hidden && !post.hidden, Error::<T>::CannotChangeReactionWhenHidden);
 
       ensure!(owner == reaction.created.account, Error::<T>::NotAReactionOwner);
       ensure!(reaction.kind != new_kind, Error::<T>::NewReactionKindNotDiffer);
@@ -1070,7 +1074,7 @@ decl_module! {
 
       <PostById<T>>::insert(post_id, post);
       <ReactionById<T>>::remove(reaction_id);
-      ReactionIdsByPostId::mutate(post_id, |ids| Self::vec_remove_on(ids, reaction_id));
+      ReactionIdsByPostId::mutate(post_id, |ids| vec_remove_on(ids, reaction_id));
       <PostReactionIdByAccount<T>>::remove((owner.clone(), post_id));
 
       Self::deposit_event(RawEvent::PostReactionDeleted(owner, post_id, reaction_id));

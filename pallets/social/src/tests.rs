@@ -1108,7 +1108,7 @@ fn create_comment_should_fail_space_is_hidden() {
       Some(self::space_update(None, None, Some(true)))
     ));
 
-    assert_noop!(_create_default_comment(), Error::<Test>::BannedToCreateWhenHidden);
+    assert_noop!(_create_default_comment(), Error::<Test>::CannotCreateWhenHidden);
   });
 }
 
@@ -1123,7 +1123,7 @@ fn create_comment_should_fail_post_is_hidden() {
       Some(self::post_update(None, None, Some(true)))
     ));
 
-    assert_noop!(_create_default_comment(), Error::<Test>::BannedToCreateWhenHidden);
+    assert_noop!(_create_default_comment(), Error::<Test>::CannotCreateWhenHidden);
   });
 }
 
@@ -1298,7 +1298,7 @@ fn create_post_reaction_should_fail_space_is_hidden() {
       Some(self::space_update(None, None, Some(true)))
     ));
 
-    assert_noop!(_create_default_post_reaction(), Error::<Test>::BannedToChangeReactionWhenHidden);
+    assert_noop!(_create_default_post_reaction(), Error::<Test>::CannotChangeReactionWhenHidden);
   });
 }
 
@@ -1313,7 +1313,7 @@ fn create_post_reaction_should_fail_post_is_hidden() {
       Some(self::post_update(None, None, Some(true)))
     ));
 
-    assert_noop!(_create_default_post_reaction(), Error::<Test>::BannedToChangeReactionWhenHidden);
+    assert_noop!(_create_default_post_reaction(), Error::<Test>::CannotChangeReactionWhenHidden);
   });
 }
 
@@ -1398,7 +1398,7 @@ fn create_comment_reaction_should_fail_space_is_hidden() {
       Some(self::space_update(None, None, Some(true)))
     ));
 
-    assert_noop!(_create_default_comment_reaction(), Error::<Test>::BannedToChangeReactionWhenHidden);
+    assert_noop!(_create_default_comment_reaction(), Error::<Test>::CannotChangeReactionWhenHidden);
   });
 }
 
@@ -1414,7 +1414,7 @@ fn create_comment_reaction_should_fail_post_is_hidden() {
       Some(self::post_update(None, None, Some(true)))
     ));
 
-    assert_noop!(_create_default_comment_reaction(), Error::<Test>::BannedToChangeReactionWhenHidden);
+    assert_noop!(_create_default_comment_reaction(), Error::<Test>::CannotChangeReactionWhenHidden);
   });
 }
 
@@ -1947,7 +1947,7 @@ fn share_post_should_fail_share_shared_post() {
       Some(Some(1)),
       Some(self::extension_shared_post(2)),
       None
-    ), Error::<Test>::CannotShareSharedPost);
+    ), Error::<Test>::CannotShareSharingPost);
   });
 }
 
@@ -2230,7 +2230,7 @@ fn follow_space_should_fail_space_is_hidden() {
       Some(self::space_update(None, None, Some(true)))
     ));
 
-    assert_noop!(_default_follow_space(), Error::<Test>::BannedToFollowWhenHidden);
+    assert_noop!(_default_follow_space(), Error::<Test>::CannotFollowWhenHidden);
   });
 }
 

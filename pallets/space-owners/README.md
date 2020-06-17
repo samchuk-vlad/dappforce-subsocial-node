@@ -1,4 +1,4 @@
-# Dappforce Multiownership pallet
+# Multi-ownership pallet by DappForce
 
 ## Purpose
 

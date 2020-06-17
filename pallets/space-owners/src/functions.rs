@@ -5,12 +5,6 @@ use frame_support::{dispatch::DispatchResult};
 
 impl<T: Trait> Module<T> {
 
-  pub fn vec_remove_on<F: PartialEq>(vector: &mut Vec<F>, element: F) {
-    if let Some(index) = vector.iter().position(|x| *x == element) {
-      vector.swap_remove(index);
-    }
-  }
-
   pub fn update_space_owners(who: T::AccountId, mut space_owners: SpaceOwners<T>, change: Change<T>) -> DispatchResult {
     let space_id = space_owners.space_id;
     let change_id = change.id;

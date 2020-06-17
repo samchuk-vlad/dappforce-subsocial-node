@@ -1,15 +1,15 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use codec::{Decode, Encode};
+use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
+use pallet_utils::{SpaceId, WhoAndWhen};
+use sp_runtime::{RuntimeDebug, traits::Zero};
+use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
+use sp_std::prelude::*;
+use system::ensure_signed;
+
 mod functions;
 mod tests;
-
-use sp_std::prelude::*;
-use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
-use codec::{Encode, Decode};
-use frame_support::{decl_module, decl_storage, decl_event, decl_error, ensure, traits::Get};
-use sp_runtime::{RuntimeDebug, traits::Zero};
-use system::ensure_signed;
-use pallet_utils::{SpaceId, WhoAndWhen};
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct SpaceOwners<T: Trait> {

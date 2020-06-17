@@ -113,7 +113,7 @@ pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
 pub const HOURS: BlockNumber = MINUTES * 60;
 pub const DAYS: BlockNumber = HOURS * 24;
 
-/// The version infromation used to identify this runtime when compiled natively.
+/// The version information used to identify this runtime when compiled natively.
 #[cfg(feature = "std")]
 pub fn native_version() -> NativeVersion {
   NativeVersion {
@@ -324,14 +324,18 @@ parameter_types! {
       SP::ManageRoles,
       SP::RepresentSpaceInternally,
       SP::RepresentSpaceExternally,
+      SP::OverrideSubspacePermissions,
       SP::OverridePostPermissions,
 
       SP::CreateSubspaces,
       SP::CreatePosts,
 
       SP::UpdateSpace,
-      SP::UpdateAnySubspaces,
-      SP::UpdateAnyPosts,
+      SP::UpdateAnySubspace,
+      SP::UpdateAnyPost,
+
+      SP::DeleteAnySubspace,
+      SP::DeleteAnyPost,
 
       SP::BlockSubspaces,
       SP::BlockPosts,

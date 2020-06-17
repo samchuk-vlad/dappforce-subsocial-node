@@ -1,31 +1,31 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::string_lit_as_bytes)]
 
-pub mod functions;
-// mod tests;
-
-use sp_std::{
-  prelude::*,
-  collections::btree_set::BTreeSet,
-  iter::FromIterator
-};
-use codec::{Encode, Decode};
+use codec::{Decode, Encode};
 use frame_support::{
-  decl_module, decl_storage, decl_event, decl_error, ensure,
+  decl_error, decl_event, decl_module, decl_storage, ensure,
   traits::Get
 };
 use sp_runtime::RuntimeDebug;
+use sp_std::{
+  collections::btree_set::BTreeSet,
+  iter::FromIterator,
+  prelude::*
+};
 use system::ensure_signed;
 
-use pallet_utils::{
-  Module as Utils, WhoAndWhen, User, SpaceId
-};
+use df_traits::{PermissionChecker, SpaceForRolesProvider};
 use pallet_permissions::{
   Module as Permissions,
   SpacePermission,
   SpacePermissionSet
 };
-use df_traits::{SpaceForRolesProvider, PermissionChecker};
+use pallet_utils::{
+  Module as Utils, SpaceId, User, WhoAndWhen
+};
+
+pub mod functions;
+// mod tests;
 
 type RoleId = u64;
 
@@ -74,24 +74,23 @@ decl_event!(
 
 decl_error! {
   pub enum Error for Module<T: Trait> {
-    /// Role was not found by id
+    /// Role was not found by id.
     RoleNotFound,
-    /// RoleId counter storage overflowed
+    /// RoleId counter storage overflowed.
     OverflowCreatingNewRole,
-    /// Account has not permission to manage roles on this space
+    /// Account has no permission to manage roles in this space.
     NoPermissionToManageRoles,
-    /// Nothing to update in role
-    NoRoleUpdates,
-    /// There's too many users assigned for this role to delete it
-    TooManyUsersForDeleteRole,
-
-    /// No roles provided when trying to create a new Role
+    /// Nothing to update in role.
+    NoUpdatesProvided,
+    /// No roles provided when trying to create a new Role.
     NoPermissionsProvided,
-    /// No users provided when trying to grant them a Role
+    /// No users provided when trying to grant them a Role.
     NoUsersProvided,
-    /// Trying to disable the role that is not enabled (or disabled as by default)
+    /// There are too many users with this role to delete it in a single tx.
+    TooManyUsersForDeleteRole,
+    /// Trying to disable the role that is not enabled.
     RoleAlreadyDisabled,
-    /// Trying to enable the role that is already enabled
+    /// Trying to enable the role that is already enabled.
     RoleAlreadyEnabled,
   }
 }
@@ -100,20 +99,20 @@ decl_error! {
 decl_storage! {
   trait Store for Module<T: Trait> as PermissionsModule {
 
-    /// Get role details by ids id.
+    /// The next role id.
+    pub NextRoleId get(fn next_role_id): RoleId = 1;
+
+    /// Get role details by its id.
     pub RoleById get(fn role_by_id): map RoleId => Option<Role<T>>;
 
-    /// A list of all account ids and space ids that have this role.
+    /// A list of all users (account or space ids) that have this role.
     pub UsersByRoleId get(fn users_by_role_id): map RoleId => Vec<User<T::AccountId>>;
 
     /// A list of all role ids available in this space.
     pub RoleIdsBySpaceId get(fn role_ids_by_space_id): map SpaceId => Vec<RoleId>;
 
-    /// A list of all role ids granted to this user (either account of space) within this space.
-    pub InSpaceRoleIdsByUser get(fn in_space_role_ids_by_user): map (User<T::AccountId>, SpaceId) => Vec<RoleId>;
-
-    /// Next available RoleId
-    pub NextRoleId get(fn next_role_id): RoleId = 1;
+    /// A list of all role ids granted to this user (account or space) within this space.
+    pub RoleIdsByUserInSpace get(fn role_ids_by_user_in_space): map (User<T::AccountId>, SpaceId) => Vec<RoleId>;
   }
 }
 
@@ -126,9 +125,10 @@ decl_module! {
     // this is needed only if you are using events in your pallet
     fn deposit_event() = default;
 
-    /// Create a new role within this space with the list of particular roles.
-    /// `ipfs_hash` points to the off-chain content with such role info as name, description, color.
-    /// Only the space owner or an user with `ManageRoles` permission can execute this extrinsic.
+    /// Create a new role in a space with a list of permissions.
+    /// `ipfs_hash` points to the off-chain content with such additional info about this role
+    /// as its name, description, color, etc.
+    /// Only the space owner or a user with `ManageRoles` permission can execute this extrinsic.
     pub fn create_role(
       origin,
       space_id: SpaceId,
@@ -160,10 +160,8 @@ decl_module! {
       Self::deposit_event(RawEvent::RoleCreated(who, space_id, new_role.id));
     }
 
-    /// Update an existing role on specified space.
-    /// It is possible to either update roles by overriding existing roles,
-    /// or update IPFS hash or both.
-    /// Only the space owner or an user with `ManageRoles` permission can execute this extrinsic.
+    /// Update an existing role by its id.
+    /// Only the space owner or a user with `ManageRoles` permission can execute this extrinsic.
     pub fn update_role(origin, role_id: RoleId, update: RoleUpdate) {
       let who = ensure_signed(origin)?;
 
@@ -172,7 +170,7 @@ decl_module! {
         update.ipfs_hash.is_some() ||
         update.permissions.is_some();
 
-      ensure!(has_updates, Error::<T>::NoRoleUpdates);
+      ensure!(has_updates, Error::<T>::NoUpdatesProvided);
 
       let mut role = Self::role_by_id(role_id).ok_or(Error::<T>::RoleNotFound)?;
 
@@ -215,8 +213,8 @@ decl_module! {
       }
     }
 
-    /// Delete the role from all associated storage items.
-    /// Only the space owner or an user with `ManageRoles` permission can execute this extrinsic.
+    /// Delete a role from all associated storage items.
+    /// Only the space owner or a user with `ManageRoles` permission can execute this extrinsic.
     pub fn delete_role(origin, role_id: RoleId) {
       let who = ensure_signed(origin)?;
 
@@ -244,7 +242,7 @@ decl_module! {
       Self::deposit_event(RawEvent::RoleDeleted(who, role_id));
     }
 
-    /// Grant the role from the list of users.
+    /// Grant a role to a list of users.
     /// Only the space owner or an user with `ManageRoles` permission can execute this extrinsic.
     pub fn grant_role(origin, role_id: RoleId, users: Vec<User<T::AccountId>>) {
       let who = ensure_signed(origin)?;
@@ -262,16 +260,16 @@ decl_module! {
         if !Self::users_by_role_id(role_id).contains(&user) {
           <UsersByRoleId<T>>::mutate(role_id, |users| { users.push(user.clone()); });
         }
-        if !Self::in_space_role_ids_by_user((user.clone(), role.space_id)).contains(&role_id) {
-          <InSpaceRoleIdsByUser<T>>::mutate((user.clone(), role.space_id), |roles| { roles.push(role_id); })
+        if !Self::role_ids_by_user_in_space((user.clone(), role.space_id)).contains(&role_id) {
+          <RoleIdsByUserInSpace<T>>::mutate((user.clone(), role.space_id), |roles| { roles.push(role_id); })
         }
       }
 
       Self::deposit_event(RawEvent::RoleGranted(who, role_id, users_set.iter().cloned().collect()));
     }
 
-    /// Revoke the role from the list of users.
-    /// Only the space owner, an user with `ManageRoles` permission or an user that has this role can execute this extrinsic.
+    /// Revoke a role from a list of users.
+    /// Only the space owner, a user with `ManageRoles` permission can execute this extrinsic.
     pub fn revoke_role(origin, role_id: RoleId, users: Vec<User<T::AccountId>>) {
       let who = ensure_signed(origin)?;
 

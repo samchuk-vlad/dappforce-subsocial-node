@@ -1,15 +1,15 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use sp_std::{
-  prelude::*,
-  collections::btree_set::BTreeSet
-};
-use codec::{Encode, Decode};
-use sp_runtime::RuntimeDebug;
+use codec::{Decode, Encode};
 use frame_support::{
-  decl_module, decl_error, ensure,
-  traits::Get,
-  dispatch::{DispatchResult, DispatchError}
+  decl_error, decl_module, dispatch::{DispatchError, DispatchResult},
+  ensure,
+  traits::Get
+};
+use sp_runtime::RuntimeDebug;
+use sp_std::{
+  collections::btree_set::BTreeSet,
+  prelude::*
 };
 
 pub type SpaceId = u64;
@@ -38,13 +38,13 @@ pub enum User<AccountId> {
 }
 
 pub trait Trait: system::Trait + pallet_timestamp::Trait {
-  /// The length in bytes of IPFS hash
+  /// A valid length of IPFS CID in bytes.
   type IpfsHashLen: Get<u32>;
 }
 
 decl_module! {
   pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-    /// The length in bytes of IPFS hash
+    /// A valid length of IPFS CID in bytes.
     const IpfsHashLen: u32 = T::IpfsHashLen::get();
   }
 }
@@ -56,14 +56,32 @@ decl_error! {
   }
 }
 
+fn num_bits<P>() -> usize {
+  sp_std::mem::size_of::<P>() * 8
+}
+
+pub fn log_2(x: u32) -> u32 {
+  assert!(x > 0);
+  num_bits::<u32>() as u32 - x.leading_zeros() - 1
+}
+
+pub fn vec_remove_on<F: PartialEq>(vector: &mut Vec<F>, element: F) {
+  if let Some(index) = vector.iter().position(|x| *x == element) {
+    vector.swap_remove(index);
+  }
+}
+
 impl<T: Trait> Module<T> {
+
   pub fn is_ipfs_hash_valid(ipfs_hash: Vec<u8>) -> DispatchResult {
     ensure!(ipfs_hash.len() == T::IpfsHashLen::get() as usize, Error::<T>::IpfsIsIncorrect);
     Ok(())
   }
 
-  pub fn convert_users_vec_to_btree_set(users_vec: Vec<User<T::AccountId>>)
-    -> Result<BTreeSet<User<T::AccountId>>, DispatchError> {
+  pub fn convert_users_vec_to_btree_set(
+    users_vec: Vec<User<T::AccountId>>
+  ) -> Result<BTreeSet<User<T::AccountId>>, DispatchError> {
+
     let mut users_set: BTreeSet<User<T::AccountId>> = BTreeSet::new();
 
     for user in users_vec.iter() {

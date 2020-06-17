@@ -1,7 +1,7 @@
 [package]
 name = "pallet-space-owners"
 version = "2.0.0"
-authors = ["Dappforce"]
+authors = ["DappForce"]
 edition = "2018"
 
 [features]
