@@ -1,8 +1,14 @@
 [package]
-name = "pallet-social"
+name = "pallet-posts"
 version = "2.0.0"
-authors = ["DappForce"]
+authors = ["DappForce <dappforce@pm.me>"]
 edition = "2018"
+license = "GPL-3.0-only"
+homepage = "https://subsocial.network"
+repository = "https://github.com/dappforce/dappforce-subsocial-node"
+description = "Post management pallet"
+keywords = ["blockchain", "cryptocurrency", "social-network", "news-feed", "marketplace"]
+categories = ["cryptography::cryptocurrencies"]
 
 [features]
 default = ['std']
@@ -16,8 +22,12 @@ std = [
     'pallet-timestamp/std',
     'pallet-utils/std',
     'df-traits/std',
-    'pallet-permissions/std'
+    'pallet-permissions/std',
+    'pallet-spaces/std'
 ]
+
+[dependencies]
+impl-trait-for-tuples = "0.1.3"
 
 [dependencies.codec]
 default-features = false
@@ -75,6 +85,11 @@ version = '2.0.0'
 [dependencies.pallet-permissions]
 default-features = false
 path = '../permissions'
+version = '2.0.0'
+
+[dependencies.pallet-spaces]
+default-features = false
+path = '../spaces'
 version = '2.0.0'
 
 [dev-dependencies.sp-core]

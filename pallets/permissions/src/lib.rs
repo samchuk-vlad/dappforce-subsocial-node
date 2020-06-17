@@ -25,30 +25,49 @@ pub enum SpacePermission {
 
   /// Update this space.
   UpdateSpace,
-  /// Block accounts and other spaces within this space.
+
+  /// Block accounts and other outer spaces within this space.
   BlockUsers,
+  /// Report accounts and other outer spaces within this space.
+  ReportUsers,
 
   // Related to subspaces in this space:
   CreateSubspaces,
   UpdateOwnSubspaces,
   DeleteOwnSubspaces,
+  HideOwnSubspaces,
+
   UpdateAnySubspace,
   DeleteAnySubspace,
+  HideAnySubspace,
+
   BlockSubspaces,
+  ReportSubspaces,
 
   // Related to posts in this space:
   CreatePosts,
   UpdateOwnPosts,
   DeleteOwnPosts,
+  HideOwnPosts,
+
   UpdateAnyPost,
   DeleteAnyPost,
+  HideAnyPost,
+
   BlockPosts,
+  ReportPosts,
 
   // Related to comments in this space:
   CreateComments,
   UpdateOwnComments,
   DeleteOwnComments,
+  HideOwnComments,
+
+  // NOTE: It was made on purpose that it's not possible to update or delete not own comments.
+  // Instead it's possible to allow to report, hide and block comments.
+  HideAnyComment,
   BlockComments,
+  ReportComments,
 
   /// Upvote any post or comment in this space.
   Upvote,

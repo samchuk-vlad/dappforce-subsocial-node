@@ -1,19 +1,29 @@
 [package]
-name = "pallet-space-owners"
+name = "pallet-profile-follows"
 version = "2.0.0"
-authors = ["DappForce"]
+authors = ["DappForce <dappforce@pm.me>"]
 edition = "2018"
+license = "GPL-3.0-only"
+homepage = "https://subsocial.network"
+repository = "https://github.com/dappforce/dappforce-subsocial-node"
+description = "Pallet to follow/unfollow accounts (profiles)"
+keywords = ["blockchain", "cryptocurrency", "social-network", "news-feed", "marketplace"]
+categories = ["cryptography::cryptocurrencies"]
 
 [features]
 default = ['std']
 std = [
     'codec/std',
-    'frame-support/std',
     'sp-runtime/std',
+    'frame-support/std',
+    'system/std',
     'sp-io/std',
     'sp-std/std',
-    'system/std',
     'pallet-timestamp/std',
+    'pallet-utils/std',
+    'df-traits/std',
+    'pallet-permissions/std',
+    'pallet-profiles/std',
 ]
 
 [dependencies.codec]
@@ -62,6 +72,21 @@ version = '2.0.0'
 [dependencies.pallet-utils]
 default-features = false
 path = '../utils'
+version = '2.0.0'
+
+[dependencies.df-traits]
+default-features = false
+path = '../traits'
+version = '2.0.0'
+
+[dependencies.pallet-permissions]
+default-features = false
+path = '../permissions'
+version = '2.0.0'
+
+[dependencies.pallet-profiles]
+default-features = false
+path = '../profiles'
 version = '2.0.0'
 
 [dev-dependencies.sp-core]

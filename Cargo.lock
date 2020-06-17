@@ -2732,6 +2732,60 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-posts"
+version = "2.0.0"
+dependencies = [
+ "df-traits",
+ "frame-support",
+ "frame-system",
+ "impl-trait-for-tuples",
+ "pallet-permissions",
+ "pallet-spaces",
+ "pallet-timestamp",
+ "pallet-utils",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-profile-follows"
+version = "2.0.0"
+dependencies = [
+ "df-traits",
+ "frame-support",
+ "frame-system",
+ "pallet-permissions",
+ "pallet-profiles",
+ "pallet-timestamp",
+ "pallet-utils",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-profiles"
+version = "2.0.0"
+dependencies = [
+ "df-traits",
+ "frame-support",
+ "frame-system",
+ "pallet-permissions",
+ "pallet-timestamp",
+ "pallet-utils",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-randomness-collective-flip"
 version = "2.0.0"
 source = "git+https://github.com/paritytech/substrate.git?rev=3e651110aa06aa835790df63410a29676243fc54#3e651110aa06aa835790df63410a29676243fc54"
@@ -2745,6 +2799,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-reactions"
+version = "2.0.0"
+dependencies = [
+ "df-traits",
+ "frame-support",
+ "frame-system",
+ "pallet-permissions",
+ "pallet-posts",
+ "pallet-spaces",
+ "pallet-timestamp",
+ "pallet-utils",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-roles"
 version = "2.0.0"
 dependencies = [
@@ -2752,6 +2825,29 @@ dependencies = [
  "frame-support",
  "frame-system",
  "pallet-permissions",
+ "pallet-utils",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-scores"
+version = "2.0.0"
+dependencies = [
+ "df-traits",
+ "frame-support",
+ "frame-system",
+ "pallet-permissions",
+ "pallet-posts",
+ "pallet-profile-follows",
+ "pallet-profiles",
+ "pallet-reactions",
+ "pallet-space-follows",
+ "pallet-spaces",
+ "pallet-timestamp",
  "pallet-utils",
  "parity-scale-codec",
  "sp-core",
@@ -2780,7 +2876,44 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-social"
+name = "pallet-space-follows"
+version = "2.0.0"
+dependencies = [
+ "df-traits",
+ "frame-support",
+ "frame-system",
+ "pallet-permissions",
+ "pallet-profiles",
+ "pallet-spaces",
+ "pallet-timestamp",
+ "pallet-utils",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-space-ownership"
+version = "2.0.0"
+dependencies = [
+ "df-traits",
+ "frame-support",
+ "frame-system",
+ "pallet-permissions",
+ "pallet-spaces",
+ "pallet-timestamp",
+ "pallet-utils",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-spaces"
 version = "2.0.0"
 dependencies = [
  "df-traits",
@@ -5076,9 +5209,16 @@ dependencies = [
  "pallet-grandpa",
  "pallet-indices",
  "pallet-permissions",
+ "pallet-posts",
+ "pallet-profile-follows",
+ "pallet-profiles",
  "pallet-randomness-collective-flip",
+ "pallet-reactions",
  "pallet-roles",
- "pallet-social",
+ "pallet-scores",
+ "pallet-space-follows",
+ "pallet-space-ownership",
+ "pallet-spaces",
  "pallet-sudo",
  "pallet-timestamp",
  "pallet-transaction-payment",

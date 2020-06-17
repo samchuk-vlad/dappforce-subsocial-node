@@ -1,0 +1,44 @@
+{
+  "PostId": "u64",
+
+  "Post": {
+    "id": "PostId",
+    "created": "WhoAndWhen",
+    "updated": "Option<WhoAndWhen>",
+    "hidden": "bool",
+    "space_id": "Option<SpaceId>",
+    "extension": "PostExtension",
+    "ipfs_hash": "IpfsHash",
+    "edit_history": "Vec<PostHistoryRecord>",
+    "direct_replies_count": "u16",
+    "total_replies_count": "u32",
+    "shares_count": "u16",
+    "upvotes_count": "u16",
+    "downvotes_count": "u16",
+    "score": "i32"
+  },
+
+  "PostUpdate": {
+    "space_id": "Option<SpaceId>",
+    "ipfs_hash": "Option<IpfsHash>",
+    "hidden": "Option<bool>"
+  },
+
+  "PostHistoryRecord": {
+    "edited": "WhoAndWhen",
+    "old_data": "PostUpdate"
+  },
+
+  "PostExtension": {
+    "_enum": {
+      "RegularPost": "Null",
+      "Comment": "CommentExt",
+      "SharedPost": "PostId"
+    }
+  },
+
+  "CommentExt": {
+    "parent_id": "Option<PostId>",
+    "root_post_id": "PostId"
+  }
+}

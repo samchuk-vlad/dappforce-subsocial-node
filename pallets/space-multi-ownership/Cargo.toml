@@ -1,12 +1,12 @@
 [package]
-name = "pallet-roles"
+name = "pallet-space-multi-ownership"
 version = "2.0.0"
 authors = ["DappForce <dappforce@pm.me>"]
 edition = "2018"
 license = "GPL-3.0-only"
 homepage = "https://subsocial.network"
 repository = "https://github.com/dappforce/dappforce-subsocial-node"
-description = "Roles management pallet"
+description = "Pallet to manage space multi-ownership"
 keywords = ["blockchain", "cryptocurrency", "social-network", "news-feed", "marketplace"]
 categories = ["cryptography::cryptocurrencies"]
 
@@ -14,14 +14,13 @@ categories = ["cryptography::cryptocurrencies"]
 default = ['std']
 std = [
     'codec/std',
-    'sp-runtime/std',
     'frame-support/std',
-    'system/std',
+    'sp-runtime/std',
     'sp-io/std',
     'sp-std/std',
+    'system/std',
+    'pallet-timestamp/std',
     'pallet-utils/std',
-    'pallet-permissions/std',
-    'df-traits/std'
 ]
 
 [dependencies.codec]
@@ -61,19 +60,15 @@ git = 'https://github.com/paritytech/substrate.git'
 rev = '3e651110aa06aa835790df63410a29676243fc54'
 version = '2.0.0'
 
+[dependencies.pallet-timestamp]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+rev = '3e651110aa06aa835790df63410a29676243fc54'
+version = '2.0.0'
+
 [dependencies.pallet-utils]
 default-features = false
 path = '../utils'
-version = '2.0.0'
-
-[dependencies.pallet-permissions]
-default-features = false
-path = '../permissions'
-version = '2.0.0'
-
-[dependencies.df-traits]
-default-features = false
-path = '../traits'
 version = '2.0.0'
 
 [dev-dependencies.sp-core]

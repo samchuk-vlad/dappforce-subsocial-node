@@ -8,7 +8,7 @@ use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 use sp_std::prelude::*;
 use system::ensure_signed;
 
-mod functions;
+pub mod functions;
 mod tests;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -37,7 +37,9 @@ pub struct Change<T: Trait> {
 type ChangeId = u64;
 
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait + pallet_timestamp::Trait {
+pub trait Trait: system::Trait
+  + pallet_timestamp::Trait
+{
   /// The overarching event type.
   type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
@@ -103,9 +105,7 @@ decl_error! {
     NotAChangeCreator,
 
     /// Overflow when incrementing a counter of executed changes
-    OverflowExecutingChange,
-    /// Underflow when decrementing a counter of executed changes
-    UnderflowExecutingChange,
+    ChangesCountOverflow,
   }
 }
 

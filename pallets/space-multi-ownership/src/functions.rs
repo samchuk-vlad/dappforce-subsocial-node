@@ -12,9 +12,10 @@ impl<T: Trait> Module<T> {
     ensure!(change.confirmed_by.len() >= space_owners.threshold as usize, Error::<T>::NotEnoughConfirms);
     Self::move_change_from_pending_state_to_executed(space_id, change_id)?;
 
-    space_owners.changes_count = space_owners.changes_count.checked_add(1).ok_or(Error::<T>::OverflowExecutingChange)?;
+    space_owners.changes_count = space_owners.changes_count.checked_add(1).ok_or(Error::<T>::ChangesCountOverflow)?;
     if !change.add_owners.is_empty() || !change.remove_owners.is_empty() {
-      space_owners.owners = Self::transform_new_owners_to_vec(space_owners.owners.clone(), change.add_owners.clone(), change.remove_owners.clone());
+      space_owners.owners = Self::transform_new_owners_to_vec(
+        space_owners.owners.clone(), change.add_owners.clone(), change.remove_owners.clone());
     }
 
     if let Some(threshold) = change.new_threshold {

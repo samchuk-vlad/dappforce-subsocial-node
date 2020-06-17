@@ -7,9 +7,9 @@
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use sp_std::{
-  prelude::*,
+  collections::btree_set::BTreeSet,
   iter::FromIterator,
-  collections::btree_set::BTreeSet
+  prelude::*
 };
 use sp_core::OpaqueMetadata;
 use sp_runtime::{
@@ -40,8 +40,8 @@ pub use frame_support::{
 };
 
 use pallet_permissions::{
-  SpacePermission as SP,
-  SpacePermissions
+    SpacePermission as SP,
+    SpacePermissions
 };
 
 /// An index to a block.
@@ -122,6 +122,9 @@ pub fn native_version() -> NativeVersion {
   }
 }
 
+// Substrate standard pallets go below:
+// ------------------------------------------------------------------------------------------------
+
 parameter_types! {
   pub const BlockHashCount: BlockNumber = 250;
   pub const MaximumBlockWeight: Weight = 1_000_000;
@@ -200,8 +203,8 @@ impl timestamp::Trait for Runtime {
 
 parameter_types! {
   pub const ExistentialDeposit: u128 = 500;
-  pub const TransferFee: u128 = 0;
-  pub const CreationFee: u128 = 0;
+  pub const TransferFee: u128 = 0; // TODO think about this value
+  pub const CreationFee: u128 = 0; // TODO think about this value
 }
 
 impl balances::Trait for Runtime {
@@ -239,6 +242,8 @@ impl sudo::Trait for Runtime {
   type Proposal = Call;
 }
 
+// Subsocial custom pallets go below:
+// ------------------------------------------------------------------------------------------------
 
 parameter_types! {
   pub const IpfsHashLen: u32 = 46;
@@ -249,72 +254,33 @@ impl pallet_utils::Trait for Runtime {
 }
 
 parameter_types! {
-  pub const MinHandleLen: u32 = 5;
-  pub const MaxHandleLen: u32 = 50;
-  pub const MinUsernameLen: u32 = 3;
-  pub const MaxUsernameLen: u32 = 50;
-  pub const FollowSpaceActionWeight: i16 = 7;
-  pub const FollowAccountActionWeight: i16 = 3;
-  pub const UpvotePostActionWeight: i16 = 5;
-  pub const DownvotePostActionWeight: i16 = -3;
-  pub const SharePostActionWeight: i16 = 5;
-  pub const CreateCommentActionWeight: i16 = 5;
-  pub const UpvoteCommentActionWeight: i16 = 4;
-  pub const DownvoteCommentActionWeight: i16 = -2;
-  pub const ShareCommentActionWeight: i16 = 3;
-  pub const MaxCommentDepth: u32 = 10;
-}
-
-impl pallet_social::Trait for Runtime {
-  type Event = Event;
-  type MinHandleLen = MinHandleLen;
-  type MaxHandleLen = MaxHandleLen;
-  type MinUsernameLen = MinUsernameLen;
-  type MaxUsernameLen = MaxUsernameLen;
-  type FollowSpaceActionWeight = FollowSpaceActionWeight;
-  type FollowAccountActionWeight = FollowAccountActionWeight;
-  type UpvotePostActionWeight = UpvotePostActionWeight;
-  type DownvotePostActionWeight = DownvotePostActionWeight;
-  type SharePostActionWeight = SharePostActionWeight;
-  type CreateCommentActionWeight = CreateCommentActionWeight;
-  type UpvoteCommentActionWeight = UpvoteCommentActionWeight;
-  type DownvoteCommentActionWeight = DownvoteCommentActionWeight;
-  type ShareCommentActionWeight = ShareCommentActionWeight;
-  type MaxCommentDepth = MaxCommentDepth;
-  type Roles = Roles;
-}
-
-parameter_types! {
-  pub const MaxUsersToProcessPerDeleteRole: u16 = 20;
-}
-
-impl pallet_roles::Trait for Runtime {
-  type Event = Event;
-  type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
-  type Spaces = Social;
-}
-
-parameter_types! {
-
   pub const DefaultSpacePermissions: SpacePermissions = SpacePermissions {
 
     // No permissions disabled by default
     none: None,
 
     everyone: Some(BTreeSet::from_iter(vec![
+      SP::ReportUsers,
+
       SP::UpdateOwnSubspaces,
       SP::DeleteOwnSubspaces,
+      SP::HideOwnSubspaces,
+      SP::ReportSubspaces,
 
       SP::UpdateOwnPosts,
       SP::DeleteOwnPosts,
+      SP::HideOwnPosts,
+      SP::ReportPosts,
 
       SP::CreateComments,
       SP::UpdateOwnComments,
       SP::DeleteOwnComments,
+      SP::HideOwnComments,
+      SP::ReportComments,
 
       SP::Upvote,
       SP::Downvote,
-      SP::Share
+      SP::Share,
     ].into_iter())),
 
     // Followers can do everything that everyone else can.
@@ -337,16 +303,125 @@ parameter_types! {
       SP::DeleteAnySubspace,
       SP::DeleteAnyPost,
 
+      SP::HideAnySubspace,
+      SP::HideAnyPost,
+      SP::HideAnyComment,
+
+      SP::BlockUsers,
       SP::BlockSubspaces,
       SP::BlockPosts,
       SP::BlockComments,
-      SP::BlockUsers
-    ].into_iter()))
+    ].into_iter())),
   };
 }
 
 impl pallet_permissions::Trait for Runtime {
   type DefaultSpacePermissions = DefaultSpacePermissions;
+}
+
+parameter_types! {
+  pub const MaxCommentDepth: u32 = 10;
+}
+
+impl pallet_posts::Trait for Runtime {
+  type Event = Event;
+  type MaxCommentDepth = MaxCommentDepth;
+  type PostScores = Scores;
+}
+
+parameter_types! {}
+
+impl pallet_profile_follows::Trait for Runtime {
+  type Event = Event;
+  type BeforeAccountFollowed = Scores;
+  type BeforeAccountUnfollowed = Scores;
+}
+
+parameter_types! {
+  pub const MinUsernameLen: u32 = 5;
+  pub const MaxUsernameLen: u32 = 50;
+}
+
+impl pallet_profiles::Trait for Runtime {
+  type Event = Event;
+  type MinUsernameLen = MinUsernameLen;
+  type MaxUsernameLen = MaxUsernameLen;
+}
+
+parameter_types! {}
+
+impl pallet_reactions::Trait for Runtime {
+  type Event = Event;
+  type PostReactionScores = Scores;
+}
+
+parameter_types! {
+  pub const MaxUsersToProcessPerDeleteRole: u16 = 40;
+}
+
+impl pallet_roles::Trait for Runtime {
+  type Event = Event;
+  type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
+  type Spaces = Spaces;
+  type SpaceFollows = SpaceFollows;
+}
+
+parameter_types! {
+  pub const FollowSpaceActionWeight: i16 = 7;
+  pub const FollowAccountActionWeight: i16 = 3;
+
+  pub const SharePostActionWeight: i16 = 5;
+  pub const UpvotePostActionWeight: i16 = 5;
+  pub const DownvotePostActionWeight: i16 = -3;
+
+  pub const CreateCommentActionWeight: i16 = 5;
+  pub const ShareCommentActionWeight: i16 = 3;
+  pub const UpvoteCommentActionWeight: i16 = 4;
+  pub const DownvoteCommentActionWeight: i16 = -2;
+}
+
+impl pallet_scores::Trait for Runtime {
+  type Event = Event;
+
+  type FollowSpaceActionWeight = FollowSpaceActionWeight;
+  type FollowAccountActionWeight = FollowAccountActionWeight;
+
+  type SharePostActionWeight = SharePostActionWeight;
+  type UpvotePostActionWeight = UpvotePostActionWeight;
+  type DownvotePostActionWeight = DownvotePostActionWeight;
+
+  type CreateCommentActionWeight = CreateCommentActionWeight;
+  type ShareCommentActionWeight = ShareCommentActionWeight;
+  type UpvoteCommentActionWeight = UpvoteCommentActionWeight;
+  type DownvoteCommentActionWeight = DownvoteCommentActionWeight;
+}
+
+parameter_types! {}
+
+impl pallet_space_follows::Trait for Runtime {
+  type Event = Event;
+  type BeforeSpaceFollowed = Scores;
+  type BeforeSpaceUnfollowed = Scores;
+}
+
+parameter_types! {}
+
+impl pallet_space_ownership::Trait for Runtime {
+  type Event = Event;
+}
+
+parameter_types! {
+  pub const MinHandleLen: u32 = 5;
+  pub const MaxHandleLen: u32 = 50;
+}
+
+impl pallet_spaces::Trait for Runtime {
+  type Event = Event;
+  type MinHandleLen = MinHandleLen;
+  type MaxHandleLen = MaxHandleLen;
+  type Roles = Roles;
+  type SpaceFollows = SpaceFollows;
+  type BeforeSpaceCreated = SpaceFollows;
 }
 
 construct_runtime!(
@@ -355,18 +430,28 @@ construct_runtime!(
     NodeBlock = opaque::Block,
     UncheckedExtrinsic = UncheckedExtrinsic
   {
+    // Substrate standard pallets:
     System: system::{Module, Call, Storage, Config, Event},
     Timestamp: timestamp::{Module, Call, Storage, Inherent},
+    RandomnessCollectiveFlip: randomness_collective_flip::{Module, Call, Storage},
     Aura: aura::{Module, Config<T>, Inherent(Timestamp)},
     Grandpa: grandpa::{Module, Call, Storage, Config, Event},
     Indices: indices,
     Balances: balances,
     TransactionPayment: transaction_payment::{Module, Storage},
     Sudo: sudo,
-    Social: pallet_social::{Module, Call, Storage, Event<T>},
+
+    // Subsocial custom pallets:
+    Permissions: pallet_permissions::{Module, Call /* TODO inspect: do we need Call for permissions? */},
+    Posts: pallet_posts::{Module, Call, Storage, Event<T>},
+    ProfileFollows: pallet_profile_follows::{Module, Call, Storage, Event<T>},
+    Profiles: pallet_profiles::{Module, Call, Storage, Event<T>},
+    Reactions: pallet_reactions::{Module, Call, Storage, Event<T>},
     Roles: pallet_roles::{Module, Call, Storage, Event<T>},
-    Permissions: pallet_permissions::{Module, Call},
-    RandomnessCollectiveFlip: randomness_collective_flip::{Module, Call, Storage},
+    Scores: pallet_scores::{Module, Call, Storage, Event<T>},
+    SpaceFollows: pallet_space_follows::{Module, Call, Storage, Event<T>},
+    SpaceOwnership: pallet_space_ownership::{Module, Call, Storage, Event<T>},
+    Spaces: pallet_spaces::{Module, Call, Storage, Event<T>},
   }
 );
 
