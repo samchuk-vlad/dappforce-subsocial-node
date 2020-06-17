@@ -128,9 +128,7 @@ decl_module! {
     ) {
       let who = ensure_signed(origin)?;
 
-      if permissions.is_empty() {
-        return Err(Error::<T>::NoPermissionsProvided.into());
-      }
+      ensure!(!permissions.is_empty(), Error::<T>::NoPermissionsProvided);
 
       if let Some(cid) = ipfs_hash.clone() {
         Utils::<T>::is_ipfs_hash_valid(cid)?;
@@ -187,7 +185,7 @@ decl_module! {
       }
 
       if let Some(permissions) = update.permissions {
-        let permissions_diff: Vec<_> = role.permissions.difference(&permissions).cloned().collect();
+        let permissions_diff: Vec<_> = permissions.difference(&role.permissions).cloned().collect();
 
         if !permissions_diff.is_empty() {
           role.permissions = permissions;
@@ -213,9 +211,10 @@ decl_module! {
       Self::ensure_role_manager(who.clone(), role.space_id)?;
 
       let users = Self::users_by_role_id(role_id);
-      if users.len() > T::MaxUsersToProcessPerDeleteRole::get() as usize {
-        return Err(Error::<T>::TooManyUsersToDelete.into());
-      }
+      ensure!(
+        users.len() < T::MaxUsersToProcessPerDeleteRole::get() as usize,
+        Error::<T>::TooManyUsersToDelete
+      );
 
       let role_idx_by_space_opt = Self::role_ids_by_space_id(role.space_id).iter()
         .position(|x| { *x == role_id });
@@ -237,10 +236,8 @@ decl_module! {
     pub fn grant_role(origin, role_id: RoleId, users: Vec<User<T::AccountId>>) {
       let who = ensure_signed(origin)?;
 
+      ensure!(!users.is_empty(), Error::<T>::NoUsersProvided);
       let users_set: BTreeSet<User<T::AccountId>> = Utils::<T>::convert_users_vec_to_btree_set(users)?;
-      if users_set.is_empty() {
-        return Err(Error::<T>::NoUsersProvided.into());
-      }
 
       let role = Self::require_role(role_id)?;
 
@@ -262,6 +259,8 @@ decl_module! {
     /// Only the space owner or a user with `ManageRoles` permission call this dispatch.
     pub fn revoke_role(origin, role_id: RoleId, users: Vec<User<T::AccountId>>) {
       let who = ensure_signed(origin)?;
+
+      ensure!(!users.is_empty(), Error::<T>::NoUsersProvided);
 
       let role = Self::require_role(role_id)?;
 
