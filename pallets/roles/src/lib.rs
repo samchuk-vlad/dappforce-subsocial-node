@@ -12,7 +12,9 @@ use pallet_permissions::{Module as Permissions, SpacePermission, SpacePermission
 use pallet_utils::{Module as Utils, SpaceId, User, WhoAndWhen};
 
 pub mod functions;
-// mod tests;
+
+#[cfg(test)]
+mod tests;
 
 type RoleId = u64;
 

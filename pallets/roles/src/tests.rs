@@ -74,26 +74,33 @@ impl pallet_utils::Trait for Test {
 }
 
 parameter_types! {
-
   pub const DefaultSpacePermissions: SpacePermissions = SpacePermissions {
 
     // No permissions disabled by default
     none: None,
 
     everyone: Some(BTreeSet::from_iter(vec![
+      SP::ReportUsers,
+
       SP::UpdateOwnSubspaces,
       SP::DeleteOwnSubspaces,
+      SP::HideOwnSubspaces,
+      SP::ReportSubspaces,
 
       SP::UpdateOwnPosts,
       SP::DeleteOwnPosts,
+      SP::HideOwnPosts,
+      SP::ReportPosts,
 
       SP::CreateComments,
       SP::UpdateOwnComments,
       SP::DeleteOwnComments,
+      SP::HideOwnComments,
+      SP::ReportComments,
 
       SP::Upvote,
       SP::Downvote,
-      SP::Share
+      SP::Share,
     ].into_iter())),
 
     // Followers can do everything that everyone else can.
@@ -103,20 +110,28 @@ parameter_types! {
       SP::ManageRoles,
       SP::RepresentSpaceInternally,
       SP::RepresentSpaceExternally,
+      SP::OverrideSubspacePermissions,
       SP::OverridePostPermissions,
 
       SP::CreateSubspaces,
       SP::CreatePosts,
 
       SP::UpdateSpace,
-      SP::UpdateAnySubspaces,
-      SP::UpdateAnyPosts,
+      SP::UpdateAnySubspace,
+      SP::UpdateAnyPost,
 
+      SP::DeleteAnySubspace,
+      SP::DeleteAnyPost,
+
+      SP::HideAnySubspace,
+      SP::HideAnyPost,
+      SP::HideAnyComment,
+
+      SP::BlockUsers,
       SP::BlockSubspaces,
       SP::BlockPosts,
       SP::BlockComments,
-      SP::BlockUsers
-    ].into_iter()))
+    ].into_iter())),
   };
 }
 
@@ -132,6 +147,7 @@ impl Trait for Test {
     type Event = ();
     type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
     type Spaces = Roles;
+    type SpaceFollows = Roles;
 }
 
 type System = system::Module<Test>;
@@ -141,21 +157,23 @@ pub type AccountId = u64;
 pub type BlockNumber = u64;
 
 impl<T: Trait> SpaceForRolesProvider for Module<T> {
-    type AccountId = u64;
-    type SpaceId = u64;
+    type AccountId = AccountId;
 
     // This function should return an error every time Space doesn't exist by SpaceId
     // Currently, we have a list of valid space id's to check
-    fn get_space(id: Self::SpaceId) -> Result<SpaceForRoles<Self::AccountId>, DispatchError> {
+    fn get_space(id: SpaceId) -> Result<SpaceForRoles<Self::AccountId>, DispatchError> {
         if self::valid_space_ids().contains(&id) {
             return Ok(SpaceForRoles { owner: ACCOUNT1, permissions: None })
         }
 
         Err("SpaceNotFound".into())
     }
+}
 
-    // No need to use function within this pallet, returns true by default
-    fn is_space_follower(_account: Self::AccountId, _space_id: Self::SpaceId) -> bool {
+impl<T: Trait> SpaceFollowsProvider for Module<T> {
+    type AccountId = AccountId;
+
+    fn is_space_follower(_account: Self::AccountId, _space_id: u64) -> bool {
         true
     }
 }
@@ -241,7 +259,7 @@ fn permission_set_updated() -> Vec<SpacePermission> {
 
 /// Permissions Set that includes random permissions
 fn permission_set_random() -> Vec<SpacePermission> {
-    vec![SP::CreatePosts, SP::UpdateOwnPosts, SP::UpdateAnyPosts, SP::BlockUsers, SP::BlockComments]
+    vec![SP::CreatePosts, SP::UpdateOwnPosts, SP::UpdateAnyPost, SP::BlockUsers, SP::BlockComments]
 }
 
 fn valid_space_ids() -> Vec<SpaceId> {
@@ -460,7 +478,7 @@ fn create_role_should_fail_with_ipfs_is_incorrect() {
             None, // Without time_to_live
             Some(self::invalid_role_ipfs_hash()),
             None // With default permissions set
-        ), UtilsError::<Test>::IpfsIsIncorrect);
+        ), UtilsError::<Test>::InvalidIpfsCid);
     });
 }
 
@@ -634,7 +652,7 @@ fn update_role_should_fail_with_no_role_updates() {
             None, // From ACCOUNT1
             None, // On RoleId 1
             Some(self::role_update(None, None, None))
-        ), Error::<Test>::NoRoleUpdates);
+        ), Error::<Test>::NoUpdatesProvided);
     });
 }
 
@@ -646,7 +664,7 @@ fn update_role_should_fail_with_ipfs_is_incorrect() {
             None, // From ACCOUNT1
             None, // On RoleId 1
             Some(self::role_update(None, Some(self::invalid_role_ipfs_hash()), None))
-        ), UtilsError::<Test>::IpfsIsIncorrect);
+        ), UtilsError::<Test>::InvalidIpfsCid);
     });
 }
 
@@ -678,7 +696,7 @@ fn grant_role_should_work() {
 
         // Change whether data was stored correctly
         assert_eq!(Roles::users_by_role_id(ROLE1), vec![user.clone()]);
-        assert_eq!(Roles::in_space_role_ids_by_user((user, SPACE1)), vec![ROLE1]);
+        assert_eq!(Roles::role_ids_by_user_in_space((user, SPACE1)), vec![ROLE1]);
     });
 }
 
@@ -696,7 +714,7 @@ fn grant_role_should_work_with_a_few_roles() {
 
         // Check whether data is stored correctly
         assert_eq!(Roles::users_by_role_id(ROLE1), vec![User::Account(ACCOUNT2), User::Account(ACCOUNT3)]);
-        assert_eq!(Roles::in_space_role_ids_by_user((user, SPACE1)), vec![ROLE1]);
+        assert_eq!(Roles::role_ids_by_user_in_space((user, SPACE1)), vec![ROLE1]);
     });
 }
 
@@ -760,7 +778,7 @@ fn revoke_role_should_work() {
 
         // Change whether data was stored correctly
         assert!(Roles::users_by_role_id(ROLE1).is_empty());
-        assert!(Roles::in_space_role_ids_by_user((user, SPACE1)).is_empty());
+        assert!(Roles::role_ids_by_user_in_space((user, SPACE1)).is_empty());
     });
 }
 
@@ -778,7 +796,7 @@ fn revoke_role_should_work_with_a_few_roles() {
 
         // Check whether data is stored correctly
         assert!(Roles::users_by_role_id(ROLE1).is_empty());
-        assert!(Roles::in_space_role_ids_by_user((user, SPACE1)).is_empty());
+        assert!(Roles::role_ids_by_user_in_space((user, SPACE1)).is_empty());
     });
 }
 
@@ -837,7 +855,7 @@ fn delete_role_should_work() {
         assert!(Roles::role_by_id(ROLE1).is_none());
         assert!(Roles::users_by_role_id(ROLE1).is_empty());
         assert!(Roles::role_ids_by_space_id(SPACE1).is_empty());
-        assert!(Roles::in_space_role_ids_by_user((User::Account(ACCOUNT2), SPACE1)).is_empty());
+        assert!(Roles::role_ids_by_user_in_space((User::Account(ACCOUNT2), SPACE1)).is_empty());
         assert_eq!(Roles::next_role_id(), ROLE2);
     });
 }
@@ -856,7 +874,7 @@ fn delete_role_should_work_with_a_few_roles() {
         assert!(Roles::role_by_id(ROLE1).is_none());
         assert!(Roles::users_by_role_id(ROLE1).is_empty());
         assert_eq!(Roles::role_ids_by_space_id(SPACE1), vec![ROLE2]);
-        assert_eq!(Roles::in_space_role_ids_by_user((User::Account(ACCOUNT2), SPACE1)), vec![ROLE2]);
+        assert_eq!(Roles::role_ids_by_user_in_space((User::Account(ACCOUNT2), SPACE1)), vec![ROLE2]);
         assert_eq!(Roles::next_role_id(), ROLE3);
     });
 }
@@ -891,7 +909,7 @@ fn delete_role_should_fail_with_too_many_users_for_delete_role() {
 
         assert_ok!(_create_default_role()); // RoleId 1
         assert_ok!(_grant_role(None, None, Some(users))); // Grant RoleId 1 to ACCOUNT2-ACCOUNT20
-        assert_noop!(_delete_default_role(), Error::<Test>::TooManyUsersForDeleteRole);
+        assert_noop!(_delete_default_role(), Error::<Test>::TooManyUsersToDelete);
     });
 }
 
