@@ -26,7 +26,7 @@ mod tests {
         SpacePermission as SP,
         SpacePermissions,
     };
-    use pallet_utils::{SpaceId, Error as UtilsError, User, WhoAndWhen};
+    use pallet_utils::{SpaceId, Error as UtilsError, User};
     use pallet_reactions::{ReactionId, ReactionKind, PostReactionScores, Error as ReactionsError};
     use pallet_scores::ScoringAction;
     use pallet_posts::{PostId, Post, PostUpdate, PostExtension, CommentExt, Error as PostsError};
@@ -430,30 +430,6 @@ mod tests {
         b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec()
     }
 
-    fn fake_post(
-        id: PostId,
-        created_by: AccountId,
-        space_id: Option<SpaceId>,
-        extension: PostExtension
-    ) -> Post<TestRuntime> {
-        Post {
-            id,
-            created: WhoAndWhen::<TestRuntime>::new(created_by),
-            updated: None,
-            hidden: false,
-            space_id,
-            extension,
-            ipfs_hash: self::post_ipfs_hash(),
-            edit_history: Vec::new(),
-            direct_replies_count: 0,
-            total_replies_count: 0,
-            shares_count: 0,
-            upvotes_count: 0,
-            downvotes_count: 0,
-            score: 0,
-        }
-    }
-
     fn post_update(
         space_id: Option<SpaceId>,
         ipfs_hash: Option<Vec<u8>>,
@@ -475,11 +451,11 @@ mod tests {
     }
 
     fn alice_username() -> Vec<u8> {
-        b"Alice".to_vec()
+        b"al_ice".to_vec()
     }
 
     fn bob_username() -> Vec<u8> {
-        b"Bob".to_vec()
+        b"bob1337".to_vec()
     }
 
     fn profile_ipfs_hash() -> Vec<u8> {
@@ -1382,14 +1358,14 @@ mod tests {
     }
 
     #[test]
-    fn create_post_should_fail_space_not_defined() {
+    fn create_post_should_fail_with_post_has_no_spaceid() {
         ExtBuilder::build_with_space().execute_with(|| {
             assert_noop!(_create_post(
                 None,
                 Some(None),
                 None,
                 None
-            ), SpacesError::<TestRuntime>::SpaceNotFound);
+            ), PostsError::<TestRuntime>::PostHasNoSpaceId);
         });
     }
 
@@ -2126,26 +2102,6 @@ mod tests {
         });
     }
 
-    #[test]
-    fn change_post_score_should_fail_post_not_found() {
-        ExtBuilder::build().execute_with(|| {
-            let fake_post = &mut self::fake_post(
-                POST1,
-                ACCOUNT1,
-                None,
-                PostExtension::RegularPost,
-            );
-
-            assert_ok!(_create_default_space());
-            // SpaceId 1
-            assert_noop!(_score_post_on_reaction(
-                ACCOUNT1,
-                fake_post,
-                self::reaction_upvote()
-            ), PostsError::<TestRuntime>::PostNotFound);
-        });
-    }
-
 //--------------------------------------------------------------------------------------------------
 
     #[test]
@@ -2380,34 +2336,6 @@ mod tests {
             assert_eq!(Profiles::social_account_by_id(ACCOUNT3).unwrap().reputation, 1);
             assert!(Scores::post_score_by_account((ACCOUNT3, POST2, self::scoring_action_downvote_comment())).is_none());
             assert_eq!(Scores::post_score_by_account((ACCOUNT3, POST2, self::scoring_action_upvote_comment())), Some(UpvoteCommentActionWeight::get()));
-        });
-    }
-
-    #[test]
-    fn change_comment_score_should_fail_comment_not_found() {
-        ExtBuilder::build_with_post().execute_with(|| {
-            let fake_post = &mut self::fake_post(
-                POST3,
-                ACCOUNT1,
-                None,
-                PostExtension::Comment(CommentExt {
-                    parent_id: None,
-                    root_post_id: POST1,
-                }),
-            );
-
-            assert_ok!(_create_comment(
-                Some(Origin::signed(ACCOUNT2)),
-                None,
-                None,
-                None
-            )); // PostId 2
-
-            assert_noop!(_score_post_on_reaction(
-                ACCOUNT1,
-                fake_post,
-                self::reaction_upvote()
-            ), PostsError::<TestRuntime>::PostNotFound);
         });
     }
 

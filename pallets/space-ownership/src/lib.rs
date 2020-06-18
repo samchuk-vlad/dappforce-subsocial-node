@@ -8,7 +8,7 @@ use frame_support::{
 use sp_std::prelude::*;
 use system::ensure_signed;
 
-use pallet_spaces::{Module as Spaces, SpaceById};
+use pallet_spaces::{Module as Spaces, SpaceById, Error as SpacesError};
 use pallet_utils::SpaceId;
 
 // mod tests;
@@ -75,17 +75,16 @@ decl_module! {
     pub fn accept_pending_ownership(origin, space_id: SpaceId) {
       let who = ensure_signed(origin)?;
 
+      let mut space = Spaces::space_by_id(space_id).ok_or(SpacesError::<T>::SpaceNotFound)?;
       let transfer_to = Self::pending_space_owner(space_id).ok_or(Error::<T>::NoPendingTransferOnSpace)?;
       ensure!(who == transfer_to, Error::<T>::NotAllowedToAcceptOwnershipTransfer);
 
       // Here we know that the origin is eligible to become a new owner of this space.
       <PendingSpaceOwner<T>>::remove(space_id);
 
-      if let Some(mut space) = Spaces::space_by_id(space_id) {
-        space.owner = who.clone();
-        <SpaceById<T>>::insert(space_id, space);
-        Self::deposit_event(RawEvent::SpaceOwnershipTransferAccepted(who, space_id));
-      }
+      space.owner = who.clone();
+      <SpaceById<T>>::insert(space_id, space);
+      Self::deposit_event(RawEvent::SpaceOwnershipTransferAccepted(who, space_id));
     }
 
     pub fn reject_pending_ownership(origin, space_id: SpaceId) {

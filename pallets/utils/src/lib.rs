@@ -73,7 +73,6 @@ pub fn log_2(x: u32) -> Option<u32> {
     } else { None }
 }
 
-// TODO write tests for valid and invalid handles.
 /// An example of a valid handle: `good_handle`.
 pub fn is_valid_handle_char(c: u8) -> bool {
     match c {
