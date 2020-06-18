@@ -140,7 +140,10 @@ rev = "3e651110aa06aa835790df63410a29676243fc54"
 version = "2.0.0"
 
 [workspace]
-members = ["runtime"]
+members = [
+    "runtime",
+    "pallets/df-integration-tests"
+]
 
 [[bin]]
 name = "subsocial-node"

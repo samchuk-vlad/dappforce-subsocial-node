@@ -214,7 +214,7 @@ decl_module! {
 
       let users = Self::users_by_role_id(role_id);
       ensure!(
-        users.len() < T::MaxUsersToProcessPerDeleteRole::get() as usize,
+        users.len() <= T::MaxUsersToProcessPerDeleteRole::get() as usize,
         Error::<T>::TooManyUsersToDelete
       );
 

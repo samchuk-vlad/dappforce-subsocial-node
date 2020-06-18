@@ -15,6 +15,7 @@ use df_traits::{PermissionChecker, SpaceFollowsProvider};
 use pallet_permissions::{SpacePermission, SpacePermissions, SpacePermissionsContext};
 use pallet_utils::{is_valid_handle_char, Module as Utils, SpaceId, WhoAndWhen};
 
+// #[cfg(tests)]
 // mod tests;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
