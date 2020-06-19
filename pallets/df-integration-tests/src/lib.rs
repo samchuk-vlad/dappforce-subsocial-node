@@ -26,15 +26,15 @@ mod tests {
         SpacePermission as SP,
         SpacePermissions,
     };
-    use pallet_utils::{SpaceId, Error as UtilsError, User};
+    use pallet_posts::{PostId, Post, PostUpdate, PostExtension, CommentExt, Error as PostsError};
+    use pallet_profiles::{ProfileUpdate, Error as ProfilesError};
+    use pallet_profile_follows::Error as ProfileFollowsError;
     use pallet_reactions::{ReactionId, ReactionKind, PostReactionScores, Error as ReactionsError};
     use pallet_scores::ScoringAction;
-    use pallet_posts::{PostId, Post, PostUpdate, PostExtension, CommentExt, Error as PostsError};
     use pallet_spaces::{SpaceById, SpaceUpdate, Error as SpacesError};
     use pallet_space_follows::Error as SpaceFollowsError;
     use pallet_space_ownership::Error as SpaceOwnershipError;
-    use pallet_profiles::{ProfileUpdate, Error as ProfilesError};
-    use pallet_profile_follows::Error as ProfileFollowsError;
+    use pallet_utils::{SpaceId, Error as UtilsError, User};
 
     impl_outer_origin! {
         pub enum Origin for TestRuntime {}

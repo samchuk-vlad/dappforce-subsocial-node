@@ -903,7 +903,7 @@ fn delete_role_should_fail_with_no_permission() {
 fn delete_role_should_fail_with_too_many_users_for_delete_role() {
     ExtBuilder::build().execute_with(|| {
         let mut users: Vec<User<AccountId>> = Vec::new();
-        for account in 2..22 {
+        for account in 2..23 {
             users.push(User::Account(account));
         }
 

@@ -710,7 +710,6 @@ dependencies = [
  "pallet-spaces",
  "pallet-timestamp",
  "pallet-utils",
- "parity-scale-codec",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -2750,8 +2749,6 @@ dependencies = [
  "frame-system",
  "pallet-utils",
  "parity-scale-codec",
- "sp-core",
- "sp-io",
  "sp-runtime",
  "sp-std",
 ]
@@ -2760,17 +2757,13 @@ dependencies = [
 name = "pallet-posts"
 version = "2.0.0"
 dependencies = [
- "df-traits",
  "frame-support",
  "frame-system",
  "impl-trait-for-tuples",
  "pallet-permissions",
  "pallet-spaces",
- "pallet-timestamp",
  "pallet-utils",
  "parity-scale-codec",
- "sp-core",
- "sp-io",
  "sp-runtime",
  "sp-std",
 ]
@@ -2779,17 +2772,11 @@ dependencies = [
 name = "pallet-profile-follows"
 version = "2.0.0"
 dependencies = [
- "df-traits",
  "frame-support",
  "frame-system",
- "pallet-permissions",
  "pallet-profiles",
- "pallet-timestamp",
  "pallet-utils",
  "parity-scale-codec",
- "sp-core",
- "sp-io",
- "sp-runtime",
  "sp-std",
 ]
 
@@ -2797,15 +2784,11 @@ dependencies = [
 name = "pallet-profiles"
 version = "2.0.0"
 dependencies = [
- "df-traits",
  "frame-support",
  "frame-system",
  "pallet-permissions",
- "pallet-timestamp",
  "pallet-utils",
  "parity-scale-codec",
- "sp-core",
- "sp-io",
  "sp-runtime",
  "sp-std",
 ]
@@ -2827,17 +2810,13 @@ dependencies = [
 name = "pallet-reactions"
 version = "2.0.0"
 dependencies = [
- "df-traits",
  "frame-support",
  "frame-system",
  "pallet-permissions",
  "pallet-posts",
  "pallet-spaces",
- "pallet-timestamp",
  "pallet-utils",
  "parity-scale-codec",
- "sp-core",
- "sp-io",
  "sp-runtime",
  "sp-std",
 ]
@@ -2863,21 +2842,17 @@ dependencies = [
 name = "pallet-scores"
 version = "2.0.0"
 dependencies = [
- "df-traits",
  "frame-support",
  "frame-system",
- "pallet-permissions",
  "pallet-posts",
  "pallet-profile-follows",
  "pallet-profiles",
  "pallet-reactions",
  "pallet-space-follows",
  "pallet-spaces",
- "pallet-timestamp",
  "pallet-utils",
  "parity-scale-codec",
  "sp-core",
- "sp-io",
  "sp-runtime",
  "sp-std",
 ]
@@ -2908,15 +2883,10 @@ dependencies = [
  "df-traits",
  "frame-support",
  "frame-system",
- "pallet-permissions",
  "pallet-profiles",
  "pallet-spaces",
- "pallet-timestamp",
  "pallet-utils",
  "parity-scale-codec",
- "sp-core",
- "sp-io",
- "sp-runtime",
  "sp-std",
 ]
 
@@ -2924,17 +2894,11 @@ dependencies = [
 name = "pallet-space-ownership"
 version = "2.0.0"
 dependencies = [
- "df-traits",
  "frame-support",
  "frame-system",
- "pallet-permissions",
  "pallet-spaces",
- "pallet-timestamp",
  "pallet-utils",
  "parity-scale-codec",
- "sp-core",
- "sp-io",
- "sp-runtime",
  "sp-std",
 ]
 
@@ -2946,11 +2910,8 @@ dependencies = [
  "frame-support",
  "frame-system",
  "pallet-permissions",
- "pallet-timestamp",
  "pallet-utils",
  "parity-scale-codec",
- "sp-core",
- "sp-io",
  "sp-runtime",
  "sp-std",
 ]
@@ -3019,6 +2980,8 @@ dependencies = [
  "frame-system",
  "pallet-timestamp",
  "parity-scale-codec",
+ "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
 ]
