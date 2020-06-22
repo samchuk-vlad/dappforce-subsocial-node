@@ -522,7 +522,7 @@ fn update_role_should_work() {
 }
 
 #[test]
-fn update_role_should_work_empty_set() {
+fn update_role_should_work_with_empty_perms_provided_no_changes() {
     ExtBuilder::build().execute_with(|| {
         assert_ok!(_create_default_role()); // RoleId 1
         assert_ok!(
@@ -539,9 +539,6 @@ fn update_role_should_work_empty_set() {
             )
         );
 
-        // Check whether Role is stored correctly
-        assert!(Roles::role_by_id(ROLE1).is_some());
-
         // Check whether data in Role structure is correct
         let role = Roles::role_by_id(ROLE1).unwrap();
 
@@ -549,6 +546,37 @@ fn update_role_should_work_empty_set() {
         assert_eq!(role.space_id, SPACE1);
         assert_eq!(role.disabled, true);
         assert_eq!(role.ipfs_hash, self::default_role_ipfs_hash());
+        assert_eq!(
+            role.permissions,
+            BTreeSet::from_iter(self::permission_set_default().into_iter())
+        );
+    });
+}
+
+#[test]
+fn update_role_should_work_with_same_perms_provided_no_update() {
+    ExtBuilder::build().execute_with(|| {
+        assert_ok!(_create_default_role()); // RoleId 1
+        assert_ok!(
+            _update_role(
+                None, // From ACCOUNT1
+                None, // On RoleId 1
+                Some(
+                    self::role_update(
+                        None, // No changes for disabled
+                        None, // No ipfs_hash changes
+                        Some(
+                            BTreeSet::from_iter(self::permission_set_default().into_iter())
+                        ) // The same permissions_set (no changes should apply)
+                    )
+                )
+            )
+        );
+
+        // Check whether data in Role structure is correct
+        let role = Roles::role_by_id(ROLE1).unwrap();
+
+        assert!(role.updated.is_none());
         assert_eq!(
             role.permissions,
             BTreeSet::from_iter(self::permission_set_default().into_iter())
