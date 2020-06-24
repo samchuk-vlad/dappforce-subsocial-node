@@ -8,7 +8,7 @@ use frame_support::{
 use sp_std::prelude::*;
 use system::ensure_signed;
 
-use pallet_spaces::{Module as Spaces, SpaceById, Error as SpacesError};
+use pallet_spaces::{Module as Spaces, SpaceById};
 use pallet_utils::SpaceId;
 
 // mod tests;
