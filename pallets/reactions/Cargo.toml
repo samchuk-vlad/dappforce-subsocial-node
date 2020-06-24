@@ -17,11 +17,8 @@ std = [
     'sp-runtime/std',
     'frame-support/std',
     'system/std',
-    'sp-io/std',
     'sp-std/std',
-    'pallet-timestamp/std',
     'pallet-utils/std',
-    'df-traits/std',
     'pallet-permissions/std',
     'pallet-posts/std',
     'pallet-spaces/std',
@@ -52,19 +49,7 @@ package = 'frame-system'
 rev = '3e651110aa06aa835790df63410a29676243fc54'
 version = '2.0.0'
 
-[dependencies.sp-io]
-default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-rev = '3e651110aa06aa835790df63410a29676243fc54'
-version = '2.0.0'
-
 [dependencies.sp-std]
-default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-rev = '3e651110aa06aa835790df63410a29676243fc54'
-version = '2.0.0'
-
-[dependencies.pallet-timestamp]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
 rev = '3e651110aa06aa835790df63410a29676243fc54'
@@ -73,11 +58,6 @@ version = '2.0.0'
 [dependencies.pallet-utils]
 default-features = false
 path = '../utils'
-version = '2.0.0'
-
-[dependencies.df-traits]
-default-features = false
-path = '../traits'
 version = '2.0.0'
 
 [dependencies.pallet-permissions]
@@ -93,10 +73,4 @@ version = '2.0.0'
 [dependencies.pallet-spaces]
 default-features = false
 path = '../spaces'
-version = '2.0.0'
-
-[dev-dependencies.sp-core]
-default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-rev = '3e651110aa06aa835790df63410a29676243fc54'
 version = '2.0.0'

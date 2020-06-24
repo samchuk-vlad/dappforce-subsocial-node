@@ -354,7 +354,7 @@ impl<T: Trait> BeforeSpaceFollowed<T> for Module<T> {
             let score_diff = Self::score_diff_for_action(follower_reputation, action);
             space.change_score(score_diff);
             return Self::change_social_account_reputation(
-                space_owner, follower.clone(), score_diff, action)
+                space_owner, follower, score_diff, action)
         }
         Ok(())
     }
@@ -372,7 +372,7 @@ impl<T: Trait> BeforeSpaceUnfollowed<T> for Module<T> {
                 // Subtract a score diff that was added when this user followed this space in the past:
                 space.change_score(-score_diff);
                 return Self::change_social_account_reputation(
-                    space_owner, follower.clone(), -score_diff, action)
+                    space_owner, follower, -score_diff, action)
             }
         }
         Ok(())
@@ -407,7 +407,7 @@ impl<T: Trait> PostScores<T> for Module<T> {
 
         let account_never_shared_this_post =
             Self::post_score_by_account(
-                (account.clone(), original_post.id, action.clone())
+                (account.clone(), original_post.id, action)
             ).is_none();
 
         // It makes sense to change a score of this post only once:
@@ -420,7 +420,7 @@ impl<T: Trait> PostScores<T> for Module<T> {
     }
 
     fn score_root_post_on_new_comment(account: T::AccountId, root_post: &mut Post<T>) -> DispatchResult {
-        Self::change_post_score(account.clone(), root_post, ScoringAction::CreateComment)
+        Self::change_post_score(account, root_post, ScoringAction::CreateComment)
     }
 }
 

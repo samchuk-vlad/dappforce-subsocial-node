@@ -140,7 +140,7 @@ impl<T: Trait> Module<T> {
     defaults: Option<SpacePermissionSet>
   ) -> Option<SpacePermissionSet> {
 
-    return if overrides.is_some() {
+    if overrides.is_some() {
       overrides
     } else {
       defaults

@@ -118,6 +118,7 @@ impl<T: Trait> Post<T> {
         self.downvotes_count = self.downvotes_count.saturating_sub(1);
     }
 
+    #[allow(clippy::comparison_chain)]
     pub fn change_score(&mut self, diff: i16) {
         if diff > 0 {
             self.score = self.score.saturating_add(diff.abs() as i32);

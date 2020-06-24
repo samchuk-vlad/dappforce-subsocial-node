@@ -15,6 +15,7 @@ use df_traits::{PermissionChecker, SpaceFollowsProvider};
 use pallet_permissions::{SpacePermission, SpacePermissions, SpacePermissionsContext};
 use pallet_utils::{is_valid_handle_char, Module as Utils, SpaceId, WhoAndWhen};
 
+// #[cfg(tests)]
 // mod tests;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -281,6 +282,7 @@ impl<T: Trait> Space<T> {
         self.followers_count = self.followers_count.saturating_sub(1);
     }
 
+    #[allow(clippy::comparison_chain)]
     pub fn change_score(&mut self, diff: i16) {
         if diff > 0 {
             self.score = self.score.saturating_add(diff.abs() as i32);

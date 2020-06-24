@@ -211,6 +211,7 @@ impl <T: Trait> SocialAccount<T> {
 }
 
 impl<T: Trait> SocialAccount<T> {
+    #[allow(clippy::comparison_chain)]
     pub fn change_reputation(&mut self, diff: i16) {
         if diff > 0 {
             self.reputation = self.reputation.saturating_add(diff.abs() as u32);
