@@ -6,7 +6,7 @@ edition = "2018"
 license = "GPL-3.0-only"
 homepage = "https://subsocial.network"
 repository = "https://github.com/dappforce/dappforce-subsocial-node"
-description = "Pallet that allows to follow/unfollow spaces"
+description = "Integration tests"
 keywords = ["blockchain", "cryptocurrency", "social-network", "news-feed", "marketplace"]
 categories = ["cryptography::cryptocurrencies"]
 

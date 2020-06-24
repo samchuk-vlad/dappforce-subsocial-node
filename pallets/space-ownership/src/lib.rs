@@ -75,7 +75,7 @@ decl_module! {
     pub fn accept_pending_ownership(origin, space_id: SpaceId) {
       let who = ensure_signed(origin)?;
 
-      let mut space = Spaces::space_by_id(space_id).ok_or(SpacesError::<T>::SpaceNotFound)?;
+      let mut space = Spaces::require_space(space_id)?;
       let transfer_to = Self::pending_space_owner(space_id).ok_or(Error::<T>::NoPendingTransferOnSpace)?;
       ensure!(who == transfer_to, Error::<T>::NotAllowedToAcceptOwnershipTransfer);
 

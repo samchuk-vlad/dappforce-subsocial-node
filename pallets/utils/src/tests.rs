@@ -101,10 +101,10 @@ fn _convert_users_vec_to_btree_set(
 #[test]
 fn log_2_should_work() {
     ExtBuilder::build().execute_with(|| {
-        // None should be returned if zero(0) is provided
+        // None should be returned if zero (0) is provided
         assert!(log_2(0).is_none());
 
-        // Log2 of 1 should be zero(0)
+        // Log2 of 1 should be zero (0)
         assert_eq!(log_2(1), Some(0));
 
         // Log2 of 2 should be 1
@@ -116,7 +116,7 @@ fn log_2_should_work() {
         // Log2 of 512 should be 9
         assert_eq!(log_2(512), Some(9));
 
-        // Log2 of u32::MAX(4294967295) should be 31
+        // Log2 of u32::MAX (4294967295) should be 31
         assert_eq!(log_2(u32::MAX), Some(31));
     });
 }
