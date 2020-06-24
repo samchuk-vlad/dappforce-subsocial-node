@@ -57,11 +57,11 @@ impl pallet_timestamp::Trait for Test {
 }
 
 parameter_types! {
-  pub const IpfsHashLen: u32 = 46;
+  pub const IpfsCidLen: u32 = 46;
 }
 
 impl Trait for Test {
-    type IpfsHashLen = IpfsHashLen;
+    type IpfsCidLen = IpfsCidLen;
 }
 
 type System = system::Module<Test>;

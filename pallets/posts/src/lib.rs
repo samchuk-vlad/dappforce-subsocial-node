@@ -12,7 +12,7 @@ use system::ensure_signed;
 
 use pallet_permissions::SpacePermission;
 use pallet_spaces::{Module as Spaces, SpaceById};
-use pallet_utils::{Module as Utils, SpaceId, vec_remove_on, WhoAndWhen};
+use pallet_utils::{Module as Utils, SpaceId, vec_remove_on, WhoAndWhen, ContentType};
 
 pub mod functions;
 // mod tests;
@@ -29,7 +29,7 @@ pub struct Post<T: Trait> {
     pub space_id: Option<SpaceId>,
     pub extension: PostExtension,
 
-    pub ipfs_hash: Vec<u8>,
+    pub content: ContentType,
     pub edit_history: Vec<PostHistoryRecord<T>>,
 
     pub direct_replies_count: u16,
@@ -45,7 +45,7 @@ pub struct Post<T: Trait> {
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct PostUpdate {
     pub space_id: Option<SpaceId>,
-    pub ipfs_hash: Option<Vec<u8>>,
+    pub content: Option<ContentType>,
     pub hidden: Option<bool>,
 }
 
@@ -188,13 +188,13 @@ decl_module! {
     // Initializing events
     fn deposit_event() = default;
 
-    pub fn create_post(origin, space_id_opt: Option<SpaceId>, extension: PostExtension, ipfs_hash: Vec<u8>) {
+    pub fn create_post(origin, space_id_opt: Option<SpaceId>, extension: PostExtension, content: ContentType) {
       let creator = ensure_signed(origin)?;
 
-      Utils::<T>::is_ipfs_hash_valid(ipfs_hash.clone())?;
+      Utils::<T>::is_valid_content(content.clone())?;
 
       let new_post_id = Self::next_post_id();
-      let new_post: Post<T> = Post::new(new_post_id, creator.clone(), space_id_opt, extension, ipfs_hash);
+      let new_post: Post<T> = Post::new(new_post_id, creator.clone(), space_id_opt, extension, content);
 
       // Get space from either from space_id_opt or extension if a Comment provided
       let mut space = new_post.get_space()?;
@@ -288,7 +288,7 @@ decl_module! {
 
       let has_updates =
         update.space_id.is_some() ||
-        update.ipfs_hash.is_some() ||
+        update.content.is_some() ||
         update.hidden.is_some();
 
       ensure!(has_updates, Error::<T>::NoUpdatesForPost);
@@ -328,14 +328,14 @@ decl_module! {
       let mut fields_updated = 0;
       let mut new_history_record = PostHistoryRecord {
         edited: WhoAndWhen::<T>::new(editor.clone()),
-        old_data: PostUpdate {space_id: None, ipfs_hash: None, hidden: None}
+        old_data: PostUpdate {space_id: None, content: None, hidden: None}
       };
 
-      if let Some(ipfs_hash) = update.ipfs_hash {
-        if ipfs_hash != post.ipfs_hash {
-          Utils::<T>::is_ipfs_hash_valid(ipfs_hash.clone())?;
-          new_history_record.old_data.ipfs_hash = Some(post.ipfs_hash);
-          post.ipfs_hash = ipfs_hash;
+      if let Some(content) = update.content {
+        if content != post.content {
+          Utils::<T>::is_valid_content(content.clone())?;
+          new_history_record.old_data.content = Some(post.content);
+          post.content = content;
           fields_updated += 1;
         }
       }

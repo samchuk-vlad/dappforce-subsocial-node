@@ -39,17 +39,24 @@ pub enum User<AccountId> {
     Space(SpaceId),
 }
 
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+pub enum ContentType {
+    None,
+    Ipfs(Vec<u8>),
+    Hyper(Vec<u8>),
+}
+
 pub trait Trait: system::Trait
     + pallet_timestamp::Trait
 {
     /// A valid length of IPFS CID in bytes.
-    type IpfsHashLen: Get<u32>;
+    type IpfsCidLen: Get<u32>;
 }
 
 decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
         /// A valid length of IPFS CID in bytes.
-        const IpfsHashLen: u32 = T::IpfsHashLen::get();
+        const IpfsCidLen: u32 = T::IpfsCidLen::get();
     }
 }
 
@@ -92,10 +99,17 @@ pub fn vec_remove_on<F: PartialEq>(vector: &mut Vec<F>, element: F) {
 
 impl<T: Trait> Module<T> {
 
-    // TODO write tests for IPFS CID v0 and v1.
-    pub fn is_ipfs_hash_valid(ipfs_hash: Vec<u8>) -> DispatchResult {
-        ensure!(ipfs_hash.len() == T::IpfsHashLen::get() as usize, Error::<T>::InvalidIpfsCid);
-        Ok(())
+    pub fn is_valid_content(content: ContentType) -> DispatchResult {
+        match content {
+            ContentType::None => Ok(()),
+            ContentType::Ipfs(ipfs_cid) => {
+                // TODO write tests for IPFS CID v0 and v1.
+
+                ensure!(ipfs_cid.len() == T::IpfsCidLen::get() as usize, Error::<T>::InvalidIpfsCid);
+                Ok(())
+            },
+            ContentType::Hyper(_) => Ok(()) // TODO: change this, when HyperCore will be implemented
+        }
     }
 
     pub fn convert_users_vec_to_btree_set(

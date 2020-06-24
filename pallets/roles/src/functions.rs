@@ -124,7 +124,7 @@ impl<T: Trait> Role<T> {
     created_by: T::AccountId,
     space_id: SpaceId,
     time_to_live: Option<T::BlockNumber>,
-    ipfs_hash: Option<Vec<u8>>,
+    content: ContentType,
     permissions: BTreeSet<SpacePermission>,
   ) -> Result<Self, DispatchError> {
 
@@ -142,7 +142,7 @@ impl<T: Trait> Role<T> {
       space_id,
       disabled: false,
       expires_at,
-      ipfs_hash,
+      content,
       permissions,
     };
 

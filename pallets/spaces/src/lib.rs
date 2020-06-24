@@ -13,7 +13,7 @@ use system::ensure_signed;
 use df_traits::{SpaceForRoles, SpaceForRolesProvider};
 use df_traits::{PermissionChecker, SpaceFollowsProvider};
 use pallet_permissions::{SpacePermission, SpacePermissions, SpacePermissionsContext};
-use pallet_utils::{is_valid_handle_char, Module as Utils, SpaceId, WhoAndWhen};
+use pallet_utils::{is_valid_handle_char, Module as Utils, SpaceId, WhoAndWhen, ContentType};
 
 // #[cfg(tests)]
 // mod tests;
@@ -28,7 +28,7 @@ pub struct Space<T: Trait> {
     // Can be updated by the owner:
     pub owner: T::AccountId,
     pub handle: Option<Vec<u8>>,
-    pub ipfs_hash: Vec<u8>,
+    pub content: ContentType,
 
     pub posts_count: u16,
     pub followers_count: u32,
@@ -45,7 +45,7 @@ pub struct Space<T: Trait> {
 #[allow(clippy::option_option)]
 pub struct SpaceUpdate {
     pub handle: Option<Option<Vec<u8>>>,
-    pub ipfs_hash: Option<Vec<u8>>,
+    pub content: Option<ContentType>,
     pub hidden: Option<bool>,
 }
 
@@ -132,10 +132,10 @@ decl_module! {
     // Initializing events
     fn deposit_event() = default;
 
-    pub fn create_space(origin, handle_opt: Option<Vec<u8>>, ipfs_hash: Vec<u8>) {
+    pub fn create_space(origin, handle_opt: Option<Vec<u8>>, content: ContentType) {
       let owner = ensure_signed(origin)?;
 
-      Utils::<T>::is_ipfs_hash_valid(ipfs_hash.clone())?;
+      Utils::<T>::is_valid_content(content.clone())?;
 
       let mut handle_in_lowercase: Vec<u8> = Vec::new();
       if let Some(original_handle) = handle_opt.clone() {
@@ -143,7 +143,7 @@ decl_module! {
       }
 
       let space_id = Self::next_space_id();
-      let new_space = &mut Space::new(space_id, owner.clone(), ipfs_hash, handle_opt);
+      let new_space = &mut Space::new(space_id, owner.clone(), content, handle_opt);
 
       T::BeforeSpaceCreated::before_space_created(owner.clone(), new_space)?;
 
@@ -163,7 +163,7 @@ decl_module! {
 
       let has_updates =
         update.handle.is_some() ||
-        update.ipfs_hash.is_some() ||
+        update.content.is_some() ||
         update.hidden.is_some();
 
       ensure!(has_updates, Error::<T>::NoUpdatesForSpace);
@@ -182,16 +182,16 @@ decl_module! {
         edited: WhoAndWhen::<T>::new(owner.clone()),
         old_data: SpaceUpdate {
             handle: None,
-            ipfs_hash: None,
+            content: None,
             hidden: None
         }
       };
 
-      if let Some(ipfs_hash) = update.ipfs_hash {
-        if ipfs_hash != space.ipfs_hash {
-          Utils::<T>::is_ipfs_hash_valid(ipfs_hash.clone())?;
-          new_history_record.old_data.ipfs_hash = Some(space.ipfs_hash);
-          space.ipfs_hash = ipfs_hash;
+      if let Some(content) = update.content {
+        if content != space.content {
+          Utils::<T>::is_valid_content(content.clone())?;
+          new_history_record.old_data.content = Some(space.content);
+          space.content = content;
           fields_updated += 1;
         }
       }
@@ -234,7 +234,7 @@ impl<T: Trait> Space<T> {
     pub fn new(
         id: SpaceId,
         created_by: T::AccountId,
-        ipfs_hash: Vec<u8>,
+        content: ContentType,
         handle: Option<Vec<u8>>,
     ) -> Self {
         Space {
@@ -244,7 +244,7 @@ impl<T: Trait> Space<T> {
             hidden: false,
             owner: created_by,
             handle,
-            ipfs_hash,
+            content,
             posts_count: 0,
             followers_count: 0,
             edit_history: Vec::new(),

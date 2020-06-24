@@ -12,14 +12,14 @@
     "updated": "Option<WhoAndWhen>",
 
     "username": "Text",
-    "ipfs_hash": "IpfsHash",
+    "content": "ContentType",
 
     "edit_history": "Vec<ProfileHistoryRecord>"
   },
 
   "ProfileUpdate": {
     "username": "Option<Text>",
-    "ipfs_hash": "Option<IpfsHash>"
+    "content": "Option<ContentType>"
   },
 
   "ProfileHistoryRecord": {
