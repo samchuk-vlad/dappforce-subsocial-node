@@ -8,13 +8,13 @@
     "space_id": "SpaceId",
     "disabled": "bool",
     "expires_at": "Option<BlockNumber>",
-    "content": "ContentType",
+    "content": "Content",
     "permissions": "SpacePermissionSet"
   },
 
   "RoleUpdate": {
     "disabled": "Option<bool>",
-    "content": "Option<ContentType>",
+    "content": "Option<Content>",
     "permissions": "Option<SpacePermissionSet>"
   }
 }

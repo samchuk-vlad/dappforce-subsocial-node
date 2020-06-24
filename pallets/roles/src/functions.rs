@@ -124,7 +124,7 @@ impl<T: Trait> Role<T> {
     created_by: T::AccountId,
     space_id: SpaceId,
     time_to_live: Option<T::BlockNumber>,
-    content: ContentType,
+    content: Content,
     permissions: BTreeSet<SpacePermission>,
   ) -> Result<Self, DispatchError> {
 

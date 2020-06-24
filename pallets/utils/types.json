@@ -14,7 +14,7 @@
     }
   },
 
-  "ContentType": {
+  "Content": {
     "_enum": {
       "None": "Null",
       "Ipfs": "Text",

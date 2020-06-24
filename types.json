@@ -14,7 +14,7 @@
     }
   },
 
-  "ContentType": {
+  "Content": {
     "_enum": {
       "None": "Null",
       "Ipfs": "Text",
@@ -37,7 +37,7 @@
 
     "owner": "AccountId",
     "handle": "Option<Text>",
-    "content": "ContentType",
+    "content": "Content",
 
     "posts_count": "u16",
     "followers_count": "u32",
@@ -51,7 +51,7 @@
 
   "SpaceUpdate": {
     "handle": "Option<Option<Text>>",
-    "content": "Option<ContentType>",
+    "content": "Option<Content>",
     "hidden": "Option<bool>"
   },
 
@@ -72,7 +72,7 @@
     "space_id": "Option<SpaceId>",
     "extension": "PostExtension",
 
-    "content": "ContentType",
+    "content": "Content",
     "edit_history": "Vec<PostHistoryRecord>",
 
     "direct_replies_count": "u16",
@@ -87,7 +87,7 @@
 
   "PostUpdate": {
     "space_id": "Option<SpaceId>",
-    "content": "Option<ContentType>",
+    "content": "Option<Content>",
     "hidden": "Option<bool>"
   },
 
@@ -123,14 +123,14 @@
     "updated": "Option<WhoAndWhen>",
 
     "username": "Text",
-    "content": "ContentType",
+    "content": "Content",
 
     "edit_history": "Vec<ProfileHistoryRecord>"
   },
 
   "ProfileUpdate": {
     "username": "Option<Text>",
-    "content": "Option<ContentType>"
+    "content": "Option<Content>"
   },
 
   "ProfileHistoryRecord": {
@@ -251,13 +251,13 @@
     "space_id": "SpaceId",
     "disabled": "bool",
     "expires_at": "Option<BlockNumber>",
-    "content": "ContentType",
+    "content": "Content",
     "permissions": "SpacePermissionSet"
   },
 
   "RoleUpdate": {
     "disabled": "Option<bool>",
-    "content": "Option<ContentType>",
+    "content": "Option<Content>",
     "permissions": "Option<SpacePermissionSet>"
   }
 }

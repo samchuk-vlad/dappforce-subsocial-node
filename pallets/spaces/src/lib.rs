@@ -13,7 +13,7 @@ use system::ensure_signed;
 use df_traits::{SpaceForRoles, SpaceForRolesProvider};
 use df_traits::{PermissionChecker, SpaceFollowsProvider};
 use pallet_permissions::{SpacePermission, SpacePermissions, SpacePermissionsContext};
-use pallet_utils::{is_valid_handle_char, Module as Utils, SpaceId, WhoAndWhen, ContentType};
+use pallet_utils::{is_valid_handle_char, Module as Utils, SpaceId, WhoAndWhen, Content};
 
 // #[cfg(tests)]
 // mod tests;
@@ -28,7 +28,7 @@ pub struct Space<T: Trait> {
     // Can be updated by the owner:
     pub owner: T::AccountId,
     pub handle: Option<Vec<u8>>,
-    pub content: ContentType,
+    pub content: Content,
 
     pub posts_count: u16,
     pub followers_count: u32,
@@ -45,7 +45,7 @@ pub struct Space<T: Trait> {
 #[allow(clippy::option_option)]
 pub struct SpaceUpdate {
     pub handle: Option<Option<Vec<u8>>>,
-    pub content: Option<ContentType>,
+    pub content: Option<Content>,
     pub hidden: Option<bool>,
 }
 
@@ -132,7 +132,7 @@ decl_module! {
     // Initializing events
     fn deposit_event() = default;
 
-    pub fn create_space(origin, handle_opt: Option<Vec<u8>>, content: ContentType) {
+    pub fn create_space(origin, handle_opt: Option<Vec<u8>>, content: Content) {
       let owner = ensure_signed(origin)?;
 
       Utils::<T>::is_valid_content(content.clone())?;
@@ -234,7 +234,7 @@ impl<T: Trait> Space<T> {
     pub fn new(
         id: SpaceId,
         created_by: T::AccountId,
-        content: ContentType,
+        content: Content,
         handle: Option<Vec<u8>>,
     ) -> Self {
         Space {

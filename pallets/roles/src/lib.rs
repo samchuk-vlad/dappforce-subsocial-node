@@ -9,7 +9,7 @@ use system::ensure_signed;
 
 use df_traits::{PermissionChecker, SpaceFollowsProvider, SpaceForRolesProvider};
 use pallet_permissions::{Module as Permissions, SpacePermission, SpacePermissionSet};
-use pallet_utils::{Module as Utils, SpaceId, User, WhoAndWhen, ContentType};
+use pallet_utils::{Module as Utils, SpaceId, User, WhoAndWhen, Content};
 
 pub mod functions;
 
@@ -26,14 +26,14 @@ pub struct Role<T: Trait> {
     pub space_id: SpaceId,
     pub disabled: bool,
     pub expires_at: Option<T::BlockNumber>,
-    pub content: ContentType,
+    pub content: Content,
     pub permissions: SpacePermissionSet,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct RoleUpdate {
     pub disabled: Option<bool>,
-    pub content: Option<ContentType>,
+    pub content: Option<Content>,
     pub permissions: Option<SpacePermissionSet>,
 }
 
@@ -125,7 +125,7 @@ decl_module! {
       origin,
       space_id: SpaceId,
       time_to_live: Option<T::BlockNumber>,
-      content: ContentType,
+      content: Content,
       permissions: Vec<SpacePermission>
     ) {
       let who = ensure_signed(origin)?;

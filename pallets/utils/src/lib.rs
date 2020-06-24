@@ -40,7 +40,7 @@ pub enum User<AccountId> {
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub enum ContentType {
+pub enum Content {
     None,
     Ipfs(Vec<u8>),
     Hyper(Vec<u8>),
@@ -99,16 +99,16 @@ pub fn vec_remove_on<F: PartialEq>(vector: &mut Vec<F>, element: F) {
 
 impl<T: Trait> Module<T> {
 
-    pub fn is_valid_content(content: ContentType) -> DispatchResult {
+    pub fn is_valid_content(content: Content) -> DispatchResult {
         match content {
-            ContentType::None => Ok(()),
-            ContentType::Ipfs(ipfs_cid) => {
+            Content::None => Ok(()),
+            Content::Ipfs(ipfs_cid) => {
                 // TODO write tests for IPFS CID v0 and v1.
 
                 ensure!(ipfs_cid.len() == T::IpfsCidLen::get() as usize, Error::<T>::InvalidIpfsCid);
                 Ok(())
             },
-            ContentType::Hyper(_) => Ok(()) // TODO: change this, when HyperCore will be implemented
+            Content::Hyper(_) => Ok(()) // TODO: change this, when HyperCore will be implemented
         }
     }
 

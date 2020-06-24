@@ -10,7 +10,7 @@ use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 use system::ensure_signed;
 
-use pallet_utils::{is_valid_handle_char, Module as Utils, WhoAndWhen, ContentType};
+use pallet_utils::{is_valid_handle_char, Module as Utils, WhoAndWhen, Content};
 
 // mod tests;
 
@@ -29,7 +29,7 @@ pub struct Profile<T: Trait> {
     pub updated: Option<WhoAndWhen<T>>,
 
     pub username: Vec<u8>,
-    pub content: ContentType,
+    pub content: Content,
 
     pub edit_history: Vec<ProfileHistoryRecord<T>>,
 }
@@ -37,7 +37,7 @@ pub struct Profile<T: Trait> {
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct ProfileUpdate {
     pub username: Option<Vec<u8>>,
-    pub content: Option<ContentType>,
+    pub content: Option<Content>,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -112,7 +112,7 @@ decl_module! {
     // Initializing events
     fn deposit_event() = default;
 
-    pub fn create_profile(origin, username: Vec<u8>, content: ContentType) {
+    pub fn create_profile(origin, username: Vec<u8>, content: Content) {
       let owner = ensure_signed(origin)?;
 
       let mut social_account = Self::get_or_new_social_account(owner.clone());

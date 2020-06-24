@@ -235,16 +235,16 @@ const ROLE4: RoleId = 4;
 const SPACE1: SpaceId = 1;
 const SPACE2: SpaceId = 2;
 
-fn default_role_content_ipfs() -> ContentType {
-    ContentType::Ipfs(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
+fn default_role_content_ipfs() -> Content {
+    Content::Ipfs(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
 }
 
-fn updated_role_content_ipfs() -> ContentType {
-    ContentType::Ipfs(b"QmZENA8YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDaazhR8".to_vec())
+fn updated_role_content_ipfs() -> Content {
+    Content::Ipfs(b"QmZENA8YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDaazhR8".to_vec())
 }
 
-fn invalid_role_content_ipfs() -> ContentType {
-    ContentType::Ipfs(b"QmRAQB6DaazhR8".to_vec())
+fn invalid_role_content_ipfs() -> Content {
+    Content::Ipfs(b"QmRAQB6DaazhR8".to_vec())
 }
 
 /// Permissions Set that includes next permission: ManageRoles
@@ -271,7 +271,7 @@ fn permission_set_empty() -> Vec<SpacePermission> {
     vec![]
 }
 
-fn role_update(disabled: Option<bool>, content: Option<ContentType>, permissions: Option<BTreeSet<SpacePermission>>) -> RoleUpdate {
+fn role_update(disabled: Option<bool>, content: Option<Content>, permissions: Option<BTreeSet<SpacePermission>>) -> RoleUpdate {
     RoleUpdate {
         disabled,
         content,
@@ -288,7 +288,7 @@ fn _create_role(
     origin: Option<Origin>,
     space_id: Option<SpaceId>,
     time_to_live: Option<Option<BlockNumber>>,
-    content: Option<ContentType>,
+    content: Option<Content>,
     permissions: Option<Vec<SpacePermission>>,
 ) -> DispatchResult {
     Roles::create_role(

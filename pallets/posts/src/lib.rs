@@ -12,7 +12,7 @@ use system::ensure_signed;
 
 use pallet_permissions::SpacePermission;
 use pallet_spaces::{Module as Spaces, SpaceById};
-use pallet_utils::{Module as Utils, SpaceId, vec_remove_on, WhoAndWhen, ContentType};
+use pallet_utils::{Module as Utils, SpaceId, vec_remove_on, WhoAndWhen, Content};
 
 pub mod functions;
 // mod tests;
@@ -29,7 +29,7 @@ pub struct Post<T: Trait> {
     pub space_id: Option<SpaceId>,
     pub extension: PostExtension,
 
-    pub content: ContentType,
+    pub content: Content,
     pub edit_history: Vec<PostHistoryRecord<T>>,
 
     pub direct_replies_count: u16,
@@ -45,7 +45,7 @@ pub struct Post<T: Trait> {
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct PostUpdate {
     pub space_id: Option<SpaceId>,
-    pub content: Option<ContentType>,
+    pub content: Option<Content>,
     pub hidden: Option<bool>,
 }
 
@@ -188,7 +188,7 @@ decl_module! {
     // Initializing events
     fn deposit_event() = default;
 
-    pub fn create_post(origin, space_id_opt: Option<SpaceId>, extension: PostExtension, content: ContentType) {
+    pub fn create_post(origin, space_id_opt: Option<SpaceId>, extension: PostExtension, content: Content) {
       let creator = ensure_signed(origin)?;
 
       Utils::<T>::is_valid_content(content.clone())?;

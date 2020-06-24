@@ -12,7 +12,7 @@ impl<T: Trait> Post<T> {
         created_by: T::AccountId,
         space_id_opt: Option<SpaceId>,
         extension: PostExtension,
-        content: ContentType
+        content: Content
     ) -> Self {
         Post {
             id,
