@@ -162,6 +162,8 @@ impl<T: Trait> Role<T> {
   }
 
   pub fn revoke_from_users(&self, users: Vec<User<T::AccountId>>) {
+    let mut users_by_role = <UsersByRoleId<T>>::take(self.id);
+
     for user in users.iter() {
       let role_idx_by_user_opt = Module::<T>::role_ids_by_user_in_space((&user, self.space_id)).iter()
         .position(|x| { *x == self.id });
@@ -170,13 +172,13 @@ impl<T: Trait> Role<T> {
         <RoleIdsByUserInSpace<T>>::mutate((user, self.space_id), |n| { n.swap_remove(role_idx) });
       }
 
-      let user_idx_by_role_opt = Module::<T>::users_by_role_id(self.id).iter()
-          .position(|x| { x == user });
+      let user_idx_by_role_opt = users_by_role.iter().position(|x| { x == user });
 
       if let Some(user_idx) = user_idx_by_role_opt {
-        <UsersByRoleId<T>>::mutate(self.id, |n| { n.swap_remove(user_idx) });
+        users_by_role.swap_remove(user_idx);
       }
     }
+    <UsersByRoleId<T>>::insert(self.id, users_by_role);
   }
 }
 

@@ -187,7 +187,7 @@ decl_module! {
       }
 
       if let Some(permissions) = update.permissions {
-        if permissions.is_empty() {
+        if !permissions.is_empty() {
           let permissions_diff: Vec<_> = permissions.symmetric_difference(&role.permissions).cloned().collect();
 
           if !permissions_diff.is_empty() {
