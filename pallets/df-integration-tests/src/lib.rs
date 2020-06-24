@@ -411,7 +411,7 @@ mod tests {
     }
 
     fn space_content_ipfs() -> Content {
-        Content::Ipfs( b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
+        Content::IPFS( b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
     }
 
     fn space_update(
@@ -427,7 +427,7 @@ mod tests {
     }
 
     fn post_content_ipfs() -> Content {
-        Content::Ipfs(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec())
+        Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec())
     }
 
     fn post_update(
@@ -443,15 +443,15 @@ mod tests {
     }
 
     fn comment_content_ipfs() -> Content {
-        Content::Ipfs(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
+        Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
     }
 
     fn reply_content_ipfs() -> Content {
-        Content::Ipfs(b"QmYA2fn8cMbVWo4v95RwcwJVyQsNtnEwHerfWR8UNtEwoE".to_vec())
+        Content::IPFS(b"QmYA2fn8cMbVWo4v95RwcwJVyQsNtnEwHerfWR8UNtEwoE".to_vec())
     }
 
     fn profile_content_ipfs() -> Content {
-        Content::Ipfs( b"QmRAQB6YaCyidP37UdDnjFY5vQuiaRtqdyoW2CuDgwxkA5".to_vec())
+        Content::IPFS( b"QmRAQB6YaCyidP37UdDnjFY5vQuiaRtqdyoW2CuDgwxkA5".to_vec())
     }
 
     fn alice_username() -> Vec<u8> {
@@ -828,7 +828,7 @@ mod tests {
     const ROLE2: RoleId = 2;
 
     fn default_role_content_ipfs() -> Content {
-        Content::Ipfs(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
+        Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
     }
 
     /// Permissions Set that includes next permission: ManageRoles
@@ -1025,7 +1025,7 @@ mod tests {
     #[test]
     fn create_space_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build().execute_with(|| {
-            let content_ipfs = Content::Ipfs(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
+            let content_ipfs = Content::IPFS(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
 
             // Try to catch an error creating a space with invalid content
             assert_noop!(_create_space(
@@ -1040,7 +1040,7 @@ mod tests {
     fn update_space_should_work() {
         ExtBuilder::build_with_space().execute_with(|| {
             let handle: Vec<u8> = b"new_handle".to_vec();
-            let content_ipfs = Content::Ipfs(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec());
+            let content_ipfs = Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec());
             // Space update with ID 1 should be fine
 
             assert_ok!(_update_space(
@@ -1073,7 +1073,7 @@ mod tests {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::UpdateSpace]).execute_with(|| {
             let space_update = self::space_update(
                 Some(Some(b"new_handle".to_vec())),
-                Some(Content::Ipfs(
+                Some(Content::IPFS(
                     b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec()
                 )),
                 Some(true),
@@ -1280,7 +1280,7 @@ mod tests {
     #[test]
     fn update_space_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build_with_space().execute_with(|| {
-            let content_ipfs = Content::Ipfs(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
+            let content_ipfs = Content::IPFS(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
 
             // Try to catch an error updating a space with invalid content
             assert_noop!(_update_space(
@@ -1302,7 +1302,7 @@ mod tests {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::UpdateSpace]).execute_with(|| {
             let space_update = self::space_update(
                 Some(Some(b"new_handle".to_vec())),
-                Some(Content::Ipfs(
+                Some(Content::IPFS(
                     b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec()
                 )),
                 Some(true),
@@ -1384,7 +1384,7 @@ mod tests {
     #[test]
     fn create_post_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build_with_space().execute_with(|| {
-            let content_ipfs = Content::Ipfs(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
+            let content_ipfs = Content::IPFS(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
 
             // Try to catch an error creating a regular post with invalid content
             assert_noop!(_create_post(
@@ -1425,7 +1425,7 @@ mod tests {
     #[test]
     fn update_post_should_work() {
         ExtBuilder::build_with_post().execute_with(|| {
-            let content_ipfs = Content::Ipfs(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec());
+            let content_ipfs = Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec());
 
             // Post update with ID 1 should be fine
             assert_ok!(_update_post(
@@ -1458,7 +1458,7 @@ mod tests {
         ExtBuilder::build_with_post().execute_with(|| {
             let post_update = self::post_update(
                 None,
-                Some(Content::Ipfs(
+                Some(Content::IPFS(
                     b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()
                 )),
                 Some(true),
@@ -1476,7 +1476,7 @@ mod tests {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::CreatePosts]).execute_with(|| {
             let post_update = self::post_update(
                 None,
-                Some(Content::Ipfs(
+                Some(Content::IPFS(
                     b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()
                 )),
                 Some(true),
@@ -1502,7 +1502,7 @@ mod tests {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::UpdateAnyPost]).execute_with(|| {
             let post_update = self::post_update(
                 None,
-                Some(Content::Ipfs(
+                Some(Content::IPFS(
                     b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()
                 )),
                 Some(true),
@@ -1569,7 +1569,7 @@ mod tests {
     #[test]
     fn update_post_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build_with_post().execute_with(|| {
-            let content_ipfs = Content::Ipfs(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
+            let content_ipfs = Content::IPFS(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
 
             // Try to catch an error updating a post with invalid content
             assert_noop!(_update_post(
@@ -1591,7 +1591,7 @@ mod tests {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::UpdateAnyPost]).execute_with(|| {
             let post_update = self::post_update(
                 None,
-                Some(Content::Ipfs(
+                Some(Content::IPFS(
                     b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()
                 )),
                 Some(true),
@@ -1686,7 +1686,7 @@ mod tests {
     #[test]
     fn create_comment_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build_with_post().execute_with(|| {
-            let content_ipfs = Content::Ipfs(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
+            let content_ipfs = Content::IPFS(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
 
             // Try to catch an error creating a comment with wrong parent
             assert_noop!(_create_comment(
@@ -1782,7 +1782,7 @@ mod tests {
     #[test]
     fn update_comment_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build_with_comment().execute_with(|| {
-            let content_ipfs = Content::Ipfs(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
+            let content_ipfs = Content::IPFS(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
 
             // Try to catch an error updating a comment with invalid content
             assert_noop!(_update_comment(
@@ -2598,7 +2598,7 @@ mod tests {
     #[test]
     fn create_profile_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build().execute_with(|| {
-            let content_ipfs = Content::Ipfs(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
+            let content_ipfs = Content::IPFS(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
 
             assert_noop!(_create_profile(
                 None,
@@ -2795,7 +2795,7 @@ mod tests {
     #[test]
     fn update_profile_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build().execute_with(|| {
-            let content_ipfs = Content::Ipfs(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
+            let content_ipfs = Content::IPFS(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
 
             assert_ok!(_create_default_profile());
             assert_noop!(_update_profile(

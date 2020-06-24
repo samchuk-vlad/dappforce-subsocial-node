@@ -42,7 +42,7 @@ pub enum User<AccountId> {
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub enum Content {
     None,
-    Ipfs(Vec<u8>),
+    IPFS(Vec<u8>),
     Hyper(Vec<u8>),
 }
 
@@ -102,7 +102,7 @@ impl<T: Trait> Module<T> {
     pub fn is_valid_content(content: Content) -> DispatchResult {
         match content {
             Content::None => Ok(()),
-            Content::Ipfs(ipfs_cid) => {
+            Content::IPFS(ipfs_cid) => {
                 // TODO write tests for IPFS CID v0 and v1.
 
                 ensure!(ipfs_cid.len() == T::IpfsCidLen::get() as usize, Error::<T>::InvalidIpfsCid);

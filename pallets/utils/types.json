@@ -17,7 +17,7 @@
   "Content": {
     "_enum": {
       "None": "Null",
-      "Ipfs": "Text",
+      "IPFS": "Text",
       "Hyper": "Text"
     }
   }

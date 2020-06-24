@@ -236,15 +236,15 @@ const SPACE1: SpaceId = 1;
 const SPACE2: SpaceId = 2;
 
 fn default_role_content_ipfs() -> Content {
-    Content::Ipfs(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
+    Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
 }
 
 fn updated_role_content_ipfs() -> Content {
-    Content::Ipfs(b"QmZENA8YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDaazhR8".to_vec())
+    Content::IPFS(b"QmZENA8YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDaazhR8".to_vec())
 }
 
 fn invalid_role_content_ipfs() -> Content {
-    Content::Ipfs(b"QmRAQB6DaazhR8".to_vec())
+    Content::IPFS(b"QmRAQB6DaazhR8".to_vec())
 }
 
 /// Permissions Set that includes next permission: ManageRoles
