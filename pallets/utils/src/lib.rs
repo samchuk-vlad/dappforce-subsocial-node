@@ -65,6 +65,10 @@ decl_error! {
     pub enum Error for Module<T: Trait> {
         /// IPFS CID is invalid.
         InvalidIpfsCid,
+        /// Unsupported yet type of content 'Raw' is used
+        RawContentTypeNotSupported,
+        /// Unsupported yet type of content 'Hyper' is used
+        HypercoreContentTypeNotSupported,
     }
 }
 
@@ -103,14 +107,14 @@ impl<T: Trait> Module<T> {
     pub fn is_valid_content(content: Content) -> DispatchResult {
         match content {
             Content::None => Ok(()),
-            Content::Raw(_) => Ok(()), // TODO: change this, when Raw chain-stored data is supported
+            Content::Raw(_) => Err(Error::<T>::RawContentTypeNotSupported.into()),
             Content::IPFS(ipfs_cid) => {
                 // TODO write tests for IPFS CID v0 and v1.
 
                 ensure!(ipfs_cid.len() == T::IpfsCidLen::get() as usize, Error::<T>::InvalidIpfsCid);
                 Ok(())
             },
-            Content::Hyper(_) => Ok(()) // TODO: change this, when HyperCore will be implemented
+            Content::Hyper(_) => Err(Error::<T>::HypercoreContentTypeNotSupported.into())
         }
     }
 
