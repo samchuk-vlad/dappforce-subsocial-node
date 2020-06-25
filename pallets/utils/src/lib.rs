@@ -42,6 +42,7 @@ pub enum User<AccountId> {
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub enum Content {
     None,
+    Raw(Vec<u8>),
     IPFS(Vec<u8>),
     Hyper(Vec<u8>),
 }
@@ -102,6 +103,7 @@ impl<T: Trait> Module<T> {
     pub fn is_valid_content(content: Content) -> DispatchResult {
         match content {
             Content::None => Ok(()),
+            Content::Raw(_) => Ok(()), // TODO: change this, when Raw chain-stored data is supported
             Content::IPFS(ipfs_cid) => {
                 // TODO write tests for IPFS CID v0 and v1.
 
