@@ -246,11 +246,11 @@ impl sudo::Trait for Runtime {
 // ------------------------------------------------------------------------------------------------
 
 parameter_types! {
-  pub const IpfsHashLen: u32 = 46;
+  pub const IpfsCidLen: u32 = 46;
 }
 
 impl pallet_utils::Trait for Runtime {
-  type IpfsHashLen = IpfsHashLen;
+  type IpfsCidLen = IpfsCidLen;
 }
 
 parameter_types! {

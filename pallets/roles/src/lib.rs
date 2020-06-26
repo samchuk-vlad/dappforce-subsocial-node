@@ -9,7 +9,7 @@ use system::ensure_signed;
 
 use df_traits::{PermissionChecker, SpaceFollowsProvider, SpaceForRolesProvider};
 use pallet_permissions::{Module as Permissions, SpacePermission, SpacePermissionSet};
-use pallet_utils::{Module as Utils, SpaceId, User, WhoAndWhen};
+use pallet_utils::{Module as Utils, SpaceId, User, WhoAndWhen, Content};
 
 pub mod functions;
 
@@ -26,14 +26,14 @@ pub struct Role<T: Trait> {
     pub space_id: SpaceId,
     pub disabled: bool,
     pub expires_at: Option<T::BlockNumber>,
-    pub ipfs_hash: Option<Vec<u8>>,
+    pub content: Content,
     pub permissions: SpacePermissionSet,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct RoleUpdate {
     pub disabled: Option<bool>,
-    pub ipfs_hash: Option<Option<Vec<u8>>>,
+    pub content: Option<Content>,
     pub permissions: Option<SpacePermissionSet>,
 }
 
@@ -118,28 +118,26 @@ decl_module! {
     fn deposit_event() = default;
 
     /// Create a new role in a space with a list of permissions.
-    /// `ipfs_hash` points to the off-chain content with such additional info about this role
+    /// `content` points to the off-chain content with such additional info about this role
     /// as its name, description, color, etc.
     /// Only the space owner or a user with `ManageRoles` permission call this dispatch.
     pub fn create_role(
       origin,
       space_id: SpaceId,
       time_to_live: Option<T::BlockNumber>,
-      ipfs_hash: Option<Vec<u8>>,
+      content: Content,
       permissions: Vec<SpacePermission>
     ) {
       let who = ensure_signed(origin)?;
 
       ensure!(!permissions.is_empty(), Error::<T>::NoPermissionsProvided);
 
-      if let Some(cid) = ipfs_hash.clone() {
-        Utils::<T>::is_ipfs_hash_valid(cid)?;
-      }
+      Utils::<T>::is_valid_content(content.clone())?;
 
       Self::ensure_role_manager(who.clone(), space_id)?;
 
       let permissions_set = BTreeSet::from_iter(permissions.into_iter());
-      let new_role = Role::<T>::new(who.clone(), space_id, time_to_live, ipfs_hash, permissions_set)?;
+      let new_role = Role::<T>::new(who.clone(), space_id, time_to_live, content, permissions_set)?;
 
       let next_role_id = new_role.id.checked_add(1).ok_or(Error::<T>::RoleIdOverflow)?;
       NextRoleId::put(next_role_id);
@@ -157,7 +155,7 @@ decl_module! {
 
       let has_updates =
         update.disabled.is_some() ||
-        update.ipfs_hash.is_some() ||
+        update.content.is_some() ||
         update.permissions.is_some();
 
       ensure!(has_updates, Error::<T>::NoUpdatesProvided);
@@ -175,13 +173,11 @@ decl_module! {
         }
       }
 
-      if let Some(ipfs_hash_opt) = update.ipfs_hash {
-        if ipfs_hash_opt != role.ipfs_hash {
-          if let Some(ipfs_hash) = ipfs_hash_opt.clone() {
-            Utils::<T>::is_ipfs_hash_valid(ipfs_hash)?;
-          }
+      if let Some(content) = update.content {
+        if content != role.content {
+          Utils::<T>::is_valid_content(content.clone())?;
 
-          role.ipfs_hash = ipfs_hash_opt;
+          role.content = content;
           fields_updated += 1;
         }
       }

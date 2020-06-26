@@ -7,7 +7,7 @@
 
     "owner": "AccountId",
     "handle": "Option<Text>",
-    "ipfs_hash": "IpfsHash",
+    "content": "Content",
 
     "posts_count": "u16",
     "followers_count": "u32",
@@ -21,7 +21,7 @@
 
   "SpaceUpdate": {
     "handle": "Option<Option<Text>>",
-    "ipfs_hash": "Option<IpfsHash>",
+    "content": "Option<Content>",
     "hidden": "Option<bool>"
   },
 

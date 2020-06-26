@@ -10,7 +10,7 @@
     "space_id": "Option<SpaceId>",
     "extension": "PostExtension",
 
-    "ipfs_hash": "IpfsHash",
+    "content": "Content",
     "edit_history": "Vec<PostHistoryRecord>",
 
     "direct_replies_count": "u16",
@@ -25,7 +25,7 @@
 
   "PostUpdate": {
     "space_id": "Option<SpaceId>",
-    "ipfs_hash": "Option<IpfsHash>",
+    "content": "Option<Content>",
     "hidden": "Option<bool>"
   },
 

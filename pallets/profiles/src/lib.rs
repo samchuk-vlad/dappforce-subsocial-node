@@ -10,7 +10,7 @@ use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 use system::ensure_signed;
 
-use pallet_utils::{is_valid_handle_char, Module as Utils, WhoAndWhen};
+use pallet_utils::{is_valid_handle_char, Module as Utils, WhoAndWhen, Content};
 
 // mod tests;
 
@@ -29,7 +29,7 @@ pub struct Profile<T: Trait> {
     pub updated: Option<WhoAndWhen<T>>,
 
     pub username: Vec<u8>,
-    pub ipfs_hash: Vec<u8>,
+    pub content: Content,
 
     pub edit_history: Vec<ProfileHistoryRecord<T>>,
 }
@@ -37,7 +37,7 @@ pub struct Profile<T: Trait> {
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct ProfileUpdate {
     pub username: Option<Vec<u8>>,
-    pub ipfs_hash: Option<Vec<u8>>,
+    pub content: Option<Content>,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -112,20 +112,20 @@ decl_module! {
     // Initializing events
     fn deposit_event() = default;
 
-    pub fn create_profile(origin, username: Vec<u8>, ipfs_hash: Vec<u8>) {
+    pub fn create_profile(origin, username: Vec<u8>, content: Content) {
       let owner = ensure_signed(origin)?;
 
       let mut social_account = Self::get_or_new_social_account(owner.clone());
       ensure!(social_account.profile.is_none(), Error::<T>::ProfileAlreadyCreated);
       Self::is_username_valid(username.clone())?;
-      Utils::<T>::is_ipfs_hash_valid(ipfs_hash.clone())?;
+      Utils::<T>::is_valid_content(content.clone())?;
 
       social_account.profile = Some(
         Profile {
           created: WhoAndWhen::<T>::new(owner.clone()),
           updated: None,
           username: username.clone(),
-          ipfs_hash,
+          content,
           edit_history: Vec::new()
         }
       );
@@ -140,7 +140,7 @@ decl_module! {
 
       let has_updates =
         update.username.is_some() ||
-        update.ipfs_hash.is_some();
+        update.content.is_some();
 
       ensure!(has_updates, Error::<T>::NoUpdatesForProfile);
 
@@ -149,14 +149,14 @@ decl_module! {
       let mut is_update_applied = false;
       let mut new_history_record = ProfileHistoryRecord {
         edited: WhoAndWhen::<T>::new(owner.clone()),
-        old_data: ProfileUpdate {username: None, ipfs_hash: None}
+        old_data: ProfileUpdate {username: None, content: None}
       };
 
-      if let Some(ipfs_hash) = update.ipfs_hash {
-        if ipfs_hash != profile.ipfs_hash {
-          Utils::<T>::is_ipfs_hash_valid(ipfs_hash.clone())?;
-          new_history_record.old_data.ipfs_hash = Some(profile.ipfs_hash);
-          profile.ipfs_hash = ipfs_hash;
+      if let Some(content) = update.content {
+        if content != profile.content {
+          Utils::<T>::is_valid_content(content.clone())?;
+          new_history_record.old_data.content = Some(profile.content);
+          profile.content = content;
           is_update_applied = true;
         }
       }

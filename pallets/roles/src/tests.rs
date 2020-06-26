@@ -66,11 +66,11 @@ impl pallet_timestamp::Trait for Test {
 }
 
 parameter_types! {
-  pub const IpfsHashLen: u32 = 46;
+  pub const IpfsCidLen: u32 = 46;
 }
 
 impl pallet_utils::Trait for Test {
-    type IpfsHashLen = IpfsHashLen;
+    type IpfsCidLen = IpfsCidLen;
 }
 
 parameter_types! {
@@ -235,16 +235,16 @@ const ROLE4: RoleId = 4;
 const SPACE1: SpaceId = 1;
 const SPACE2: SpaceId = 2;
 
-fn default_role_ipfs_hash() -> Option<Vec<u8>> {
-    Option::from(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
+fn default_role_content_ipfs() -> Content {
+    Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
 }
 
-fn updated_role_ipfs_hash() -> Option<Vec<u8>> {
-    Option::from(b"QmZENA8YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDaazhR8".to_vec())
+fn updated_role_content_ipfs() -> Content {
+    Content::IPFS(b"QmZENA8YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDaazhR8".to_vec())
 }
 
-fn invalid_role_ipfs_hash() -> Option<Vec<u8>> {
-    Option::from(b"QmRAQB6DaazhR8".to_vec())
+fn invalid_role_content_ipfs() -> Content {
+    Content::IPFS(b"QmRAQB6DaazhR8".to_vec())
 }
 
 /// Permissions Set that includes next permission: ManageRoles
@@ -271,10 +271,10 @@ fn permission_set_empty() -> Vec<SpacePermission> {
     vec![]
 }
 
-fn role_update(disabled: Option<bool>, ipfs_hash: Option<Option<Vec<u8>>>, permissions: Option<BTreeSet<SpacePermission>>) -> RoleUpdate {
+fn role_update(disabled: Option<bool>, content: Option<Content>, permissions: Option<BTreeSet<SpacePermission>>) -> RoleUpdate {
     RoleUpdate {
         disabled,
-        ipfs_hash,
+        content,
         permissions,
     }
 }
@@ -288,14 +288,14 @@ fn _create_role(
     origin: Option<Origin>,
     space_id: Option<SpaceId>,
     time_to_live: Option<Option<BlockNumber>>,
-    ipfs_hash: Option<Option<Vec<u8>>>,
+    content: Option<Content>,
     permissions: Option<Vec<SpacePermission>>,
 ) -> DispatchResult {
     Roles::create_role(
         origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
         space_id.unwrap_or(SPACE1),
         time_to_live.unwrap_or_default(), // Should return 'None'
-        ipfs_hash.unwrap_or_else(self::default_role_ipfs_hash),
+        content.unwrap_or_else(self::default_role_content_ipfs),
         permissions.unwrap_or_else(self::permission_set_default),
     )
 }
@@ -314,7 +314,7 @@ fn _update_role(
         role_id.unwrap_or(ROLE1),
         update.unwrap_or_else(|| self::role_update(
             Some(true),
-            Some(self::updated_role_ipfs_hash()),
+            Some(self::updated_role_content_ipfs()),
             Some(
                 BTreeSet::from_iter(self::permission_set_updated().into_iter())
             )
@@ -384,7 +384,7 @@ fn create_role_should_work() {
         assert!(role.updated.is_none());
         assert_eq!(role.space_id, SPACE1);
         assert_eq!(role.disabled, false);
-        assert_eq!(role.ipfs_hash, self::default_role_ipfs_hash());
+        assert_eq!(role.content, self::default_role_content_ipfs());
         assert_eq!(
             role.permissions,
             BTreeSet::from_iter(self::permission_set_default().into_iter())
@@ -400,7 +400,7 @@ fn create_role_should_work_with_a_few_roles() {
                 Some(Origin::signed(ACCOUNT2)),
                 None, // On SpaceId 1
                 None, // Without time_to_live
-                None, // With default ipfs_hash
+                None, // With default content
                 Some(self::permission_set_updated())
             )
         ); // RoleId 3
@@ -415,7 +415,7 @@ fn create_role_should_work_with_a_few_roles() {
         assert!(role.updated.is_none());
         assert_eq!(role.space_id, SPACE1);
         assert_eq!(role.disabled, false);
-        assert_eq!(role.ipfs_hash, self::default_role_ipfs_hash());
+        assert_eq!(role.content, self::default_role_content_ipfs());
         assert_eq!(
             role.permissions,
             BTreeSet::from_iter(self::permission_set_updated().into_iter())
@@ -431,7 +431,7 @@ fn create_role_should_fail_with_space_not_found() {
                 None, // From ACCOUNT1
                 Some(SPACE2),
                 None, // Without time_to_live
-                None, // With default ipfs_hash
+                None, // With default content
                 None // With default permission set
             ), "SpaceNotFound"
         );
@@ -446,7 +446,7 @@ fn create_role_should_fail_with_no_permission() {
                 Some(Origin::signed(ACCOUNT2)),
                 None, // On SpaceId 1
                 None, // Without time_to_live
-                None, // With default ipfs_hash
+                None, // With default content
                 None // With default permission set
             ), Error::<Test>::NoPermissionToManageRoles
         );
@@ -476,7 +476,7 @@ fn create_role_should_fail_with_ipfs_is_incorrect() {
             None, // From ACCOUNT1
             None, // On SpaceId 1
             None, // Without time_to_live
-            Some(self::invalid_role_ipfs_hash()),
+            Some(self::invalid_role_content_ipfs()),
             None // With default permissions set
         ), UtilsError::<Test>::InvalidIpfsCid);
     });
@@ -491,7 +491,7 @@ fn create_role_should_fail_with_a_few_roles_no_permission() {
                 Some(Origin::signed(ACCOUNT2)),
                 None, // On SpaceId 1
                 None, // Without time_to_live
-                None, // With default ipfs_hash
+                None, // With default content
                 Some(self::permission_set_random())
             ), Error::<Test>::NoPermissionToManageRoles
         );
@@ -513,7 +513,7 @@ fn update_role_should_work() {
         assert!(role.updated.is_some());
         assert_eq!(role.space_id, SPACE1);
         assert_eq!(role.disabled, true);
-        assert_eq!(role.ipfs_hash, self::updated_role_ipfs_hash());
+        assert_eq!(role.content, self::updated_role_content_ipfs());
         assert_eq!(
             role.permissions,
             BTreeSet::from_iter(self::permission_set_updated().into_iter())
@@ -545,7 +545,7 @@ fn update_role_should_work_with_empty_perms_provided_no_changes() {
         assert!(role.updated.is_some());
         assert_eq!(role.space_id, SPACE1);
         assert_eq!(role.disabled, true);
-        assert_eq!(role.ipfs_hash, self::default_role_ipfs_hash());
+        assert_eq!(role.content, self::default_role_content_ipfs());
         assert_eq!(
             role.permissions,
             BTreeSet::from_iter(self::permission_set_default().into_iter())
@@ -564,7 +564,7 @@ fn update_role_should_work_with_same_perms_provided_no_update() {
                 Some(
                     self::role_update(
                         None, // No changes for disabled
-                        None, // No ipfs_hash changes
+                        None, // No content changes
                         Some(
                             BTreeSet::from_iter(self::permission_set_default().into_iter())
                         ) // The same permissions_set (no changes should apply)
@@ -608,7 +608,7 @@ fn update_role_should_work_with_a_few_roles() {
         assert!(role.updated.is_some());
         assert_eq!(role.space_id, SPACE1);
         assert_eq!(role.disabled, false);
-        assert_eq!(role.ipfs_hash, self::default_role_ipfs_hash());
+        assert_eq!(role.content, self::default_role_content_ipfs());
         assert_eq!(
             role.permissions,
             BTreeSet::from_iter(self::permission_set_updated().into_iter())
@@ -627,7 +627,7 @@ fn update_role_should_work_not_updated_all_the_same() {
                 Some(
                     self::role_update(
                         Some(false),
-                        Some(self::default_role_ipfs_hash()),
+                        Some(self::default_role_content_ipfs()),
                         Some(BTreeSet::from_iter(self::permission_set_default().into_iter()))
                     )
                 )
@@ -643,7 +643,7 @@ fn update_role_should_work_not_updated_all_the_same() {
         assert!(role.updated.is_none());
         assert_eq!(role.space_id, SPACE1);
         assert_eq!(role.disabled, false);
-        assert_eq!(role.ipfs_hash, self::default_role_ipfs_hash());
+        assert_eq!(role.content, self::default_role_content_ipfs());
         assert_eq!(
             role.permissions,
             BTreeSet::from_iter(self::permission_set_default().into_iter())
@@ -691,7 +691,7 @@ fn update_role_should_fail_with_ipfs_is_incorrect() {
         assert_noop!(_update_role(
             None, // From ACCOUNT1
             None, // On RoleId 1
-            Some(self::role_update(None, Some(self::invalid_role_ipfs_hash()), None))
+            Some(self::role_update(None, Some(self::invalid_role_content_ipfs()), None))
         ), UtilsError::<Test>::InvalidIpfsCid);
     });
 }

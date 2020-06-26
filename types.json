@@ -1,5 +1,4 @@
 {
-  "IpfsHash": "Text",
   "SpaceId": "u64",
 
   "WhoAndWhen": {
@@ -12,6 +11,14 @@
     "_enum": {
       "Account": "AccountId",
       "Space": "SpaceId"
+    }
+  },
+
+  "Content": {
+    "_enum": {
+      "None": "Null",
+      "IPFS": "Text",
+      "Hyper": "Text"
     }
   },
 
@@ -30,7 +37,7 @@
 
     "owner": "AccountId",
     "handle": "Option<Text>",
-    "ipfs_hash": "IpfsHash",
+    "content": "Content",
 
     "posts_count": "u16",
     "followers_count": "u32",
@@ -44,7 +51,7 @@
 
   "SpaceUpdate": {
     "handle": "Option<Option<Text>>",
-    "ipfs_hash": "Option<IpfsHash>",
+    "content": "Option<Content>",
     "hidden": "Option<bool>"
   },
 
@@ -65,7 +72,7 @@
     "space_id": "Option<SpaceId>",
     "extension": "PostExtension",
 
-    "ipfs_hash": "IpfsHash",
+    "content": "Content",
     "edit_history": "Vec<PostHistoryRecord>",
 
     "direct_replies_count": "u16",
@@ -80,7 +87,7 @@
 
   "PostUpdate": {
     "space_id": "Option<SpaceId>",
-    "ipfs_hash": "Option<IpfsHash>",
+    "content": "Option<Content>",
     "hidden": "Option<bool>"
   },
 
@@ -116,14 +123,14 @@
     "updated": "Option<WhoAndWhen>",
 
     "username": "Text",
-    "ipfs_hash": "IpfsHash",
+    "content": "Content",
 
     "edit_history": "Vec<ProfileHistoryRecord>"
   },
 
   "ProfileUpdate": {
     "username": "Option<Text>",
-    "ipfs_hash": "Option<IpfsHash>"
+    "content": "Option<Content>"
   },
 
   "ProfileHistoryRecord": {
@@ -244,13 +251,13 @@
     "space_id": "SpaceId",
     "disabled": "bool",
     "expires_at": "Option<BlockNumber>",
-    "ipfs_hash": "Option<IpfsHash>",
+    "content": "Content",
     "permissions": "SpacePermissionSet"
   },
 
   "RoleUpdate": {
     "disabled": "Option<bool>",
-    "ipfs_hash": "Option<Option<IpfsHash>>",
+    "content": "Option<Content>",
     "permissions": "Option<SpacePermissionSet>"
   }
 }

@@ -34,7 +34,7 @@ mod tests {
     use pallet_spaces::{SpaceById, SpaceUpdate, Error as SpacesError};
     use pallet_space_follows::Error as SpaceFollowsError;
     use pallet_space_ownership::Error as SpaceOwnershipError;
-    use pallet_utils::{SpaceId, Error as UtilsError, User};
+    use pallet_utils::{SpaceId, Error as UtilsError, User, Content};
 
     impl_outer_origin! {
         pub enum Origin for TestRuntime {}
@@ -80,11 +80,11 @@ mod tests {
     }
 
     parameter_types! {
-      pub const IpfsHashLen: u32 = 46;
+      pub const IpfsCidLen: u32 = 46;
     }
 
     impl pallet_utils::Trait for TestRuntime {
-        type IpfsHashLen = IpfsHashLen;
+        type IpfsCidLen = IpfsCidLen;
     }
 
     parameter_types! {
@@ -410,44 +410,48 @@ mod tests {
         b"space_handle".to_vec()
     }
 
-    fn space_ipfs_hash() -> Vec<u8> {
-        b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()
+    fn space_content_ipfs() -> Content {
+        Content::IPFS( b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
     }
 
     fn space_update(
         handle: Option<Option<Vec<u8>>>,
-        ipfs_hash: Option<Vec<u8>>,
+        content: Option<Content>,
         hidden: Option<bool>
     ) -> SpaceUpdate {
         SpaceUpdate {
             handle,
-            ipfs_hash,
+            content,
             hidden,
         }
     }
 
-    fn post_ipfs_hash() -> Vec<u8> {
-        b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec()
+    fn post_content_ipfs() -> Content {
+        Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec())
     }
 
     fn post_update(
         space_id: Option<SpaceId>,
-        ipfs_hash: Option<Vec<u8>>,
+        content: Option<Content>,
         hidden: Option<bool>
     ) -> PostUpdate {
         PostUpdate {
             space_id,
-            ipfs_hash,
+            content,
             hidden,
         }
     }
 
-    fn comment_ipfs_hash() -> Vec<u8> {
-        b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()
+    fn comment_content_ipfs() -> Content {
+        Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
     }
 
-    fn reply_ipfs_hash() -> Vec<u8> {
-        b"QmYA2fn8cMbVWo4v95RwcwJVyQsNtnEwHerfWR8UNtEwoE".to_vec()
+    fn reply_content_ipfs() -> Content {
+        Content::IPFS(b"QmYA2fn8cMbVWo4v95RwcwJVyQsNtnEwHerfWR8UNtEwoE".to_vec())
+    }
+
+    fn profile_content_ipfs() -> Content {
+        Content::IPFS( b"QmRAQB6YaCyidP37UdDnjFY5vQuiaRtqdyoW2CuDgwxkA5".to_vec())
     }
 
     fn alice_username() -> Vec<u8> {
@@ -456,10 +460,6 @@ mod tests {
 
     fn bob_username() -> Vec<u8> {
         b"bob1337".to_vec()
-    }
-
-    fn profile_ipfs_hash() -> Vec<u8> {
-        b"QmRAQB6YaCyidP37UdDnjFY5vQuiaRtqdyoW2CuDgwxkA5".to_vec()
     }
 
     fn reaction_upvote() -> ReactionKind {
@@ -525,12 +525,12 @@ mod tests {
     fn _create_space(
         origin: Option<Origin>,
         handle: Option<Option<Vec<u8>>>,
-        ipfs_hash: Option<Vec<u8>>
+        content: Option<Content>
     ) -> DispatchResult {
         Spaces::create_space(
             origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
             handle.unwrap_or_else(|| Some(self::space_handle())),
-            ipfs_hash.unwrap_or_else(self::space_ipfs_hash),
+            content.unwrap_or_else(self::space_content_ipfs),
         )
     }
 
@@ -576,13 +576,13 @@ mod tests {
         origin: Option<Origin>,
         space_id_opt: Option<Option<SpaceId>>,
         extension: Option<PostExtension>,
-        ipfs_hash: Option<Vec<u8>>
+        content: Option<Content>
     ) -> DispatchResult {
         Posts::create_post(
             origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
             space_id_opt.unwrap_or(Some(SPACE1)),
             extension.unwrap_or_else(self::extension_regular_post),
-            ipfs_hash.unwrap_or_else(self::post_ipfs_hash),
+            content.unwrap_or_else(self::post_content_ipfs),
         )
     }
 
@@ -606,7 +606,7 @@ mod tests {
         origin: Option<Origin>,
         post_id: Option<PostId>,
         parent_id: Option<Option<PostId>>,
-        ipfs_hash: Option<Vec<u8>>,
+        content: Option<Content>,
     ) -> DispatchResult {
         _create_post(
             origin,
@@ -615,7 +615,7 @@ mod tests {
                 parent_id.unwrap_or(None),
                 post_id.unwrap_or(POST1)
             )),
-            Some(ipfs_hash.unwrap_or_else(self::comment_ipfs_hash)),
+            Some(content.unwrap_or_else(self::comment_content_ipfs)),
         )
     }
 
@@ -628,7 +628,7 @@ mod tests {
             origin,
             Some(post_id.unwrap_or(POST2)),
             Some(update.unwrap_or_else(||
-                self::post_update(None, Some(self::reply_ipfs_hash()), None))
+                self::post_update(None, Some(self::reply_content_ipfs()), None))
             ),
         )
     }
@@ -711,25 +711,25 @@ mod tests {
     fn _create_profile(
         origin: Option<Origin>,
         username: Option<Vec<u8>>,
-        ipfs_hash: Option<Vec<u8>>
+        content: Option<Content>
     ) -> DispatchResult {
         Profiles::create_profile(
             origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
             username.unwrap_or_else(self::alice_username),
-            ipfs_hash.unwrap_or_else(self::profile_ipfs_hash),
+            content.unwrap_or_else(self::profile_content_ipfs),
         )
     }
 
     fn _update_profile(
         origin: Option<Origin>,
         username: Option<Vec<u8>>,
-        ipfs_hash: Option<Vec<u8>>
+        content: Option<Content>
     ) -> DispatchResult {
         Profiles::update_profile(
             origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
             ProfileUpdate {
                 username,
-                ipfs_hash,
+                content,
             },
         )
     }
@@ -827,8 +827,8 @@ mod tests {
     const ROLE1: RoleId = 1;
     const ROLE2: RoleId = 2;
 
-    fn default_role_ipfs_hash() -> Option<Vec<u8>> {
-        Option::from(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
+    fn default_role_content_ipfs() -> Content {
+        Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
     }
 
     /// Permissions Set that includes next permission: ManageRoles
@@ -845,14 +845,14 @@ mod tests {
         origin: Option<Origin>,
         space_id: Option<SpaceId>,
         time_to_live: Option<Option<BlockNumber>>,
-        ipfs_hash: Option<Option<Vec<u8>>>,
+        content: Option<Content>,
         permissions: Option<Vec<SpacePermission>>,
     ) -> DispatchResult {
         Roles::create_role(
             origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
             space_id.unwrap_or(SPACE1),
             time_to_live.unwrap_or_default(), // Should return 'None'
-            ipfs_hash.unwrap_or_else(self::default_role_ipfs_hash),
+            content.unwrap_or_else(self::default_role_content_ipfs),
             permissions.unwrap_or_else(self::permission_set_default),
         )
     }
@@ -909,7 +909,7 @@ mod tests {
 
             assert_eq!(space.owner, ACCOUNT1);
             assert_eq!(space.handle, Some(self::space_handle()));
-            assert_eq!(space.ipfs_hash, self::space_ipfs_hash());
+            assert_eq!(space.content, self::space_content_ipfs());
 
             assert_eq!(space.posts_count, 0);
             assert_eq!(space.followers_count, 1);
@@ -1025,13 +1025,13 @@ mod tests {
     #[test]
     fn create_space_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build().execute_with(|| {
-            let ipfs_hash: Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
+            let content_ipfs = Content::IPFS(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
 
-            // Try to catch an error creating a space with invalid ipfs_hash
+            // Try to catch an error creating a space with invalid content
             assert_noop!(_create_space(
                 None,
                 None,
-                Some(ipfs_hash)
+                Some(content_ipfs)
             ), UtilsError::<TestRuntime>::InvalidIpfsCid);
         });
     }
@@ -1040,7 +1040,8 @@ mod tests {
     fn update_space_should_work() {
         ExtBuilder::build_with_space().execute_with(|| {
             let handle: Vec<u8> = b"new_handle".to_vec();
-            let ipfs_hash: Vec<u8> = b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec(); // Space update with ID 1 should be fine
+            let content_ipfs = Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec());
+            // Space update with ID 1 should be fine
 
             assert_ok!(_update_space(
                 None, // From ACCOUNT1 (has permission as he's an owner)
@@ -1048,7 +1049,7 @@ mod tests {
                 Some(
                     self::space_update(
                         Some(Some(handle.clone())),
-                        Some(ipfs_hash.clone()),
+                        Some(content_ipfs.clone()),
                         Some(true)
                     )
                 )
@@ -1057,12 +1058,12 @@ mod tests {
             // Check whether space updates correctly
             let space = Spaces::space_by_id(SPACE1).unwrap();
             assert_eq!(space.handle, Some(handle));
-            assert_eq!(space.ipfs_hash, ipfs_hash);
+            assert_eq!(space.content, content_ipfs);
             assert_eq!(space.hidden, true);
 
             // Check whether history recorded correctly
             assert_eq!(space.edit_history[0].old_data.handle, Some(Some(self::space_handle())));
-            assert_eq!(space.edit_history[0].old_data.ipfs_hash, Some(self::space_ipfs_hash()));
+            assert_eq!(space.edit_history[0].old_data.content, Some(self::space_content_ipfs()));
             assert_eq!(space.edit_history[0].old_data.hidden, Some(false));
         });
     }
@@ -1072,7 +1073,9 @@ mod tests {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::UpdateSpace]).execute_with(|| {
             let space_update = self::space_update(
                 Some(Some(b"new_handle".to_vec())),
-                Some(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec()),
+                Some(Content::IPFS(
+                    b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec()
+                )),
                 Some(true),
             );
 
@@ -1277,16 +1280,16 @@ mod tests {
     #[test]
     fn update_space_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build_with_space().execute_with(|| {
-            let ipfs_hash: Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
+            let content_ipfs = Content::IPFS(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
 
-            // Try to catch an error updating a space with invalid ipfs_hash
+            // Try to catch an error updating a space with invalid content
             assert_noop!(_update_space(
                 None,
                 None,
                 Some(
                     self::space_update(
                         None,
-                        Some(ipfs_hash),
+                        Some(content_ipfs),
                         None
                     )
                 )
@@ -1299,7 +1302,9 @@ mod tests {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::UpdateSpace]).execute_with(|| {
             let space_update = self::space_update(
                 Some(Some(b"new_handle".to_vec())),
-                Some(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec()),
+                Some(Content::IPFS(
+                    b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec()
+                )),
                 Some(true),
             );
 
@@ -1333,7 +1338,7 @@ mod tests {
             assert_eq!(post.space_id, Some(SPACE1));
             assert_eq!(post.extension, self::extension_regular_post());
 
-            assert_eq!(post.ipfs_hash, self::post_ipfs_hash());
+            assert_eq!(post.content, self::post_content_ipfs());
             assert!(post.edit_history.is_empty());
 
             assert_eq!(post.total_replies_count, 0);
@@ -1352,7 +1357,7 @@ mod tests {
                 Some(Origin::signed(ACCOUNT2)),
                 None, // SpaceId 1,
                 None, // RegularPost extension
-                None, // Default post ipfs_hash
+                None, // Default post content
             ));
         });
     }
@@ -1379,14 +1384,14 @@ mod tests {
     #[test]
     fn create_post_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build_with_space().execute_with(|| {
-            let ipfs_hash: Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
+            let content_ipfs = Content::IPFS(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
 
-            // Try to catch an error creating a regular post with invalid ipfs_hash
+            // Try to catch an error creating a regular post with invalid content
             assert_noop!(_create_post(
                 None,
                 None,
                 None,
-                Some(ipfs_hash)
+                Some(content_ipfs)
             ), UtilsError::<TestRuntime>::InvalidIpfsCid);
         });
     }
@@ -1412,7 +1417,7 @@ mod tests {
                 Some(Origin::signed(ACCOUNT2)),
                 None, // SpaceId 1,
                 None, // RegularPost extension
-                None, // Default post ipfs_hash
+                None, // Default post content
             ), PostsError::<TestRuntime>::NoPermissionToCreatePosts);
         });
     }
@@ -1420,7 +1425,7 @@ mod tests {
     #[test]
     fn update_post_should_work() {
         ExtBuilder::build_with_post().execute_with(|| {
-            let ipfs_hash: Vec<u8> = b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec();
+            let content_ipfs = Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec());
 
             // Post update with ID 1 should be fine
             assert_ok!(_update_post(
@@ -1429,7 +1434,7 @@ mod tests {
                 Some(
                     self::post_update(
                         None,
-                        Some(ipfs_hash.clone()),
+                        Some(content_ipfs.clone()),
                         Some(true)
                     )
                 )
@@ -1438,12 +1443,12 @@ mod tests {
             // Check whether post updates correctly
             let post = Posts::post_by_id(POST1).unwrap();
             assert_eq!(post.space_id, Some(SPACE1));
-            assert_eq!(post.ipfs_hash, ipfs_hash);
+            assert_eq!(post.content, content_ipfs);
             assert_eq!(post.hidden, true);
 
             // Check whether history recorded correctly
             assert!(post.edit_history[0].old_data.space_id.is_none());
-            assert_eq!(post.edit_history[0].old_data.ipfs_hash, Some(self::post_ipfs_hash()));
+            assert_eq!(post.edit_history[0].old_data.content, Some(self::post_content_ipfs()));
             assert_eq!(post.edit_history[0].old_data.hidden, Some(false));
         });
     }
@@ -1453,7 +1458,9 @@ mod tests {
         ExtBuilder::build_with_post().execute_with(|| {
             let post_update = self::post_update(
                 None,
-                Some(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()),
+                Some(Content::IPFS(
+                    b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()
+                )),
                 Some(true),
             );
 
@@ -1469,14 +1476,16 @@ mod tests {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::CreatePosts]).execute_with(|| {
             let post_update = self::post_update(
                 None,
-                Some(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()),
+                Some(Content::IPFS(
+                    b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()
+                )),
                 Some(true),
             );
             assert_ok!(_create_post(
                 Some(Origin::signed(ACCOUNT2)),
                 None, // SpaceId 1
                 None, // RegularPost extension
-                None // Default post ipfs_hash
+                None // Default post content
             )); // PostId 1
 
             // Post update with ID 1 should be fine
@@ -1493,7 +1502,9 @@ mod tests {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::UpdateAnyPost]).execute_with(|| {
             let post_update = self::post_update(
                 None,
-                Some(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()),
+                Some(Content::IPFS(
+                    b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()
+                )),
                 Some(true),
             );
             assert_ok!(_create_default_post()); // PostId 1
@@ -1558,16 +1569,16 @@ mod tests {
     #[test]
     fn update_post_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build_with_post().execute_with(|| {
-            let ipfs_hash: Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
+            let content_ipfs = Content::IPFS(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
 
-            // Try to catch an error updating a post with invalid ipfs_hash
+            // Try to catch an error updating a post with invalid content
             assert_noop!(_update_post(
                 None,
                 None,
                 Some(
                     self::post_update(
                         None,
-                        Some(ipfs_hash),
+                        Some(content_ipfs),
                         None
                     )
                 )
@@ -1580,7 +1591,9 @@ mod tests {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::UpdateAnyPost]).execute_with(|| {
             let post_update = self::post_update(
                 None,
-                Some(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()),
+                Some(Content::IPFS(
+                    b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()
+                )),
                 Some(true),
             );
             assert_ok!(_create_default_post());
@@ -1616,7 +1629,7 @@ mod tests {
             assert_eq!(comment_ext.root_post_id, POST1);
             assert_eq!(comment.created.account, ACCOUNT1);
             assert!(comment.updated.is_none());
-            assert_eq!(comment.ipfs_hash, self::comment_ipfs_hash());
+            assert_eq!(comment.content, self::comment_content_ipfs());
             assert!(comment.edit_history.is_empty());
             assert_eq!(comment.total_replies_count, 0);
             assert_eq!(comment.shares_count, 0);
@@ -1673,14 +1686,14 @@ mod tests {
     #[test]
     fn create_comment_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build_with_post().execute_with(|| {
-            let ipfs_hash: Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
+            let content_ipfs = Content::IPFS(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
 
             // Try to catch an error creating a comment with wrong parent
             assert_noop!(_create_comment(
                 None,
                 None,
                 None,
-                Some(ipfs_hash)
+                Some(content_ipfs)
             ), UtilsError::<TestRuntime>::InvalidIpfsCid);
         });
     }
@@ -1738,10 +1751,10 @@ mod tests {
 
             // Check whether post updates correctly
             let comment = Posts::post_by_id(POST2).unwrap();
-            assert_eq!(comment.ipfs_hash, self::reply_ipfs_hash());
+            assert_eq!(comment.content, self::reply_content_ipfs());
 
             // Check whether history recorded correctly
-            assert_eq!(comment.edit_history[0].old_data.ipfs_hash, Some(self::comment_ipfs_hash()));
+            assert_eq!(comment.edit_history[0].old_data.content, Some(self::comment_content_ipfs()));
         });
     }
 
@@ -1769,16 +1782,16 @@ mod tests {
     #[test]
     fn update_comment_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build_with_comment().execute_with(|| {
-            let ipfs_hash: Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
+            let content_ipfs = Content::IPFS(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
 
-            // Try to catch an error updating a comment with invalid ipfs_hash
+            // Try to catch an error updating a comment with invalid content
             assert_noop!(_update_comment(
                 None,
                 None,
                 Some(
                     self::post_update(
                         None,
-                        Some(ipfs_hash),
+                        Some(content_ipfs),
                         None
                     )
                 )
@@ -2382,14 +2395,14 @@ mod tests {
             assert_ok!(_create_space(
                 None, // From ACCOUNT1
                 Some(None), // Provided without any handle
-                None // With default space ipfs_hash
+                None // With default space content
             ));
             // SpaceId 2
             assert_ok!(_create_post(
                 None, // From ACCOUNT1
                 Some(Some(SPACE2)),
                 None, // With RegularPost extension
-                None // With default post ipfs_hash
+                None // With default post content
             )); // PostId 1 on SpaceId 2
 
             assert_ok!(_create_post(
@@ -2516,7 +2529,7 @@ mod tests {
             assert_ok!(_create_space(
                 Some(Origin::signed(ACCOUNT1)),
                 Some(None), // No space_handle provided (ok)
-                None // Default space ipfs_hash
+                None // Default space content
             )); // SpaceId 2 by ACCOUNT1
 
             // Try to share post with extension SharedPost
@@ -2535,14 +2548,14 @@ mod tests {
             assert_ok!(_create_space(
                 None, // From ACCOUNT1
                 Some(None), // Provided without any handle
-                None // With default space ipfs_hash
+                None // With default space content
             ));
             // SpaceId 2
             assert_ok!(_create_post(
                 None, // From ACCOUNT1
                 Some(Some(SPACE2)),
                 None, // With RegularPost extension
-                None // With default post ipfs_hash
+                None // With default post content
             )); // PostId 1 on SpaceId 2
 
             assert_ok!(_delete_default_role());
@@ -2567,7 +2580,7 @@ mod tests {
             assert_eq!(profile.created.account, ACCOUNT1);
             assert!(profile.updated.is_none());
             assert_eq!(profile.username, self::alice_username());
-            assert_eq!(profile.ipfs_hash, self::profile_ipfs_hash());
+            assert_eq!(profile.content, self::profile_content_ipfs());
             assert!(profile.edit_history.is_empty());
             assert_eq!(Profiles::account_by_profile_username(self::alice_username()), Some(ACCOUNT1));
         });
@@ -2585,11 +2598,12 @@ mod tests {
     #[test]
     fn create_profile_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build().execute_with(|| {
-            let ipfs_hash: Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
+            let content_ipfs = Content::IPFS(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
+
             assert_noop!(_create_profile(
                 None,
                 None,
-                Some(ipfs_hash)
+                Some(content_ipfs)
             ), UtilsError::<TestRuntime>::InvalidIpfsCid);
         });
     }
@@ -2660,14 +2674,14 @@ mod tests {
             assert_ok!(_update_profile(
                 None,
                 Some(self::bob_username()),
-                Some(self::space_ipfs_hash())
+                Some(self::space_content_ipfs())
             ));
 
             // Check whether profile updated correctly
             let profile = Profiles::social_account_by_id(ACCOUNT1).unwrap().profile.unwrap();
             assert!(profile.updated.is_some());
             assert_eq!(profile.username, self::bob_username());
-            assert_eq!(profile.ipfs_hash, self::space_ipfs_hash());
+            assert_eq!(profile.content, self::space_content_ipfs());
 
             // Check storages
             assert!(Profiles::account_by_profile_username(self::alice_username()).is_none());
@@ -2675,7 +2689,7 @@ mod tests {
 
             // Check whether profile history is written correctly
             assert_eq!(profile.edit_history[0].old_data.username, Some(self::alice_username()));
-            assert_eq!(profile.edit_history[0].old_data.ipfs_hash, Some(self::profile_ipfs_hash()));
+            assert_eq!(profile.edit_history[0].old_data.content, Some(self::profile_content_ipfs()));
         });
     }
 
@@ -2781,13 +2795,13 @@ mod tests {
     #[test]
     fn update_profile_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build().execute_with(|| {
-            let ipfs_hash: Vec<u8> = b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec();
+            let content_ipfs = Content::IPFS(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
 
             assert_ok!(_create_default_profile());
             assert_noop!(_update_profile(
                 None,
                 None,
-                Some(ipfs_hash)
+                Some(content_ipfs)
             ), UtilsError::<TestRuntime>::InvalidIpfsCid);
         });
     }

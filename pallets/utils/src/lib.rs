@@ -39,17 +39,25 @@ pub enum User<AccountId> {
     Space(SpaceId),
 }
 
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+pub enum Content {
+    None,
+    Raw(Vec<u8>),
+    IPFS(Vec<u8>),
+    Hyper(Vec<u8>),
+}
+
 pub trait Trait: system::Trait
     + pallet_timestamp::Trait
 {
     /// A valid length of IPFS CID in bytes.
-    type IpfsHashLen: Get<u32>;
+    type IpfsCidLen: Get<u32>;
 }
 
 decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
         /// A valid length of IPFS CID in bytes.
-        const IpfsHashLen: u32 = T::IpfsHashLen::get();
+        const IpfsCidLen: u32 = T::IpfsCidLen::get();
     }
 }
 
@@ -57,6 +65,10 @@ decl_error! {
     pub enum Error for Module<T: Trait> {
         /// IPFS CID is invalid.
         InvalidIpfsCid,
+        /// Unsupported yet type of content 'Raw' is used
+        RawContentTypeNotSupported,
+        /// Unsupported yet type of content 'Hyper' is used
+        HypercoreContentTypeNotSupported,
     }
 }
 
@@ -92,10 +104,18 @@ pub fn vec_remove_on<F: PartialEq>(vector: &mut Vec<F>, element: F) {
 
 impl<T: Trait> Module<T> {
 
-    // TODO write tests for IPFS CID v0 and v1.
-    pub fn is_ipfs_hash_valid(ipfs_hash: Vec<u8>) -> DispatchResult {
-        ensure!(ipfs_hash.len() == T::IpfsHashLen::get() as usize, Error::<T>::InvalidIpfsCid);
-        Ok(())
+    pub fn is_valid_content(content: Content) -> DispatchResult {
+        match content {
+            Content::None => Ok(()),
+            Content::Raw(_) => Err(Error::<T>::RawContentTypeNotSupported.into()),
+            Content::IPFS(ipfs_cid) => {
+                // TODO write tests for IPFS CID v0 and v1.
+
+                ensure!(ipfs_cid.len() == T::IpfsCidLen::get() as usize, Error::<T>::InvalidIpfsCid);
+                Ok(())
+            },
+            Content::Hyper(_) => Err(Error::<T>::HypercoreContentTypeNotSupported.into())
+        }
     }
 
     pub fn convert_users_vec_to_btree_set(

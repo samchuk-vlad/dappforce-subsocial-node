@@ -12,7 +12,7 @@ impl<T: Trait> Post<T> {
         created_by: T::AccountId,
         space_id_opt: Option<SpaceId>,
         extension: PostExtension,
-        ipfs_hash: Vec<u8>
+        content: Content
     ) -> Self {
         Post {
             id,
@@ -21,7 +21,7 @@ impl<T: Trait> Post<T> {
             hidden: false,
             space_id: space_id_opt,
             extension,
-            ipfs_hash,
+            content,
             edit_history: Vec::new(),
             direct_replies_count: 0,
             total_replies_count: 0,
