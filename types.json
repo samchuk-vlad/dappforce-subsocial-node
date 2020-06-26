@@ -38,7 +38,7 @@
     "owner": "AccountId",
     "handle": "Option<Text>",
     "content": "Content",
-    "parent_id": "SpaceId",
+    "parent_id": "Option<SpaceId>",
 
     "posts_count": "u16",
     "followers_count": "u32",
@@ -53,7 +53,8 @@
   "SpaceUpdate": {
     "handle": "Option<Option<Text>>",
     "content": "Option<Content>",
-    "hidden": "Option<bool>"
+    "hidden": "Option<bool>",
+    "parent_id": "Option<Option<SpaceId>>"
   },
 
   "SpaceHistoryRecord": {
