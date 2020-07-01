@@ -136,7 +136,7 @@ decl_module! {
       parent_id_opt: Option<SpaceId>,
       handle_opt: Option<Vec<u8>>,
       content: Content
-    ) {
+    ) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 
       Utils::<T>::is_valid_content(content.clone())?;
@@ -172,10 +172,11 @@ decl_module! {
       }
 
       Self::deposit_event(RawEvent::SpaceCreated(owner, space_id));
+      Ok(())
     }
 
     #[weight = 100_000]
-    pub fn update_space(origin, space_id: SpaceId, update: SpaceUpdate) {
+    pub fn update_space(origin, space_id: SpaceId, update: SpaceUpdate) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 
       let has_updates =
@@ -261,6 +262,7 @@ decl_module! {
 
         Self::deposit_event(RawEvent::SpaceUpdated(owner, space_id));
       }
+      Ok(())
     }
   }
 }
