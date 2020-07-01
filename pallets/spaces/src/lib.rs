@@ -21,16 +21,16 @@ use pallet_utils::{is_valid_handle_char, Module as Utils, SpaceId, WhoAndWhen, C
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Space<T: Trait> {
     pub id: SpaceId,
-    pub parent_id: Option<SpaceId>,
-
     pub created: WhoAndWhen<T>,
     pub updated: Option<WhoAndWhen<T>>,
-    pub hidden: bool,
+
+    pub owner: T::AccountId,
 
     // Can be updated by the owner:
-    pub owner: T::AccountId,
+    pub parent_id: Option<SpaceId>,
     pub handle: Option<Vec<u8>>,
     pub content: Content,
+    pub hidden: bool,
 
     pub posts_count: u16,
     pub followers_count: u32,
@@ -285,13 +285,13 @@ impl<T: Trait> Space<T> {
     ) -> Self {
         Space {
             id,
-            parent_id,
             created: WhoAndWhen::<T>::new(created_by.clone()),
             updated: None,
-            hidden: false,
             owner: created_by,
+            parent_id,
             handle,
             content,
+            hidden: false,
             posts_count: 0,
             followers_count: 0,
             edit_history: Vec::new(),

@@ -5,12 +5,13 @@
     "id": "PostId",
     "created": "WhoAndWhen",
     "updated": "Option<WhoAndWhen>",
-    "hidden": "bool",
 
-    "space_id": "Option<SpaceId>",
     "extension": "PostExtension",
 
+    "space_id": "Option<SpaceId>",
     "content": "Content",
+    "hidden": "bool",
+
     "edit_history": "Vec<PostHistoryRecord>",
 
     "direct_replies_count": "u16",

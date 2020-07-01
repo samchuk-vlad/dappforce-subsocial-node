@@ -24,12 +24,13 @@ pub struct Post<T: Trait> {
     pub id: PostId,
     pub created: WhoAndWhen<T>,
     pub updated: Option<WhoAndWhen<T>>,
-    pub hidden: bool,
 
-    pub space_id: Option<SpaceId>,
     pub extension: PostExtension,
 
+    pub space_id: Option<SpaceId>,
     pub content: Content,
+    pub hidden: bool,
+
     pub edit_history: Vec<PostHistoryRecord<T>>,
 
     pub direct_replies_count: u16,
