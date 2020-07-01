@@ -21,6 +21,8 @@ use pallet_utils::{is_valid_handle_char, Module as Utils, SpaceId, WhoAndWhen, C
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Space<T: Trait> {
     pub id: SpaceId,
+    pub parent_id: Option<SpaceId>,
+
     pub created: WhoAndWhen<T>,
     pub updated: Option<WhoAndWhen<T>>,
     pub hidden: bool,
@@ -29,7 +31,6 @@ pub struct Space<T: Trait> {
     pub owner: T::AccountId,
     pub handle: Option<Vec<u8>>,
     pub content: Content,
-    pub parent_id: Option<SpaceId>,
 
     pub posts_count: u16,
     pub followers_count: u32,
@@ -45,10 +46,10 @@ pub struct Space<T: Trait> {
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 #[allow(clippy::option_option)]
 pub struct SpaceUpdate {
+    pub parent_id: Option<Option<SpaceId>>,
     pub handle: Option<Option<Vec<u8>>>,
     pub content: Option<Content>,
     pub hidden: Option<bool>,
-    pub parent_id: Option<Option<SpaceId>>,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -164,7 +165,7 @@ decl_module! {
       }
 
       let space_id = Self::next_space_id();
-      let new_space = &mut Space::new(space_id, owner.clone(), content, handle_opt, parent_id_opt);
+      let new_space = &mut Space::new(space_id, parent_id_opt, owner.clone(), content, handle_opt);
 
       T::BeforeSpaceCreated::before_space_created(owner.clone(), new_space)?;
 
@@ -183,10 +184,10 @@ decl_module! {
       let owner = ensure_signed(origin)?;
 
       let has_updates =
+        update.parent_id.is_some() ||
         update.handle.is_some() ||
         update.content.is_some() ||
-        update.hidden.is_some() ||
-        update.parent_id.is_some();
+        update.hidden.is_some();
 
       ensure!(has_updates, Error::<T>::NoUpdatesForSpace);
 
@@ -203,10 +204,10 @@ decl_module! {
       let mut new_history_record = SpaceHistoryRecord {
         edited: WhoAndWhen::<T>::new(owner.clone()),
         old_data: SpaceUpdate {
+            parent_id: None,
             handle: None,
             content: None,
-            hidden: None,
-            parent_id: None
+            hidden: None
         }
       };
 
@@ -277,20 +278,20 @@ decl_module! {
 impl<T: Trait> Space<T> {
     pub fn new(
         id: SpaceId,
+        parent_id: Option<SpaceId>,
         created_by: T::AccountId,
         content: Content,
         handle: Option<Vec<u8>>,
-        parent_id: Option<SpaceId>,
     ) -> Self {
         Space {
             id,
+            parent_id,
             created: WhoAndWhen::<T>::new(created_by.clone()),
             updated: None,
             hidden: false,
             owner: created_by,
             handle,
             content,
-            parent_id,
             posts_count: 0,
             followers_count: 0,
             edit_history: Vec::new(),

@@ -31,6 +31,8 @@
 
   "Space": {
     "id": "SpaceId",
+    "parent_id": "Option<SpaceId>",
+
     "created": "WhoAndWhen",
     "updated": "Option<WhoAndWhen>",
     "hidden": "bool",
@@ -38,7 +40,6 @@
     "owner": "AccountId",
     "handle": "Option<Text>",
     "content": "Content",
-    "parent_id": "Option<SpaceId>",
 
     "posts_count": "u16",
     "followers_count": "u32",
@@ -51,10 +52,10 @@
   },
 
   "SpaceUpdate": {
+    "parent_id": "Option<Option<SpaceId>>",
     "handle": "Option<Option<Text>>",
     "content": "Option<Content>",
-    "hidden": "Option<bool>",
-    "parent_id": "Option<Option<SpaceId>>"
+    "hidden": "Option<bool>"
   },
 
   "SpaceHistoryRecord": {

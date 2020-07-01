@@ -415,16 +415,16 @@ mod tests {
     }
 
     fn space_update(
+        parent_id: Option<Option<SpaceId>>,
         handle: Option<Option<Vec<u8>>>,
         content: Option<Content>,
-        hidden: Option<bool>,
-        parent_id: Option<Option<SpaceId>>
+        hidden: Option<bool>
     ) -> SpaceUpdate {
         SpaceUpdate {
+            parent_id,
             handle,
             content,
-            hidden,
-            parent_id
+            hidden
         }
     }
 
@@ -1059,10 +1059,10 @@ mod tests {
                 None,
                 Some(
                     self::space_update(
+                        None,
                         Some(Some(handle.clone())),
                         Some(content_ipfs.clone()),
                         Some(true),
-                        None
                     )
                 )
             ));
@@ -1084,12 +1084,12 @@ mod tests {
     fn update_space_should_work_with_a_few_roles() {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::UpdateSpace]).execute_with(|| {
             let space_update = self::space_update(
+                None,
                 Some(Some(b"new_handle".to_vec())),
                 Some(Content::IPFS(
                     b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec()
                 )),
                 Some(true),
-                None,
             );
 
             assert_ok!(_update_space(
@@ -1119,10 +1119,10 @@ mod tests {
                 Some(SPACE2),
                 Some(
                     self::space_update(
+                        None,
                         Some(Some(handle)),
                         None,
                         None,
-                        None
                     )
                 )
             ), SpacesError::<TestRuntime>::SpaceNotFound);
@@ -1140,10 +1140,10 @@ mod tests {
                 None,
                 Some(
                     self::space_update(
+                        None,
                         Some(Some(handle)),
                         None,
                         None,
-                        None
                     )
                 )
             ), SpacesError::<TestRuntime>::NoPermissionToUpdateSpace);
@@ -1161,10 +1161,10 @@ mod tests {
                 None,
                 Some(
                     self::space_update(
+                        None,
                         Some(Some(handle)),
                         None,
                         None,
-                        None
                     )
                 )
             ), SpacesError::<TestRuntime>::HandleIsTooShort);
@@ -1182,10 +1182,10 @@ mod tests {
                 None,
                 Some(
                     self::space_update(
+                        None,
                         Some(Some(handle)),
                         None,
                         None,
-                        None
                     )
                 )
             ), SpacesError::<TestRuntime>::HandleIsTooLong);
@@ -1210,10 +1210,10 @@ mod tests {
                 Some(SPACE1),
                 Some(
                     self::space_update(
+                        None,
                         Some(Some(handle)),
                         None,
                         None,
-                        None
                     )
                 )
             ), SpacesError::<TestRuntime>::HandleIsNotUnique);
@@ -1230,10 +1230,10 @@ mod tests {
                 None,
                 Some(
                     self::space_update(
+                        None,
                         Some(Some(handle)),
                         None,
                         None,
-                        None
                     )
                 )
             ), SpacesError::<TestRuntime>::HandleContainsInvalidChars);
@@ -1250,10 +1250,10 @@ mod tests {
                 None,
                 Some(
                     self::space_update(
+                        None,
                         Some(Some(handle)),
                         None,
                         None,
-                        None
                     )
                 )
             ), SpacesError::<TestRuntime>::HandleContainsInvalidChars);
@@ -1270,10 +1270,10 @@ mod tests {
                 None,
                 Some(
                     self::space_update(
+                        None,
                         Some(Some(handle)),
                         None,
                         None,
-                        None
                     )
                 )
             ), SpacesError::<TestRuntime>::HandleContainsInvalidChars);
@@ -1290,10 +1290,10 @@ mod tests {
                 None,
                 Some(
                     self::space_update(
+                        None,
                         Some(Some(handle)),
                         None,
                         None,
-                        None
                     )
                 )
             ), SpacesError::<TestRuntime>::HandleContainsInvalidChars);
@@ -1314,7 +1314,7 @@ mod tests {
                         None,
                         Some(content_ipfs),
                         None,
-                        None
+                        None,
                     )
                 )
             ), UtilsError::<TestRuntime>::InvalidIpfsCid);
@@ -1325,12 +1325,12 @@ mod tests {
     fn update_space_should_fail_with_a_few_roles_no_permission() {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::UpdateSpace]).execute_with(|| {
             let space_update = self::space_update(
+                None,
                 Some(Some(b"new_handle".to_vec())),
                 Some(Content::IPFS(
                     b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec()
                 )),
                 Some(true),
-                None,
             );
 
             assert_ok!(_delete_default_role());
