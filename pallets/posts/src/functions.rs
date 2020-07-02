@@ -24,6 +24,8 @@ impl<T: Trait> Post<T> {
             hidden: false,
             direct_replies_count: 0,
             total_replies_count: 0,
+            direct_hidden_replies_count: 0,
+            total_hidden_replies_count: 0,
             shares_count: 0,
             upvotes_count: 0,
             downvotes_count: 0,
@@ -103,6 +105,22 @@ impl<T: Trait> Post<T> {
 
     pub fn dec_total_replies(&mut self) {
         self.total_replies_count = self.total_replies_count.saturating_sub(1);
+    }
+
+    pub fn inc_direct_hidden_replies(&mut self) {
+        self.direct_hidden_replies_count = self.direct_hidden_replies_count.saturating_add(1);
+    }
+
+    pub fn dec_direct_hidden_replies(&mut self) {
+        self.direct_hidden_replies_count = self.direct_hidden_replies_count.saturating_sub(1);
+    }
+
+    pub fn inc_total_hidden_replies(&mut self) {
+        self.total_hidden_replies_count = self.total_hidden_replies_count.saturating_add(1);
+    }
+
+    pub fn dec_total_hidden_replies(&mut self) {
+        self.total_hidden_replies_count = self.total_hidden_replies_count.saturating_sub(1);
     }
 
     pub fn inc_shares(&mut self) {
@@ -221,9 +239,9 @@ impl<T: Trait> Module<T> {
         ancestors
     }
 
-    pub fn for_each_post_ancestor (
+    pub fn for_each_post_ancestor<F: FnMut(&mut Post<T>) + Copy> (
         post_id: PostId,
-        f: fn(&mut Post<T>)
+        f: F
     ) -> DispatchResult {
         let post = Self::mutate_post_by_id(post_id, f)?;
 
