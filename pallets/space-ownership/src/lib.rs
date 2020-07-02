@@ -3,7 +3,8 @@
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
     ensure,
-    dispatch::DispatchResult
+    dispatch::DispatchResult,
+    traits::Get
 };
 use sp_std::prelude::*;
 use frame_system::{self as system, ensure_signed};
@@ -61,7 +62,7 @@ decl_module! {
     // Initializing events
     fn deposit_event() = default;
 
-    #[weight = 10_000]
+    #[weight = 10_000 + T::DbWeight::get().reads_writes(1, 1)]
     pub fn transfer_space_ownership(origin, space_id: SpaceId, transfer_to: T::AccountId) -> DispatchResult {
       let who = ensure_signed(origin)?;
 
@@ -77,7 +78,7 @@ decl_module! {
       Ok(())
     }
 
-    #[weight = 10_000]
+    #[weight = 10_000 + T::DbWeight::get().reads_writes(2, 2)]
     pub fn accept_pending_ownership(origin, space_id: SpaceId) -> DispatchResult {
       let who = ensure_signed(origin)?;
 
@@ -95,7 +96,7 @@ decl_module! {
       Ok(())
     }
 
-    #[weight = 10_000]
+    #[weight = 10_000 + T::DbWeight::get().reads_writes(2, 1)]
     pub fn reject_pending_ownership(origin, space_id: SpaceId) -> DispatchResult {
       let who = ensure_signed(origin)?;
 
