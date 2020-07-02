@@ -6,6 +6,8 @@
     "created": "WhoAndWhen",
     "updated": "Option<WhoAndWhen>",
 
+    "owner": "AccountId",
+
     "extension": "PostExtension",
 
     "space_id": "Option<SpaceId>",

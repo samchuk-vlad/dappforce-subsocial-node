@@ -16,8 +16,9 @@ impl<T: Trait> Post<T> {
     ) -> Self {
         Post {
             id,
-            created: WhoAndWhen::<T>::new(created_by),
+            created: WhoAndWhen::<T>::new(created_by.clone()),
             updated: None,
+            owner: created_by,
             extension,
             space_id: space_id_opt,
             content,
@@ -32,7 +33,7 @@ impl<T: Trait> Post<T> {
     }
 
     pub fn is_owner(&self, account: &T::AccountId) -> bool {
-        self.created.account == *account
+        self.owner == *account
     }
 
     pub fn is_root_post(&self) -> bool {
