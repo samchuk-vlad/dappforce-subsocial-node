@@ -1312,8 +1312,8 @@ mod tests {
                 Some(
                     self::space_update(
                         None,
-                        Some(content_ipfs),
                         None,
+                        Some(content_ipfs),
                         None,
                     )
                 )
@@ -1729,7 +1729,7 @@ mod tests {
             assert_ok!(_update_space(
                 None,
                 None,
-                Some(self::space_update(None, None, Some(true), None))
+                Some(self::space_update(None, None, None, Some(true)))
             ));
 
             assert_noop!(_create_default_comment(), PostsError::<TestRuntime>::CannotCreateInHiddenScope);
@@ -1899,7 +1899,7 @@ mod tests {
             assert_ok!(_update_space(
                 None,
                 None,
-                Some(self::space_update(None, None, Some(true), None))
+                Some(self::space_update(None, None, None, Some(true)))
             ));
 
             assert_noop!(_create_default_post_reaction(), ReactionsError::<TestRuntime>::CannotReactWhenSpaceHidden);
@@ -2874,7 +2874,7 @@ mod tests {
             assert_ok!(_update_space(
                 None,
                 None,
-                Some(self::space_update(None, None, Some(true), None))
+                Some(self::space_update(None, None, None, Some(true)))
             ));
 
             assert_noop!(_default_follow_space(), SpaceFollowsError::<TestRuntime>::CannotFollowHiddenSpace);
