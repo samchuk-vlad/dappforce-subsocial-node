@@ -30,6 +30,7 @@ pub struct Space<T: Trait> {
     pub hidden: bool,
 
     pub posts_count: u16,
+    pub hidden_posts_count: u16,
     pub followers_count: u32,
 
     pub score: i32,
@@ -290,6 +291,7 @@ impl<T: Trait> Space<T> {
             content,
             hidden: false,
             posts_count: 0,
+            hidden_posts_count: 0,
             followers_count: 0,
             score: 0,
             permissions: None,
@@ -315,6 +317,14 @@ impl<T: Trait> Space<T> {
 
     pub fn dec_posts(&mut self) {
         self.posts_count = self.posts_count.saturating_sub(1);
+    }
+
+    pub fn inc_hidden_posts(&mut self) {
+        self.hidden_posts_count = self.hidden_posts_count.saturating_add(1);
+    }
+
+    pub fn dec_hidden_posts(&mut self) {
+        self.hidden_posts_count = self.hidden_posts_count.saturating_sub(1);
     }
 
     pub fn inc_followers(&mut self) {
