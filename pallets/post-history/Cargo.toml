@@ -6,7 +6,7 @@ edition = "2018"
 license = "GPL-3.0-only"
 homepage = "https://subsocial.network"
 repository = "https://github.com/dappforce/dappforce-subsocial-node"
-description = "Pallet that stores post updates history"
+description = "Pallet that stores post edit history"
 keywords = ["blockchain", "cryptocurrency", "social-network", "news-feed", "marketplace"]
 categories = ["cryptography::cryptocurrencies"]
 
