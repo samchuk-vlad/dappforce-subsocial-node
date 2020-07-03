@@ -34,19 +34,17 @@ decl_module! {
 }
 
 impl<T: Trait> SpaceHistoryRecord<T> {
-    fn new(updated_by: T::AccountId) -> Self {
+    fn new(updated_by: T::AccountId, old_data: SpaceUpdate) -> Self {
         SpaceHistoryRecord {
             edited: WhoAndWhen::<T>::new(updated_by),
-            old_data: SpaceUpdate::default()
+            old_data
         }
     }
 }
 
 impl<T: Trait> AfterSpaceUpdated<T> for Module<T> {
     fn after_space_updated(sender: T::AccountId, space: &Space<T>, old_data: SpaceUpdate) {
-        let mut new_history_record = SpaceHistoryRecord::<T>::new(sender);
-        new_history_record.old_data = old_data;
-
-        <EditHistory<T>>::mutate(space.id, |ids| ids.push(new_history_record));
+        <EditHistory<T>>::mutate(space.id, |ids|
+            ids.push(SpaceHistoryRecord::<T>::new(sender, old_data)));
     }
 }

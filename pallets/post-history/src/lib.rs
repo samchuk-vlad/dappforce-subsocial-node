@@ -33,19 +33,17 @@ decl_module! {
 }
 
 impl<T: Trait> PostHistoryRecord<T> {
-    fn new(updated_by: T::AccountId) -> Self {
+    fn new(updated_by: T::AccountId, old_data: PostUpdate) -> Self {
         PostHistoryRecord {
             edited: WhoAndWhen::<T>::new(updated_by),
-            old_data: PostUpdate::default()
+            old_data
         }
     }
 }
 
 impl<T: Trait> AfterPostUpdated<T> for Module<T> {
     fn after_post_updated(sender: T::AccountId, post: &Post<T>, old_data: PostUpdate) {
-        let mut new_history_record = PostHistoryRecord::<T>::new(sender);
-        new_history_record.old_data = old_data;
-
-        <EditHistory<T>>::mutate(post.id, |ids| ids.push(new_history_record));
+        <EditHistory<T>>::mutate(post.id, |ids|
+            ids.push(PostHistoryRecord::<T>::new(sender, old_data)));
     }
 }

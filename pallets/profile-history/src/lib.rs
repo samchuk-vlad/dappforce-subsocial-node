@@ -33,19 +33,17 @@ decl_module! {
 }
 
 impl<T: Trait> ProfileHistoryRecord<T> {
-    fn new(updated_by: T::AccountId) -> Self {
+    fn new(updated_by: T::AccountId, old_data: ProfileUpdate) -> Self {
         ProfileHistoryRecord {
             edited: WhoAndWhen::<T>::new(updated_by),
-            old_data: ProfileUpdate::default()
+            old_data
         }
     }
 }
 
 impl<T: Trait> AfterProfileUpdated<T> for Module<T> {
     fn after_profile_updated(sender: T::AccountId, _profile: &Profile<T>, old_data: ProfileUpdate) {
-        let mut new_history_record = ProfileHistoryRecord::<T>::new(sender.clone());
-        new_history_record.old_data = old_data;
-
-        <EditHistory<T>>::mutate(sender, |ids| ids.push(new_history_record));
+        <EditHistory<T>>::mutate(sender.clone(), |ids|
+            ids.push(ProfileHistoryRecord::<T>::new(sender, old_data)));
     }
 }
