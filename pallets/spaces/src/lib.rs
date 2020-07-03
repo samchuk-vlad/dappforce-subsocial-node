@@ -23,12 +23,14 @@ pub struct Space<T: Trait> {
     pub id: SpaceId,
     pub created: WhoAndWhen<T>,
     pub updated: Option<WhoAndWhen<T>>,
-    pub hidden: bool,
+
+    pub owner: T::AccountId,
 
     // Can be updated by the owner:
-    pub owner: T::AccountId,
+    pub parent_id: Option<SpaceId>,
     pub handle: Option<Vec<u8>>,
     pub content: Content,
+    pub hidden: bool,
 
     pub posts_count: u16,
     pub followers_count: u32,
@@ -44,6 +46,7 @@ pub struct Space<T: Trait> {
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 #[allow(clippy::option_option)]
 pub struct SpaceUpdate {
+    pub parent_id: Option<Option<SpaceId>>,
     pub handle: Option<Option<Vec<u8>>>,
     pub content: Option<Content>,
     pub hidden: Option<bool>,
@@ -93,6 +96,8 @@ decl_error! {
     NotASpaceOwner,
     /// User has no permission to update this space.
     NoPermissionToUpdateSpace,
+    /// User has no permission to create subspaces in this space
+    NoPermissionToCreateSubspaces,
   }
 }
 
@@ -132,7 +137,12 @@ decl_module! {
     // Initializing events
     fn deposit_event() = default;
 
-    pub fn create_space(origin, handle_opt: Option<Vec<u8>>, content: Content) {
+    pub fn create_space(
+      origin,
+      parent_id_opt: Option<SpaceId>,
+      handle_opt: Option<Vec<u8>>,
+      content: Content
+    ) {
       let owner = ensure_signed(origin)?;
 
       Utils::<T>::is_valid_content(content.clone())?;
@@ -142,8 +152,20 @@ decl_module! {
         handle_in_lowercase = Self::lowercase_and_validate_a_handle(original_handle)?;
       }
 
+      // TODO: add tests for this case
+      if let Some(parent_id) = parent_id_opt {
+        let parent_space = Self::require_space(parent_id)?;
+
+        Self::ensure_account_has_space_permission(
+          owner.clone(),
+          &parent_space,
+          SpacePermission::CreateSubspaces,
+          Error::<T>::NoPermissionToCreateSubspaces.into()
+        )?;
+      }
+
       let space_id = Self::next_space_id();
-      let new_space = &mut Space::new(space_id, owner.clone(), content, handle_opt);
+      let new_space = &mut Space::new(space_id, parent_id_opt, owner.clone(), content, handle_opt);
 
       T::BeforeSpaceCreated::before_space_created(owner.clone(), new_space)?;
 
@@ -162,6 +184,7 @@ decl_module! {
       let owner = ensure_signed(origin)?;
 
       let has_updates =
+        update.parent_id.is_some() ||
         update.handle.is_some() ||
         update.content.is_some() ||
         update.hidden.is_some();
@@ -181,11 +204,33 @@ decl_module! {
       let mut new_history_record = SpaceHistoryRecord {
         edited: WhoAndWhen::<T>::new(owner.clone()),
         old_data: SpaceUpdate {
+            parent_id: None,
             handle: None,
             content: None,
             hidden: None
         }
       };
+
+      // TODO: add tests for this case
+      if let Some(parent_id_opt) = update.parent_id {
+        if parent_id_opt != space.parent_id {
+
+          if let Some(parent_id) = parent_id_opt {
+            let parent_space = Self::require_space(parent_id)?;
+
+            Self::ensure_account_has_space_permission(
+              owner.clone(),
+              &parent_space,
+              SpacePermission::CreateSubspaces,
+              Error::<T>::NoPermissionToCreateSubspaces.into()
+            )?;
+          }
+
+          new_history_record.old_data.parent_id = Some(space.parent_id);
+          space.parent_id = parent_id_opt;
+          fields_updated += 1;
+        }
+      }
 
       if let Some(content) = update.content {
         if content != space.content {
@@ -233,6 +278,7 @@ decl_module! {
 impl<T: Trait> Space<T> {
     pub fn new(
         id: SpaceId,
+        parent_id: Option<SpaceId>,
         created_by: T::AccountId,
         content: Content,
         handle: Option<Vec<u8>>,
@@ -241,10 +287,11 @@ impl<T: Trait> Space<T> {
             id,
             created: WhoAndWhen::<T>::new(created_by.clone()),
             updated: None,
-            hidden: false,
             owner: created_by,
+            parent_id,
             handle,
             content,
+            hidden: false,
             posts_count: 0,
             followers_count: 0,
             edit_history: Vec::new(),
