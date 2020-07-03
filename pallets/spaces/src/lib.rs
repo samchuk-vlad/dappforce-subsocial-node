@@ -330,10 +330,10 @@ impl<T: Trait> Space<T> {
 impl Default for SpaceUpdate {
     fn default() -> Self {
         SpaceUpdate {
+            parent_id: None,
             handle: None,
             content: None,
             hidden: None,
-            parent_id: None
         }
     }
 }
