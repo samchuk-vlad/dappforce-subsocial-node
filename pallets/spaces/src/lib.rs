@@ -96,7 +96,7 @@ decl_error! {
     NotASpaceOwner,
     /// User has no permission to update this space.
     NoPermissionToUpdateSpace,
-    /// User has no permission to create subspaces on this space
+    /// User has no permission to create subspaces in this space
     NoPermissionToCreateSubspaces,
   }
 }
@@ -154,11 +154,11 @@ decl_module! {
 
       // TODO: add tests for this case
       if let Some(parent_id) = parent_id_opt {
-        let space = Self::require_space(parent_id)?;
+        let parent_space = Self::require_space(parent_id)?;
 
         Self::ensure_account_has_space_permission(
           owner.clone(),
-          &space,
+          &parent_space,
           SpacePermission::CreateSubspaces,
           Error::<T>::NoPermissionToCreateSubspaces.into()
         )?;
