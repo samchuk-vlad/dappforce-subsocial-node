@@ -181,7 +181,7 @@ impl<T: Trait> Module<T> {
         Ok(Self::post_by_id(post_id).ok_or(Error::<T>::PostNotFound)?)
     }
 
-    pub fn share_post(
+    fn share_post(
         account: T::AccountId,
         original_post: &mut Post<T>,
         shared_post_id: PostId
@@ -252,5 +252,59 @@ impl<T: Trait> Module<T> {
         }
 
         Ok(())
+    }
+
+    pub(crate) fn create_comment(
+        creator: &T::AccountId,
+        new_post_id: PostId,
+        comment_ext: CommentExt,
+        root_post: &mut Post<T>
+    ) -> DispatchResult {
+        let mut commented_post_id = root_post.id;
+
+        root_post.inc_total_replies();
+
+        if let Some(parent_id) = comment_ext.parent_id {
+            let parent_comment = Self::post_by_id(parent_id).ok_or(Error::<T>::UnknownParentComment)?;
+            ensure!(parent_comment.is_comment(), Error::<T>::NotACommentByParentId);
+
+            let ancestors = Self::get_post_ancestors(parent_id);
+            ensure!(ancestors.len() < T::MaxCommentDepth::get() as usize, Error::<T>::MaxCommentDepthReached);
+
+            commented_post_id = parent_id;
+        }
+
+        T::PostScores::score_root_post_on_new_comment(creator, root_post)?;
+
+        Self::for_each_post_ancestor(commented_post_id, |post| post.inc_total_replies())?;
+        PostById::insert(root_post.id, root_post);
+        Self::mutate_post_by_id(commented_post_id, |post| post.inc_direct_replies())?;
+        ReplyIdsByPostId::mutate(commented_post_id, |ids| ids.push(new_post_id));
+
+        Ok(())
+    }
+
+    pub(crate) fn create_sharing_post(
+        creator: &T::AccountId,
+        new_post_id: PostId,
+        original_post_id: PostId,
+        space: &mut Space<T>
+    ) -> DispatchResult {
+        let original_post = &mut Self::post_by_id(original_post_id)
+            .ok_or(Error::<T>::OriginalPostNotFound)?;
+
+        ensure!(!original_post.is_sharing_post(), Error::<T>::CannotShareSharingPost);
+
+        // Check if it's allowed to share a post from the space of original post.
+        Spaces::ensure_account_has_space_permission(
+            creator.clone(),
+            &original_post.get_space()?,
+            SpacePermission::Share,
+            Error::<T>::NoPermissionToShare.into()
+        )?;
+
+        space.inc_posts();
+
+        Self::share_post(creator.clone(), original_post, new_post_id)
     }
 }

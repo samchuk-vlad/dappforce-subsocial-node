@@ -209,75 +209,33 @@ decl_module! {
       let new_post_id = Self::next_post_id();
       let new_post: Post<T> = Post::new(new_post_id, creator.clone(), space_id_opt, extension, content);
 
-      // Get space from either from space_id_opt or extension if a Comment provided
-      let mut space = new_post.get_space()?;
+      // Get space from either space_id_opt or CommentExt if a comment provided
+      let space = &mut new_post.get_space()?;
       ensure!(!space.hidden, Error::<T>::CannotCreateInHiddenScope);
 
       let root_post = &mut new_post.get_root_post()?;
       ensure!(!root_post.hidden, Error::<T>::CannotCreateInHiddenScope);
 
-      // Check permissions
-      match extension {
-        PostExtension::RegularPost | PostExtension::SharedPost(_) => {
-          Spaces::ensure_account_has_space_permission(
-            creator.clone(),
-            &space,
-            SpacePermission::CreatePosts,
-            Error::<T>::NoPermissionToCreatePosts.into()
-          )?;
-        },
-        PostExtension::Comment(_) => {
-          Spaces::ensure_account_has_space_permission(
-            creator.clone(),
-            &space,
-            SpacePermission::CreateComments,
-            Error::<T>::NoPermissionToCreateComments.into()
-          )?;
-        }
+      // Check whether account has permission to create Post (by extension)
+      let mut permission_to_check = SpacePermission::CreatePosts;
+      let mut error_on_permission_failed = Error::<T>::NoPermissionToCreatePosts;
+
+      if let PostExtension::Comment(_) = extension {
+        permission_to_check = SpacePermission::CreateComments;
+        error_on_permission_failed = Error::<T>::NoPermissionToCreateComments;
       }
 
+      Spaces::ensure_account_has_space_permission(
+        creator.clone(),
+        &space,
+        permission_to_check,
+        error_on_permission_failed.into()
+      )?;
+
       match extension {
-        PostExtension::RegularPost => {
-          space.inc_posts();
-        },
-
-        PostExtension::SharedPost(post_id) => {
-          let original_post = &mut Self::post_by_id(post_id).ok_or(Error::<T>::OriginalPostNotFound)?;
-          ensure!(!original_post.is_sharing_post(), Error::<T>::CannotShareSharingPost);
-
-          // Check if it's allowed to share a post from the space of original post.
-          Spaces::ensure_account_has_space_permission(
-            creator.clone(),
-            &original_post.get_space()?,
-            SpacePermission::Share,
-            Error::<T>::NoPermissionToShare.into()
-          )?;
-
-          space.inc_posts();
-          Self::share_post(creator.clone(), original_post, new_post_id)?;
-        },
-
-        PostExtension::Comment(comment_ext) => {
-          root_post.inc_total_replies();
-          let mut commented_post_id = root_post.id;
-
-          if let Some(parent_id) = comment_ext.parent_id {
-            let parent_comment = Self::post_by_id(parent_id).ok_or(Error::<T>::UnknownParentComment)?;
-            ensure!(parent_comment.is_comment(), Error::<T>::NotACommentByParentId);
-
-            let ancestors = Self::get_post_ancestors(parent_id);
-            ensure!(ancestors.len() < T::MaxCommentDepth::get() as usize, Error::<T>::MaxCommentDepthReached);
-
-            commented_post_id = parent_id;
-          }
-
-          T::PostScores::score_root_post_on_new_comment(creator.clone(), root_post)?;
-
-          Self::for_each_post_ancestor(commented_post_id, |post| post.inc_total_replies())?;
-          PostById::insert(root_post.id, root_post);
-          Self::mutate_post_by_id(commented_post_id, |post| post.inc_direct_replies())?;
-          ReplyIdsByPostId::mutate(commented_post_id, |ids| ids.push(new_post_id));
-        }
+        PostExtension::RegularPost => space.inc_posts(),
+        PostExtension::SharedPost(post_id) => Self::create_sharing_post(&creator, new_post_id, post_id, space)?,
+        PostExtension::Comment(comment_ext) => Self::create_comment(&creator, new_post_id, comment_ext, root_post)?,
       }
 
       if new_post.is_root_post() {
