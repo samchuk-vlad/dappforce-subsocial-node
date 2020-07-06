@@ -44,8 +44,6 @@
     "posts_count": "u16",
     "followers_count": "u32",
 
-    "edit_history": "Vec<SpaceHistoryRecord>",
-
     "score": "i32",
 
     "permissions": "Option<SpacePermissions>"
@@ -57,6 +55,7 @@
     "content": "Option<Content>",
     "hidden": "Option<bool>"
   },
+
 
   "SpaceHistoryRecord": {
     "edited": "WhoAndWhen",
@@ -77,8 +76,6 @@
     "content": "Content",
     "hidden": "bool",
 
-    "edit_history": "Vec<PostHistoryRecord>",
-
     "direct_replies_count": "u16",
     "total_replies_count": "u32",
 
@@ -95,11 +92,6 @@
     "hidden": "Option<bool>"
   },
 
-  "PostHistoryRecord": {
-    "edited": "WhoAndWhen",
-    "old_data": "PostUpdate"
-  },
-
   "PostExtension": {
     "_enum": {
       "RegularPost": "Null",
@@ -111,6 +103,12 @@
   "CommentExt": {
     "parent_id": "Option<PostId>",
     "root_post_id": "PostId"
+  },
+
+
+  "PostHistoryRecord": {
+    "edited": "WhoAndWhen",
+    "old_data": "PostUpdate"
   },
 
 
@@ -127,15 +125,14 @@
     "updated": "Option<WhoAndWhen>",
 
     "username": "Text",
-    "content": "Content",
-
-    "edit_history": "Vec<ProfileHistoryRecord>"
+    "content": "Content"
   },
 
   "ProfileUpdate": {
     "username": "Option<Text>",
     "content": "Option<Content>"
   },
+
 
   "ProfileHistoryRecord": {
     "edited": "WhoAndWhen",
