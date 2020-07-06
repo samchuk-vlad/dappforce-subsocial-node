@@ -871,6 +871,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "df-integration-tests"
+version = "2.0.0-rc4"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-permissions",
+ "pallet-post-history",
+ "pallet-posts",
+ "pallet-profile-follows",
+ "pallet-profile-history",
+ "pallet-profiles",
+ "pallet-reactions",
+ "pallet-roles",
+ "pallet-scores",
+ "pallet-space-follows",
+ "pallet-space-history",
+ "pallet-space-ownership",
+ "pallet-spaces",
+ "pallet-timestamp",
+ "pallet-utils",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "df-traits"
 version = "2.0.0-rc4"
 dependencies = [

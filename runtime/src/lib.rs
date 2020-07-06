@@ -8,7 +8,10 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-use sp_std::prelude::*;
+use sp_std::{
+	prelude::*,
+	iter::FromIterator
+};
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
 	ApplyExtrinsicResult, generic, create_runtime_str, impl_opaque_keys, MultiSignature,
@@ -41,9 +44,9 @@ pub use frame_support::{
 };
 
 use pallet_permissions::{
-	// SpacePermission as SP,
+	SpacePermission as SP,
 	SpacePermissions,
-	// SpacePermissionSet
+	SpacePermissionSet
 };
 
 /// An index to a block.
@@ -269,12 +272,12 @@ impl pallet_utils::Trait for Runtime {
 }
 
 parameter_types! {
-  pub const DefaultSpacePermissions: SpacePermissions = SpacePermissions {
+  pub DefaultSpacePermissions: SpacePermissions = SpacePermissions {
 
     // No permissions disabled by default
     none: None,
 
-    everyone: /*Some(SpacePermissionSet::from_iter(vec![
+    everyone: Some(SpacePermissionSet::from_iter(vec![
 	  SP::ReportUsers,
 
 	  SP::UpdateOwnSubspaces,
@@ -296,12 +299,12 @@ parameter_types! {
 	  SP::Upvote,
 	  SP::Downvote,
 	  SP::Share,
-    ].into_iter()))*/None,
+    ].into_iter())),
 
     // Followers can do everything that everyone else can.
     follower: None,
 
-    space_owner: /*Some(SpacePermissionSet::from_iter(vec![
+    space_owner: Some(SpacePermissionSet::from_iter(vec![
       SP::ManageRoles,
       SP::RepresentSpaceInternally,
       SP::RepresentSpaceExternally,
@@ -326,7 +329,7 @@ parameter_types! {
       SP::BlockSubspaces,
       SP::BlockPosts,
       SP::BlockComments,
-    ].into_iter()))*/None,
+    ].into_iter())),
   };
 }
 

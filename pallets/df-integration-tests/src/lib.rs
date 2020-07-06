@@ -11,19 +11,18 @@ mod tests {
     };
     use sp_core::H256;
     use sp_io::TestExternalities;
-    use sp_std::{
-        collections::btree_set::BTreeSet,
-        iter::FromIterator,
-    };
+    use sp_std::iter::FromIterator;
     use sp_runtime::{
         traits::{BlakeTwo256, IdentityLookup},
         testing::Header,
         Perbill,
     };
+    use frame_system::{self as system};
 
     use pallet_permissions::{
         SpacePermission,
         SpacePermission as SP,
+        SpacePermissionSet,
         SpacePermissions,
     };
     use pallet_posts::{PostId, Post, PostUpdate, PostExtension, CommentExt, Error as PostsError};
@@ -51,6 +50,7 @@ mod tests {
     }
 
     impl system::Trait for TestRuntime {
+        type BaseCallFilter = ();
         type Origin = Origin;
         type Call = ();
         type Index = u64;
@@ -63,10 +63,17 @@ mod tests {
         type Event = ();
         type BlockHashCount = BlockHashCount;
         type MaximumBlockWeight = MaximumBlockWeight;
+        type DbWeight = ();
+        type BlockExecutionWeight = ();
+        type ExtrinsicBaseWeight = ();
+        type MaximumExtrinsicWeight = MaximumBlockWeight;
         type MaximumBlockLength = MaximumBlockLength;
         type AvailableBlockRatio = AvailableBlockRatio;
         type Version = ();
         type ModuleToIndex = ();
+        type AccountData = ();
+        type OnNewAccount = ();
+        type OnKilledAccount = ();
     }
 
     parameter_types! {
@@ -88,12 +95,12 @@ mod tests {
     }
 
     parameter_types! {
-      pub const DefaultSpacePermissions: SpacePermissions = SpacePermissions {
+      pub DefaultSpacePermissions: SpacePermissions = SpacePermissions {
 
         // No permissions disabled by default
         none: None,
 
-        everyone: Some(BTreeSet::from_iter(vec![
+        everyone: Some(SpacePermissionSet::from_iter(vec![
             SP::ReportUsers,
 
             SP::UpdateOwnSubspaces,
@@ -120,7 +127,7 @@ mod tests {
         // Followers can do everything that everyone else can.
         follower: None,
 
-        space_owner: Some(BTreeSet::from_iter(vec![
+        space_owner: Some(SpacePermissionSet::from_iter(vec![
             SP::ManageRoles,
             SP::RepresentSpaceInternally,
             SP::RepresentSpaceExternally,
