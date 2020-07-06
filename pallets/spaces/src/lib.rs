@@ -13,7 +13,7 @@ use frame_system::{self as system, ensure_signed};
 use df_traits::{SpaceForRoles, SpaceForRolesProvider};
 use df_traits::{PermissionChecker, SpaceFollowsProvider};
 use pallet_permissions::{SpacePermission, SpacePermissions, SpacePermissionsContext};
-use pallet_utils::{is_valid_handle_char, Module as Utils, SpaceId, WhoAndWhen, Content};
+use pallet_utils::{Module as Utils, SpaceId, WhoAndWhen, Content};
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Space<T: Trait> {
@@ -55,12 +55,6 @@ pub trait Trait: system::Trait
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
-    /// Minimal length of blog handle
-    type MinHandleLen: Get<u32>;
-
-    /// Maximal length of space handle
-    type MaxHandleLen: Get<u32>;
-
     type Roles: PermissionChecker<AccountId=Self::AccountId>;
 
     type SpaceFollows: SpaceFollowsProvider<AccountId=Self::AccountId>;
@@ -74,14 +68,8 @@ decl_error! {
   pub enum Error for Module<T: Trait> {
     /// Space was not found by id.
     SpaceNotFound,
-    /// Space handle is too short.
-    HandleIsTooShort,
-    /// Space handle is too long.
-    HandleIsTooLong,
     /// Space handle is not unique.
-    HandleIsNotUnique,
-    /// Space handle contains invalid characters.
-    HandleContainsInvalidChars,
+    SpaceHandleIsNotUnique,
     /// Nothing to update in space.
     NoUpdatesForSpace,
     /// Only space owner can manage their space.
@@ -124,12 +112,6 @@ decl_event!(
 decl_module! {
   pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 
-    /// Minimal length of space handle
-    const MinHandleLen: u32 = T::MinHandleLen::get();
-
-    /// Maximal length of space handle
-    const MaxHandleLen: u32 = T::MaxHandleLen::get();
-
     // Initializing errors
     type Error = Error<T>;
 
@@ -149,7 +131,7 @@ decl_module! {
 
       let mut handle_in_lowercase: Vec<u8> = Vec::new();
       if let Some(original_handle) = handle_opt.clone() {
-        handle_in_lowercase = Self::lowercase_and_validate_a_handle(original_handle)?;
+        handle_in_lowercase = Self::lowercase_and_validate_space_handle(original_handle)?;
       }
 
       // TODO: add tests for this case
@@ -247,7 +229,7 @@ decl_module! {
       if let Some(handle_opt) = update.handle {
         if handle_opt != space.handle {
           if let Some(new_handle) = handle_opt.clone() {
-            let handle_in_lowercase = Self::lowercase_and_validate_a_handle(new_handle)?;
+            let handle_in_lowercase = Self::lowercase_and_validate_space_handle(new_handle)?;
             SpaceIdByHandle::insert(handle_in_lowercase, space_id);
           }
           if let Some(old_handle) = space.handle.clone() {
@@ -370,22 +352,11 @@ impl<T: Trait> Module<T> {
         Ok(Self::space_by_id(space_id).ok_or(Error::<T>::SpaceNotFound)?)
     }
 
-    /// Check if a handle length fits into min/max values.
-    /// Lowercase a provided handle.
-    /// Check if a handle consists of valid chars: 0-9, a-z, _.
-    /// Check if a handle is unique across all spaces' handles (required one a storage read).
-    pub fn lowercase_and_validate_a_handle(handle: Vec<u8>) -> Result<Vec<u8>, DispatchError> {
-        // Check min and max lengths of a handle:
-        ensure!(handle.len() >= T::MinHandleLen::get() as usize, Error::<T>::HandleIsTooShort);
-        ensure!(handle.len() <= T::MaxHandleLen::get() as usize, Error::<T>::HandleIsTooLong);
-
-        let handle_in_lowercase = handle.to_ascii_lowercase();
-
-        // Check if a handle consists of valid chars: 0-9, a-z, _.
-        ensure!(handle_in_lowercase.iter().all(|&x| is_valid_handle_char(x)), Error::<T>::HandleContainsInvalidChars);
+    pub fn lowercase_and_validate_space_handle(handle: Vec<u8>) -> Result<Vec<u8>, DispatchError> {
+        let handle_in_lowercase = Utils::<T>::lowercase_and_validate_a_handle(handle)?;
 
         // Check if a handle is unique across all spaces' handles:
-        ensure!(Self::space_id_by_handle(handle_in_lowercase.clone()).is_none(), Error::<T>::HandleIsNotUnique);
+        ensure!(Self::space_id_by_handle(handle_in_lowercase.clone()).is_none(), Error::<T>::SpaceHandleIsNotUnique);
 
         Ok(handle_in_lowercase)
     }

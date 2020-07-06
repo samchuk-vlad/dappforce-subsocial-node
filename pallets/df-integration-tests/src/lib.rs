@@ -88,10 +88,14 @@ mod tests {
 
     parameter_types! {
       pub const IpfsCidLen: u32 = 46;
+      pub const MinHandleLen: u32 = 5;
+      pub const MaxHandleLen: u32 = 50;
     }
 
     impl pallet_utils::Trait for TestRuntime {
         type IpfsCidLen = IpfsCidLen;
+        type MinHandleLen = MinHandleLen;
+        type MaxHandleLen = MaxHandleLen;
     }
 
     parameter_types! {
@@ -183,15 +187,10 @@ mod tests {
         type BeforeAccountUnfollowed = Scores;
     }
 
-    parameter_types! {
-        pub const MinUsernameLen: u32 = 5;
-        pub const MaxUsernameLen: u32 = 50;
-    }
+    parameter_types! {}
 
     impl pallet_profiles::Trait for TestRuntime {
         type Event = ();
-        type MinUsernameLen = MinUsernameLen;
-        type MaxUsernameLen = MaxUsernameLen;
         type AfterProfileUpdated = ProfileHistory;
     }
 
@@ -261,15 +260,10 @@ mod tests {
         type Event = ();
     }
 
-    parameter_types! {
-        pub const MinHandleLen: u32 = 5;
-        pub const MaxHandleLen: u32 = 50;
-    }
+    parameter_types! {}
 
     impl pallet_spaces::Trait for TestRuntime {
         type Event = ();
-        type MinHandleLen = MinHandleLen;
-        type MaxHandleLen = MaxHandleLen;
         type Roles = Roles;
         type SpaceFollows = SpaceFollows;
         type BeforeSpaceCreated = SpaceFollows;
@@ -481,11 +475,11 @@ mod tests {
         Content::IPFS( b"QmRAQB6YaCyidP37UdDnjFY5vQuiaRtqdyoW2CuDgwxkA5".to_vec())
     }
 
-    fn alice_username() -> Vec<u8> {
+    fn alice_handle() -> Vec<u8> {
         b"al_ice".to_vec()
     }
 
-    fn bob_username() -> Vec<u8> {
+    fn bob_handle() -> Vec<u8> {
         b"bob1337".to_vec()
     }
 
@@ -739,25 +733,25 @@ mod tests {
 
     fn _create_profile(
         origin: Option<Origin>,
-        username: Option<Vec<u8>>,
+        handle: Option<Vec<u8>>,
         content: Option<Content>
     ) -> DispatchResult {
         Profiles::create_profile(
             origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
-            username.unwrap_or_else(self::alice_username),
+            handle.unwrap_or_else(self::alice_handle),
             content.unwrap_or_else(self::profile_content_ipfs),
         )
     }
 
     fn _update_profile(
         origin: Option<Origin>,
-        username: Option<Vec<u8>>,
+        handle: Option<Vec<u8>>,
         content: Option<Content>
     ) -> DispatchResult {
         Profiles::update_profile(
             origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
             ProfileUpdate {
-                username,
+                handle,
                 content,
             },
         )
@@ -972,7 +966,7 @@ mod tests {
                 None,
                 Some(Some(handle)),
                 None
-            ), SpacesError::<TestRuntime>::HandleIsTooShort);
+            ), UtilsError::<TestRuntime>::HandleIsTooShort);
         });
     }
 
@@ -987,7 +981,7 @@ mod tests {
                 None,
                 Some(Some(handle)),
                 None
-            ), SpacesError::<TestRuntime>::HandleIsTooLong);
+            ), UtilsError::<TestRuntime>::HandleIsTooLong);
         });
     }
 
@@ -997,7 +991,7 @@ mod tests {
             assert_ok!(_create_default_space());
             // SpaceId 1
             // Try to catch an error creating a space with not unique handle
-            assert_noop!(_create_default_space(), SpacesError::<TestRuntime>::HandleIsNotUnique);
+            assert_noop!(_create_default_space(), SpacesError::<TestRuntime>::SpaceHandleIsNotUnique);
         });
     }
 
@@ -1011,7 +1005,7 @@ mod tests {
                 None,
                 Some(Some(handle)),
                 None
-            ), SpacesError::<TestRuntime>::HandleContainsInvalidChars);
+            ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
     }
 
@@ -1025,7 +1019,7 @@ mod tests {
                 None,
                 Some(Some(handle)),
                 None
-            ), SpacesError::<TestRuntime>::HandleContainsInvalidChars);
+            ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
     }
 
@@ -1039,7 +1033,7 @@ mod tests {
                 None,
                 Some(Some(handle)),
                 None
-            ), SpacesError::<TestRuntime>::HandleContainsInvalidChars);
+            ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
     }
 
@@ -1053,7 +1047,7 @@ mod tests {
                 None,
                 Some(Some(handle)),
                 None
-            ), SpacesError::<TestRuntime>::HandleContainsInvalidChars);
+            ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
     }
 
@@ -1193,7 +1187,7 @@ mod tests {
                         None,
                     )
                 )
-            ), SpacesError::<TestRuntime>::HandleIsTooShort);
+            ), UtilsError::<TestRuntime>::HandleIsTooShort);
         });
     }
 
@@ -1214,7 +1208,7 @@ mod tests {
                         None,
                     )
                 )
-            ), SpacesError::<TestRuntime>::HandleIsTooLong);
+            ), UtilsError::<TestRuntime>::HandleIsTooLong);
         });
     }
 
@@ -1242,7 +1236,7 @@ mod tests {
                         None,
                     )
                 )
-            ), SpacesError::<TestRuntime>::HandleIsNotUnique);
+            ), SpacesError::<TestRuntime>::SpaceHandleIsNotUnique);
         });
     }
 
@@ -1262,7 +1256,7 @@ mod tests {
                         None,
                     )
                 )
-            ), SpacesError::<TestRuntime>::HandleContainsInvalidChars);
+            ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
     }
 
@@ -1282,7 +1276,7 @@ mod tests {
                         None,
                     )
                 )
-            ), SpacesError::<TestRuntime>::HandleContainsInvalidChars);
+            ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
     }
 
@@ -1302,7 +1296,7 @@ mod tests {
                         None,
                     )
                 )
-            ), SpacesError::<TestRuntime>::HandleContainsInvalidChars);
+            ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
     }
 
@@ -1322,7 +1316,7 @@ mod tests {
                         None,
                     )
                 )
-            ), SpacesError::<TestRuntime>::HandleContainsInvalidChars);
+            ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
     }
 
@@ -2681,9 +2675,9 @@ mod tests {
             let profile = Profiles::social_account_by_id(ACCOUNT1).unwrap().profile.unwrap();
             assert_eq!(profile.created.account, ACCOUNT1);
             assert!(profile.updated.is_none());
-            assert_eq!(profile.username, self::alice_username());
+            assert_eq!(profile.handle, self::alice_handle());
             assert_eq!(profile.content, self::profile_content_ipfs());
-            assert_eq!(Profiles::account_by_profile_username(self::alice_username()), Some(ACCOUNT1));
+            assert_eq!(Profiles::account_by_profile_handle(self::alice_handle()), Some(ACCOUNT1));
 
             assert!(ProfileHistory::edit_history(ACCOUNT1).is_empty());
         });
@@ -2712,7 +2706,7 @@ mod tests {
     }
 
     #[test]
-    fn create_profile_should_fail_with_username_is_taken() {
+    fn create_profile_should_fail_with_handle_is_taken() {
         ExtBuilder::build().execute_with(|| {
             assert_ok!(_create_default_profile());
             // AccountId 1
@@ -2720,52 +2714,52 @@ mod tests {
                 Some(Origin::signed(ACCOUNT2)),
                 None,
                 None
-            ), ProfilesError::<TestRuntime>::UsernameIsTaken);
+            ), ProfilesError::<TestRuntime>::ProfileHandleIsNotUnique);
         });
     }
 
     #[test]
-    fn create_profile_should_fail_with_username_too_short() {
+    fn create_profile_should_fail_with_handle_too_short() {
         ExtBuilder::build().execute_with(|| {
-            let username: Vec<u8> = vec![97; (MinUsernameLen::get() - 1) as usize];
+            let handle: Vec<u8> = vec![97; (MinHandleLen::get() - 1) as usize];
 
             assert_ok!(_create_default_profile());
             // AccountId 1
             assert_noop!(_create_profile(
                 Some(Origin::signed(ACCOUNT2)),
-                Some(username),
+                Some(handle),
                 None
-            ), ProfilesError::<TestRuntime>::UsernameIsTooShort);
+            ), UtilsError::<TestRuntime>::HandleIsTooShort);
         });
     }
 
     #[test]
-    fn create_profile_should_fail_with_username_too_long() {
+    fn create_profile_should_fail_with_handle_too_long() {
         ExtBuilder::build().execute_with(|| {
-            let username: Vec<u8> = vec![97; (MaxUsernameLen::get() + 1) as usize];
+            let handle: Vec<u8> = vec![97; (MaxHandleLen::get() + 1) as usize];
 
             assert_ok!(_create_default_profile());
             // AccountId 1
             assert_noop!(_create_profile(
                 Some(Origin::signed(ACCOUNT2)),
-                Some(username),
+                Some(handle),
                 None
-            ), ProfilesError::<TestRuntime>::UsernameIsTooLong);
+            ), UtilsError::<TestRuntime>::HandleIsTooLong);
         });
     }
 
     #[test]
-    fn create_profile_should_fail_with_username_contains_invalid_chars() {
+    fn create_profile_should_fail_with_handle_contains_invalid_chars() {
         ExtBuilder::build().execute_with(|| {
-            let username: Vec<u8> = b"{}sername".to_vec();
+            let handle: Vec<u8> = b"{}sername".to_vec();
 
             assert_ok!(_create_default_profile());
             // AccountId 1
             assert_noop!(_create_profile(
                 Some(Origin::signed(ACCOUNT2)),
-                Some(username),
+                Some(handle),
                 None
-            ), ProfilesError::<TestRuntime>::UsernameContainsInvalidChars);
+            ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
     }
 
@@ -2776,23 +2770,23 @@ mod tests {
             // AccountId 1
             assert_ok!(_update_profile(
                 None,
-                Some(self::bob_username()),
+                Some(self::bob_handle()),
                 Some(self::space_content_ipfs())
             ));
 
             // Check whether profile updated correctly
             let profile = Profiles::social_account_by_id(ACCOUNT1).unwrap().profile.unwrap();
             assert!(profile.updated.is_some());
-            assert_eq!(profile.username, self::bob_username());
+            assert_eq!(profile.handle, self::bob_handle());
             assert_eq!(profile.content, self::space_content_ipfs());
 
             // Check storages
-            assert!(Profiles::account_by_profile_username(self::alice_username()).is_none());
-            assert_eq!(Profiles::account_by_profile_username(self::bob_username()), Some(ACCOUNT1));
+            assert!(Profiles::account_by_profile_handle(self::alice_handle()).is_none());
+            assert_eq!(Profiles::account_by_profile_handle(self::bob_handle()), Some(ACCOUNT1));
 
             // Check whether profile history is written correctly
             let profile_history = ProfileHistory::edit_history(ACCOUNT1)[0].clone();
-            assert_eq!(profile_history.old_data.username, Some(self::alice_username()));
+            assert_eq!(profile_history.old_data.handle, Some(self::alice_handle()));
             assert_eq!(profile_history.old_data.content, Some(self::profile_content_ipfs()));
         });
     }
@@ -2802,7 +2796,7 @@ mod tests {
         ExtBuilder::build().execute_with(|| {
             assert_noop!(_update_profile(
                 None,
-                Some(self::bob_username()),
+                Some(self::bob_handle()),
                 None
             ), ProfilesError::<TestRuntime>::SocialAccountNotFound);
         });
@@ -2814,7 +2808,7 @@ mod tests {
             assert_ok!(ProfileFollows::follow_account(Origin::signed(ACCOUNT1), ACCOUNT2));
             assert_noop!(_update_profile(
                 None,
-                Some(self::bob_username()),
+                Some(self::bob_handle()),
                 None
             ), ProfilesError::<TestRuntime>::AccountHasNoProfile);
         });
@@ -2834,65 +2828,65 @@ mod tests {
     }
 
     #[test]
-    fn update_profile_should_fail_with_username_is_taken() {
+    fn update_profile_should_fail_with_handle_is_taken() {
         ExtBuilder::build().execute_with(|| {
             assert_ok!(_create_default_profile());
             // AccountId 1
             assert_ok!(_create_profile(
                 Some(Origin::signed(ACCOUNT2)),
-                Some(self::bob_username()),
+                Some(self::bob_handle()),
                 None
             ));
             assert_noop!(_update_profile(
                 None,
-                Some(self::bob_username()),
+                Some(self::bob_handle()),
                 None
-            ), ProfilesError::<TestRuntime>::UsernameIsTaken);
+            ), ProfilesError::<TestRuntime>::ProfileHandleIsNotUnique);
         });
     }
 
     #[test]
-    fn update_profile_should_fail_with_username_too_short() {
+    fn update_profile_should_fail_with_handle_too_short() {
         ExtBuilder::build().execute_with(|| {
-            let username: Vec<u8> = vec![97; (MinUsernameLen::get() - 1) as usize];
+            let handle: Vec<u8> = vec![97; (MinHandleLen::get() - 1) as usize];
 
             assert_ok!(_create_default_profile());
             // AccountId 1
             assert_noop!(_update_profile(
                 None,
-                Some(username),
+                Some(handle),
                 None
-            ), ProfilesError::<TestRuntime>::UsernameIsTooShort);
+            ), UtilsError::<TestRuntime>::HandleIsTooShort);
         });
     }
 
     #[test]
-    fn update_profile_should_fail_with_username_too_long() {
+    fn update_profile_should_fail_with_handle_too_long() {
         ExtBuilder::build().execute_with(|| {
-            let username: Vec<u8> = vec![97; (MaxUsernameLen::get() + 1) as usize];
+            let handle: Vec<u8> = vec![97; (MaxHandleLen::get() + 1) as usize];
 
             assert_ok!(_create_default_profile());
             // AccountId 1
             assert_noop!(_update_profile(
                 None,
-                Some(username),
+                Some(handle),
                 None
-            ), ProfilesError::<TestRuntime>::UsernameIsTooLong);
+            ), UtilsError::<TestRuntime>::HandleIsTooLong);
         });
     }
 
     #[test]
-    fn update_profile_should_fail_with_username_contains_invalid_chars() {
+    fn update_profile_should_fail_with_handle_contains_invalid_chars() {
         ExtBuilder::build().execute_with(|| {
-            let username: Vec<u8> = b"{}sername".to_vec();
+            let handle: Vec<u8> = b"{}sername".to_vec();
 
             assert_ok!(_create_default_profile());
             // AccountId 1
             assert_noop!(_update_profile(
                 None,
-                Some(username),
+                Some(handle),
                 None
-            ), ProfilesError::<TestRuntime>::UsernameContainsInvalidChars);
+            ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
     }
 

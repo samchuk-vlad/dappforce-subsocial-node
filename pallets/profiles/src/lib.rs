@@ -3,14 +3,14 @@
 use codec::{Decode, Encode};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure,
-    dispatch::DispatchResult,
+    dispatch::{DispatchResult, DispatchError},
     traits::Get
 };
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 use frame_system::{self as system, ensure_signed};
 
-use pallet_utils::{is_valid_handle_char, Module as Utils, WhoAndWhen, Content};
+use pallet_utils::{Module as Utils, WhoAndWhen, Content};
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct SocialAccount<T: Trait> {
@@ -26,13 +26,13 @@ pub struct Profile<T: Trait> {
     pub created: WhoAndWhen<T>,
     pub updated: Option<WhoAndWhen<T>>,
 
-    pub username: Vec<u8>,
+    pub handle: Vec<u8>,
     pub content: Content
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct ProfileUpdate {
-    pub username: Option<Vec<u8>>,
+    pub handle: Option<Vec<u8>>,
     pub content: Option<Content>,
 }
 
@@ -43,12 +43,6 @@ pub trait Trait: system::Trait
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
-    /// Minimal length of profile username
-    type MinUsernameLen: Get<u32>;
-
-    /// Maximal length of profile username
-    type MaxUsernameLen: Get<u32>;
-
     type AfterProfileUpdated: AfterProfileUpdated<Self>;
 }
 
@@ -58,7 +52,7 @@ decl_storage! {
         pub SocialAccountById get(fn social_account_by_id):
             map hasher(blake2_128_concat) T::AccountId => Option<SocialAccount<T>>;
 
-        pub AccountByProfileUsername get(fn account_by_profile_username):
+        pub AccountByProfileHandle get(fn account_by_profile_handle):
             map hasher(blake2_128_concat) Vec<u8> => Option<T::AccountId>;
     }
 }
@@ -82,27 +76,13 @@ decl_error! {
         NoUpdatesForProfile,
         /// Account has no profile yet.
         AccountHasNoProfile,
-        /// Username is taken.
-        UsernameIsTaken,
-        /// Username is too short.
-        UsernameIsTooShort,
-        /// Username is too long.
-        UsernameIsTooLong,
-        /// Username contains invalid chars.
-        UsernameContainsInvalidChars,
+        /// Profile handle is not unique.
+        ProfileHandleIsNotUnique,
     }
 }
 
 decl_module! {
   pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-
-    // TODO replace with MaxHandleLen
-    /// Minimal length of profile username
-    const MinUsernameLen: u32 = T::MinUsernameLen::get();
-
-    // TODO replace with MinHandleLen
-    /// Maximal length of profile username
-    const MaxUsernameLen: u32 = T::MaxUsernameLen::get();
 
     // Initializing errors
     type Error = Error<T>;
@@ -111,23 +91,25 @@ decl_module! {
     fn deposit_event() = default;
 
     #[weight = 10_000 + T::DbWeight::get().reads_writes(1, 2)]
-    pub fn create_profile(origin, username: Vec<u8>, content: Content) -> DispatchResult {
+    pub fn create_profile(origin, handle: Vec<u8>, content: Content) -> DispatchResult {
       let owner = ensure_signed(origin)?;
+
+      Utils::<T>::is_valid_content(content.clone())?;
 
       let mut social_account = Self::get_or_new_social_account(owner.clone());
       ensure!(social_account.profile.is_none(), Error::<T>::ProfileAlreadyCreated);
-      Self::is_username_valid(username.clone())?;
-      Utils::<T>::is_valid_content(content.clone())?;
+
+      let handle_in_lowercase = Self::lowercase_and_validate_profile_handle(handle.clone())?;
 
       social_account.profile = Some(
         Profile {
           created: WhoAndWhen::<T>::new(owner.clone()),
           updated: None,
-          username: username.clone(),
+          handle: handle,
           content
         }
       );
-      <AccountByProfileUsername<T>>::insert(username, owner.clone());
+      <AccountByProfileHandle<T>>::insert(handle_in_lowercase, owner.clone());
       <SocialAccountById<T>>::insert(owner.clone(), social_account);
 
       Self::deposit_event(RawEvent::ProfileCreated(owner));
@@ -139,7 +121,7 @@ decl_module! {
       let owner = ensure_signed(origin)?;
 
       let has_updates =
-        update.username.is_some() ||
+        update.handle.is_some() ||
         update.content.is_some();
 
       ensure!(has_updates, Error::<T>::NoUpdatesForProfile);
@@ -158,13 +140,16 @@ decl_module! {
         }
       }
 
-      if let Some(username) = update.username {
-        if username != profile.username {
-          Self::is_username_valid(username.clone())?;
-          <AccountByProfileUsername<T>>::remove(profile.username.clone());
-          <AccountByProfileUsername<T>>::insert(username.clone(), owner.clone());
-          old_data.username = Some(profile.username);
-          profile.username = username;
+      if let Some(handle) = update.handle {
+        if handle != profile.handle {
+          let handle_in_lowercase = Self::lowercase_and_validate_profile_handle(handle.clone())?;
+
+          // Note that stored handle is in lowercase unlike profile.handle, but both are valid
+          <AccountByProfileHandle<T>>::remove(profile.handle.clone().to_ascii_lowercase());
+          <AccountByProfileHandle<T>>::insert(handle_in_lowercase, owner.clone());
+
+          old_data.handle = Some(profile.handle);
+          profile.handle = handle;
           is_update_applied = true;
         }
       }
@@ -223,7 +208,7 @@ impl<T: Trait> SocialAccount<T> {
 impl Default for ProfileUpdate {
     fn default() -> Self {
         ProfileUpdate {
-            username: None,
+            handle: None,
             content: None
         }
     }
@@ -242,13 +227,12 @@ impl<T: Trait> Module<T> {
         )
     }
 
-    // TODO replace with code from ::lowercase_and_validate_a_handle()
-    pub fn is_username_valid(username: Vec<u8>) -> DispatchResult {
-        ensure!(Self::account_by_profile_username(username.clone()).is_none(), Error::<T>::UsernameIsTaken);
-        ensure!(username.len() >= T::MinUsernameLen::get() as usize, Error::<T>::UsernameIsTooShort);
-        ensure!(username.len() <= T::MaxUsernameLen::get() as usize, Error::<T>::UsernameIsTooLong);
-        ensure!(username.iter().all(|&x| is_valid_handle_char(x)), Error::<T>::UsernameContainsInvalidChars);
-        Ok(())
+    pub fn lowercase_and_validate_profile_handle(handle: Vec<u8>) -> Result<Vec<u8>, DispatchError> {
+        let handle_in_lowercase = Utils::<T>::lowercase_and_validate_a_handle(handle)?;
+
+        ensure!(Self::account_by_profile_handle(handle_in_lowercase.clone()).is_none(), Error::<T>::ProfileHandleIsNotUnique);
+
+        Ok(handle_in_lowercase)
     }
 }
 

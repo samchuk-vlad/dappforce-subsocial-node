@@ -265,10 +265,14 @@ impl sudo::Trait for Runtime {
 
 parameter_types! {
   pub const IpfsCidLen: u32 = 46;
+  pub const MinHandleLen: u32 = 5;
+  pub const MaxHandleLen: u32 = 50;
 }
 
 impl pallet_utils::Trait for Runtime {
 	type IpfsCidLen = IpfsCidLen;
+	type MinHandleLen = MinHandleLen;
+	type MaxHandleLen = MaxHandleLen;
 }
 
 parameter_types! {
@@ -360,15 +364,10 @@ impl pallet_profile_follows::Trait for Runtime {
 	type BeforeAccountUnfollowed = Scores;
 }
 
-parameter_types! {
-  pub const MinUsernameLen: u32 = 5;
-  pub const MaxUsernameLen: u32 = 50;
-}
+parameter_types! {}
 
 impl pallet_profiles::Trait for Runtime {
 	type Event = Event;
-	type MinUsernameLen = MinUsernameLen;
-	type MaxUsernameLen = MaxUsernameLen;
 	type AfterProfileUpdated = ProfileHistory;
 }
 
@@ -438,15 +437,10 @@ impl pallet_space_ownership::Trait for Runtime {
 	type Event = Event;
 }
 
-parameter_types! {
-  pub const MinHandleLen: u32 = 5;
-  pub const MaxHandleLen: u32 = 50;
-}
+parameter_types! {}
 
 impl pallet_spaces::Trait for Runtime {
 	type Event = Event;
-	type MinHandleLen = MinHandleLen;
-	type MaxHandleLen = MaxHandleLen;
 	type Roles = Roles;
 	type SpaceFollows = SpaceFollows;
 	type BeforeSpaceCreated = SpaceFollows;

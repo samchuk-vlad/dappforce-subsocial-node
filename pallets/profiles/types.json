@@ -11,12 +11,12 @@
     "created": "WhoAndWhen",
     "updated": "Option<WhoAndWhen>",
 
-    "username": "Text",
+    "handle": "Text",
     "content": "Content"
   },
 
   "ProfileUpdate": {
-    "username": "Option<Text>",
+    "handle": "Option<Text>",
     "content": "Option<Content>"
   }
 }

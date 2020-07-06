@@ -67,7 +67,7 @@ impl system::Trait for Test {
 }
 
 parameter_types! {
-  pub const MinimumPeriod: u64 = 5;
+    pub const MinimumPeriod: u64 = 5;
 }
 
 impl pallet_timestamp::Trait for Test {
@@ -77,11 +77,15 @@ impl pallet_timestamp::Trait for Test {
 }
 
 parameter_types! {
-  pub const IpfsCidLen: u32 = 46;
+    pub const IpfsCidLen: u32 = 46;
+    pub const MinHandleLen: u32 = 5;
+    pub const MaxHandleLen: u32 = 50;
 }
 
 impl pallet_utils::Trait for Test {
     type IpfsCidLen = IpfsCidLen;
+    type MinHandleLen = MinHandleLen;
+    type MaxHandleLen = MaxHandleLen;
 }
 
 parameter_types! {

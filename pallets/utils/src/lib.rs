@@ -56,12 +56,24 @@ pub trait Trait: system::Trait
 {
     /// A valid length of IPFS CID in bytes.
     type IpfsCidLen: Get<u32>;
+
+    /// Minimal length of space/profile handle
+    type MinHandleLen: Get<u32>;
+
+    /// Maximal length of space/profile handle
+    type MaxHandleLen: Get<u32>;
 }
 
 decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
         /// A valid length of IPFS CID in bytes.
         const IpfsCidLen: u32 = T::IpfsCidLen::get();
+
+        /// Minimal length of space/profile handle
+        const MinHandleLen: u32 = T::MinHandleLen::get();
+
+        /// Maximal length of space/profile handle
+        const MaxHandleLen: u32 = T::MaxHandleLen::get();
     }
 }
 
@@ -73,6 +85,12 @@ decl_error! {
         RawContentTypeNotSupported,
         /// Unsupported yet type of content 'Hyper' is used
         HypercoreContentTypeNotSupported,
+        /// Space handle is too short.
+        HandleIsTooShort,
+        /// Space handle is too long.
+        HandleIsTooLong,
+        /// Space handle contains invalid characters.
+        HandleContainsInvalidChars,
     }
 }
 
@@ -89,14 +107,6 @@ pub fn log_2(x: u32) -> Option<u32> {
             - 1
         )
     } else { None }
-}
-
-/// An example of a valid handle: `good_handle`.
-pub fn is_valid_handle_char(c: u8) -> bool {
-    match c {
-        b'0'..=b'9' | b'a'..=b'z' | b'_' => true,
-        _ => false,
-    }
 }
 
 pub fn vec_remove_on<F: PartialEq>(vector: &mut Vec<F>, element: F) {
@@ -132,5 +142,30 @@ impl<T: Trait> Module<T> {
         }
 
         Ok(users_set)
+    }
+
+    /// An example of a valid handle: `good_handle`.
+    fn is_valid_handle_char(c: u8) -> bool {
+        match c {
+            b'0'..=b'9' | b'a'..=b'z' | b'_' => true,
+            _ => false,
+        }
+    }
+
+    /// Check if a handle length fits into min/max values.
+    /// Lowercase a provided handle.
+    /// Check if a handle consists of valid chars: 0-9, a-z, _.
+    /// Check if a handle is unique across all spaces' handles (required one a storage read).
+    pub fn lowercase_and_validate_a_handle(handle: Vec<u8>) -> Result<Vec<u8>, DispatchError> {
+        // Check min and max lengths of a handle:
+        ensure!(handle.len() >= T::MinHandleLen::get() as usize, Error::<T>::HandleIsTooShort);
+        ensure!(handle.len() <= T::MaxHandleLen::get() as usize, Error::<T>::HandleIsTooLong);
+
+        let handle_in_lowercase = handle.to_ascii_lowercase();
+
+        // Check if a handle consists of valid chars: 0-9, a-z, _.
+        ensure!(handle_in_lowercase.iter().all(|&x| Self::is_valid_handle_char(x)), Error::<T>::HandleContainsInvalidChars);
+
+        Ok(handle_in_lowercase)
     }
 }

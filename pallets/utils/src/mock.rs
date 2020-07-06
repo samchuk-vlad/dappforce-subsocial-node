@@ -62,10 +62,14 @@ impl pallet_timestamp::Trait for Test {
 
 parameter_types! {
   pub const IpfsCidLen: u32 = 46;
+  pub const MinHandleLen: u32 = 5;
+  pub const MaxHandleLen: u32 = 50;
 }
 
 impl Trait for Test {
     type IpfsCidLen = IpfsCidLen;
+    type MinHandleLen = MinHandleLen;
+    type MaxHandleLen = MaxHandleLen;
 }
 
 type System = system::Module<Test>;
