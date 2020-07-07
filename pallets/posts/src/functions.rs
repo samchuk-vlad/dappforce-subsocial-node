@@ -274,7 +274,7 @@ impl<T: Trait> Module<T> {
             commented_post_id = parent_id;
         }
 
-        T::PostScores::score_root_post_on_new_comment(creator, root_post)?;
+        T::PostScores::score_root_post_on_new_comment(creator.clone(), root_post)?;
 
         Self::for_each_post_ancestor(commented_post_id, |post| post.inc_total_replies())?;
         PostById::insert(root_post.id, root_post);

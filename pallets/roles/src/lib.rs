@@ -180,12 +180,12 @@ decl_module! {
 
       Self::ensure_role_manager(who.clone(), role.space_id)?;
 
-      let mut fields_updated = 0;
+      let mut is_update_applied = false;
 
       if let Some(disabled) = update.disabled {
         if disabled != role.disabled {
           role.set_disabled(disabled)?;
-          fields_updated += 1;
+          is_update_applied = true;
         }
       }
 
@@ -194,7 +194,7 @@ decl_module! {
           Utils::<T>::is_valid_content(content.clone())?;
 
           role.content = content;
-          fields_updated += 1;
+          is_update_applied = true;
         }
       }
 
@@ -204,12 +204,12 @@ decl_module! {
 
           if !permissions_diff.is_empty() {
             role.permissions = permissions;
-            fields_updated += 1;
+            is_update_applied = true;
           }
         }
       }
 
-      if fields_updated > 0 {
+      if is_update_applied {
         role.updated = Some(WhoAndWhen::<T>::new(who.clone()));
 
         <RoleById<T>>::insert(role_id, role);

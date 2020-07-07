@@ -202,7 +202,7 @@ decl_module! {
         Error::<T>::NoPermissionToUpdateSpace.into()
       )?;
 
-      let mut fields_updated = 0;
+      let mut is_update_applied = false;
       let mut old_data = SpaceUpdate::default();
 
       // TODO: add tests for this case
@@ -222,7 +222,7 @@ decl_module! {
 
           old_data.parent_id = Some(space.parent_id);
           space.parent_id = parent_id_opt;
-          fields_updated += 1;
+          is_update_applied = true;
         }
       }
 
@@ -232,7 +232,7 @@ decl_module! {
 
           old_data.content = Some(space.content);
           space.content = content;
-          fields_updated += 1;
+          is_update_applied = true;
         }
       }
 
@@ -240,7 +240,7 @@ decl_module! {
         if hidden != space.hidden {
           old_data.hidden = Some(space.hidden);
           space.hidden = hidden;
-          fields_updated += 1;
+          is_update_applied = true;
         }
       }
 
@@ -255,12 +255,12 @@ decl_module! {
           }
           old_data.handle = Some(space.handle);
           space.handle = handle_opt;
-          fields_updated += 1;
+          is_update_applied = true;
         }
       }
 
       // Update this space only if at least one field should be updated:
-      if fields_updated > 0 {
+      if is_update_applied {
         space.updated = Some(WhoAndWhen::<T>::new(owner.clone()));
 
         <SpaceById<T>>::insert(space_id, space.clone());

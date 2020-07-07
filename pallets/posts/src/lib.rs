@@ -294,7 +294,7 @@ decl_module! {
       )?;
 
       let mut space_opt: Option<Space<T>> = None;
-      let mut fields_updated = 0;
+      let mut is_update_applied = false;
       let mut old_data = PostUpdate::default();
 
       if let Some(content) = update.content {
@@ -302,7 +302,7 @@ decl_module! {
           Utils::<T>::is_valid_content(content.clone())?;
           old_data.content = Some(post.content);
           post.content = content;
-          fields_updated += 1;
+          is_update_applied = true;
         }
       }
 
@@ -340,7 +340,7 @@ decl_module! {
 
           old_data.hidden = Some(post.hidden);
           post.hidden = hidden;
-          fields_updated += 1;
+          is_update_applied = true;
         }
       }
 
@@ -362,13 +362,13 @@ decl_module! {
             PostIdsBySpaceId::mutate(space_id, |ids| ids.push(post_id));
             old_data.space_id = post.space_id;
             post.space_id = Some(space_id);
-            fields_updated += 1;
+            is_update_applied = true;
           }
         }
       }
 
       // Update this post only if at least one field should be updated:
-      if fields_updated > 0 {
+      if is_update_applied {
         post.updated = Some(WhoAndWhen::<T>::new(editor.clone()));
 
         if let Some(space) = space_opt {
