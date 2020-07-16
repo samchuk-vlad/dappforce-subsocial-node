@@ -48,7 +48,6 @@ use pallet_permissions::{
 	SpacePermissions,
 	SpacePermissionSet
 };
-// use pallet_spaces::Space;
 use pallet_utils::SpaceId;
 
 /// An index to a block.
@@ -624,10 +623,11 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl spaces_runtime_api::SpacesApi<Block> for Runtime {
-        // fn get_last_space() -> Option<Space> {
-        //     Spaces::get_last_space()
-        // }
+	impl spaces_runtime_api::SpacesApi<Block, Space> for Runtime
+	{
+        fn get_last_space() -> Option<Space> {
+            Spaces::get_last_space()
+        }
 
         fn get_hidden_space_ids(limit_opt: Option<u64>, offset_opt: Option<u64>) -> Vec<SpaceId> {
         	Spaces::get_hidden_space_ids(limit_opt, offset_opt)

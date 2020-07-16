@@ -7,12 +7,16 @@ use sp_blockchain::HeaderBackend;
 use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 use std::sync::Arc;
 use spaces_runtime_api::SpacesApi as SpacesRuntimeApi;
+use codec::Codec;
 
-// use pallet_spaces::Space;
 use pallet_utils::SpaceId;
+use sp_runtime::traits::{MaybeDisplay, MaybeFromStr};
 
 #[rpc]
-pub trait SpacesApi<BlockHash/*, T: pallet_space::Trait*/> {
+pub trait SpacesApi<BlockHash, Space> {
+    #[rpc(name = "spaces_getLastSpaceId")]
+    fn get_last_space_id(&self, at: Option<BlockHash>) -> Result<Option<Space>>;
+
     #[rpc(name = "spaces_getHiddenSpaceIds")]
     fn get_hidden_space_ids(
         &self,
@@ -20,9 +24,6 @@ pub trait SpacesApi<BlockHash/*, T: pallet_space::Trait*/> {
         limit_opt: Option<u64>,
         offset_opt: Option<u64>
     ) -> Result<Vec<SpaceId>>;
-
-    // #[rpc(name = "spaces_getLastSpaceId")]
-    // fn get_last_space_id(&self, at: Option<BlockHash>) -> Result<Option<Space<T>>>;
 }
 
 pub struct Spaces<C, M> {
@@ -39,27 +40,28 @@ impl<C, M> Spaces<C, M> {
     }
 }
 
-impl<C, Block/*, T: pallet_spaces::Trait*/> SpacesApi<<Block as BlockT>::Hash/*, T*/> for Spaces<C, Block>
+impl<C, Block, Space> SpacesApi<<Block as BlockT>::Hash, Space> for Spaces<C, Block>
     where
         Block: BlockT,
+        Space: core::fmt::Debug + Codec + MaybeDisplay + MaybeFromStr,
         C: Send + Sync + 'static,
         C: ProvideRuntimeApi<Block>,
         C: HeaderBackend<Block>,
-        C::Api: SpacesRuntimeApi<Block>,
+        C::Api: SpacesRuntimeApi<Block, Space>,
 {
-    // fn get_last_space_id(&self, at: Option<<Block as BlockT>::Hash>) -> Result<Option<Space<T>>> {
-    //     let api = self.client.runtime_api();
-    //     let at = BlockId::hash(at.unwrap_or_else(||
-    //         // If the block hash is not supplied assume the best block.
-    //         self.client.info().best_hash));
-    //
-    //     let runtime_api_result = api.get_last_space(&at);
-    //     runtime_api_result.map_err(|e| RpcError {
-    //         code: ErrorCode::ServerError(9876), // No real reason for this value
-    //         message: "Something wrong".into(),
-    //         data: Some(format!("{:?}", e).into()),
-    //     })
-    // }
+    fn get_last_space_id(&self, at: Option<<Block as BlockT>::Hash>) -> Result<Option<Space>> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or_else(||
+            // If the block hash is not supplied assume the best block.
+            self.client.info().best_hash));
+
+        let runtime_api_result = api.get_last_space(&at);
+        runtime_api_result.map_err(|e| RpcError {
+            code: ErrorCode::ServerError(9876), // No real reason for this value
+            message: "Something wrong".into(),
+            data: Some(format!("{:?}", e).into()),
+        })
+    }
 
     fn get_hidden_space_ids(
         &self,
