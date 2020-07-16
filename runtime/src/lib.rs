@@ -48,6 +48,8 @@ use pallet_permissions::{
 	SpacePermissions,
 	SpacePermissionSet
 };
+// use pallet_spaces::Space;
+use pallet_utils::SpaceId;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -437,7 +439,9 @@ impl pallet_space_ownership::Trait for Runtime {
 	type Event = Event;
 }
 
-parameter_types! {}
+parameter_types! {
+	pub const DefaultRPCLimit: u64 = 20;
+}
 
 impl pallet_spaces::Trait for Runtime {
 	type Event = Event;
@@ -445,6 +449,7 @@ impl pallet_spaces::Trait for Runtime {
 	type SpaceFollows = SpaceFollows;
 	type BeforeSpaceCreated = SpaceFollows;
 	type AfterSpaceUpdated = SpaceHistory;
+	type DefaultRPCLimit = DefaultRPCLimit;
 }
 
 parameter_types! {}
@@ -618,4 +623,14 @@ impl_runtime_apis! {
 			None
 		}
 	}
+
+	impl spaces_runtime_api::SpacesApi<Block> for Runtime {
+        // fn get_last_space() -> Option<Space> {
+        //     Spaces::get_last_space()
+        // }
+
+        fn get_hidden_space_ids(limit_opt: Option<u64>, offset_opt: Option<u64>) -> Vec<SpaceId> {
+        	Spaces::get_hidden_space_ids(limit_opt, offset_opt)
+        }
+    }
 }

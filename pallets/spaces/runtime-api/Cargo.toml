@@ -1,0 +1,45 @@
+[package]
+name = 'spaces-runtime-api'
+version = '0.1.0'
+authors = ['DappForce <dappforce@pm.me>']
+edition = '2018'
+license = 'GPL-3.0-only'
+homepage = 'https://subsocial.network'
+repository = 'https://github.com/dappforce/dappforce-subsocial-node'
+description = 'Spaces pallet custom Runtime API'
+keywords = ['blockchain', 'cryptocurrency', 'social-network', 'news-feed', 'marketplace']
+categories = ['cryptography::cryptocurrencies']
+
+[dependencies.sp-api]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
+
+[dependencies.sp-std]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
+
+[dependencies.pallet-spaces]
+default-features = false
+path = '..'
+version = '2.0.0-rc4'
+
+[dependencies.pallet-utils]
+default-features = false
+path = '../../utils'
+version = '2.0.0-rc4'
+
+[dev-dependencies]
+serde_json = '1.0.41'
+
+[features]
+default = ['std']
+std = [
+	'sp-api/std',
+	'sp-std/std',
+	'pallet-spaces/std',
+	'pallet-utils/std',
+]

@@ -39,6 +39,7 @@ std = [
     'pallet-space-ownership/std',
     'pallet-space-history/std',
     'pallet-utils/std',
+    'spaces-runtime-api/std',
 ]
 [dependencies.aura]
 default-features = false
@@ -260,6 +261,10 @@ version = '2.0.0-rc4'
 default-features = false
 path = '../pallets/utils'
 version = '2.0.0-rc4'
+
+[dependencies.spaces-runtime-api]
+default-features = false
+path = '../pallets/spaces/runtime-api'
 
 [package]
 name = 'subsocial-runtime'
