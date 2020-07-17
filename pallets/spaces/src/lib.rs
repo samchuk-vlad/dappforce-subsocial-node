@@ -46,11 +46,13 @@ pub struct SpaceUpdate {
     pub handle: Option<Option<Vec<u8>>>,
     pub content: Option<Content>,
     pub hidden: Option<bool>,
+    pub permissions: Option<Option<SpacePermissions>>,
 }
 
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait
     + pallet_utils::Trait
+    + pallet_permissions::Trait
 {
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
@@ -171,7 +173,8 @@ decl_module! {
         update.parent_id.is_some() ||
         update.handle.is_some() ||
         update.content.is_some() ||
-        update.hidden.is_some();
+        update.hidden.is_some() ||
+        update.permissions.is_some();
 
       ensure!(has_updates, Error::<T>::NoUpdatesForSpace);
 
@@ -222,6 +225,27 @@ decl_module! {
         if hidden != space.hidden {
           old_data.hidden = Some(space.hidden);
           space.hidden = hidden;
+          is_update_applied = true;
+        }
+      }
+
+      if let Some(overrides_opt) = update.permissions {
+        if space.permissions != overrides_opt {
+          old_data.permissions = Some(space.permissions);
+
+          if let Some(mut overrides) = overrides_opt.clone() {
+            overrides.none = overrides.none.map(
+              |mut none_permissions_set| {
+                none_permissions_set.extend(T::DefaultSpacePermissions::get().none.unwrap_or_default());
+                none_permissions_set
+              }
+            );
+
+            space.permissions = Some(overrides);
+          } else {
+            space.permissions = overrides_opt;
+          }
+
           is_update_applied = true;
         }
       }
@@ -334,6 +358,7 @@ impl Default for SpaceUpdate {
             handle: None,
             content: None,
             hidden: None,
+            permissions: None,
         }
     }
 }

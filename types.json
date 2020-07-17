@@ -1,4 +1,7 @@
 {
+  "Address": "AccountId",
+  "LookupSource": "AccountId",
+  "IpfsCid": "Text",
   "SpaceId": "u64",
 
   "WhoAndWhen": {
@@ -17,7 +20,7 @@
   "Content": {
     "_enum": {
       "None": "Null",
-      "IPFS": "Text",
+      "IPFS": "IpfsCid",
       "Hyper": "Text"
     }
   },
@@ -54,7 +57,8 @@
     "parent_id": "Option<Option<SpaceId>>",
     "handle": "Option<Option<Text>>",
     "content": "Option<Content>",
-    "hidden": "Option<bool>"
+    "hidden": "Option<bool>",
+    "permissions": "Option<Option<SpacePermissions>>"
   },
 
 

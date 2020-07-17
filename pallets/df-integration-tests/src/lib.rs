@@ -437,13 +437,15 @@ mod tests {
         parent_id: Option<Option<SpaceId>>,
         handle: Option<Option<Vec<u8>>>,
         content: Option<Content>,
-        hidden: Option<bool>
+        hidden: Option<bool>,
+        permissions: Option<Option<SpacePermissions>>
     ) -> SpaceUpdate {
         SpaceUpdate {
             parent_id,
             handle,
             content,
-            hidden
+            hidden,
+            permissions
         }
     }
 
@@ -565,7 +567,7 @@ mod tests {
         Spaces::update_space(
             origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
             space_id.unwrap_or(SPACE1),
-            update.unwrap_or_else(|| self::space_update(None, None, None, None)),
+            update.unwrap_or_else(|| self::space_update(None, None, None, None, None)),
         )
     }
 
@@ -1082,6 +1084,12 @@ mod tests {
                         Some(Some(handle.clone())),
                         Some(content_ipfs.clone()),
                         Some(true),
+                        Some(Some(SpacePermissions {
+                            none: None,
+                            everyone: None,
+                            follower: None,
+                            space_owner: None
+                        })),
                     )
                 )
             ));
@@ -1110,6 +1118,7 @@ mod tests {
                     b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec()
                 )),
                 Some(true),
+                None,
             );
 
             assert_ok!(_update_space(
@@ -1143,6 +1152,7 @@ mod tests {
                         Some(Some(handle)),
                         None,
                         None,
+                        None,
                     )
                 )
             ), SpacesError::<TestRuntime>::SpaceNotFound);
@@ -1162,6 +1172,7 @@ mod tests {
                     self::space_update(
                         None,
                         Some(Some(handle)),
+                        None,
                         None,
                         None,
                     )
@@ -1185,6 +1196,7 @@ mod tests {
                         Some(Some(handle)),
                         None,
                         None,
+                        None,
                     )
                 )
             ), UtilsError::<TestRuntime>::HandleIsTooShort);
@@ -1204,6 +1216,7 @@ mod tests {
                     self::space_update(
                         None,
                         Some(Some(handle)),
+                        None,
                         None,
                         None,
                     )
@@ -1234,6 +1247,7 @@ mod tests {
                         Some(Some(handle)),
                         None,
                         None,
+                        None,
                     )
                 )
             ), SpacesError::<TestRuntime>::SpaceHandleIsNotUnique);
@@ -1252,6 +1266,7 @@ mod tests {
                     self::space_update(
                         None,
                         Some(Some(handle)),
+                        None,
                         None,
                         None,
                     )
@@ -1274,6 +1289,7 @@ mod tests {
                         Some(Some(handle)),
                         None,
                         None,
+                        None,
                     )
                 )
             ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
@@ -1294,6 +1310,7 @@ mod tests {
                         Some(Some(handle)),
                         None,
                         None,
+                        None,
                     )
                 )
             ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
@@ -1312,6 +1329,7 @@ mod tests {
                     self::space_update(
                         None,
                         Some(Some(handle)),
+                        None,
                         None,
                         None,
                     )
@@ -1335,6 +1353,7 @@ mod tests {
                         None,
                         Some(content_ipfs),
                         None,
+                        None,
                     )
                 )
             ), UtilsError::<TestRuntime>::InvalidIpfsCid);
@@ -1351,6 +1370,7 @@ mod tests {
                     b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec()
                 )),
                 Some(true),
+                None,
             );
 
             assert_ok!(_delete_default_role());
@@ -1762,7 +1782,7 @@ mod tests {
             assert_ok!(_update_space(
                 None,
                 None,
-                Some(self::space_update(None, None, None, Some(true)))
+                Some(self::space_update(None, None, None, Some(true), None))
             ));
 
             assert_noop!(_create_default_comment(), PostsError::<TestRuntime>::CannotCreateInHiddenScope);
@@ -1963,7 +1983,7 @@ mod tests {
             assert_ok!(_update_space(
                 None,
                 None,
-                Some(self::space_update(None, None, None, Some(true)))
+                Some(self::space_update(None, None, None, Some(true), None))
             ));
 
             assert_noop!(_create_default_post_reaction(), ReactionsError::<TestRuntime>::CannotReactWhenSpaceHidden);
@@ -2940,7 +2960,7 @@ mod tests {
             assert_ok!(_update_space(
                 None,
                 None,
-                Some(self::space_update(None, None, None, Some(true)))
+                Some(self::space_update(None, None, None, Some(true), None))
             ));
 
             assert_noop!(_default_follow_space(), SpaceFollowsError::<TestRuntime>::CannotFollowHiddenSpace);
