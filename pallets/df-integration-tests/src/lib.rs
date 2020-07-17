@@ -260,7 +260,9 @@ mod tests {
         type Event = ();
     }
 
-    parameter_types! {}
+    parameter_types! {
+        pub const DefaultRPCLimit: u64 = 20;
+    }
 
     impl pallet_spaces::Trait for TestRuntime {
         type Event = ();
@@ -268,6 +270,7 @@ mod tests {
         type SpaceFollows = SpaceFollows;
         type BeforeSpaceCreated = SpaceFollows;
         type AfterSpaceUpdated = SpaceHistory;
+        type DefaultRPCLimit = DefaultRPCLimit;
     }
 
     parameter_types! {}
