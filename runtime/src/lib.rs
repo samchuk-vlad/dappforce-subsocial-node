@@ -468,6 +468,17 @@ parameter_types! {}
 
 impl pallet_space_history::Trait for Runtime {}
 
+parameter_types! {
+	pub const MaxSessionKeysPerAccount: u16 = 10;
+}
+
+impl session_keys::Trait for Runtime {
+	type Event = Event;
+	type Call = Call;
+	type Currency = Balances;
+	type MaxSessionKeysPerAccount = MaxSessionKeysPerAccount;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -497,6 +508,7 @@ construct_runtime!(
 		SpaceHistory: pallet_space_history::{Module, Storage},
 		SpaceOwnership: pallet_space_ownership::{Module, Call, Storage, Event<T>},
 		Spaces: pallet_spaces::{Module, Call, Storage, Event<T>},
+		SessionKeys: session_keys::{Module, Call, Storage, Event<T>},
 	}
 );
 

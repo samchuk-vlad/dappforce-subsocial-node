@@ -276,6 +276,12 @@ default-features = false
 path = '../pallets/utils'
 version = '2.0.0-rc4'
 
+[dependencies.session-keys]
+default-features = false
+package = 'pallet-session-keys'
+path = '../pallets/session-keys'
+version = '2.0.0-rc4'
+
 [package]
 name = 'subsocial-runtime'
 version = '2.0.0-rc4'
