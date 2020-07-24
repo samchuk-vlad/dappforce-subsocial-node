@@ -1,6 +1,6 @@
 use sp_core::{Pair, Public, sr25519};
 use subsocial_runtime::{
-	AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig,
+	AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig, SessionKeysConfig,
 	SudoConfig, SystemConfig, WASM_BINARY, Signature, currency::DOLLARS,
 };
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -57,6 +57,7 @@ pub fn development_config() -> ChainSpec {
 				get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
 				get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
 			],
+			get_account_id_from_seed::<sr25519::Public>("Alice"),
 			true,
 		),
 		vec![],
@@ -92,6 +93,7 @@ pub fn local_testnet_config() -> ChainSpec {
 				get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
 				get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 			],
+			get_account_id_from_seed::<sr25519::Public>("Alice"),
 			true,
 		),
 		vec![],
@@ -123,6 +125,7 @@ pub fn subsocial_testnet_config() -> ChainSpec {
 				hex!["5a22d4cc8281e5b74fe257c5b21010aa81a7846128eca2b11dbd42dd08cb3b5b"].into(),
 				hex!["ca0f8b01b79d254f871f8f375d5d4b14a964f59741f0b3dc9493473ec63f0c7c"].into()
 			],
+			get_account_id_from_seed::<sr25519::Public>("Alice"),
 			true,
 		),
 		vec![],
@@ -138,6 +141,7 @@ pub fn subsocial_testnet_config() -> ChainSpec {
 fn testnet_genesis(initial_authorities: Vec<(AuraId, GrandpaId)>,
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
+	treasury_account_id: AccountId,
 	_enable_println: bool) -> GenesisConfig {
 	GenesisConfig {
 		system: Some(SystemConfig {
@@ -155,6 +159,9 @@ fn testnet_genesis(initial_authorities: Vec<(AuraId, GrandpaId)>,
 		}),
 		sudo: Some(SudoConfig {
 			key: root_key,
+		}),
+		session_keys: Some(SessionKeysConfig {
+			treasury_account: treasury_account_id,
 		}),
 	}
 }

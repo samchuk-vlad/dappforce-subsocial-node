@@ -36,7 +36,7 @@ pub use balances::Call as BalancesCall;
 pub use sp_runtime::{Permill, Perbill};
 pub use frame_support::{
 	construct_runtime, parameter_types, StorageValue,
-	traits::{KeyOwnerProofSystem, Randomness},
+	traits::{KeyOwnerProofSystem, Randomness, Currency, Imbalance, OnUnbalanced},
 	weights::{
 		Weight, IdentityFee,
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
@@ -140,6 +140,19 @@ pub fn native_version() -> NativeVersion {
 	NativeVersion {
 		runtime_version: VERSION,
 		can_author_with: Default::default(),
+	}
+}
+
+type NegativeImbalance = <Balances as Currency<AccountId>>::NegativeImbalance;
+
+pub struct DealWithFees;
+impl OnUnbalanced<NegativeImbalance> for DealWithFees {
+	fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item=NegativeImbalance>) {
+		if let Some(fees) = fees_then_tips.next() {
+			let mut fees_with_maybe_tips = fees;
+			fees_with_maybe_tips.maybe_subsume(fees_then_tips.next());
+			SessionKeys::on_unbalanced(fees_with_maybe_tips);
+		}
 	}
 }
 
@@ -265,7 +278,7 @@ parameter_types! {
 
 impl transaction_payment::Trait for Runtime {
     type Currency = Balances;
-    type OnTransactionPayment = ();
+    type OnTransactionPayment = DealWithFees;
     type TransactionByteFee = TransactionByteFee;
     type WeightToFee = IdentityFee<Balance>;
     type FeeMultiplierUpdate =
@@ -508,7 +521,7 @@ construct_runtime!(
 		SpaceHistory: pallet_space_history::{Module, Storage},
 		SpaceOwnership: pallet_space_ownership::{Module, Call, Storage, Event<T>},
 		Spaces: pallet_spaces::{Module, Call, Storage, Event<T>},
-		SessionKeys: session_keys::{Module, Call, Storage, Event<T>},
+		SessionKeys: session_keys::{Module, Call, Storage, Config<T>, Event<T>},
 	}
 );
 

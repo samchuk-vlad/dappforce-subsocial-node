@@ -3346,13 +3346,12 @@ dependencies = [
 name = "pallet-session-keys"
 version = "2.0.0-rc4"
 dependencies = [
- "df-traits",
  "frame-support",
  "frame-system",
- "impl-trait-for-tuples",
  "pallet-permissions",
  "pallet-utils",
  "parity-scale-codec",
+ "serde",
  "sp-runtime",
  "sp-std",
 ]

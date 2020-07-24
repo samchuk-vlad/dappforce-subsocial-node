@@ -9,7 +9,7 @@ use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure,
     weights::GetDispatchInfo,
     dispatch::{DispatchError, DispatchResult, PostDispatchInfo},
-    traits::{Currency, Get, ReservableCurrency},
+    traits::{Currency, Get, ReservableCurrency, Imbalance, OnUnbalanced},
     Parameter,
 };
 use frame_system::{self as system, ensure_signed};
@@ -17,6 +17,7 @@ use frame_system::{self as system, ensure_signed};
 use pallet_utils::WhoAndWhen;
 
 type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
+type NegativeImbalanceOf<T> = <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::NegativeImbalance;
 
 // TODO define session key permissions
 
@@ -59,13 +60,15 @@ pub trait Trait: system::Trait + pallet_utils::Trait {
 
 decl_event!(
     pub enum Event<T> where
-        <T as system::Trait>::AccountId
+        <T as system::Trait>::AccountId,
+        Balance = BalanceOf<T>
     {
         SessionKeyAdded(/* owner */ AccountId, /* session key */ AccountId),
         SessionKeyRemoved(/* session key */ AccountId),
         AllSessionKeysRemoved(/* owner */ AccountId),
         /// A proxy was executed correctly, with the given result.
 		ProxyExecuted(DispatchResult),
+		Deposit(Balance),
     }
 );
 
@@ -106,6 +109,18 @@ decl_storage! {
         pub KeysByOwner get(fn keys_by_owner):
             map hasher(twox_64_concat) /* primary owner */ T::AccountId
             => /* session keys */ Vec<T::AccountId>;
+
+        TreasuryAccount build(|config| config.treasury_account.clone()): T::AccountId;
+    }
+    add_extra_genesis {
+        config(treasury_account): T::AccountId;
+        build(|config| {
+			// Create Treasury account
+			let _ = T::Currency::make_free_balance_be(
+				&config.treasury_account,
+				T::Currency::minimum_balance(),
+			);
+		});
     }
 }
 
@@ -270,5 +285,17 @@ impl<T: Trait> Module<T> {
     /// or return `SessionKeyNotFound` error.
     pub fn require_key(key_account: T::AccountId) -> Result<SessionKey<T>, DispatchError> {
         Ok(Self::details(key_account).ok_or(Error::<T>::SessionKeyNotFound)?)
+    }
+}
+
+impl<T: Trait> OnUnbalanced<NegativeImbalanceOf<T>> for Module<T> {
+    fn on_nonzero_unbalanced(amount: NegativeImbalanceOf<T>) {
+        let numeric_amount = amount.peek();
+        let treasury_account = TreasuryAccount::<T>::get();
+
+        // Must resolve into existing but better to be safe.
+        let _ = T::Currency::resolve_creating(&treasury_account, amount);
+
+        Self::deposit_event(RawEvent::Deposit(numeric_amount));
     }
 }
