@@ -37,9 +37,8 @@ pub struct SessionKey<T: Trait> {
 
     /// How much tokens this session key already spent.
     pub spent: BalanceOf<T>,
-    // TODO allowed_actions: ...
 
-    // TODO max balance to spend
+    // TODO allowed_actions: ...
 }
 
 /// The pallet's configuration trait.
@@ -98,10 +97,7 @@ decl_storage! {
     trait Store for Module<T: Trait> as SessionKeysModule {
 
         /// Session key details by its account id (key).
-        ///
-        // TODO rename: details -> key_details
-
-        pub KeyDetails get(fn details):
+        pub KeyDetails get(fn key_details):
             map hasher(blake2_128_concat)/* session key */ T::AccountId
             => Option<SessionKey<T>>;
 
@@ -207,8 +203,6 @@ decl_module! {
             let mut can_spend: BalanceOf<T> = Zero::zero();
             let mut maybe_reserved: Option<BalanceOf<T>> = None;
 
-            // TODO try to use checked/saturating add/sub instead of "+" and "-"
-
             // TODO get limit from account settings
 
             if let Some(limit) = details.limit {
@@ -284,7 +278,7 @@ impl<T: Trait> Module<T> {
     /// Get `SessionKey` details by `key_account` from the storage
     /// or return `SessionKeyNotFound` error.
     pub fn require_key(key_account: T::AccountId) -> Result<SessionKey<T>, DispatchError> {
-        Ok(Self::details(key_account).ok_or(Error::<T>::SessionKeyNotFound)?)
+        Ok(Self::key_details(key_account).ok_or(Error::<T>::SessionKeyNotFound)?)
     }
 }
 
