@@ -12,6 +12,7 @@ use hex_literal::hex;
 
 // Note this is the URL for the telemetry server
 const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
+const DEFAULT_PROTOCOL_ID: &str = "sub";
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
 pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
@@ -60,7 +61,7 @@ pub fn development_config() -> ChainSpec {
 		),
 		vec![],
 		None,
-		None,
+		Some(DEFAULT_PROTOCOL_ID),
 		None,
 		None,
 	)
@@ -105,7 +106,7 @@ pub fn subsocial_testnet_config() -> ChainSpec {
 	ChainSpec::from_genesis(
 		"Subsocial Cougar Testnet",
 		"subsocial_testnet",
-		ChainType::Local,
+		ChainType::Live,
 		|| testnet_genesis(
 			vec![
 				authority_keys_from_seed("Alice"),
@@ -128,7 +129,7 @@ pub fn subsocial_testnet_config() -> ChainSpec {
 		Some(TelemetryEndpoints::new(
 			vec![(STAGING_TELEMETRY_URL.to_string(), 0)]
 		).expect("Staging telemetry url is valid; qed")),
-		None,
+		Some(DEFAULT_PROTOCOL_ID),
 		None,
 		None,
 	)
