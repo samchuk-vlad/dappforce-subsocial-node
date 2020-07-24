@@ -9,7 +9,7 @@ use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure,
     weights::GetDispatchInfo,
     dispatch::{DispatchError, DispatchResult, PostDispatchInfo},
-    traits::{Currency, Get, ReservableCurrency, Imbalance, OnUnbalanced},
+    traits::{Currency, Get, ReservableCurrency, Imbalance, OnUnbalanced, ExistenceRequirement},
     Parameter,
 };
 use frame_system::{self as system, ensure_signed};
@@ -106,6 +106,12 @@ decl_storage! {
             map hasher(twox_64_concat) /* primary owner */ T::AccountId
             => /* session keys */ Vec<T::AccountId>;
 
+        /// List of session keys and their owner by expiration block number
+        /// Vec<(KeyOwner, SessionKey)>
+        SessionKeysByExpireBlock:
+            map hasher(twox_64_concat)/* expiration_block_number */ T::BlockNumber
+            => /* (key owner, session key) */ Vec<(T::AccountId, T::AccountId)>;
+
         TreasuryAccount build(|config| config.treasury_account.clone()): T::AccountId;
     }
     add_extra_genesis {
@@ -132,7 +138,7 @@ decl_module! {
         // Initializing events
         fn deposit_event() = default;
 
-        #[weight = 10_000]
+        #[weight = T::DbWeight::get().reads_writes(3, 3) + 10_000]
         fn add_key(origin,
             key_account: T::AccountId,
             time_to_live: T::BlockNumber,
@@ -153,31 +159,37 @@ decl_module! {
             let details = SessionKey::<T>::new(who.clone(), time_to_live, limit);
             KeyDetails::<T>::insert(key_account.clone(), details);
 
+            let current_block = system::Module::<T>::block_number();
+            let expiration_block = current_block.saturating_add(time_to_live);
+
+            SessionKeysByExpireBlock::<T>::mutate(
+                expiration_block,
+                |keys| keys.push((who.clone(), key_account.clone()))
+            );
+
             Self::deposit_event(RawEvent::SessionKeyAdded(who, key_account));
             Ok(())
         }
 
         /// A key could be removed either the origin is an owner or key is expired.
-        #[weight = 10_000]
+        #[weight = T::DbWeight::get().reads_writes(2, 2) + 10_000]
         fn remove_key(origin, key_account: T::AccountId) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
             let key = Self::require_key(key_account.clone())?;
             key.ensure_owner_or_expired(who.clone())?;
 
-            KeyDetails::<T>::remove(key_account.clone());
-
-            let mut keys = KeysByOwner::<T>::get(who.clone());
-            let i = keys.binary_search(&key_account).ok().ok_or(Error::<T>::SessionKeyNotFound)?;
-            keys.remove(i);
-            KeysByOwner::<T>::insert(&who, keys);
+            Self::try_remove_key(who, key_account.clone())?;
 
             Self::deposit_event(RawEvent::SessionKeyRemoved(key_account));
             Ok(())
         }
 
         /// Unregister all session keys for the sender.
-        #[weight = 10_000]
+        #[weight =
+            T::DbWeight::get().reads_writes(1, 2) * T::MaxSessionKeysPerAccount::get() as u64
+            + 10_000
+        ]
         fn remove_keys(origin) -> DispatchResult {
             let who = ensure_signed(origin)?;
             let keys = KeysByOwner::<T>::take(&who);
@@ -190,7 +202,7 @@ decl_module! {
         }
 
         /// `origin` is a session key
-        #[weight = 10_000]
+        #[weight = T::DbWeight::get().reads_writes(1, 1) + 10_000]
         fn proxy(origin, call: Box<<T as Trait>::Call>) -> DispatchResult {
             let key = ensure_signed(origin)?;
 
@@ -234,7 +246,14 @@ decl_module! {
             Ok(())
         }
 
-        // TODO write a scheduler to remove expired session keys.
+        fn on_finalize(block_number: T::BlockNumber) {
+            let keys_to_remove = SessionKeysByExpireBlock::<T>::take(block_number);
+            for key in keys_to_remove {
+                let (owner, key_account) = key;
+                let _ = Self::withdraw_key_account_to_owner(&key_account, &owner, None).ok();
+                let _ = Self::try_remove_key(owner, key_account).ok();
+            }
+        }
     }
 }
 
@@ -279,6 +298,31 @@ impl<T: Trait> Module<T> {
     /// or return `SessionKeyNotFound` error.
     pub fn require_key(key_account: T::AccountId) -> Result<SessionKey<T>, DispatchError> {
         Ok(Self::key_details(key_account).ok_or(Error::<T>::SessionKeyNotFound)?)
+    }
+
+    /// Remove `SessionKey` data from storages if found
+    fn try_remove_key(owner: T::AccountId, key_account: T::AccountId) -> DispatchResult {
+        KeyDetails::<T>::remove(key_account.clone());
+
+        let mut keys = KeysByOwner::<T>::get(owner.clone());
+        let i = keys.binary_search(&key_account).ok().ok_or(Error::<T>::SessionKeyNotFound)?;
+        keys.remove(i);
+        KeysByOwner::<T>::insert(owner, keys);
+
+        Ok(())
+    }
+
+    fn withdraw_key_account_to_owner(
+        key_account: &T::AccountId,
+        owner: &T::AccountId,
+        amount: Option<BalanceOf<T>>
+    ) -> DispatchResult {
+        T::Currency::transfer(
+            &key_account,
+            &owner,
+            amount.unwrap_or_else(|| T::Currency::free_balance(&key_account)),
+            ExistenceRequirement::KeepAlive
+        )
     }
 }
 
