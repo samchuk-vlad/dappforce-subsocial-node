@@ -36,7 +36,7 @@ pub use balances::Call as BalancesCall;
 pub use sp_runtime::{Permill, Perbill};
 pub use frame_support::{
 	construct_runtime, parameter_types, StorageValue,
-	traits::{KeyOwnerProofSystem, Randomness, Currency, Imbalance, OnUnbalanced},
+	traits::{KeyOwnerProofSystem, Randomness, Currency, Imbalance, OnUnbalanced, Filter},
 	weights::{
 		Weight, IdentityFee,
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
@@ -485,11 +485,26 @@ parameter_types! {
 	pub const MaxSessionKeysPerAccount: u16 = 10;
 }
 
+pub struct SessionKeysProxyFilter;
+impl Default for SessionKeysProxyFilter { fn default() -> Self { Self } }
+impl Filter<Call> for SessionKeysProxyFilter {
+	fn filter(c: &Call) -> bool {
+		match *c {
+			Call::SpaceFollows(..) => true,
+			Call::ProfileFollows(..) => true,
+			Call::Posts(..) => true,
+			Call::Reactions(..) => true,
+			_ => false,
+		}
+	}
+}
+
 impl session_keys::Trait for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type Currency = Balances;
 	type MaxSessionKeysPerAccount = MaxSessionKeysPerAccount;
+	type BaseFilter = SessionKeysProxyFilter;
 }
 
 construct_runtime!(

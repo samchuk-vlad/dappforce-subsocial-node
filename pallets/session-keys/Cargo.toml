@@ -20,7 +20,7 @@ std = [
     'frame-system/std',
     'sp-std/std',
     'pallet-utils/std',
-    'pallet-permissions/std'
+    'pallet-permissions/std',
 ]
 
 [dependencies.serde]
