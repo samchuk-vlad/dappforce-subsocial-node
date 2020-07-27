@@ -1,12 +1,12 @@
 use sp_core::{Pair, Public, sr25519};
 use subsocial_runtime::{
 	AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig,
-	SudoConfig, SystemConfig, WASM_BINARY, Signature
+	SudoConfig, SystemConfig, WASM_BINARY, Signature, currency::DOLLARS,
 };
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{Verify, IdentifyAccount};
-use sc_service::ChainType;
+use sc_service::{ChainType, Properties};
 use sc_telemetry::TelemetryEndpoints;
 use hex_literal::hex;
 
@@ -62,7 +62,7 @@ pub fn development_config() -> ChainSpec {
 		vec![],
 		None,
 		Some(DEFAULT_PROTOCOL_ID),
-		None,
+		Some(subsocial_properties()),
 		None,
 	)
 }
@@ -96,8 +96,8 @@ pub fn local_testnet_config() -> ChainSpec {
 		),
 		vec![],
 		None,
-		None,
-		None,
+		Some(DEFAULT_PROTOCOL_ID),
+		Some(subsocial_properties()),
 		None,
 	)
 }
@@ -130,7 +130,7 @@ pub fn subsocial_testnet_config() -> ChainSpec {
 			vec![(STAGING_TELEMETRY_URL.to_string(), 0)]
 		).expect("Staging telemetry url is valid; qed")),
 		Some(DEFAULT_PROTOCOL_ID),
-		None,
+		Some(subsocial_properties()),
 		None,
 	)
 }
@@ -145,7 +145,7 @@ fn testnet_genesis(initial_authorities: Vec<(AuraId, GrandpaId)>,
 			changes_trie_config: Default::default(),
 		}),
 		balances: Some(BalancesConfig {
-			balances: endowed_accounts.iter().cloned().map(|k|(k, 1 << 60)).collect(),
+			balances: endowed_accounts.iter().cloned().map(|k|(k, 1000 * DOLLARS)).collect(),
 		}),
 		aura: Some(AuraConfig {
 			authorities: initial_authorities.iter().map(|x| (x.0.clone())).collect(),
@@ -157,4 +157,14 @@ fn testnet_genesis(initial_authorities: Vec<(AuraId, GrandpaId)>,
 			key: root_key,
 		}),
 	}
+}
+
+pub fn subsocial_properties() -> Properties {
+	let mut properties = Properties::new();
+
+	// properties.insert("ss58Format".into(), 83.into());
+	properties.insert("tokenDecimals".into(), 9.into());
+	properties.insert("tokenSymbol".into(), "SUB".into());
+
+	properties
 }

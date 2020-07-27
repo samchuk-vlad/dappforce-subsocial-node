@@ -112,14 +112,14 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	transaction_version: 1,
 };
 
-mod currency {
+pub mod currency {
 	use node_primitives::Balance;
 
-	pub const MILLICENTS: Balance = 1_000_000_000;
+	pub const MILLICENTS: Balance = 10_000;
 	pub const CENTS: Balance = 1_000 * MILLICENTS;
 	pub const DOLLARS: Balance = 100 * CENTS;
 
-	pub const fn deposit(items: u32, bytes: u32) -> Balance {
+	pub const fn _deposit(items: u32, bytes: u32) -> Balance {
 		items as Balance * 15 * CENTS + (bytes as Balance) * 6 * CENTS
 	}
 }
@@ -257,7 +257,7 @@ impl balances::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const TransactionByteFee: Balance = 10 * MILLICENTS;
+	pub const TransactionByteFee: Balance = 1 * MILLICENTS;
 	pub const TargetBlockFullness: Perquintill = Perquintill::from_percent(25);
 	pub AdjustmentVariable: Multiplier = Multiplier::saturating_from_rational(1, 100_000);
 	pub MinimumMultiplier: Multiplier = Multiplier::saturating_from_rational(1, 1_000_000_000u128);
