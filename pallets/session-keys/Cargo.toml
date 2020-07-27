@@ -10,6 +10,9 @@ description = 'Subsocial session keys pallet'
 keywords = ['blockchain', 'cryptocurrency', 'social-network', 'news-feed', 'marketplace']
 categories = ['cryptography::cryptocurrencies']
 
+[package.metadata.docs.rs]
+targets = ['x86_64-unknown-linux-gnu']
+
 [features]
 default = ['std']
 std = [
