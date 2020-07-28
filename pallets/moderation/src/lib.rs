@@ -44,12 +44,11 @@ pub enum ReportDecision {
 
 impl Default for ReportDecision {
 	fn default() -> Self {
-		Self::Ignore
+		Self::Confirm
 	}
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-// todo(1): how to optimally get SpaceId from different entities?
 pub struct Report<T: Trait> {
 	id: ReportId,
 	created: WhoAndWhen<T>,
@@ -66,6 +65,8 @@ pub trait Trait: system::Trait
 {
 	/// The overarching event type.
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+
+	type AutoBlockConfirmations: Get<u16>;
 }
 
 // This pallet's storage items.
@@ -98,10 +99,10 @@ decl_event!(
 		AccountId = <T as system::Trait>::AccountId,
 		EntityId = EntityId<<T as system::Trait>::AccountId>
 	{
-		EntityReported(AccountId, EntityId, ReportId),
+		EntityReported(AccountId, SpaceId, EntityId, ReportId),
+		EntityBlocked(AccountId, SpaceId, EntityId),
+		EntityAllowed(AccountId, SpaceId, EntityId),
 		ReportConfirmed(AccountId, ReportId),
-		ReportDenied(AccountId, ReportId),
-		EntityBlocked(AccountId, EntityId),
 	}
 );
 
@@ -114,6 +115,8 @@ decl_error! {
 		AlreadyReported,
 		InvalidScope,
 		EntityIsNotInScope,
+		ReportNotFound,
+		NoPermissionToManageReports,
 	}
 }
 
@@ -121,15 +124,17 @@ decl_error! {
 decl_module! {
 	/// The module declaration.
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+
+		const AutoBlockConfirmations: u16 = T::AutoBlockConfirmations::get();
+
 		// Initializing errors
 		type Error = Error<T>;
 
 		// Initializing events
 		fn deposit_event() = default;
 
-		/// Report any entity by any person with mandatory note.
-		/// Could be confirmed by specifying it in `block_entity` dispatch.
-		/// `reason` is a must
+		/// Report any entity by any person with mandatory reason.
+		/// `entity` scope and the `scope` provided mustn't differ
 		#[weight = T::DbWeight::get().reads_writes(5, 4) + 10_000]
 		pub fn report_entity(
 			origin,
@@ -157,69 +162,86 @@ decl_module! {
 			ReportIdsByEntityInSpace::<T>::mutate(scope, &entity, |ids| ids.push(report_id));
 			NextReportId::mutate(|n| { *n += 1; });
 
+			Self::deposit_event(RawEvent::EntityReported(who, scope, entity, report_id));
 			Ok(())
 		}
 
-		/// Reject report by permitted account with or without a `reason`
+		/// Make a decision on the report either it's confirmation or ignore.
 		/// `origin` - any permitted account (e.g. Space owner or moderator that's set via role)
-		/// `reason` could be `Content::None`
 		#[weight = 10_000]
-		pub fn deny_report(origin, report_id: ReportId, reason: Content) -> DispatchResult {
-			let _who = ensure_signed(origin)?;
+		pub fn manage_report_decision(
+			origin,
+			report_id: ReportId,
+			decision_opt: Option<ReportDecision>
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
 
-			// todo(4):
-			// 	- verify `reason`
-			// 	- ensure report exists
-			// 	- ensure whether `who` is `reported_within` space owner or permitted account
-			// 	- does `who` can deny report if he's report creator?
-			// 	- remove or move report into another storage?
+			// todo(i): does `who` can delete report if he's a report creator?
 
+			let report = Self::require_report(report_id)?;
+			let space = Spaces::<T>::require_space(report.reported_within)?;
+			Spaces::<T>::ensure_account_has_space_permission(
+				who.clone(),
+				&space,
+				pallet_permissions::SpacePermission::ManageReports,
+				Error::<T>::NoPermissionToManageReports.into(),
+			)?;
+
+			let decision = decision_opt.unwrap_or_default();
+			let mut coherence = CoherenceByReportId::<T>::take(report_id);
+			coherence.push((who.clone(), decision.clone()));
+
+			let confirmations_total = coherence.iter()
+				.filter(|(_, decided)| *decided == ReportDecision::Confirm)
+				.count();
+
+			if confirmations_total >= T::AutoBlockConfirmations::get() as usize {
+				// todo: block content automatically
+			}
+
+			CoherenceByReportId::<T>::insert(report_id, coherence);
+
+			if decision == ReportDecision::Confirm {
+				Self::deposit_event(RawEvent::ReportConfirmed(who, report_id));
+			}
 			Ok(())
 		}
 
-		/// Block any content provided with `entity`
+		/// Block any `entity` provided.
 		/// `origin` - any permitted account (e.g. Space owner or moderator that's set via role)
-		/// `report_id` - if is Some, then the Report by specified id is treated as confirmed.
+		/// `forbid_content` - whether to block `Content` provided with entity.
 		#[weight = 10_000]
 		pub fn block_entity(
 			origin,
 			entity: EntityId<T::AccountId>,
-			report_id: Option<ReportId>
+			forbid_content: bool,
 		) -> DispatchResult {
 			let _who = ensure_signed(origin)?;
 
-			// TODO: split on block/confirm
-
-			// todo(5):
+			// todo:
 			// 	- ensure whether entity exists `fn require_entity()`
 			// 	- ensure whether `who` is `reported_within` space owner or permitted account
-			// 	- if `report_id` is Some, !check whether it exists
-			// 	- if Report does exist, confirm a report (?); otherwise do nothing with it
 
-			// 	todo(6): think on blocking process (Abbys or just hide?)
+			// todo: blocking process
+			// 	- EntityId::Content - add to block list
+			// 	- EntityId::Account - add to block list
+			// 	- EntityId::Space - add to block list
+			// 	- EntityId::Host - add to block list
 
 			Ok(())
 		}
 
-		// TODO: add unblock dispatch
+		#[weight = 10_000]
+		pub fn unblock_entity(origin) -> DispatchResult {
+			let _who = ensure_signed(origin)?;
+			Ok(())
+		}
 	}
 }
 
 impl<T: Trait> Module<T> {
-	#[allow(dead_code)]
-	// fixme: do we need this?
-	fn ensure_entity_exist(entity: &EntityId<T::AccountId>) -> DispatchResult {
-		let result: DispatchResult = match entity {
-			EntityId::Content(content) => {
-				ensure!(!content.is_none(), Error::<T>::EntityNotFound);
-				Ok(())
-			},
-			EntityId::Space(space_id) => Spaces::<T>::require_space(*space_id).map(|_| ()),
-			EntityId::Post(post_id) => Posts::<T>::require_post(*post_id).map(|_| ()),
-			EntityId::Account(_) => Ok(()),
-		};
-
-		result.map_err(|_| Error::<T>::EntityNotFound.into())
+	pub fn require_report(report_id: ReportId) -> Result<Report<T>, DispatchError> {
+		Ok(Self::report_by_id(report_id).ok_or(Error::<T>::ReportNotFound)?)
 	}
 
 	/// Get entity space_id if it exists.
@@ -241,6 +263,20 @@ impl<T: Trait> Module<T> {
 				Ok(Some(space_id))
 			},
 		}
+	}
+
+	#[allow(dead_code)]
+	// fixme: do we need this?
+	fn ensure_entity_exist(entity: &EntityId<T::AccountId>) -> DispatchResult {
+		match entity {
+			EntityId::Content(content) => {
+				ensure!(!content.is_none(), Error::<T>::EntityNotFound);
+				Ok(())
+			},
+			EntityId::Account(_) => Ok(()),
+			EntityId::Space(space_id) => Spaces::<T>::ensure_space_exists(*space_id),
+			EntityId::Post(post_id) => Posts::<T>::ensure_post_exists(*post_id),
+		}.map_err(|_| Error::<T>::EntityNotFound.into())
 	}
 }
 
