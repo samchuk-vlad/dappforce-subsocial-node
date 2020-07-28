@@ -80,6 +80,8 @@ decl_error! {
     NoPermissionToUpdateSpace,
     /// User has no permission to create subspaces in this space
     NoPermissionToCreateSubspaces,
+    /// Space is at root level, no parent_id specified
+    SpaceIsAtRoot,
   }
 }
 
@@ -348,6 +350,10 @@ impl<T: Trait> Space<T> {
         } else if diff < 0 {
             self.score = self.score.saturating_sub(diff.abs() as i32);
         }
+    }
+
+    pub fn try_get_parent(&self) -> Result<SpaceId, DispatchError> {
+        self.parent_id.ok_or_else(|| Error::<T>::SpaceIsAtRoot.into())
     }
 }
 

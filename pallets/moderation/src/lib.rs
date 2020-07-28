@@ -5,7 +5,8 @@ use sp_std::prelude::*;
 use sp_runtime::RuntimeDebug;
 use frame_support::{
 	decl_module, decl_storage, decl_event, decl_error, ensure,
-	dispatch::DispatchResult
+	dispatch::{DispatchResult, DispatchError},
+	traits::Get,
 };
 use frame_system::{self as system, ensure_signed};
 
@@ -111,6 +112,8 @@ decl_error! {
 		EntityNotFound,
 		ReasonIsEmpty,
 		AlreadyReported,
+		InvalidScope,
+		EntityIsNotInScope,
 	}
 }
 
@@ -127,14 +130,23 @@ decl_module! {
 		/// Report any entity by any person with mandatory note.
 		/// Could be confirmed by specifying it in `block_entity` dispatch.
 		/// `reason` is a must
-		#[weight = 10_000]
-		pub fn report_entity(origin, entity: EntityId<T::AccountId>, reason: Content) -> DispatchResult {
+		#[weight = T::DbWeight::get().reads_writes(5, 4) + 10_000]
+		pub fn report_entity(
+			origin,
+			scope: SpaceId,
+			entity: EntityId<T::AccountId>,
+			reason: Content
+		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
 			ensure!(!reason.is_none(), Error::<T>::ReasonIsEmpty);
 			Utils::<T>::is_valid_content(reason.clone())?;
 
-			let scope = Self::get_entity_scope(&entity);
+			ensure!(Spaces::<T>::require_space(scope).is_ok(), Error::<T>::InvalidScope);
+			if let Some(entity_scope) = Self::get_entity_scope(&entity)? {
+				ensure!(entity_scope == scope, Error::<T>::EntityIsNotInScope);
+			}
+
 			ensure!(!Self::is_entity_reported_by_account((&entity, &who)), Error::<T>::AlreadyReported);
 
 			let report_id = Self::next_report_id();
@@ -194,8 +206,8 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-	/// Get a result whether entity exists or not
 	#[allow(dead_code)]
+	// fixme: do we need this?
 	fn ensure_entity_exist(entity: &EntityId<T::AccountId>) -> DispatchResult {
 		let result: DispatchResult = match entity {
 			EntityId::Content(content) => {
@@ -210,8 +222,25 @@ impl<T: Trait> Module<T> {
 		result.map_err(|_| Error::<T>::EntityNotFound.into())
 	}
 
-	fn get_entity_scope(_entity: &EntityId<T::AccountId>) -> SpaceId {
-		unimplemented!()
+	/// Get entity space_id if it exists.
+	/// Content and Account has no scope, consider check with `if let Some`
+	fn get_entity_scope(entity: &EntityId<T::AccountId>) -> Result<Option<SpaceId>, DispatchError> {
+		match entity {
+			EntityId::Content(_) => Ok(None),
+			EntityId::Account(_) => Ok(None),
+			EntityId::Space(space_id) => {
+				let space = Spaces::<T>::require_space(*space_id)?;
+				let root_space_id = space.try_get_parent()?;
+
+				Ok(Some(root_space_id))
+			},
+			EntityId::Post(post_id) => {
+				let post = Posts::<T>::require_post(*post_id)?;
+				let space_id = post.get_space()?.id;
+
+				Ok(Some(space_id))
+			},
+		}
 	}
 }
 
