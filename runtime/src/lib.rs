@@ -312,23 +312,18 @@ parameter_types! {
     none: None,
 
     everyone: Some(SpacePermissionSet::from_iter(vec![
-	  SP::ReportUsers,
-
 	  SP::UpdateOwnSubspaces,
 	  SP::DeleteOwnSubspaces,
 	  SP::HideOwnSubspaces,
-	  SP::ReportSubspaces,
 
 	  SP::UpdateOwnPosts,
 	  SP::DeleteOwnPosts,
 	  SP::HideOwnPosts,
-	  SP::ReportPosts,
 
 	  SP::CreateComments,
 	  SP::UpdateOwnComments,
 	  SP::DeleteOwnComments,
 	  SP::HideOwnComments,
-	  SP::ReportComments,
 
 	  SP::Upvote,
 	  SP::Downvote,
@@ -363,6 +358,8 @@ parameter_types! {
       SP::BlockSubspaces,
       SP::BlockPosts,
       SP::BlockComments,
+
+      SP::ManageReports,
     ].into_iter())),
   };
 }

@@ -43,7 +43,6 @@ pub enum SpacePermission {
   HideAnySubspace,
 
   BlockSubspaces,
-  ReportSubspaces,
 
   // Related to posts in this space:
   CreatePosts,
@@ -56,7 +55,6 @@ pub enum SpacePermission {
   HideAnyPost,
 
   BlockPosts,
-  ReportPosts,
 
   // Related to comments in this space:
   CreateComments,
@@ -65,10 +63,9 @@ pub enum SpacePermission {
   HideOwnComments,
 
   // NOTE: It was made on purpose that it's not possible to update or delete not own comments.
-  // Instead it's possible to allow to report, hide and block comments.
+  // Instead it's possible to allow to hide and block comments.
   HideAnyComment,
   BlockComments,
-  ReportComments,
 
   /// Upvote any post or comment in this space.
   Upvote,
@@ -81,6 +78,10 @@ pub enum SpacePermission {
   OverrideSubspacePermissions,
   /// Override permissions per post in this space.
   OverridePostPermissions,
+
+  /// Whether role can or cannot make a decision on users' reports
+  /// Related to pallet-moderation.
+  ManageReports,
 }
 
 pub type SpacePermissionSet = BTreeSet<SpacePermission>;
