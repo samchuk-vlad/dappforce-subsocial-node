@@ -3179,6 +3179,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-moderation"
+version = "2.0.0-rc4"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-posts",
+ "pallet-spaces",
+ "pallet-timestamp",
+ "pallet-utils",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-permissions"
 version = "2.0.0-rc4"
 dependencies = [
@@ -6235,6 +6252,7 @@ dependencies = [
  "pallet-aura",
  "pallet-balances",
  "pallet-grandpa",
+ "pallet-moderation",
  "pallet-permissions",
  "pallet-post-history",
  "pallet-posts",

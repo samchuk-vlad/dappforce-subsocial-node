@@ -51,6 +51,12 @@ pub enum Content {
     Hyper(Vec<u8>),
 }
 
+impl Content {
+    pub fn is_none(&self) -> bool {
+        self == &Self::None
+    }
+}
+
 pub trait Trait: system::Trait
     + pallet_timestamp::Trait
 {
