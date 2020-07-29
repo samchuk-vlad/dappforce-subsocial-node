@@ -37,12 +37,12 @@ pub enum EntityStatus {
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub enum ReportDecision {
+pub enum ReportFeedback {
 	Confirm,
 	Ignore,
 }
 
-impl Default for ReportDecision {
+impl Default for ReportFeedback {
 	fn default() -> Self {
 		Self::Confirm
 	}
@@ -80,16 +80,20 @@ decl_storage! {
 		pub IsEntityReportedByAccount get(fn is_entity_reported_by_account):
 			map hasher(twox_64_concat) (EntityId<T::AccountId>, T::AccountId) => bool;
 
+		pub ReportIdsBySpaceId: map hasher(twox_64_concat) SpaceId => Vec<ReportId>;
+
 		pub ReportIdsByEntityInSpace get(fn report_ids_by_entity_in_space): double_map
-			hasher(twox_64_concat) SpaceId,
-			hasher(twox_64_concat) EntityId<T::AccountId>
+			hasher(twox_64_concat) EntityId<T::AccountId>,
+			hasher(twox_64_concat) SpaceId
 				=> Vec<ReportId>;
 
-		pub InSpaceEntityStatuses get(fn in_space_entity_statuses):
-			map hasher(twox_64_concat) EntityId<T::AccountId> => Option<(SpaceId, EntityStatus)>;
+		pub StatusesByEntityInSpace get(fn statuses_by_entity_in_space): double_map
+			hasher(twox_64_concat) EntityId<T::AccountId>,
+			hasher(twox_64_concat) SpaceId
+				=> Option<EntityStatus>;
 
-		pub CoherenceByReportId get(fn coherence_by_report_id):
-			map hasher(twox_64_concat) ReportId => Vec<(T::AccountId, ReportDecision)>;
+		pub FeedbackByReportId get(fn feedback_by_report_id):
+			map hasher(twox_64_concat) ReportId => Vec<(T::AccountId, ReportFeedback)>;
 	}
 }
 
@@ -135,7 +139,7 @@ decl_module! {
 
 		/// Report any entity by any person with mandatory reason.
 		/// `entity` scope and the `scope` provided mustn't differ
-		#[weight = T::DbWeight::get().reads_writes(5, 4) + 10_000]
+		#[weight = T::DbWeight::get().reads_writes(6, 5) + 10_000]
 		pub fn report_entity(
 			origin,
 			scope: SpaceId,
@@ -159,7 +163,8 @@ decl_module! {
 
 			ReportById::<T>::insert(report_id, new_report);
 			IsEntityReportedByAccount::<T>::insert((&entity, &who), true);
-			ReportIdsByEntityInSpace::<T>::mutate(scope, &entity, |ids| ids.push(report_id));
+			ReportIdsBySpaceId::mutate(scope, |ids| ids.push(report_id));
+			ReportIdsByEntityInSpace::<T>::mutate(&entity, scope, |ids| ids.push(report_id));
 			NextReportId::mutate(|n| { *n += 1; });
 
 			Self::deposit_event(RawEvent::EntityReported(who, scope, entity, report_id));
@@ -172,7 +177,7 @@ decl_module! {
 		pub fn manage_report_decision(
 			origin,
 			report_id: ReportId,
-			decision_opt: Option<ReportDecision>
+			decision_opt: Option<ReportFeedback>
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -187,21 +192,22 @@ decl_module! {
 				Error::<T>::NoPermissionToManageReports.into(),
 			)?;
 
-			let decision = decision_opt.unwrap_or_default();
-			let mut coherence = CoherenceByReportId::<T>::take(report_id);
-			coherence.push((who.clone(), decision.clone()));
+			let feedback = decision_opt.unwrap_or_default();
+			let mut feedbacks = FeedbackByReportId::<T>::take(report_id);
+			feedbacks.push((who.clone(), feedback.clone()));
+			// todo: rewrite old feedback
 
-			let confirmations_total = coherence.iter()
-				.filter(|(_, decided)| *decided == ReportDecision::Confirm)
+			let confirmations_total = feedbacks.iter()
+				.filter(|(_, action)| *action == ReportFeedback::Confirm)
 				.count();
 
 			if confirmations_total >= T::AutoBlockConfirmations::get() as usize {
 				// todo: block content automatically
 			}
 
-			CoherenceByReportId::<T>::insert(report_id, coherence);
+			FeedbackByReportId::<T>::insert(report_id, feedbacks);
 
-			if decision == ReportDecision::Confirm {
+			if feedback == ReportFeedback::Confirm {
 				Self::deposit_event(RawEvent::ReportConfirmed(who, report_id));
 			}
 			Ok(())
@@ -223,10 +229,10 @@ decl_module! {
 			// 	- ensure whether `who` is `reported_within` space owner or permitted account
 
 			// todo: blocking process
-			// 	- EntityId::Content - add to block list
-			// 	- EntityId::Account - add to block list
-			// 	- EntityId::Space - add to block list
-			// 	- EntityId::Host - add to block list
+			// 	- EntityId::Content - add Blocked status on Space
+			// 	- EntityId::Account - add Blocked status on Space
+			// 	- EntityId::Space - add to block list and remove parent_id
+			// 	- EntityId::Post - add to block list and move to Abbys
 
 			Ok(())
 		}
