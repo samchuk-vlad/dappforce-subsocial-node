@@ -147,12 +147,8 @@ mod tests {
             SP::HideAnyPost,
             SP::HideAnyComment,
 
-            SP::BlockUsers,
-            SP::BlockSubspaces,
-            SP::BlockPosts,
-            SP::BlockComments,
-
-            SP::ManageReports,
+            SP::SuggestEntityStatus,
+            SP::UpdateEntityStatus,
         ].into_iter())),
       };
     }

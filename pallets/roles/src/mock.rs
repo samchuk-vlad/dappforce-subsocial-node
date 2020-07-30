@@ -22,6 +22,7 @@ use pallet_permissions::{
     SpacePermission,
     SpacePermission as SP,
     SpacePermissions,
+    SpacePermissionSet
 };
 use df_traits::{SpaceForRoles, SpaceFollowsProvider, SpaceForRolesProvider};
 use pallet_utils::{SpaceId, User, Content};
@@ -89,39 +90,34 @@ impl pallet_utils::Trait for Test {
 }
 
 parameter_types! {
-  pub const DefaultSpacePermissions: SpacePermissions = SpacePermissions {
+  pub DefaultSpacePermissions: SpacePermissions = SpacePermissions {
 
     // No permissions disabled by default
     none: None,
 
-    everyone: /*Some(BTreeSet::from_iter(vec![
-      SP::ReportUsers,
+    everyone: Some(SpacePermissionSet::from_iter(vec![
+	  SP::UpdateOwnSubspaces,
+	  SP::DeleteOwnSubspaces,
+	  SP::HideOwnSubspaces,
 
-      SP::UpdateOwnSubspaces,
-      SP::DeleteOwnSubspaces,
-      SP::HideOwnSubspaces,
-      SP::ReportSubspaces,
+	  SP::UpdateOwnPosts,
+	  SP::DeleteOwnPosts,
+	  SP::HideOwnPosts,
 
-      SP::UpdateOwnPosts,
-      SP::DeleteOwnPosts,
-      SP::HideOwnPosts,
-      SP::ReportPosts,
+	  SP::CreateComments,
+	  SP::UpdateOwnComments,
+	  SP::DeleteOwnComments,
+	  SP::HideOwnComments,
 
-      SP::CreateComments,
-      SP::UpdateOwnComments,
-      SP::DeleteOwnComments,
-      SP::HideOwnComments,
-      SP::ReportComments,
-
-      SP::Upvote,
-      SP::Downvote,
-      SP::Share,
-    ].into_iter()))*/None,
+	  SP::Upvote,
+	  SP::Downvote,
+	  SP::Share,
+    ].into_iter())),
 
     // Followers can do everything that everyone else can.
     follower: None,
 
-    space_owner: /*Some(BTreeSet::from_iter(vec![
+    space_owner: Some(SpacePermissionSet::from_iter(vec![
       SP::ManageRoles,
       SP::RepresentSpaceInternally,
       SP::RepresentSpaceExternally,
@@ -142,11 +138,9 @@ parameter_types! {
       SP::HideAnyPost,
       SP::HideAnyComment,
 
-      SP::BlockUsers,
-      SP::BlockSubspaces,
-      SP::BlockPosts,
-      SP::BlockComments,
-    ].into_iter()))*/None,
+      SP::SuggestEntityStatus,
+      SP::UpdateEntityStatus,
+    ].into_iter())),
   };
 }
 
@@ -274,7 +268,7 @@ pub(crate) fn permission_set_updated() -> Vec<SpacePermission> {
 
 /// Permissions Set that includes random permissions
 pub(crate) fn permission_set_random() -> Vec<SpacePermission> {
-    vec![SP::CreatePosts, SP::UpdateOwnPosts, SP::UpdateAnyPost, SP::BlockUsers, SP::BlockComments]
+    vec![SP::CreatePosts, SP::UpdateOwnPosts, SP::UpdateAnyPost, SP::UpdateEntityStatus]
 }
 
 pub(crate) fn valid_space_ids() -> Vec<SpaceId> {
