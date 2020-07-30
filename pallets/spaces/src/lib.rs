@@ -415,6 +415,14 @@ impl<T: Trait> Module<T> {
             error,
         )
     }
+
+    pub fn try_move_space_to_root(space_id: SpaceId) -> DispatchResult {
+        let mut space = Self::require_space(space_id)?;
+        space.parent_id = None;
+
+        SpaceById::<T>::insert(space_id, space);
+        Ok(())
+    }
 }
 
 impl<T: Trait> SpaceForRolesProvider for Module<T> {

@@ -288,6 +288,11 @@ impl<T: Trait> Module<T> {
         Self::share_post(creator.clone(), original_post, new_post_id)
     }
 
+    #[allow(unused_variables)]
+    pub fn try_move_post_to_abbys(post_id: PostId) -> DispatchResult {
+        Ok(())
+    }
+
     /// Rewrite ancestor counters when Post hidden status changes
     /// Warning: This will affect storage state!
     pub(crate) fn update_counters_on_comment_hidden_change(

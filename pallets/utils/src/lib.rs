@@ -97,6 +97,8 @@ decl_error! {
         HandleIsTooLong,
         /// Space handle contains invalid characters.
         HandleContainsInvalidChars,
+        /// Content type is `None`
+        ContentIsEmpty,
     }
 }
 
@@ -173,5 +175,10 @@ impl<T: Trait> Module<T> {
         ensure!(handle_in_lowercase.iter().all(|&x| Self::is_valid_handle_char(x)), Error::<T>::HandleContainsInvalidChars);
 
         Ok(handle_in_lowercase)
+    }
+
+    pub fn ensure_content_is_some(content: &Content) -> DispatchResult {
+        ensure!(!content.is_none(), Error::<T>::ContentIsEmpty);
+        Ok(())
     }
 }

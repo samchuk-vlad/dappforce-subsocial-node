@@ -5,13 +5,13 @@ use sp_std::prelude::*;
 use sp_runtime::RuntimeDebug;
 use frame_support::{
     decl_module, decl_storage, decl_event, decl_error, ensure,
-    dispatch::{DispatchResult, DispatchError},
+    dispatch::DispatchResult,
     traits::Get,
 };
 use frame_system::{self as system, ensure_signed};
 
 use pallet_utils::{Content, WhoAndWhen, SpaceId, Module as Utils};
-use pallet_posts::{PostId, Module as Posts};
+use pallet_posts::PostId;
 use pallet_spaces::Module as Spaces;
 
 /*
@@ -41,18 +41,19 @@ pub enum EntityStatus {
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub enum ReportFeedback {
-    Confirm,
-    Ignore,
-}
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Report<T: Trait> {
     id: ReportId,
     created: WhoAndWhen<T>,
     reported_entity: EntityId<T::AccountId>,
     reported_within: SpaceId,
     reason: Content,
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+pub struct SuggestedStatus<T: Trait> {
+    suggested: WhoAndWhen<T>,
+    status: Option<EntityStatus>,
+    report_id: Option<ReportId>,
 }
 
 /// The pallet's configuration trait.
@@ -75,8 +76,8 @@ decl_storage! {
         pub ReportById get(fn report_by_id):
             map hasher(twox_64_concat) ReportId => Option<Report<T>>;
 
-        pub IsEntityReportedByAccount get(fn is_entity_reported_by_account):
-            map hasher(twox_64_concat) (EntityId<T::AccountId>, T::AccountId) => bool;
+        pub ReportIdByAccount get(fn report_id_by_account):
+            map hasher(twox_64_concat) (EntityId<T::AccountId>, T::AccountId) => Option<ReportId>;
 
         pub ReportIdsBySpaceId: map hasher(twox_64_concat) SpaceId => Vec<ReportId>;
 
@@ -85,13 +86,15 @@ decl_storage! {
             hasher(twox_64_concat) SpaceId
                 => Vec<ReportId>;
 
-        pub StatusesByEntityInSpace get(fn statuses_by_entity_in_space): double_map
+        pub StatusByEntityInSpace get(fn status_by_entity_in_space): double_map
             hasher(twox_64_concat) EntityId<T::AccountId>,
             hasher(twox_64_concat) SpaceId
                 => Option<EntityStatus>;
 
-        pub FeedbackByReportId get(fn feedback_by_report_id):
-            map hasher(twox_64_concat) ReportId => Vec<(T::AccountId, ReportFeedback)>;
+        pub SuggestedStatusesByEntityInSpace get(fn suggested_statuses): double_map
+            hasher(twox_64_concat) EntityId<T::AccountId>,
+            hasher(twox_64_concat) SpaceId
+             => Vec<SuggestedStatus<T>>;
     }
 }
 
@@ -102,9 +105,9 @@ decl_event!(
         EntityId = EntityId<<T as system::Trait>::AccountId>
     {
         EntityReported(AccountId, SpaceId, EntityId, ReportId),
-        EntityBlocked(AccountId, SpaceId, EntityId),
-        EntityAllowed(AccountId, SpaceId, EntityId),
-        ReportConfirmed(AccountId, ReportId),
+        EntityStatusSuggested(AccountId, SpaceId, EntityId, Option<EntityStatus>),
+        EntityStatusUpdated(AccountId, SpaceId, EntityId, Option<EntityStatus>),
+        EntityStatusDeleted(AccountId, SpaceId, EntityId),
     }
 );
 
@@ -113,18 +116,28 @@ decl_error! {
     pub enum Error for Module<T: Trait> {
         /// The account has already made a report on this entity.
         AlreadyReported,
+        /// Entity status in this space is not specified. Nothing to delete.
+        EntityHasNoAnyStatusInScope,
         /// Entity scope differs from the scope provided.
         EntityIsNotInScope,
         /// Entity was not found by its id.
         EntityNotFound,
+        /// Entity status is already as suggested one
+        EntityStatusDoNotDiffer,
         /// Entity scope provided doesn't exist.
         InvalidScope,
-        /// Account has no permission to leave a feedback on reports.
-        NoPermissionToManageReports,
+        /// Account has no permission to suggest a new entity status.
+        NoPermissionToSuggestEntityStatus,
+        /// Account has no permission to update entity status.
+        NoPermissionToUpdateEntityStatus,
         /// Report reason shouldn't be empty.
         ReasonIsEmpty,
         /// Report was not found by its id.
         ReportNotFound,
+        /// The specified scope differs from ones within report was created
+        ScopeDiffersFromReport,
+        /// Entity status update is already suggested by this account
+        SuggestionAlreadyCreated,
     }
 }
 
@@ -146,27 +159,25 @@ decl_module! {
         #[weight = T::DbWeight::get().reads_writes(6, 5) + 10_000]
         pub fn report_entity(
             origin,
-            scope: SpaceId,
             entity: EntityId<T::AccountId>,
+            scope: SpaceId,
             reason: Content
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
-            ensure!(!reason.is_none(), Error::<T>::ReasonIsEmpty);
+            Utils::<T>::ensure_content_is_some(&reason).map_err(|_| Error::<T>::ReasonIsEmpty)?;
             Utils::<T>::is_valid_content(reason.clone())?;
 
             ensure!(Spaces::<T>::require_space(scope).is_ok(), Error::<T>::InvalidScope);
-                if let Some(entity_scope) = Self::get_entity_scope(&entity)? {
-                ensure!(entity_scope == scope, Error::<T>::EntityIsNotInScope);
-            }
+            Self::ensure_entity_in_scope(&entity, scope)?;
 
-            ensure!(!Self::is_entity_reported_by_account((&entity, &who)), Error::<T>::AlreadyReported);
+            ensure!(Self::report_id_by_account((&entity, &who)).is_none(), Error::<T>::AlreadyReported);
 
             let report_id = Self::next_report_id();
-            let new_report = Report::<T>::new(report_id, &who, entity.clone(), scope, reason);
+            let new_report = Report::<T>::new(report_id, who.clone(), entity.clone(), scope, reason);
 
             ReportById::<T>::insert(report_id, new_report);
-            IsEntityReportedByAccount::<T>::insert((&entity, &who), true);
+            ReportIdByAccount::<T>::insert((&entity, &who), report_id);
             ReportIdsBySpaceId::mutate(scope, |ids| ids.push(report_id));
             ReportIdsByEntityInSpace::<T>::mutate(&entity, scope, |ids| ids.push(report_id));
             NextReportId::mutate(|n| { *n += 1; });
@@ -178,73 +189,98 @@ decl_module! {
         /// Leave a feedback on the report either it's confirmation or ignore.
         /// `origin` - any permitted account (e.g. Space owner or moderator that's set via role)
         #[weight = 10_000]
-        pub fn feedback_report(
+        pub fn suggest_entity_status(
             origin,
-            report_id: ReportId,
-            decision_opt: Option<ReportFeedback>
+            entity: EntityId<T::AccountId>,
+            scope: SpaceId,
+            status: Option<EntityStatus>,
+            report_id_opt: Option<ReportId>
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
-            // todo(i): does `who` can delete report if he's a report creator?
+            if let Some(report_id) = report_id_opt {
+                let report = Self::require_report(report_id)?;
+                ensure!(scope == report.reported_within, Error::<T>::ScopeDiffersFromReport);
+            }
 
-            let report = Self::require_report(report_id)?;
-            let space = Spaces::<T>::require_space(report.reported_within)?;
+            let entity_status = StatusByEntityInSpace::<T>::get(&entity, scope);
+            ensure!(!(entity_status.is_some() && status == entity_status), Error::<T>::EntityStatusDoNotDiffer);
+
+            let space = Spaces::<T>::require_space(scope).map_err(|_| Error::<T>::InvalidScope)?;
             Spaces::<T>::ensure_account_has_space_permission(
                 who.clone(),
                 &space,
-                pallet_permissions::SpacePermission::ManageReports,
-                Error::<T>::NoPermissionToManageReports.into(),
+                pallet_permissions::SpacePermission::SuggestEntityStatus,
+                Error::<T>::NoPermissionToSuggestEntityStatus.into(),
             )?;
 
-            let feedback = decision_opt.unwrap_or_default();
-            let mut feedbacks = FeedbackByReportId::<T>::take(report_id);
-            feedbacks.push((who.clone(), feedback.clone()));
-            // todo: rewrite old feedback
+            let mut suggestions = SuggestedStatusesByEntityInSpace::<T>::get(&entity, scope);
+            let is_already_suggested = suggestions.iter().any(|suggestion| suggestion.suggested.account == who);
+            ensure!(!is_already_suggested, Error::<T>::SuggestionAlreadyCreated);
+            suggestions.push(SuggestedStatus::new(who.clone(), status.clone(), report_id_opt));
 
-            let confirmations_total = feedbacks.iter()
-                .filter(|(_, action)| *action == ReportFeedback::Confirm)
+            let block_suggestions_total = suggestions.iter()
+                .filter(|suggestion| suggestion.status == Some(EntityStatus::Blocked))
                 .count();
 
-            if confirmations_total >= T::AutoBlockConfirmations::get() as usize {
-                // todo: block content automatically
+            if block_suggestions_total >= T::AutoBlockConfirmations::get() as usize {
+                Self::block_entity_in_scope(&entity, scope)?;
             }
 
-            FeedbackByReportId::<T>::insert(report_id, feedbacks);
-
-            if feedback == ReportFeedback::Confirm {
-                Self::deposit_event(RawEvent::ReportConfirmed(who, report_id));
-            }
+            Self::deposit_event(RawEvent::EntityStatusSuggested(who, scope, entity.clone(), status));
+            SuggestedStatusesByEntityInSpace::<T>::insert(entity, scope, suggestions);
             Ok(())
         }
 
         /// Block any `entity` provided.
         /// `origin` - any permitted account (e.g. Space owner or moderator that's set via role)
-        /// `forbid_content` - whether to block `Content` provided with entity.
         #[weight = 10_000]
-        pub fn block_entity(
+        pub fn update_entity_status(
             origin,
             entity: EntityId<T::AccountId>,
-            forbid_content: bool,
+            scope: SpaceId,
+            status_opt: Option<EntityStatus>
         ) -> DispatchResult {
-            let _who = ensure_signed(origin)?;
+            let who = ensure_signed(origin)?;
 
-            // todo:
-            // 	- ensure whether entity exists `fn require_entity()`
-            // 	- ensure whether `who` is `reported_within` space owner or permitted account
+            // TODO: add `forbid_content` parameter and track entity Content blocking via OCW
+            //  - `forbid_content` - whether to block `Content` provided with entity.
 
-            // todo: blocking process
-            // 	- EntityId::Content - add Blocked status on Space
-            // 	- EntityId::Account - add Blocked status on Space
-            // 	- EntityId::Space - add to block list and remove parent_id
-            // 	- EntityId::Post - add to block list and move to Abbys
+            let space = Spaces::<T>::require_space(scope).map_err(|_| Error::<T>::InvalidScope)?;
+            Self::ensure_account_status_manager(who.clone(), &space)?;
 
+            if let Some(status) = &status_opt {
+                let is_entity_in_scope = Self::ensure_entity_in_scope(&entity, scope).is_ok();
+
+                if is_entity_in_scope && status == &EntityStatus::Blocked {
+                    Self::block_entity_in_scope(&entity, scope)?;
+                } else {
+                    StatusByEntityInSpace::<T>::insert(entity.clone(), scope, status);
+                }
+            } else {
+                StatusByEntityInSpace::<T>::remove(entity.clone(), scope);
+            }
+
+            Self::deposit_event(RawEvent::EntityStatusUpdated(who, scope, entity, status_opt));
             Ok(())
         }
 
         #[weight = 10_000]
-        pub fn unblock_entity(origin) -> DispatchResult {
-            let _who = ensure_signed(origin)?;
+        pub fn delete_entity_status(origin, entity: EntityId<T::AccountId>, scope: SpaceId) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+
+            let status = Self::status_by_entity_in_space(&entity, scope);
+            ensure!(status.is_some(), Error::<T>::EntityHasNoAnyStatusInScope);
+
+            let space = Spaces::<T>::require_space(scope).map_err(|_| Error::<T>::InvalidScope)?;
+            Self::ensure_account_status_manager(who.clone(), &space)?;
+
+            StatusByEntityInSpace::<T>::remove(&entity, scope);
+
+            Self::deposit_event(RawEvent::EntityStatusDeleted(who, scope, entity));
             Ok(())
         }
+
+        // todo: add ability to delete report_ids
     }
 }

@@ -1,10 +1,9 @@
 use crate::*;
 
-impl Default for ReportFeedback {
-    fn default() -> Self {
-        Self::Confirm
-    }
-}
+use frame_support::dispatch::DispatchError;
+use pallet_posts::Module as Posts;
+use pallet_spaces::Space;
+use df_traits::moderation::*;
 
 impl<T: Trait> Module<T> {
     pub fn require_report(report_id: ReportId) -> Result<Report<T>, DispatchError> {
@@ -13,9 +12,11 @@ impl<T: Trait> Module<T> {
 
     /// Get entity space_id if it exists.
     /// Content and Account has no scope, consider check with `if let Some`
-    pub(crate) fn get_entity_scope(entity: &EntityId<T::AccountId>) -> Result<Option<SpaceId>, DispatchError> {
+    fn get_entity_scope(entity: &EntityId<T::AccountId>) -> Result<Option<SpaceId>, DispatchError> {
         match entity {
-            EntityId::Content(_) => Ok(None),
+            EntityId::Content(content) => {
+                Utils::<T>::ensure_content_is_some(content).map(|_| None)
+            },
             EntityId::Account(_) => Ok(None),
             EntityId::Space(space_id) => {
                 let space = Spaces::<T>::require_space(*space_id)?;
@@ -34,33 +35,110 @@ impl<T: Trait> Module<T> {
 
     #[allow(dead_code)]
     // fixme: do we need this?
-    fn ensure_entity_exist(entity: &EntityId<T::AccountId>) -> DispatchResult {
+    fn ensure_entity_exists(entity: &EntityId<T::AccountId>) -> DispatchResult {
         match entity {
-            EntityId::Content(content) => {
-                ensure!(!content.is_none(), Error::<T>::EntityNotFound);
-                Ok(())
-            },
+            EntityId::Content(content) => Utils::<T>::ensure_content_is_some(content),
             EntityId::Account(_) => Ok(()),
             EntityId::Space(space_id) => Spaces::<T>::ensure_space_exists(*space_id),
             EntityId::Post(post_id) => Posts::<T>::ensure_post_exists(*post_id),
         }.map_err(|_| Error::<T>::EntityNotFound.into())
+    }
+
+    pub(crate) fn block_entity_in_scope(entity: &EntityId<T::AccountId>, scope: SpaceId) -> DispatchResult {
+        // TODO: update counters, when entity is moved
+        // TODO: think, what and where we should change something if entity is moved
+        match entity {
+            EntityId::Content(_) | EntityId::Account(_) => (),
+            EntityId::Space(space_id) => Spaces::<T>::try_move_space_to_root(*space_id)?,
+            EntityId::Post(post_id) => Posts::<T>::try_move_post_to_abbys(*post_id)?,
+        }
+        StatusByEntityInSpace::<T>::insert(entity, scope, EntityStatus::Blocked);
+        Ok(())
+    }
+
+    pub(crate) fn ensure_account_status_manager(who: T::AccountId, space: &Space<T>) -> DispatchResult {
+        Spaces::<T>::ensure_account_has_space_permission(
+            who,
+            &space,
+            pallet_permissions::SpacePermission::UpdateEntityStatus,
+            Error::<T>::NoPermissionToUpdateEntityStatus.into(),
+        )
+    }
+
+    pub(crate) fn ensure_entity_in_scope(entity: &EntityId<T::AccountId>, scope: SpaceId) -> DispatchResult {
+        if let Some(entity_scope) = Self::get_entity_scope(entity)? {
+            ensure!(entity_scope == scope, Error::<T>::EntityIsNotInScope);
+        }
+        Ok(())
     }
 }
 
 impl<T: Trait> Report<T> {
     pub fn new(
         id: ReportId,
-        created_by: &T::AccountId,
+        created_by: T::AccountId,
         reported_entity: EntityId<T::AccountId>,
         scope: SpaceId,
         reason: Content
     ) -> Self {
         Self {
             id,
-            created: WhoAndWhen::<T>::new(created_by.clone()),
+            created: WhoAndWhen::<T>::new(created_by),
             reported_entity,
             reported_within: scope,
             reason
         }
+    }
+}
+
+impl<T: Trait> SuggestedStatus<T> {
+    pub fn new(who: T::AccountId, status: Option<EntityStatus>, report_id: Option<ReportId>) -> Self {
+        Self {
+            suggested: WhoAndWhen::<T>::new(who),
+            status,
+            report_id
+        }
+    }
+}
+
+// TODO: maybe simplify using one common trait?
+
+impl<T: Trait> IsAccountBlocked for Module<T> {
+    type AccountId = T::AccountId;
+
+    fn is_account_blocked(account: Self::AccountId, scope: SpaceId) -> bool {
+        let entity = EntityId::Account(account);
+
+        Self::status_by_entity_in_space(entity, scope) == Some(EntityStatus::Blocked)
+    }
+}
+
+impl<T: Trait> IsSpaceBlocked for Module<T> {
+    type SpaceId = SpaceId;
+
+    fn is_space_blocked(space_id: Self::SpaceId, scope: SpaceId) -> bool {
+        let entity = EntityId::Space(space_id);
+
+        Self::status_by_entity_in_space(entity, scope) == Some(EntityStatus::Blocked)
+    }
+}
+
+impl<T: Trait> IsPostBlocked for Module<T> {
+    type PostId = PostId;
+
+    fn is_post_blocked(post_id: Self::PostId, scope: SpaceId) -> bool {
+        let entity = EntityId::Post(post_id);
+
+        Self::status_by_entity_in_space(entity, scope) == Some(EntityStatus::Blocked)
+    }
+}
+
+impl<T: Trait> IsContentBlocked for Module<T> {
+    type Content = Content;
+
+    fn is_content_blocked(content: Self::Content, scope: SpaceId) -> bool {
+        let entity = EntityId::Content(content);
+
+        Self::status_by_entity_in_space(entity, scope) == Some(EntityStatus::Blocked)
     }
 }
