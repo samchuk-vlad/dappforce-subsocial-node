@@ -9,6 +9,8 @@ use pallet_permissions::{
 };
 use pallet_utils::{SpaceId, User};
 
+pub mod moderation;
+
 /// Minimal set of fields from Space struct that are required by roles pallet.
 pub struct SpaceForRoles<AccountId> {
   pub owner: AccountId,

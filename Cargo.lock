@@ -3182,6 +3182,7 @@ dependencies = [
 name = "pallet-moderation"
 version = "2.0.0-rc4"
 dependencies = [
+ "df-traits",
  "frame-support",
  "frame-system",
  "pallet-permissions",

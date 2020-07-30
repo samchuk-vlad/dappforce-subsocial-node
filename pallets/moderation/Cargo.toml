@@ -21,6 +21,7 @@ std = [
     'sp-std/std',
     'frame-support/std',
     'frame-system/std',
+    'df-traits/std',
     'pallet-permissions/std',
     'pallet-posts/std',
     'pallet-spaces/std',
@@ -55,6 +56,11 @@ version = '2.0.0-rc4'
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
 tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
+
+[dependencies.df-traits]
+default-features = false
+path = '../traits'
 version = '2.0.0-rc4'
 
 [dependencies.pallet-permissions]
