@@ -91,24 +91,9 @@ decl_module! {
     pub fn unfollow_space(origin, space_id: SpaceId) -> DispatchResult {
       let follower = ensure_signed(origin)?;
 
-      let space = &mut Spaces::require_space(space_id)?;
       ensure!(Self::space_followed_by_account((follower.clone(), space_id)), Error::<T>::NotSpaceFollower);
 
-      space.dec_followers();
-
-      let mut social_account = Profiles::social_account_by_id(follower.clone()).ok_or(Error::<T>::SocialAccountNotFound)?;
-      social_account.dec_following_spaces();
-
-      T::BeforeSpaceUnfollowed::before_space_unfollowed(follower.clone(), space)?;
-
-      <SpacesFollowedByAccount<T>>::mutate(follower.clone(), |space_ids| vec_remove_on(space_ids, space_id));
-      <SpaceFollowers<T>>::mutate(space_id, |account_ids| vec_remove_on(account_ids, follower.clone()));
-      <SpaceFollowedByAccount<T>>::remove((follower.clone(), space_id));
-      <SocialAccountById<T>>::insert(follower.clone(), social_account);
-      <SpaceById<T>>::insert(space_id, space);
-
-      Self::deposit_event(RawEvent::SpaceUnfollowed(follower, space_id));
-      Ok(())
+      Self::unfollow_space_by_account(follower, space_id)
     }
   }
 }
@@ -131,6 +116,25 @@ impl<T: Trait> Module<T> {
 
         Self::deposit_event(RawEvent::SpaceFollowed(follower, space_id));
 
+        Ok(())
+    }
+
+    pub fn unfollow_space_by_account(follower: T::AccountId, space_id: SpaceId) -> DispatchResult {
+        let space = &mut Spaces::require_space(space_id)?;
+        space.dec_followers();
+
+        let mut social_account = Profiles::social_account_by_id(follower.clone()).ok_or(Error::<T>::SocialAccountNotFound)?;
+        social_account.dec_following_spaces();
+
+        T::BeforeSpaceUnfollowed::before_space_unfollowed(follower.clone(), space)?;
+
+        <SpacesFollowedByAccount<T>>::mutate(follower.clone(), |space_ids| vec_remove_on(space_ids, space_id));
+        <SpaceFollowers<T>>::mutate(space_id, |account_ids| vec_remove_on(account_ids, follower.clone()));
+        <SpaceFollowedByAccount<T>>::remove((follower.clone(), space_id));
+        <SocialAccountById<T>>::insert(follower.clone(), social_account);
+        <SpaceById<T>>::insert(space_id, space);
+
+        Self::deposit_event(RawEvent::SpaceUnfollowed(follower, space_id));
         Ok(())
     }
 }
