@@ -1590,9 +1590,10 @@ mod tests {
                 Some(POST2),
                 Some(
                     self::post_update(
-                        Some(SPACE2),
+                        // FIXME: when Post's `space_id` update is fully implemented
+                        None/*Some(SPACE2)*/,
                         None,
-                        None
+                        Some(true)/*None*/
                     )
                 )
             ), PostsError::<TestRuntime>::PostNotFound);
@@ -1610,9 +1611,10 @@ mod tests {
                 None,
                 Some(
                     self::post_update(
-                        Some(SPACE2),
+                        // FIXME: when Post's `space_id` update is fully implemented
+                        None/*Some(SPACE2)*/,
                         None,
-                        None
+                        Some(true)/*None*/
                     )
                 )
             ), PostsError::<TestRuntime>::NoPermissionToUpdateAnyPost);
