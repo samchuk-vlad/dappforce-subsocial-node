@@ -105,7 +105,7 @@ decl_module! {
         Profile {
           created: WhoAndWhen::<T>::new(owner.clone()),
           updated: None,
-          handle: handle,
+          handle,
           content
         }
       );
@@ -145,7 +145,7 @@ decl_module! {
           let handle_in_lowercase = Self::lowercase_and_validate_profile_handle(handle.clone())?;
 
           // Note that stored handle is in lowercase unlike profile.handle, but both are valid
-          <AccountByProfileHandle<T>>::remove(profile.handle.clone().to_ascii_lowercase());
+          <AccountByProfileHandle<T>>::remove(profile.handle.to_ascii_lowercase());
           <AccountByProfileHandle<T>>::insert(handle_in_lowercase, owner.clone());
 
           old_data.handle = Some(profile.handle);
