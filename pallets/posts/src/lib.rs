@@ -11,7 +11,7 @@ use frame_system::{self as system, ensure_signed};
 
 use pallet_permissions::SpacePermission;
 use pallet_spaces::{Module as Spaces, Space, SpaceById};
-use pallet_utils::{Module as Utils, SpaceId, vec_remove_on, WhoAndWhen, Content};
+use pallet_utils::{Module as Utils, SpaceId, WhoAndWhen, Content};
 
 pub mod functions;
 
@@ -255,7 +255,7 @@ decl_module! {
       let editor = ensure_signed(origin)?;
 
       let has_updates =
-        update.space_id.is_some() ||
+        // update.space_id.is_some() ||
         update.content.is_some() ||
         update.hidden.is_some();
 
@@ -344,6 +344,7 @@ decl_module! {
         }
       }
 
+      /*
       // Move this post to another space:
       if let Some(space_id) = update.space_id {
         ensure!(post.is_root_post(), Error::<T>::CannotUpdateSpaceIdOnComment);
@@ -354,6 +355,10 @@ decl_module! {
             // TODO check that the current user has CreatePosts permission in new space_id.
             // TODO test whether new_space.posts_count increases
             // TODO test whether new_space.hidden_posts_count increases if post is hidden
+            // TODO update direct_replies_count and total_replies_count of ancestors
+            // TODO test whether reactions are updated correctly:
+            //  - subtract score from an old space
+            //  - add score to a new space
 
             // Remove post_id from its old space:
             PostIdsBySpaceId::mutate(post_space_id, |post_ids| vec_remove_on(post_ids, post_id));
@@ -366,6 +371,7 @@ decl_module! {
           }
         }
       }
+      */
 
       // Update this post only if at least one field should be updated:
       if is_update_applied {
