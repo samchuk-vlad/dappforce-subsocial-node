@@ -3187,6 +3187,7 @@ dependencies = [
  "frame-system",
  "pallet-permissions",
  "pallet-posts",
+ "pallet-space-follows",
  "pallet-spaces",
  "pallet-timestamp",
  "pallet-utils",

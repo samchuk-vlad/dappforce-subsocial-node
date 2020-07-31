@@ -1,6 +1,6 @@
 use frame_support::dispatch::DispatchResult;
 
-use pallet_utils::SpaceId;
+use pallet_utils::{SpaceId, vec_remove_on};
 
 use super::*;
 
@@ -288,8 +288,60 @@ impl<T: Trait> Module<T> {
         Self::share_post(creator.clone(), original_post, new_post_id)
     }
 
-    #[allow(unused_variables)]
-    pub fn try_move_post_to_abbys(post_id: PostId) -> DispatchResult {
+    pub fn delete_post_from_space(post_id: PostId) -> DispatchResult {
+        let mut post = Self::require_post(post_id)?;
+
+        if let PostExtension::Comment(comment_ext) = post.extension {
+            post.extension = PostExtension::RegularPost;
+
+            let root_post = &mut Self::require_post(comment_ext.root_post_id)?;
+            let parent_id = comment_ext.parent_id.unwrap_or(root_post.id);
+
+            // Subtract CreateComment score weight on root post and its space
+            T::PostScores::score_root_post_on_new_comment(post.created.account, root_post)?;
+
+            // Choose desired counter change whether comment was hidden or not
+            let mut desired_total_change: fn(&mut Post<T>) = Post::dec_total_replies;
+            let mut desired_direct_change: fn(&mut Post<T>) = Post::dec_direct_replies;
+            if post.hidden {
+                desired_total_change = Post::dec_total_hidden_replies;
+                desired_direct_change = Post::dec_direct_hidden_replies;
+            }
+
+            desired_total_change(root_post);
+            Self::for_each_post_ancestor(parent_id, |p| desired_total_change(p))?;
+            PostById::<T>::insert(root_post.id, root_post);
+            Self::mutate_post_by_id(parent_id, |p| desired_direct_change(p))?;
+
+            // Bind replies to their next ancestor
+            let replies = Self::reply_ids_by_post_id(parent_id);
+            for reply_id in replies.iter() {
+                if let Some(mut reply) = Self::post_by_id(reply_id) {
+                    if let PostExtension::Comment(comment_ext) = reply.extension {
+                        reply.extension = PostExtension::Comment(
+                            CommentExt {
+                                parent_id: Some(parent_id),
+                                root_post_id: comment_ext.root_post_id
+                            }
+                        );
+                        PostById::<T>::insert(reply_id, reply);
+                    }
+                }
+            }
+        } else {
+            let mut space = post.get_space()?;
+            post.space_id = None;
+            if post.hidden {
+                space.hidden_posts_count = space.hidden_posts_count.saturating_sub(1);
+            } else {
+                space.posts_count = space.posts_count.saturating_sub(1);
+            }
+
+            space.score = space.score.saturating_sub(post.score);
+
+            PostIdsBySpaceId::mutate(space.id, |post_ids| vec_remove_on(post_ids, post_id));
+        }
+
         Ok(())
     }
 

@@ -60,6 +60,7 @@ pub struct SuggestedStatus<T: Trait> {
 pub trait Trait: system::Trait
     + pallet_posts::Trait
     + pallet_spaces::Trait
+    + pallet_space_follows::Trait
     + pallet_utils::Trait
 {
     /// The overarching event type.

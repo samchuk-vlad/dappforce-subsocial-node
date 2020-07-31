@@ -3,6 +3,7 @@ use crate::*;
 use frame_support::dispatch::DispatchError;
 use pallet_posts::Module as Posts;
 use pallet_spaces::Space;
+use pallet_space_follows::Module as SpaceFollows;
 use df_traits::moderation::*;
 
 impl<T: Trait> Module<T> {
@@ -48,9 +49,11 @@ impl<T: Trait> Module<T> {
         // TODO: update counters, when entity is moved
         // TODO: think, what and where we should change something if entity is moved
         match entity {
-            EntityId::Content(_) | EntityId::Account(_) => (),
+            EntityId::Content(_) => (),
+            EntityId::Account(account_id)
+                => SpaceFollows::<T>::unfollow_space_by_account(account_id.clone(), scope)?,
             EntityId::Space(space_id) => Spaces::<T>::try_move_space_to_root(*space_id)?,
-            EntityId::Post(post_id) => Posts::<T>::try_move_post_to_abbys(*post_id)?,
+            EntityId::Post(post_id) => Posts::<T>::delete_post_from_space(*post_id)?,
         }
         StatusByEntityInSpace::<T>::insert(entity, scope, EntityStatus::Blocked);
         Ok(())
