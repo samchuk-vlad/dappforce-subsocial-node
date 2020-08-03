@@ -31,11 +31,8 @@ pub struct Post<T: Trait> {
     pub content: Content,
     pub hidden: bool,
 
-    pub direct_replies_count: u16,
-    pub total_replies_count: u32,
-
-    pub direct_hidden_replies_count: u16,
-    pub total_hidden_replies_count: u32,
+    pub replies_count: u32,
+    pub hidden_replies_count: u32,
 
     pub shares_count: u16,
     pub upvotes_count: u16,
@@ -319,23 +316,7 @@ decl_module! {
           });
 
           if let PostExtension::Comment(comment_ext) = post.extension {
-            let mut root_post = Self::require_post(comment_ext.root_post_id)?;
-            root_post.inc_total_replies();
-
-            let commented_post_id = comment_ext.parent_id.unwrap_or(root_post.id);
-
-            let mut desired_total_change: fn(&mut Post<T>) = Post::dec_total_hidden_replies;
-            let mut desired_direct_change: fn(&mut Post<T>) = Post::dec_direct_hidden_replies;
-            if hidden {
-                desired_total_change = Post::inc_total_hidden_replies;
-                desired_direct_change = Post::inc_direct_hidden_replies;
-            }
-
-            Self::for_each_post_ancestor(commented_post_id, |post| desired_total_change(post))?;
-
-            PostById::insert(root_post.id, root_post);
-
-            Self::mutate_post_by_id(commented_post_id, |post| desired_direct_change(post))?;
+            Self::update_counters_on_comment_hidden_change(&comment_ext, hidden)?;
           }
 
           old_data.hidden = Some(post.hidden);
@@ -355,7 +336,7 @@ decl_module! {
             // TODO check that the current user has CreatePosts permission in new space_id.
             // TODO test whether new_space.posts_count increases
             // TODO test whether new_space.hidden_posts_count increases if post is hidden
-            // TODO update direct_replies_count and total_replies_count of ancestors
+            // TODO update (hidden_)replies_count of ancestors
             // TODO test whether reactions are updated correctly:
             //  - subtract score from an old space
             //  - add score to a new space

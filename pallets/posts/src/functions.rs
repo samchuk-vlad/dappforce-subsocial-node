@@ -22,10 +22,8 @@ impl<T: Trait> Post<T> {
             space_id: space_id_opt,
             content,
             hidden: false,
-            direct_replies_count: 0,
-            total_replies_count: 0,
-            direct_hidden_replies_count: 0,
-            total_hidden_replies_count: 0,
+            replies_count: 0,
+            hidden_replies_count: 0,
             shares_count: 0,
             upvotes_count: 0,
             downvotes_count: 0,
@@ -91,36 +89,20 @@ impl<T: Trait> Post<T> {
 
     // TODO use macros to generate inc/dec fns for Space, Post.
 
-    pub fn inc_direct_replies(&mut self) {
-        self.direct_replies_count = self.direct_replies_count.saturating_add(1);
+    pub fn inc_replies(&mut self) {
+        self.replies_count = self.replies_count.saturating_add(1);
     }
 
-    pub fn dec_direct_replies(&mut self) {
-        self.direct_replies_count = self.direct_replies_count.saturating_sub(1);
+    pub fn dec_replies(&mut self) {
+        self.replies_count = self.replies_count.saturating_sub(1);
     }
 
-    pub fn inc_total_replies(&mut self) {
-        self.total_replies_count = self.total_replies_count.saturating_add(1);
+    pub fn inc_hidden_replies(&mut self) {
+        self.hidden_replies_count = self.hidden_replies_count.saturating_add(1);
     }
 
-    pub fn dec_total_replies(&mut self) {
-        self.total_replies_count = self.total_replies_count.saturating_sub(1);
-    }
-
-    pub fn inc_direct_hidden_replies(&mut self) {
-        self.direct_hidden_replies_count = self.direct_hidden_replies_count.saturating_add(1);
-    }
-
-    pub fn dec_direct_hidden_replies(&mut self) {
-        self.direct_hidden_replies_count = self.direct_hidden_replies_count.saturating_sub(1);
-    }
-
-    pub fn inc_total_hidden_replies(&mut self) {
-        self.total_hidden_replies_count = self.total_hidden_replies_count.saturating_add(1);
-    }
-
-    pub fn dec_total_hidden_replies(&mut self) {
-        self.total_hidden_replies_count = self.total_hidden_replies_count.saturating_sub(1);
+    pub fn dec_hidden_replies(&mut self) {
+        self.hidden_replies_count = self.hidden_replies_count.saturating_sub(1);
     }
 
     pub fn inc_shares(&mut self) {
@@ -262,8 +244,6 @@ impl<T: Trait> Module<T> {
     ) -> DispatchResult {
         let mut commented_post_id = root_post.id;
 
-        root_post.inc_total_replies();
-
         if let Some(parent_id) = comment_ext.parent_id {
             let parent_comment = Self::post_by_id(parent_id).ok_or(Error::<T>::UnknownParentComment)?;
             ensure!(parent_comment.is_comment(), Error::<T>::NotACommentByParentId);
@@ -274,11 +254,11 @@ impl<T: Trait> Module<T> {
             commented_post_id = parent_id;
         }
 
+        root_post.inc_replies();
         T::PostScores::score_root_post_on_new_comment(creator.clone(), root_post)?;
 
-        Self::for_each_post_ancestor(commented_post_id, |post| post.inc_total_replies())?;
+        Self::for_each_post_ancestor(commented_post_id, |post| post.inc_replies())?;
         PostById::insert(root_post.id, root_post);
-        Self::mutate_post_by_id(commented_post_id, |post| post.inc_direct_replies())?;
         ReplyIdsByPostId::mutate(commented_post_id, |ids| ids.push(new_post_id));
 
         Ok(())
@@ -306,5 +286,27 @@ impl<T: Trait> Module<T> {
         space.inc_posts();
 
         Self::share_post(creator.clone(), original_post, new_post_id)
+    }
+
+    /// Rewrite ancestor counters when Post hidden status changes
+    /// Warning: This will affect storage state!
+    pub(crate) fn update_counters_on_comment_hidden_change(
+        comment_ext: &CommentExt,
+        becomes_hidden: bool
+    ) -> DispatchResult {
+        let root_post = &mut Self::require_post(comment_ext.root_post_id)?;
+        let commented_post_id = comment_ext.parent_id.unwrap_or(root_post.id);
+
+        let mut update_hidden_replies: fn(&mut Post<T>) = Post::inc_hidden_replies;
+        if !becomes_hidden {
+            update_hidden_replies = Post::dec_hidden_replies;
+        }
+
+        Self::for_each_post_ancestor(commented_post_id, |post| update_hidden_replies(post))?;
+
+        update_hidden_replies(root_post);
+        PostById::insert(root_post.id, root_post);
+
+        Ok(())
     }
 }
