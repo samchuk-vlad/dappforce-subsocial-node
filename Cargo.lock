@@ -876,6 +876,7 @@ version = "2.0.0-rc4"
 dependencies = [
  "frame-support",
  "frame-system",
+ "pallet-moderation",
  "pallet-permissions",
  "pallet-post-history",
  "pallet-posts",
@@ -3228,6 +3229,7 @@ dependencies = [
 name = "pallet-posts"
 version = "2.0.0-rc4"
 dependencies = [
+ "df-traits",
  "frame-support",
  "frame-system",
  "impl-trait-for-tuples",
@@ -3295,6 +3297,7 @@ dependencies = [
 name = "pallet-reactions"
 version = "2.0.0-rc4"
 dependencies = [
+ "df-traits",
  "frame-support",
  "frame-system",
  "pallet-permissions",
@@ -3407,6 +3410,7 @@ dependencies = [
 name = "pallet-space-ownership"
 version = "2.0.0-rc4"
 dependencies = [
+ "df-traits",
  "frame-support",
  "frame-system",
  "pallet-spaces",

@@ -85,6 +85,10 @@ decl_module! {
 
 decl_error! {
     pub enum Error for Module<T: Trait> {
+        /// Account is blocked within this space (common error)
+        AccountIsBlocked,
+        /// Content is blocked within this space (common error)
+        ContentIsBlocked,
         /// IPFS CID is invalid.
         InvalidIpfsCid,
         /// Unsupported yet type of content 'Raw' is used

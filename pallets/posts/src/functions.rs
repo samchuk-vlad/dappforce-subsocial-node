@@ -69,6 +69,18 @@ impl<T: Trait> Post<T> {
         }
     }
 
+    pub fn get_space_id(&self) -> Result<SpaceId, DispatchError> {
+        Self::try_get_space_id(self).ok_or_else(|| Error::<T>::PostHasNoSpaceId.into())
+    }
+
+    pub fn try_get_space_id(&self) -> Option<SpaceId> {
+        if let Ok(root_post) = self.get_root_post() {
+            return root_post.space_id;
+        }
+
+        None
+    }
+
     pub fn get_space(&self) -> Result<Space<T>, DispatchError> {
         let root_post = self.get_root_post()?;
         let space_id = root_post.space_id.ok_or(Error::<T>::PostHasNoSpaceId)?;
@@ -76,12 +88,8 @@ impl<T: Trait> Post<T> {
     }
 
     pub fn try_get_space(&self) -> Option<Space<T>> {
-        if self.is_comment() {
-            return None
-        }
-
-        if let Some(space_id) = self.space_id {
-            return Spaces::require_space(space_id).ok()
+        if let Ok(root_post) = self.get_root_post() {
+            return root_post.space_id.and_then(|space_id| Spaces::require_space(space_id).ok());
         }
 
         None

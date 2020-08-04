@@ -10,10 +10,11 @@ use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 use frame_system::{self as system, ensure_signed};
 
+use df_traits::moderation::IsAccountBlocked;
 use pallet_permissions::SpacePermission;
 use pallet_posts::{Module as Posts, Post, PostById, PostId};
 use pallet_spaces::Module as Spaces;
-use pallet_utils::{vec_remove_on, WhoAndWhen};
+use pallet_utils::{Error as UtilsError, vec_remove_on, WhoAndWhen};
 
 pub type ReactionId = u64;
 
@@ -122,6 +123,8 @@ decl_module! {
       ensure!(!space.hidden, Error::<T>::CannotReactWhenSpaceHidden);
       ensure!(Posts::<T>::is_root_post_visible(post_id)?, Error::<T>::CannotReactWhenPostHidden);
 
+      ensure!(!T::IsAccountBlocked::is_account_blocked(owner.clone(), space.id), UtilsError::<T>::AccountIsBlocked);
+
       let reaction_id = Self::insert_new_reaction(owner.clone(), kind);
 
       match kind {
@@ -172,6 +175,9 @@ decl_module! {
 
       ensure!(owner == reaction.created.account, Error::<T>::NotReactionOwner);
       ensure!(reaction.kind != new_kind, Error::<T>::SameReaction);
+      if let Some(space_id) = post.try_get_space_id() {
+        ensure!(!T::IsAccountBlocked::is_account_blocked(owner.clone(), space_id), UtilsError::<T>::AccountIsBlocked);
+      }
 
       let old_kind = reaction.kind;
       reaction.kind = new_kind;
@@ -212,6 +218,9 @@ decl_module! {
       let post = &mut Posts::require_post(post_id)?;
 
       ensure!(owner == reaction.created.account, Error::<T>::NotReactionOwner);
+      if let Some(space_id) = post.try_get_space_id() {
+        ensure!(!T::IsAccountBlocked::is_account_blocked(owner.clone(), space_id), UtilsError::<T>::AccountIsBlocked);
+      }
 
       match reaction.kind {
         ReactionKind::Upvote => post.dec_upvotes(),

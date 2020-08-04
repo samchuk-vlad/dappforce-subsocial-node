@@ -9,8 +9,9 @@ use frame_support::{
 use sp_std::prelude::*;
 use frame_system::{self as system, ensure_signed};
 
+use df_traits::moderation::IsAccountBlocked;
 use pallet_spaces::{Module as Spaces, SpaceById};
-use pallet_utils::SpaceId;
+use pallet_utils::{Error as UtilsError, SpaceId};
 
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait
@@ -70,7 +71,7 @@ decl_module! {
       space.ensure_space_owner(who.clone())?;
 
       ensure!(who != transfer_to, Error::<T>::CannotTranferToCurrentOwner);
-      Spaces::<T>::ensure_space_exists(space_id)?;
+      ensure!(!T::IsAccountBlocked::is_account_blocked(transfer_to.clone(), space_id), UtilsError::<T>::AccountIsBlocked);
 
       <PendingSpaceOwner<T>>::insert(space_id, transfer_to.clone());
 
