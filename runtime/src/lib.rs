@@ -356,6 +356,8 @@ parameter_types! {
 
       SP::SuggestEntityStatus,
       SP::UpdateEntityStatus,
+
+      SP::UpdateSpaceSettings,
     ].into_iter())),
   };
 }

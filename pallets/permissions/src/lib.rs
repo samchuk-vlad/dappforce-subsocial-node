@@ -77,6 +77,10 @@ pub enum SpacePermission {
   SuggestEntityStatus,
   /// Update entity status in space
   UpdateEntityStatus,
+
+  // Related to Space settings
+  /// Update collection of space settings in different pallets
+  UpdateSpaceSettings,
 }
 
 pub type SpacePermissionSet = BTreeSet<SpacePermission>;

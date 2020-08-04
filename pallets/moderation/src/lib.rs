@@ -56,6 +56,16 @@ pub struct SuggestedStatus<T: Trait> {
     report_id: Option<ReportId>,
 }
 
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+pub struct SpaceModerationSettings {
+    autoblock_threshold: Option<u16>
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+pub struct SpaceModerationSettingsUpdate {
+    autoblock_threshold: Option<Option<u16>>
+}
+
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait
     + pallet_posts::Trait
@@ -66,7 +76,7 @@ pub trait Trait: system::Trait
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
-    type AutoBlockConfirmations: Get<u16>;
+    type DefaultAutoblockThreshold: Get<u16>;
 }
 
 // This pallet's storage items.
@@ -96,6 +106,9 @@ decl_storage! {
             hasher(twox_64_concat) EntityId<T::AccountId>,
             hasher(twox_64_concat) SpaceId
              => Vec<SuggestedStatus<T>>;
+
+        pub SpaceSettings get(fn space_settings):
+            map hasher(twox_64_concat) SpaceId => Option<SpaceModerationSettings>;
     }
 }
 
@@ -109,6 +122,7 @@ decl_event!(
         EntityStatusSuggested(AccountId, SpaceId, EntityId, Option<EntityStatus>),
         EntityStatusUpdated(AccountId, SpaceId, EntityId, Option<EntityStatus>),
         EntityStatusDeleted(AccountId, SpaceId, EntityId),
+        SpaceSettingsUpdated(AccountId, SpaceId),
     }
 );
 
@@ -131,6 +145,10 @@ decl_error! {
         NoPermissionToSuggestEntityStatus,
         /// Account has no permission to update entity status.
         NoPermissionToUpdateEntityStatus,
+        /// Account has no permission to update space settings.
+        NoPermissionToUpdateSpaceSettings,
+        /// No any updates provided for space settings.
+        NoUpdatesForSpaceSettings,
         /// Report reason shouldn't be empty.
         ReasonIsEmpty,
         /// Report was not found by its id.
@@ -147,7 +165,7 @@ decl_module! {
     /// The module declaration.
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 
-        const AutoBlockConfirmations: u16 = T::AutoBlockConfirmations::get();
+        const DefaultAutoblockThreshold: u16 = T::DefaultAutoblockThreshold::get();
 
         // Initializing errors
         type Error = Error<T>;
@@ -224,8 +242,14 @@ decl_module! {
                 .filter(|suggestion| suggestion.status == Some(EntityStatus::Blocked))
                 .count();
 
-            if block_suggestions_total >= T::AutoBlockConfirmations::get() as usize {
-                Self::block_entity_in_scope(&entity, scope)?;
+            let autoblock_threshold_opt = Self::space_settings(scope)
+                .unwrap_or_else(Self::default_autoblock_threshold_as_settings)
+                .autoblock_threshold;
+
+            if let Some(autoblock_threshold) = autoblock_threshold_opt {
+                if block_suggestions_total >= autoblock_threshold as usize {
+                    Self::block_entity_in_scope(&entity, scope)?;
+                }
             }
 
             Self::deposit_event(RawEvent::EntityStatusSuggested(who, scope, entity.clone(), status));
@@ -283,5 +307,40 @@ decl_module! {
         }
 
         // todo: add ability to delete report_ids
+
+        #[weight = 10_000]
+        fn update_space_settings(origin, space_id: SpaceId, update: SpaceModerationSettingsUpdate) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+
+            let has_updates = update.autoblock_threshold.is_some();
+            ensure!(has_updates, Error::<T>::NoUpdatesForSpaceSettings);
+
+            let space = Spaces::<T>::require_space(space_id)?;
+
+            Spaces::<T>::ensure_account_has_space_permission(
+                who.clone(),
+                &space,
+                pallet_permissions::SpacePermission::UpdateSpaceSettings,
+                Error::<T>::NoPermissionToUpdateSpaceSettings.into(),
+            )?;
+
+            let mut is_updated = false;
+
+            let mut space_settings = Self::space_settings(space_id)
+                .unwrap_or_else(Self::default_autoblock_threshold_as_settings);
+
+            if let Some(autoblock_threshold) = update.autoblock_threshold {
+                if autoblock_threshold != space_settings.autoblock_threshold {
+                    space_settings.autoblock_threshold = autoblock_threshold;
+                    is_updated = true;
+                }
+            }
+
+            if is_updated {
+                SpaceSettings::insert(space_id, space_settings);
+                Self::deposit_event(RawEvent::SpaceSettingsUpdated(who, space_id));
+            }
+            Ok(())
+        }
     }
 }

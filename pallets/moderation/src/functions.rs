@@ -74,6 +74,12 @@ impl<T: Trait> Module<T> {
         }
         Ok(())
     }
+
+    pub fn default_autoblock_threshold_as_settings() -> SpaceModerationSettings {
+        SpaceModerationSettings {
+            autoblock_threshold: Some(T::DefaultAutoblockThreshold::get())
+        }
+    }
 }
 
 impl<T: Trait> Report<T> {
@@ -105,7 +111,6 @@ impl<T: Trait> SuggestedStatus<T> {
 }
 
 // TODO: maybe simplify using one common trait?
-
 impl<T: Trait> IsAccountBlocked for Module<T> {
     type AccountId = T::AccountId;
 

@@ -149,6 +149,8 @@ mod tests {
 
             SP::SuggestEntityStatus,
             SP::UpdateEntityStatus,
+
+            SP::UpdateSpaceSettings,
         ].into_iter())),
       };
     }
@@ -350,7 +352,7 @@ mod tests {
         }
 
         /// Custom ext configuration with pending ownership transfer without Space
-        pub fn build_with_pending_ownership_transfer() -> TestExternalities {
+        pub fn build_with_pending_ownership_transfer_no_space() -> TestExternalities {
             let storage = system::GenesisConfig::default()
                 .build_storage::<TestRuntime>()
                 .unwrap();
@@ -393,6 +395,25 @@ mod tests {
 
                 assert_ok!(_grant_role(None, Some(ROLE1), Some(vec![user.clone()])));
                 assert_ok!(_grant_role(None, Some(ROLE2), Some(vec![user])));
+            });
+
+            ext
+        }
+
+        /// Custom ext configuration with space follow without Space
+        pub fn build_with_space_follow_no_space() -> TestExternalities {
+            let storage = system::GenesisConfig::default()
+                .build_storage::<TestRuntime>()
+                .unwrap();
+
+            let mut ext = TestExternalities::from(storage);
+            ext.execute_with(|| {
+                System::set_block_number(1);
+
+                assert_ok!(_create_default_space());
+                assert_ok!(_default_follow_space());
+
+                <SpaceById<TestRuntime>>::remove(SPACE1);
             });
 
             ext
@@ -2975,7 +2996,7 @@ mod tests {
 
     #[test]
     fn unfollow_space_should_fail_with_space_not_found() {
-        ExtBuilder::build().execute_with(|| {
+        ExtBuilder::build_with_space_follow_no_space().execute_with(|| {
             assert_noop!(_default_unfollow_space(), SpacesError::<TestRuntime>::SpaceNotFound);
         });
     }
@@ -3109,7 +3130,7 @@ mod tests {
 
     #[test]
     fn accept_pending_ownership_should_fail_with_space_not_found() {
-        ExtBuilder::build_with_pending_ownership_transfer().execute_with(|| {
+        ExtBuilder::build_with_pending_ownership_transfer_no_space().execute_with(|| {
             assert_noop!(_accept_default_pending_ownership(), SpacesError::<TestRuntime>::SpaceNotFound);
         });
     }
@@ -3167,7 +3188,7 @@ mod tests {
 
     #[test]
     fn reject_pending_ownership_should_fail_with_space_not_found() {
-        ExtBuilder::build_with_pending_ownership_transfer().execute_with(|| {
+        ExtBuilder::build_with_pending_ownership_transfer_no_space().execute_with(|| {
             assert_noop!(_reject_default_pending_ownership(), SpacesError::<TestRuntime>::SpaceNotFound);
         });
     }
