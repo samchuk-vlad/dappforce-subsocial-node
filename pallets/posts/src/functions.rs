@@ -208,6 +208,7 @@ impl<T: Trait> Module<T> {
     }
 
     // TODO refactor to a tail recursion
+    /// Get all post ancestors (parent_id) including this post
     pub fn get_post_ancestors(post_id: PostId) -> Vec<Post<T>> {
         let mut ancestors: Vec<Post<T>> = Vec::new();
 
@@ -221,6 +222,7 @@ impl<T: Trait> Module<T> {
         ancestors
     }
 
+    /// Applies function to all post ancestors (parent_id) including this post
     pub fn for_each_post_ancestor<F: FnMut(&mut Post<T>) + Copy> (
         post_id: PostId,
         f: F
@@ -235,6 +237,32 @@ impl<T: Trait> Module<T> {
 
         Ok(())
     }
+
+    fn try_get_post_replies(post_id: PostId) -> Vec<Post<T>> {
+        let mut replies: Vec<Post<T>> = Vec::new();
+
+        if let Some(post) = Self::post_by_id(post_id) {
+            replies.push(post);
+            for reply_id in Self::reply_ids_by_post_id(post_id).iter() {
+                replies.extend(Self::try_get_post_replies(*reply_id).iter().cloned());
+            }
+        }
+
+        replies
+    }
+
+    /// Recursively et all nested post replies (reply_ids_by_post_id)
+    pub fn get_post_replies(post_id: PostId) -> Result<Vec<Post<T>>, DispatchError> {
+        let reply_ids = Self::reply_ids_by_post_id(post_id);
+        ensure!(!reply_ids.is_empty(), Error::<T>::NoRepliesOnPost);
+
+        let mut replies: Vec<Post<T>> = Vec::new();
+        for reply_id in reply_ids.iter() {
+            replies.extend(Self::try_get_post_replies(*reply_id));
+        }
+        Ok(replies)
+    }
+    // TODO: maybe add for_each_reply?
 
     pub(crate) fn create_comment(
         creator: &T::AccountId,
@@ -297,36 +325,21 @@ impl<T: Trait> Module<T> {
             let root_post = &mut Self::require_post(comment_ext.root_post_id)?;
             let parent_id = comment_ext.parent_id.unwrap_or(root_post.id);
 
-            // Subtract CreateComment score weight on root post and its space
-            T::PostScores::score_root_post_on_new_comment(post.created.account, root_post)?;
-
             // Choose desired counter change whether comment was hidden or not
-            let mut desired_total_change: fn(&mut Post<T>) = Post::dec_total_replies;
-            let mut desired_direct_change: fn(&mut Post<T>) = Post::dec_direct_replies;
+            let mut update_replies_change: fn(&mut Post<T>) = Post::dec_replies;
             if post.hidden {
-                desired_total_change = Post::dec_total_hidden_replies;
-                desired_direct_change = Post::dec_direct_hidden_replies;
+                update_replies_change = Post::dec_hidden_replies;
             }
 
-            desired_total_change(root_post);
-            Self::for_each_post_ancestor(parent_id, |p| desired_total_change(p))?;
-            PostById::<T>::insert(root_post.id, root_post);
-            Self::mutate_post_by_id(parent_id, |p| desired_direct_change(p))?;
+            update_replies_change(root_post);
+            PostById::<T>::insert(root_post.id, root_post.clone());
+            Self::for_each_post_ancestor(parent_id, |p| update_replies_change(p))?;
 
-            // Bind replies to their next ancestor
-            let replies = Self::reply_ids_by_post_id(parent_id);
-            for reply_id in replies.iter() {
-                if let Some(mut reply) = Self::post_by_id(reply_id) {
-                    if let PostExtension::Comment(comment_ext) = reply.extension {
-                        reply.extension = PostExtension::Comment(
-                            CommentExt {
-                                parent_id: Some(parent_id),
-                                root_post_id: comment_ext.root_post_id
-                            }
-                        );
-                        PostById::<T>::insert(reply_id, reply);
-                    }
-                }
+            // Subtract CreateComment score weight on root post and its space
+            T::PostScores::score_root_post_on_new_comment(post.created.account, root_post)?;
+            let replies = Self::get_post_replies(post_id)?;
+            for reply in replies.iter() {
+                T::PostScores::score_root_post_on_new_comment(reply.created.account.clone(), root_post)?;
             }
         } else {
             let mut space = post.get_space()?;

@@ -146,6 +146,8 @@ decl_error! {
         PostHasNoSpaceId,
         /// Not allowed to create a post/comment when a scope (space or root post) is hidden.
         CannotCreateInHiddenScope,
+        /// Post has no any replies
+        NoRepliesOnPost,
 
         // Sharing related errors:
 
