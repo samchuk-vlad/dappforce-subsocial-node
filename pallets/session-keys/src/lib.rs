@@ -13,8 +13,7 @@ use frame_support::{
     },
     dispatch::{DispatchError, DispatchResult, PostDispatchInfo},
     traits::{
-        Currency, Get, ReservableCurrency,
-        Imbalance, OnUnbalanced, ExistenceRequirement,
+        Currency, Get, ExistenceRequirement,
         OriginTrait, IsType, Filter,
     },
     Parameter,
@@ -51,8 +50,7 @@ impl<T: Trait> PaysFee<(&Box<<T as Trait>::Call>,)> for CalculateProxyWeight<T> 
     }
 }
 
-type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
-type NegativeImbalanceOf<T> = <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::NegativeImbalance;
+type BalanceOf<T> = <<T as pallet_utils::Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
 
 // TODO define session key permissions
 
@@ -87,9 +85,6 @@ pub trait Trait: system::Trait + pallet_utils::Trait {
         + GetDispatchInfo + From<frame_system::Call<Self>>
         + IsType<<Self as frame_system::Trait>::Call>;
 
-    /// The currency mechanism.
-    type Currency: Currency<Self::AccountId> + ReservableCurrency<Self::AccountId>;
-
     /// The maximum amount of session keys allowed for a single account.
     type MaxSessionKeysPerAccount: Get<u16>;
 
@@ -99,15 +94,13 @@ pub trait Trait: system::Trait + pallet_utils::Trait {
 
 decl_event!(
     pub enum Event<T> where
-        <T as system::Trait>::AccountId,
-        Balance = BalanceOf<T>
+        <T as system::Trait>::AccountId
     {
         SessionKeyAdded(/* owner */ AccountId, /* session key */ AccountId),
         SessionKeyRemoved(/* session key */ AccountId),
         AllSessionKeysRemoved(/* owner */ AccountId),
         /// A proxy was executed correctly, with the given result.
 		ProxyExecuted(DispatchResult),
-		Deposit(Balance),
     }
 );
 
@@ -151,18 +144,6 @@ decl_storage! {
         SessionKeysByExpireBlock:
             map hasher(twox_64_concat)/* expiration_block_number */ T::BlockNumber
             => /* (key owner, session key) */ Vec<(T::AccountId, T::AccountId)>;
-
-        TreasuryAccount build(|config| config.treasury_account.clone()): T::AccountId;
-    }
-    add_extra_genesis {
-        config(treasury_account): T::AccountId;
-        build(|config| {
-			// Create Treasury account
-			let _ = T::Currency::make_free_balance_be(
-				&config.treasury_account,
-				T::Currency::minimum_balance(),
-			);
-		});
     }
 }
 
@@ -382,17 +363,5 @@ impl<T: Trait> Module<T> {
             T::Currency::minimum_balance().saturating_mul(BalanceOf::<T>::from(2)),
             ExistenceRequirement::KeepAlive
         )
-    }
-}
-
-impl<T: Trait> OnUnbalanced<NegativeImbalanceOf<T>> for Module<T> {
-    fn on_nonzero_unbalanced(amount: NegativeImbalanceOf<T>) {
-        let numeric_amount = amount.peek();
-        let treasury_account = TreasuryAccount::<T>::get();
-
-        // Must resolve into existing but better to be safe.
-        let _ = T::Currency::resolve_creating(&treasury_account, amount);
-
-        Self::deposit_event(RawEvent::Deposit(numeric_amount));
     }
 }

@@ -62,7 +62,7 @@ impl system::Trait for Test {
     type AvailableBlockRatio = AvailableBlockRatio;
     type Version = ();
     type ModuleToIndex = ();
-    type AccountData = ();
+    type AccountData = pallet_balances::AccountData<u64>;
     type OnNewAccount = ();
     type OnKilledAccount = ();
 }
@@ -78,12 +78,26 @@ impl pallet_timestamp::Trait for Test {
 }
 
 parameter_types! {
+	pub const ExistentialDeposit: u64 = 1;
+}
+
+impl pallet_balances::Trait for Test {
+    type Balance = u64;
+    type DustRemoval = ();
+    type Event = ();
+    type ExistentialDeposit = ExistentialDeposit;
+    type AccountStore = System;
+}
+
+parameter_types! {
     pub const IpfsCidLen: u32 = 46;
     pub const MinHandleLen: u32 = 5;
     pub const MaxHandleLen: u32 = 50;
 }
 
 impl pallet_utils::Trait for Test {
+    type Event = ();
+    type Currency = Balances;
     type IpfsCidLen = IpfsCidLen;
     type MinHandleLen = MinHandleLen;
     type MaxHandleLen = MaxHandleLen;
@@ -160,6 +174,7 @@ impl Trait for Test {
 }
 
 type System = system::Module<Test>;
+type Balances = pallet_balances::Module<Test>;
 pub(crate) type Roles = Module<Test>;
 
 pub type AccountId = u64;

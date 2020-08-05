@@ -51,6 +51,9 @@ use pallet_permissions::{
 	SpacePermissionSet
 };
 
+pub mod constants;
+use constants::{currency::*, time::*};
+
 /// An index to a block.
 pub type BlockNumber = u32;
 
@@ -112,28 +115,6 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	transaction_version: 1,
 };
 
-pub mod currency {
-	use node_primitives::Balance;
-
-	pub const MILLICENTS: Balance = 10_000;
-	pub const CENTS: Balance = 1_000 * MILLICENTS;
-	pub const DOLLARS: Balance = 100 * CENTS;
-
-	pub const fn _deposit(items: u32, bytes: u32) -> Balance {
-		items as Balance * 15 * CENTS + (bytes as Balance) * 6 * CENTS
-	}
-}
-use currency::*;
-
-pub const MILLISECS_PER_BLOCK: u64 = 4000;
-
-pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
-
-// These time units are defined in number of blocks.
-pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
-pub const HOURS: BlockNumber = MINUTES * 60;
-pub const DAYS: BlockNumber = HOURS * 24;
-
 /// The version information used to identify this runtime when compiled natively.
 #[cfg(feature = "std")]
 pub fn native_version() -> NativeVersion {
@@ -151,7 +132,7 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 		if let Some(fees) = fees_then_tips.next() {
 			let mut fees_with_maybe_tips = fees;
 			fees_with_maybe_tips.maybe_subsume(fees_then_tips.next());
-			SessionKeys::on_unbalanced(fees_with_maybe_tips);
+			Utils::on_unbalanced(fees_with_maybe_tips);
 		}
 	}
 }
@@ -170,7 +151,7 @@ parameter_types! {
 
 impl system::Trait for Runtime {
 	/// The basic call filter to use in dispatchable.
-	type BaseCallFilter = ();
+	type BaseCallFilter = BaseFilter;
 	/// The identifier used to distinguish between accounts.
 	type AccountId = AccountId;
 	/// The aggregated dispatch type that is available for extrinsics.
@@ -300,6 +281,8 @@ parameter_types! {
 }
 
 impl pallet_utils::Trait for Runtime {
+	type Event = Event;
+	type Currency = Balances;
 	type IpfsCidLen = IpfsCidLen;
 	type MinHandleLen = MinHandleLen;
 	type MaxHandleLen = MaxHandleLen;
@@ -476,7 +459,19 @@ parameter_types! {}
 
 impl pallet_space_history::Trait for Runtime {}
 
-parameter_types! {
+pub struct BaseFilter;
+impl Filter<Call> for BaseFilter {
+	fn filter(c: &Call) -> bool {
+		let is_set_balance = matches!(c, Call::Balances(balances::Call::set_balance(..)));
+		let is_force_transfer = matches!(c, Call::Balances(balances::Call::force_transfer(..)));
+		match *c {
+			Call::Balances(..) => is_set_balance || is_force_transfer,
+			_ => true,
+		}
+	}
+}
+
+/*parameter_types! {
 	pub const MaxSessionKeysPerAccount: u16 = 10;
 }
 
@@ -497,10 +492,9 @@ impl Filter<Call> for SessionKeysProxyFilter {
 impl session_keys::Trait for Runtime {
 	type Event = Event;
 	type Call = Call;
-	type Currency = Balances;
 	type MaxSessionKeysPerAccount = MaxSessionKeysPerAccount;
 	type BaseFilter = SessionKeysProxyFilter;
-}
+}*/
 
 construct_runtime!(
 	pub enum Runtime where
@@ -531,7 +525,8 @@ construct_runtime!(
 		SpaceHistory: pallet_space_history::{Module, Storage},
 		SpaceOwnership: pallet_space_ownership::{Module, Call, Storage, Event<T>},
 		Spaces: pallet_spaces::{Module, Call, Storage, Event<T>},
-		SessionKeys: session_keys::{Module, Call, Storage, Config<T>, Event<T>},
+		Utils: pallet_utils::{Storage, Event<T>, Config<T>},
+		// SessionKeys: session_keys::{Module, Call, Storage, Config<T>, Event<T>},
 	}
 );
 

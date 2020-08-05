@@ -2,8 +2,12 @@
 
 use codec::{Decode, Encode};
 use frame_support::{
-    decl_error, decl_module,
-    dispatch::{DispatchError, DispatchResult}, ensure, traits::Get,
+    decl_error, decl_module, decl_storage, decl_event,
+    dispatch::{DispatchError, DispatchResult}, ensure,
+    traits::{
+        Currency, Get,
+        Imbalance, OnUnbalanced,
+    },
 };
 use sp_runtime::RuntimeDebug;
 use sp_std::{
@@ -57,9 +61,17 @@ impl Content {
     }
 }
 
-pub trait Trait: system::Trait
-    + pallet_timestamp::Trait
+type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
+type NegativeImbalanceOf<T> = <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::NegativeImbalance;
+
+pub trait Trait: system::Trait + pallet_timestamp::Trait
 {
+    /// The overarching event type.
+    type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+
+    /// The currency mechanism.
+    type Currency: Currency<Self::AccountId>;
+
     /// A valid length of IPFS CID in bytes.
     type IpfsCidLen: Get<u32>;
 
@@ -68,6 +80,22 @@ pub trait Trait: system::Trait
 
     /// Maximal length of space/profile handle
     type MaxHandleLen: Get<u32>;
+}
+
+decl_storage! {
+    trait Store for Module<T: Trait> as UtilsModule {
+        TreasuryAccount build(|config| config.treasury_account.clone()): T::AccountId;
+    }
+    add_extra_genesis {
+        config(treasury_account): T::AccountId;
+        build(|config| {
+			// Create Treasury account
+			let _ = T::Currency::make_free_balance_be(
+				&config.treasury_account,
+				T::Currency::minimum_balance(),
+			);
+		});
+    }
 }
 
 decl_module! {
@@ -80,6 +108,12 @@ decl_module! {
 
         /// Maximal length of space/profile handle
         const MaxHandleLen: u32 = T::MaxHandleLen::get();
+
+        // Initializing errors
+        type Error = Error<T>;
+
+        // Initializing events
+        fn deposit_event() = default;
     }
 }
 
@@ -101,6 +135,13 @@ decl_error! {
         ContentIsEmpty,
     }
 }
+
+decl_event!(
+    pub enum Event<T> where Balance = BalanceOf<T>
+    {
+		Deposit(Balance),
+    }
+);
 
 fn num_bits<P>() -> usize {
     sp_std::mem::size_of::<P>() * 8
@@ -180,5 +221,17 @@ impl<T: Trait> Module<T> {
     pub fn ensure_content_is_some(content: &Content) -> DispatchResult {
         ensure!(!content.is_none(), Error::<T>::ContentIsEmpty);
         Ok(())
+    }
+}
+
+impl<T: Trait> OnUnbalanced<NegativeImbalanceOf<T>> for Module<T> {
+    fn on_nonzero_unbalanced(amount: NegativeImbalanceOf<T>) {
+        let numeric_amount = amount.peek();
+        let treasury_account = TreasuryAccount::<T>::get();
+
+        // Must resolve into existing but better to be safe.
+        let _ = T::Currency::resolve_creating(&treasury_account, amount);
+
+        Self::deposit_event(RawEvent::Deposit(numeric_amount));
     }
 }

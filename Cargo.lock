@@ -876,6 +876,7 @@ version = "2.0.0-rc4"
 dependencies = [
  "frame-support",
  "frame-system",
+ "pallet-balances",
  "pallet-permissions",
  "pallet-post-history",
  "pallet-posts",
@@ -3313,6 +3314,7 @@ dependencies = [
  "df-traits",
  "frame-support",
  "frame-system",
+ "pallet-balances",
  "pallet-permissions",
  "pallet-timestamp",
  "pallet-utils",
@@ -3495,8 +3497,10 @@ version = "2.0.0-rc4"
 dependencies = [
  "frame-support",
  "frame-system",
+ "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
+ "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",

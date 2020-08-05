@@ -71,7 +71,7 @@ mod tests {
         type AvailableBlockRatio = AvailableBlockRatio;
         type Version = ();
         type ModuleToIndex = ();
-        type AccountData = ();
+        type AccountData = pallet_balances::AccountData<u64>;
         type OnNewAccount = ();
         type OnKilledAccount = ();
     }
@@ -87,12 +87,26 @@ mod tests {
     }
 
     parameter_types! {
+        pub const ExistentialDeposit: u64 = 1;
+    }
+
+    impl pallet_balances::Trait for TestRuntime {
+        type Balance = u64;
+        type DustRemoval = ();
+        type Event = ();
+        type ExistentialDeposit = ExistentialDeposit;
+        type AccountStore = System;
+    }
+
+    parameter_types! {
       pub const IpfsCidLen: u32 = 46;
       pub const MinHandleLen: u32 = 5;
       pub const MaxHandleLen: u32 = 50;
     }
 
     impl pallet_utils::Trait for TestRuntime {
+        type Event = ();
+        type Currency = Balances;
         type IpfsCidLen = IpfsCidLen;
         type MinHandleLen = MinHandleLen;
         type MaxHandleLen = MaxHandleLen;
@@ -270,6 +284,8 @@ mod tests {
     impl pallet_space_history::Trait for TestRuntime {}
 
     type System = system::Module<TestRuntime>;
+    type Balances = pallet_balances::Module<TestRuntime>;
+
     type Posts = pallet_posts::Module<TestRuntime>;
     type PostHistory = pallet_post_history::Module<TestRuntime>;
     type ProfileFollows = pallet_profile_follows::Module<TestRuntime>;

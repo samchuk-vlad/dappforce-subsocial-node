@@ -71,63 +71,69 @@ git = 'https://github.com/paritytech/substrate.git'
 tag = 'v2.0.0-rc4'
 version = '2.0.0-rc4'
 
-[dependencies.pallet-permissions]
+[dev-dependencies.pallet-permissions]
 default-features = false
 path = "../permissions"
 
-[dependencies.pallet-posts]
+[dev-dependencies.pallet-posts]
 default-features = false
 path = "../posts"
 
-[dependencies.pallet-post-history]
+[dev-dependencies.pallet-post-history]
 default-features = false
 path = "../post-history"
 
-[dependencies.pallet-profiles]
+[dev-dependencies.pallet-profiles]
 default-features = false
 path = "../profiles"
 
-[dependencies.pallet-profile-history]
+[dev-dependencies.pallet-profile-history]
 default-features = false
 path = "../profile-history"
 
-[dependencies.pallet-profile-follows]
+[dev-dependencies.pallet-profile-follows]
 default-features = false
 path = "../profile-follows"
 
-[dependencies.pallet-reactions]
+[dev-dependencies.pallet-reactions]
 default-features = false
 path = "../reactions"
 
-[dependencies.pallet-roles]
+[dev-dependencies.pallet-roles]
 default-features = false
 path = "../roles"
 
-[dependencies.pallet-scores]
+[dev-dependencies.pallet-scores]
 default-features = false
 path = "../scores"
 
-[dependencies.pallet-spaces]
+[dev-dependencies.pallet-spaces]
 default-features = false
 path = "../spaces"
 
-[dependencies.pallet-space-follows]
+[dev-dependencies.pallet-space-follows]
 default-features = false
 path = "../space-follows"
 
-[dependencies.pallet-space-history]
+[dev-dependencies.pallet-space-history]
 default-features = false
 path = "../space-history"
 
-[dependencies.pallet-space-ownership]
+[dev-dependencies.pallet-space-ownership]
 default-features = false
 path = "../space-ownership"
 
-[dependencies.pallet-utils]
+[dev-dependencies.pallet-utils]
 default-features = false
 path = "../utils"
 
 [dev-dependencies.sp-core]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
+
+[dev-dependencies.pallet-balances]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
 tag = 'v2.0.0-rc4'
