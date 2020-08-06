@@ -1,28 +1,37 @@
-FROM rust:slim as builder
+FROM phusion/baseimage:0.11 as builder
+LABEL maintainer "dappforce@pm.me"
 
-ENV TERM xterm
+WORKDIR /subsocial
 
-RUN apt-get update && apt-get upgrade -y && apt-get install -y cmake pkg-config libssl-dev clang
+COPY . /subsocial
 
-WORKDIR /dappforce-subsocial-node
-COPY . .
+RUN apt-get update && \
+	apt-get upgrade -y && \
+	apt-get install -y cmake pkg-config libssl-dev git clang
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
+        export PATH=$PATH:$HOME/.cargo/bin && \
+        scripts/init.sh && \
+        cargo build --release
 
-RUN ./scripts/init.sh
-RUN cargo build --release
+FROM phusion/baseimage:0.11
+LABEL maintainer "dappforce@pm.me"
 
-FROM rust:slim
-
-COPY --from=builder /dappforce-subsocial-node/target/release/subsocial-node .
+COPY --from=builder /subsocial/target/release/subsocial-node /usr/local/bin
 
 RUN mv /usr/share/ca* /tmp && \
-    rm -rf /usr/share/* && \
-    mv /tmp/ca-certificates /usr/share && \
-    mkdir -p /root/.local/share/subsocial-node && \
-    ln -s /root/.local/share/subsocial-node /data
+	rm -rf /usr/share/*  && \
+	mv /tmp/ca-certificates /usr/share/ && \
+	rm -rf /usr/lib/python* && \
+	useradd -m -u 1000 -U -s /bin/sh -d /subsocial subsocial && \
+	mkdir -p /subsocial/.local/share/subsocial-node && \
+	chown -R subsocial:subsocial /subsocial/.local && \
+	ln -s /subsocial/.local/share/subsocial-node /data && \
+	rm -rf /usr/bin /usr/sbin
 
-RUN rm -rf /usr/bin /usr/sbin
+COPY ./node/res/customSpecRaw.json /subsocial/customSpecRaw.json
 
+USER subsocial
 EXPOSE 30333 9933 9944
 VOLUME ["/data"]
 
-CMD ["./subsocial-node"]
+CMD ["/usr/local/bin/subsocial-node --chain=/subsocial/customSpecRaw.json"]
