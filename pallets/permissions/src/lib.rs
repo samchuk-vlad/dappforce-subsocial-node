@@ -27,9 +27,6 @@ pub enum SpacePermission {
   /// Update this space.
   UpdateSpace,
 
-  /// Report accounts and other outer spaces within this space.
-  ReportUsers,
-
   // Related to subspaces in this space:
   CreateSubspaces,
   UpdateOwnSubspaces,
