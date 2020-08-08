@@ -28,10 +28,8 @@ RUN mv /usr/share/ca* /tmp && \
 	ln -s /subsocial/.local/share/subsocial-node /data && \
 	rm -rf /usr/bin /usr/sbin
 
-COPY ./node/res/customSpecRaw.json /subsocial/customSpecRaw.json
-
 USER subsocial
 EXPOSE 30333 9933 9944
 VOLUME ["/data"]
 
-CMD ["/usr/local/bin/subsocial-node --chain=/subsocial/customSpecRaw.json"]
+CMD ["/usr/local/bin/subsocial-node"]
