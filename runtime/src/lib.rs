@@ -524,7 +524,7 @@ construct_runtime!(
 		SpaceFollows: pallet_space_follows::{Module, Call, Storage, Event<T>},
 		SpaceHistory: pallet_space_history::{Module, Storage},
 		SpaceOwnership: pallet_space_ownership::{Module, Call, Storage, Event<T>},
-		Spaces: pallet_spaces::{Module, Call, Storage, Event<T>},
+		Spaces: pallet_spaces::{Module, Call, Storage, Event<T>, Config<T>},
 		Utils: pallet_utils::{Storage, Event<T>, Config<T>},
 		// SessionKeys: session_keys::{Module, Call, Storage, Config<T>, Event<T>},
 	}

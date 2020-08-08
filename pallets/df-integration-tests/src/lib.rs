@@ -1756,7 +1756,7 @@ mod tests {
             for comment_id in first_comment_id..penultimate_comment_id as PostId {
                 let comment = Posts::post_by_id(comment_id).unwrap();
                 let replies_should_be = last_comment_id-comment_id;
-                assert_eq!(comment.replies_count, replies_should_be as u32);
+                assert_eq!(comment.replies_count, replies_should_be as u16);
                 assert_eq!(Posts::reply_ids_by_post_id(comment_id), vec![comment_id + 1]);
 
                 assert_eq!(comment.hidden_replies_count, 0);

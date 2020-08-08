@@ -89,9 +89,17 @@ decl_error! {
 decl_storage! {
     trait Store for Module<T: Trait> as SpacesModule {
 
-        pub NextSpaceId get(fn next_space_id): SpaceId = 1;
+        pub NextSpaceId get(fn next_space_id): SpaceId = 1001;
 
-        pub SpaceById get(fn space_by_id):
+        pub SpaceById get(fn space_by_id) build(|config: &GenesisConfig<T>| {
+          let mut spaces: Vec<(SpaceId, Space<T>)> = Vec::new();
+          let endowed_account = config.endowed_account.clone();
+          for id in 1..=1000 {
+            spaces.push((id, Space::<T>::new(id, None, endowed_account.clone(), Content::None, None)));
+          }
+          
+          spaces
+        }):
             map hasher(twox_64_concat) SpaceId => Option<Space<T>>;
 
         pub SpaceIdByHandle get(fn space_id_by_handle):
@@ -99,6 +107,9 @@ decl_storage! {
 
         pub SpaceIdsByOwner get(fn space_ids_by_owner):
             map hasher(twox_64_concat) T::AccountId => Vec<SpaceId>;
+    }
+    add_extra_genesis {
+      config(endowed_account): T::AccountId;
     }
 }
 

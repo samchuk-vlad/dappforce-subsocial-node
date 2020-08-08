@@ -1,7 +1,9 @@
 use sp_core::{Pair, Public, sr25519, crypto::UncheckedInto};
 use subsocial_runtime::{
-	AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig, UtilsConfig,
-	SudoConfig, SystemConfig, WASM_BINARY, Signature, constants::currency::SMNS,
+	AccountId, AuraConfig, BalancesConfig,
+	GenesisConfig, GrandpaConfig, UtilsConfig,
+	SudoConfig, SpacesConfig, SystemConfig,
+	WASM_BINARY, Signature, constants::currency::SMNS,
 };
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_finality_grandpa::AuthorityId as GrandpaId;
@@ -206,10 +208,13 @@ fn testnet_genesis(
 			authorities: initial_authorities.iter().map(|x| (x.1.clone(), 1)).collect(),
 		}),
 		sudo: Some(SudoConfig {
-			key: root_key,
+			key: root_key.clone(),
 		}),
 		pallet_utils: Some(UtilsConfig {
 			treasury_account: treasury_account_id,
+		}),
+		pallet_spaces: Some(SpacesConfig {
+			endowed_account: root_key,
 		}),
 	}
 }

@@ -282,11 +282,11 @@ default-features = false
 path = '../pallets/utils'
 version = '0.4.0'
 
-[dependencies.session-keys]
-default-features = false
-package = 'pallet-session-keys'
-path = '../pallets/session-keys'
-version = '0.4.0'
+# [dependencies.session-keys]
+# default-features = false
+# package = 'pallet-session-keys'
+# path = '../pallets/session-keys'
+# version = '0.4.0'
 
 [package]
 name = 'subsocial-runtime'
