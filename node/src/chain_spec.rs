@@ -112,6 +112,10 @@ pub fn local_testnet_config() -> ChainSpec {
 	)
 }
 
+pub fn subsocial_config() -> Result<ChainSpec, String> {
+	ChainSpec::from_json_bytes(&include_bytes!("../res/subsocialSpecJson.json")[..])
+}
+
 pub fn subsocial_staging_config() -> ChainSpec {
 	ChainSpec::from_genesis(
 		"Subsocial",
@@ -121,51 +125,51 @@ pub fn subsocial_staging_config() -> ChainSpec {
 			vec![
 				(
 					/* AuraId */
-					hex!["d4f4482d82913b5a4ef195bba7ec5567ee04b6ea784139c04ee5e77530670149"].unchecked_into(),
+					hex!["ac940b8ee399d42faeb7169f322e6623f8219d12ad4c42dfe0995fa9f9713a0d"].unchecked_into(),
 					/* GrandpaId */
-					hex!["419c48625508cc74c8c125dd0132158d3583b479975e516c3c2cc1457d11a7c5"].unchecked_into()
+					hex!["e97b51af33429b5c4ab8ddd9b3fc542d24154bbeef807d559eff3906afca8413"].unchecked_into()
 				),
 				(
 					/* AuraId */
-					hex!["640f97526d653b620d1ccbdefa4cb212cc0dfc76f77a0f631f96f009d986464b"].unchecked_into(),
+					hex!["0c053087dd7782de467228b5f826c5031be2faf315baa766a89b48bb6e2dfb71"].unchecked_into(),
 					/* GrandpaId */
-					hex!["b553650f5032ecadba5df3bd35e8d280bc6f5cdff1beda8c504d6cfecc89c63a"].unchecked_into()
+					hex!["b48a83ed87ef39bc90c205fb551af3c076e1a952881d7fefec08cbb76e17ab8b"].unchecked_into()
 				),
 			],
-			hex!["a8d5b1558ee63ed2c55c8fb71afd2cbe7a2f61c0fc2dbab741ca652ecf6a3f45"].into(),
+			hex!["24d6d7cd9a0500be768efc7b5508e7861cbde7cfc06819e4dfd9120b97d46d3e"].into(),
 			vec![
 				(
 					/* Account */
 					hex!["a8d5b1558ee63ed2c55c8fb71afd2cbe7a2f61c0fc2dbab741ca652ecf6a3f45"].into(),
 					/* Balance */
-					10_000
+					1_000
 				),
 				(
 					/* Account */
 					hex!["24d6d996a8bb42a63904afc36d610986e8d502f65898da62cb281cfe7f23b02f"].into(),
 					/* Balance */
-					2_497_500
+					2_499_750
 				),
 				(
 					/* Account */
 					hex!["24d6d8fc5d051fd471e275f14c83e95287d2b863e4cc802de1f78dea06c6ca78"].into(),
 					/* Balance */
-					2_497_500
+					2_499_750
 				),
 				(
 					/* Account */
 					hex!["24d6d901fb0531124040630e52cfd746ef7d037922c4baf290f513dbc3d47d66"].into(),
 					/* Balance */
-					2_497_500
+					2_499_750
 				),
 				(
 					/* Account */
 					hex!["24d6d22d63313e82f9461281cb69aacad1828dc74273274751fd24333b182c68"].into(),
 					/* Balance */
-					2_497_500
+					2_499_750
 				),
 			],
-			hex!["fa8f0122f7f950feb5d5513f4ad6d0446402a5c99572801f5dfde0169be1db5e"].into(),
+			hex!["24d6d683750c4c10e90dd81430efec95133e1ec1f5be781d3267390d03174706"].into(),
 			true,
 		),
 		vec![],
