@@ -210,87 +210,87 @@ version = '2.0.0-rc4'
 [dependencies.pallet-moderation]
 default-features = false
 path = '../pallets/moderation'
-version = '2.0.0-rc4'
+version = '0.4.0'
 
 [dependencies.pallet-permissions]
 default-features = false
 path = '../pallets/permissions'
-version = '2.0.0-rc4'
+version = '0.4.0'
 
 [dependencies.pallet-posts]
 default-features = false
 path = '../pallets/posts'
-version = '2.0.0-rc4'
+version = '0.4.0'
 
 [dependencies.pallet-post-history]
 default-features = false
 path = '../pallets/post-history'
-version = '2.0.0-rc4'
+version = '0.4.0'
 
 [dependencies.pallet-profiles]
 default-features = false
 path = '../pallets/profiles'
-version = '2.0.0-rc4'
+version = '0.4.0'
 
 [dependencies.pallet-profile-follows]
 default-features = false
 path = '../pallets/profile-follows'
-version = '2.0.0-rc4'
+version = '0.4.0'
 
 [dependencies.pallet-profile-history]
 default-features = false
 path = '../pallets/profile-history'
-version = '2.0.0-rc4'
+version = '0.4.0'
 
 [dependencies.pallet-reactions]
 default-features = false
 path = '../pallets/reactions'
-version = '2.0.0-rc4'
+version = '0.4.0'
 
 [dependencies.pallet-roles]
 default-features = false
 path = '../pallets/roles'
-version = '2.0.0-rc4'
+version = '0.4.0'
 
 [dependencies.pallet-scores]
 default-features = false
 path = '../pallets/scores'
-version = '2.0.0-rc4'
+version = '0.4.0'
 
 [dependencies.pallet-spaces]
 default-features = false
 path = '../pallets/spaces'
-version = '2.0.0-rc4'
+version = '0.4.0'
 
 [dependencies.pallet-space-follows]
 default-features = false
 path = '../pallets/space-follows'
-version = '2.0.0-rc4'
+version = '0.4.0'
 
 [dependencies.pallet-space-ownership]
 default-features = false
 path = '../pallets/space-ownership'
-version = '2.0.0-rc4'
+version = '0.4.0'
 
 [dependencies.pallet-space-history]
 default-features = false
 path = '../pallets/space-history'
-version = '2.0.0-rc4'
+version = '0.4.0'
 
 [dependencies.pallet-utils]
 default-features = false
 path = '../pallets/utils'
-version = '2.0.0-rc4'
+version = '0.4.0'
 
 [dependencies.session-keys]
 default-features = false
 package = 'pallet-session-keys'
 path = '../pallets/session-keys'
-version = '2.0.0-rc4'
+version = '0.4.0'
 
 [package]
 name = 'subsocial-runtime'
-version = '2.0.0-rc4'
+version = '0.4.0'
 authors = ['DappForce <dappforce@pm.me>']
 edition = '2018'
 license = 'GPL-3.0-only'

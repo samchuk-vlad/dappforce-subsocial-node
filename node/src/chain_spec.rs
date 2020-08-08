@@ -124,51 +124,53 @@ pub fn subsocial_staging_config() -> ChainSpec {
 		|| testnet_genesis(
 			vec![
 				(
-					/* AuraId */
+					/* AuraId SR25519 */
 					hex!["ac940b8ee399d42faeb7169f322e6623f8219d12ad4c42dfe0995fa9f9713a0d"].unchecked_into(),
-					/* GrandpaId */
+					/* GrandpaId ED25519 */
 					hex!["e97b51af33429b5c4ab8ddd9b3fc542d24154bbeef807d559eff3906afca8413"].unchecked_into()
 				),
 				(
-					/* AuraId */
+					/* AuraId SR25519 */
 					hex!["0c053087dd7782de467228b5f826c5031be2faf315baa766a89b48bb6e2dfb71"].unchecked_into(),
-					/* GrandpaId */
+					/* GrandpaId ED25519 */
 					hex!["b48a83ed87ef39bc90c205fb551af3c076e1a952881d7fefec08cbb76e17ab8b"].unchecked_into()
 				),
 			],
+			/* Sudo Account */
 			hex!["24d6d7cd9a0500be768efc7b5508e7861cbde7cfc06819e4dfd9120b97d46d3e"].into(),
 			vec![
 				(
-					/* Account */
-					hex!["a8d5b1558ee63ed2c55c8fb71afd2cbe7a2f61c0fc2dbab741ca652ecf6a3f45"].into(),
+					/* Sudo Account */
+					hex!["24d6d7cd9a0500be768efc7b5508e7861cbde7cfc06819e4dfd9120b97d46d3e"].into(),
 					/* Balance */
 					1_000
 				),
 				(
-					/* Account */
+					/* Account X1 */
 					hex!["24d6d996a8bb42a63904afc36d610986e8d502f65898da62cb281cfe7f23b02f"].into(),
 					/* Balance */
-					2_499_750
+					2_499_000
 				),
 				(
-					/* Account */
+					/* Account X2 */
 					hex!["24d6d8fc5d051fd471e275f14c83e95287d2b863e4cc802de1f78dea06c6ca78"].into(),
 					/* Balance */
-					2_499_750
+					2_500_000
 				),
 				(
-					/* Account */
+					/* Account X3 */
 					hex!["24d6d901fb0531124040630e52cfd746ef7d037922c4baf290f513dbc3d47d66"].into(),
 					/* Balance */
-					2_499_750
+					2_500_000
 				),
 				(
-					/* Account */
+					/* Account X4 */
 					hex!["24d6d22d63313e82f9461281cb69aacad1828dc74273274751fd24333b182c68"].into(),
 					/* Balance */
-					2_499_750
+					2_500_000
 				),
 			],
+			// Treasury
 			hex!["24d6d683750c4c10e90dd81430efec95133e1ec1f5be781d3267390d03174706"].into(),
 			true,
 		),
