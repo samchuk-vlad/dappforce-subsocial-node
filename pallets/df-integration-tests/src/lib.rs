@@ -229,12 +229,12 @@ mod tests {
         pub const FollowSpaceActionWeight: i16 = 7;
         pub const FollowAccountActionWeight: i16 = 3;
 
-        pub const SharePostActionWeight: i16 = 5;
+        pub const SharePostActionWeight: i16 = 7;
         pub const UpvotePostActionWeight: i16 = 5;
         pub const DownvotePostActionWeight: i16 = -3;
 
         pub const CreateCommentActionWeight: i16 = 5;
-        pub const ShareCommentActionWeight: i16 = 3;
+        pub const ShareCommentActionWeight: i16 = 5;
         pub const UpvoteCommentActionWeight: i16 = 4;
         pub const DownvoteCommentActionWeight: i16 = -2;
     }
