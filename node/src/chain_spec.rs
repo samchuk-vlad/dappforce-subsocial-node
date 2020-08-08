@@ -216,7 +216,7 @@ pub fn subsocial_properties() -> Properties {
 	let mut properties = Properties::new();
 
 	properties.insert("ss58Format".into(), 28.into());
-	properties.insert("tokenDecimals".into(), 10.into());
+	properties.insert("tokenDecimals".into(), 12.into());
 	properties.insert("tokenSymbol".into(), "SMN".into());
 
 	properties
