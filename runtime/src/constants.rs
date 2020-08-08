@@ -1,10 +1,10 @@
 pub mod currency {
     use node_primitives::Balance;
 
-    pub const DOTS: Balance = 10_000_000_000;
-    pub const DOLLARS: Balance = DOTS / 100;       // 100_000_000
-    pub const CENTS: Balance = DOLLARS / 100;      // 1_000_000
-    pub const MILLICENTS: Balance = CENTS / 1_000; // 1_000
+    pub const SMNS: Balance = 100_000_000_000;
+    pub const DOLLARS: Balance = SMNS / 10;       // 10_000_000_000
+    pub const CENTS: Balance = DOLLARS / 100;      // 100_000_000
+    pub const MILLICENTS: Balance = CENTS / 1_000; // 100_000
 }
 
 pub mod time {
