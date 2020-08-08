@@ -175,7 +175,7 @@ decl_module! {
 
         /// Report any entity by any person with mandatory reason.
         /// `entity` scope and the `scope` provided mustn't differ
-        #[weight = T::DbWeight::get().reads_writes(6, 5) + 10_000]
+        #[weight = 10_000 + T::DbWeight::get().reads_writes(6, 5)]
         pub fn report_entity(
             origin,
             entity: EntityId<T::AccountId>,

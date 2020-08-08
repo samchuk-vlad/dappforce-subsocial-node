@@ -122,7 +122,7 @@ decl_module! {
     // Initializing events
     fn deposit_event() = default;
 
-    #[weight = 100_000 + T::DbWeight::get().reads_writes(4, 4)]
+    #[weight = 500_000 + T::DbWeight::get().reads_writes(4, 4)]
     pub fn create_space(
       origin,
       parent_id_opt: Option<SpaceId>,
@@ -167,7 +167,7 @@ decl_module! {
       Ok(())
     }
 
-    #[weight = 100_000 + T::DbWeight::get().reads_writes(2, 3)]
+    #[weight = 500_000 + T::DbWeight::get().reads_writes(2, 3)]
     pub fn update_space(origin, space_id: SpaceId, update: SpaceUpdate) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 

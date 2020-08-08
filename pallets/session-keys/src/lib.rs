@@ -160,7 +160,7 @@ decl_module! {
         fn deposit_event() = default;
 
         /// Add a new SessionKey for `origin` bonding 2 * Existential Deposit to keep session alive
-        #[weight = T::DbWeight::get().reads_writes(3, 3) + 10_000]
+        #[weight = 10_000 + T::DbWeight::get().reads_writes(3, 3)]
         fn add_key(origin,
             key_account: T::AccountId,
             time_to_live: T::BlockNumber,
@@ -197,7 +197,7 @@ decl_module! {
         }
 
         /// A key could be removed either the origin is an owner or key is expired.
-        #[weight = T::DbWeight::get().reads_writes(2, 2) + 10_000]
+        #[weight = 10_000 + T::DbWeight::get().reads_writes(2, 2)]
         fn remove_key(origin, key_account: T::AccountId) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
@@ -210,10 +210,7 @@ decl_module! {
         }
 
         /// Unregister all session keys for the sender.
-        #[weight =
-            T::DbWeight::get().reads_writes(1, 2) * T::MaxSessionKeysPerAccount::get() as u64
-            + 10_000
-        ]
+        #[weight = 10_000 + T::DbWeight::get().reads_writes(1, 2) * T::MaxSessionKeysPerAccount::get() as u64]
         fn remove_keys(origin) -> DispatchResult {
             let who = ensure_signed(origin)?;
             let keys = KeysByOwner::<T>::take(&who);

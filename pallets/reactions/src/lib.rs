@@ -108,7 +108,7 @@ decl_module! {
     // Initializing events
     fn deposit_event() = default;
 
-    #[weight = 100_000 + T::DbWeight::get().reads_writes(6, 5)]
+    #[weight = 10_000 + T::DbWeight::get().reads_writes(6, 5)]
     pub fn create_post_reaction(origin, post_id: PostId, kind: ReactionKind) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 

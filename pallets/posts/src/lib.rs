@@ -199,7 +199,7 @@ decl_module! {
     // Initializing events
     fn deposit_event() = default;
 
-    #[weight = 1_000_000 + T::DbWeight::get().reads_writes(8, 8)]
+    #[weight = 100_000 + T::DbWeight::get().reads_writes(8, 8)]
     pub fn create_post(origin, space_id_opt: Option<SpaceId>, extension: PostExtension, content: Content) -> DispatchResult {
       let creator = ensure_signed(origin)?;
 
