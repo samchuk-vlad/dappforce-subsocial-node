@@ -239,7 +239,7 @@ impl timestamp::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const ExistentialDeposit: u128 = 1 * DOLLARS;
+	pub const ExistentialDeposit: u128 = 1 * CENTS;
 }
 
 impl balances::Trait for Runtime {

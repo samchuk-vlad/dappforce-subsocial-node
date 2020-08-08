@@ -10,7 +10,7 @@ pub mod currency {
 pub mod time {
     use node_primitives::{Moment, BlockNumber};
 
-    pub const MILLISECS_PER_BLOCK: Moment = 4000;
+    pub const MILLISECS_PER_BLOCK: Moment = 6000;
     pub const SLOT_DURATION: Moment = MILLISECS_PER_BLOCK;
 
     // These time units are defined in number of blocks.
