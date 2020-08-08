@@ -1,7 +1,7 @@
 use sp_core::{Pair, Public, sr25519, crypto::UncheckedInto};
 use subsocial_runtime::{
 	AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig, UtilsConfig,
-	SudoConfig, SystemConfig, WASM_BINARY, Signature, constants::currency::DOLLARS,
+	SudoConfig, SystemConfig, WASM_BINARY, Signature, constants::currency::SMNS,
 };
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_finality_grandpa::AuthorityId as GrandpaId;
@@ -195,7 +195,7 @@ fn testnet_genesis(
 			changes_trie_config: Default::default(),
 		}),
 		balances: Some(BalancesConfig {
-			balances: endowed_accounts.iter().cloned().map(|(k, b)|(k, b * DOLLARS)).collect(),
+			balances: endowed_accounts.iter().cloned().map(|(k, b)|(k, b * SMNS)).collect(),
 		}),
 		aura: Some(AuraConfig {
 			authorities: initial_authorities.iter().map(|x| (x.0.clone())).collect(),
