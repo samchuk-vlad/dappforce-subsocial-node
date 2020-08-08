@@ -113,7 +113,7 @@ pub fn local_testnet_config() -> ChainSpec {
 }
 
 pub fn subsocial_config() -> Result<ChainSpec, String> {
-	ChainSpec::from_json_bytes(&include_bytes!("../res/subsocialSpecJson.json")[..])
+	ChainSpec::from_json_bytes(&include_bytes!("../res/subsocial.json")[..])
 }
 
 pub fn subsocial_staging_config() -> ChainSpec {
