@@ -295,22 +295,22 @@ parameter_types! {
     none: None,
 
     everyone: Some(SpacePermissionSet::from_iter(vec![
-	  SP::UpdateOwnSubspaces,
-	  SP::DeleteOwnSubspaces,
-	  SP::HideOwnSubspaces,
+			SP::UpdateOwnSubspaces,
+			SP::DeleteOwnSubspaces,
+			SP::HideOwnSubspaces,
 
-	  SP::UpdateOwnPosts,
-	  SP::DeleteOwnPosts,
-	  SP::HideOwnPosts,
+			SP::UpdateOwnPosts,
+			SP::DeleteOwnPosts,
+			SP::HideOwnPosts,
 
-	  SP::CreateComments,
-	  SP::UpdateOwnComments,
-	  SP::DeleteOwnComments,
-	  SP::HideOwnComments,
+			SP::CreateComments,
+			SP::UpdateOwnComments,
+			SP::DeleteOwnComments,
+			SP::HideOwnComments,
 
-	  SP::Upvote,
-	  SP::Downvote,
-	  SP::Share,
+			SP::Upvote,
+			SP::Downvote,
+			SP::Share,
     ].into_iter())),
 
     // Followers can do everything that everyone else can.
@@ -405,12 +405,12 @@ parameter_types! {
   pub const FollowSpaceActionWeight: i16 = 7;
   pub const FollowAccountActionWeight: i16 = 3;
 
-  pub const SharePostActionWeight: i16 = 5;
+  pub const SharePostActionWeight: i16 = 7;
   pub const UpvotePostActionWeight: i16 = 5;
   pub const DownvotePostActionWeight: i16 = -3;
 
   pub const CreateCommentActionWeight: i16 = 5;
-  pub const ShareCommentActionWeight: i16 = 3;
+  pub const ShareCommentActionWeight: i16 = 5;
   pub const UpvoteCommentActionWeight: i16 = 4;
   pub const DownvoteCommentActionWeight: i16 = -2;
 }
@@ -512,7 +512,7 @@ construct_runtime!(
 		Sudo: sudo::{Module, Call, Config<T>, Storage, Event<T>},
 
 		// Subsocial custom pallets:
-		Permissions: pallet_permissions::{Module, Call /* TODO inspect: do we need Call for permissions? */},
+		Permissions: pallet_permissions::{Module, Call},
 		Posts: pallet_posts::{Module, Call, Storage, Event<T>},
 		PostHistory: pallet_post_history::{Module, Storage},
 		ProfileFollows: pallet_profile_follows::{Module, Call, Storage, Event<T>},
