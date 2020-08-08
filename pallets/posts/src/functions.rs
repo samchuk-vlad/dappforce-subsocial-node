@@ -53,7 +53,7 @@ impl<T: Trait> Post<T> {
         }
     }
 
-    pub fn get_comment_ext(&self) -> Result<CommentExt, DispatchError> {
+    pub fn get_comment_ext(&self) -> Result<Comment, DispatchError> {
         match self.extension {
             PostExtension::Comment(comment_ext) => Ok(comment_ext),
             _ => Err(Error::<T>::NotComment.into())
@@ -267,7 +267,7 @@ impl<T: Trait> Module<T> {
     pub(crate) fn create_comment(
         creator: &T::AccountId,
         new_post_id: PostId,
-        comment_ext: CommentExt,
+        comment_ext: Comment,
         root_post: &mut Post<T>
     ) -> DispatchResult {
         let mut commented_post_id = root_post.id;
@@ -361,7 +361,7 @@ impl<T: Trait> Module<T> {
     /// Rewrite ancestor counters when Post hidden status changes
     /// Warning: This will affect storage state!
     pub(crate) fn update_counters_on_comment_hidden_change(
-        comment_ext: &CommentExt,
+        comment_ext: &Comment,
         becomes_hidden: bool
     ) -> DispatchResult {
         let root_post = &mut Self::require_post(comment_ext.root_post_id)?;

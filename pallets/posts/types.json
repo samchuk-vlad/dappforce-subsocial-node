@@ -14,8 +14,8 @@
     "content": "Content",
     "hidden": "bool",
 
-    "replies_count": "u32",
-    "hidden_replies_count": "u32",
+    "replies_count": "u16",
+    "hidden_replies_count": "u16",
 
     "shares_count": "u16",
     "upvotes_count": "u16",
@@ -33,12 +33,12 @@
   "PostExtension": {
     "_enum": {
       "RegularPost": "Null",
-      "Comment": "CommentExt",
+      "Comment": "Comment",
       "SharedPost": "PostId"
     }
   },
 
-  "CommentExt": {
+  "Comment": {
     "parent_id": "Option<PostId>",
     "root_post_id": "PostId"
   }

@@ -54,7 +54,8 @@ decl_storage! {
     trait Store for Module<T: Trait> as ReactionsModule {
         pub NextReactionId get(fn next_reaction_id): ReactionId = 1;
 
-        pub ReactionById get(fn reaction_by_id): map hasher(twox_64_concat) ReactionId => Option<Reaction<T>>;
+        pub ReactionById get(fn reaction_by_id):
+            map hasher(twox_64_concat) ReactionId => Option<Reaction<T>>;
 
         pub ReactionIdsByPostId get(fn reaction_ids_by_post_id):
             map hasher(twox_64_concat) PostId => Vec<ReactionId>;
@@ -108,7 +109,7 @@ decl_module! {
     // Initializing events
     fn deposit_event() = default;
 
-    #[weight = 100_000 + T::DbWeight::get().reads_writes(6, 5)]
+    #[weight = 10_000 + T::DbWeight::get().reads_writes(6, 5)]
     pub fn create_post_reaction(origin, post_id: PostId, kind: ReactionKind) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 

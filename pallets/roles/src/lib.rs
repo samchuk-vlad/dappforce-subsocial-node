@@ -102,7 +102,8 @@ decl_storage! {
         pub NextRoleId get(fn next_role_id): RoleId = 1;
 
         /// Get role details by its id.
-        pub RoleById get(fn role_by_id): map hasher(twox_64_concat) RoleId => Option<Role<T>>;
+        pub RoleById get(fn role_by_id):
+            map hasher(twox_64_concat) RoleId => Option<Role<T>>;
 
         /// A list of all users (account or space ids) that have this role.
         pub UsersByRoleId get(fn users_by_role_id):

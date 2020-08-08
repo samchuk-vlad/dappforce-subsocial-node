@@ -25,7 +25,7 @@ mod tests {
         SpacePermissionSet,
         SpacePermissions,
     };
-    use pallet_posts::{PostId, Post, PostUpdate, PostExtension, CommentExt, Error as PostsError};
+    use pallet_posts::{PostId, Post, PostUpdate, PostExtension, Comment, Error as PostsError};
     use pallet_profiles::{ProfileUpdate, Error as ProfilesError};
     use pallet_profile_follows::Error as ProfileFollowsError;
     use pallet_reactions::{ReactionId, ReactionKind, PostReactionScores, Error as ReactionsError};
@@ -564,7 +564,7 @@ mod tests {
     }
 
     fn extension_comment(parent_id: Option<PostId>, root_post_id: PostId) -> PostExtension {
-        PostExtension::Comment(CommentExt { parent_id, root_post_id })
+        PostExtension::Comment(Comment { parent_id, root_post_id })
     }
 
     fn extension_shared_post(post_id: PostId) -> PostExtension {

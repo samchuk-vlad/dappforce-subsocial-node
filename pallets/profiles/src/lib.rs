@@ -90,7 +90,7 @@ decl_module! {
     // Initializing events
     fn deposit_event() = default;
 
-    #[weight = 10_000 + T::DbWeight::get().reads_writes(1, 2)]
+    #[weight = 100_000 + T::DbWeight::get().reads_writes(1, 2)]
     pub fn create_profile(origin, handle: Vec<u8>, content: Content) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 

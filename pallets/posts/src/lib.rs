@@ -31,8 +31,8 @@ pub struct Post<T: Trait> {
     pub content: Content,
     pub hidden: bool,
 
-    pub replies_count: u32,
-    pub hidden_replies_count: u32,
+    pub replies_count: u16,
+    pub hidden_replies_count: u16,
 
     pub shares_count: u16,
     pub upvotes_count: u16,
@@ -51,13 +51,12 @@ pub struct PostUpdate {
 #[derive(Encode, Decode, Clone, Copy, Eq, PartialEq, RuntimeDebug)]
 pub enum PostExtension {
     RegularPost,
-    Comment(CommentExt),
+    Comment(Comment),
     SharedPost(PostId),
 }
 
 #[derive(Encode, Decode, Clone, Copy, Eq, PartialEq, RuntimeDebug)]
-// TODO rename: CommentExt -> Comment
-pub struct CommentExt {
+pub struct Comment {
     pub parent_id: Option<PostId>,
     pub root_post_id: PostId,
 }
@@ -199,7 +198,7 @@ decl_module! {
     // Initializing events
     fn deposit_event() = default;
 
-    #[weight = 1_000_000 + T::DbWeight::get().reads_writes(8, 8)]
+    #[weight = 100_000 + T::DbWeight::get().reads_writes(8, 8)]
     pub fn create_post(origin, space_id_opt: Option<SpaceId>, extension: PostExtension, content: Content) -> DispatchResult {
       let creator = ensure_signed(origin)?;
 
@@ -208,7 +207,7 @@ decl_module! {
       let new_post_id = Self::next_post_id();
       let new_post: Post<T> = Post::new(new_post_id, creator.clone(), space_id_opt, extension, content);
 
-      // Get space from either space_id_opt or CommentExt if a comment provided
+      // Get space from either space_id_opt or Comment if a comment provided
       let space = &mut new_post.get_space()?;
       ensure!(!space.hidden, Error::<T>::CannotCreateInHiddenScope);
 

@@ -19,8 +19,7 @@ pub struct SpaceOwners<T: Trait> {
   pub space_id: SpaceId,
   pub owners: Vec<T::AccountId>,
   pub threshold: u16,
-
-  pub changes_count: u64,
+  pub changes_count: u16,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
