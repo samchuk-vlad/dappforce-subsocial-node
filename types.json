@@ -105,12 +105,12 @@
   "PostExtension": {
     "_enum": {
       "RegularPost": "Null",
-      "Comment": "CommentExt",
+      "Comment": "Comment",
       "SharedPost": "PostId"
     }
   },
 
-  "CommentExt": {
+  "Comment": {
     "parent_id": "Option<PostId>",
     "root_post_id": "PostId"
   },

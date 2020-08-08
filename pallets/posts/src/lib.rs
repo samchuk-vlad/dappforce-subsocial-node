@@ -51,13 +51,12 @@ pub struct PostUpdate {
 #[derive(Encode, Decode, Clone, Copy, Eq, PartialEq, RuntimeDebug)]
 pub enum PostExtension {
     RegularPost,
-    Comment(CommentExt),
+    Comment(Comment),
     SharedPost(PostId),
 }
 
 #[derive(Encode, Decode, Clone, Copy, Eq, PartialEq, RuntimeDebug)]
-// TODO rename: CommentExt -> Comment
-pub struct CommentExt {
+pub struct Comment {
     pub parent_id: Option<PostId>,
     pub root_post_id: PostId,
 }
@@ -208,7 +207,7 @@ decl_module! {
       let new_post_id = Self::next_post_id();
       let new_post: Post<T> = Post::new(new_post_id, creator.clone(), space_id_opt, extension, content);
 
-      // Get space from either space_id_opt or CommentExt if a comment provided
+      // Get space from either space_id_opt or Comment if a comment provided
       let space = &mut new_post.get_space()?;
       ensure!(!space.hidden, Error::<T>::CannotCreateInHiddenScope);
 
