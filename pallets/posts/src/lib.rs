@@ -31,8 +31,8 @@ pub struct Post<T: Trait> {
     pub content: Content,
     pub hidden: bool,
 
-    pub replies_count: u32,
-    pub hidden_replies_count: u32,
+    pub replies_count: u16,
+    pub hidden_replies_count: u16,
 
     pub shares_count: u16,
     pub upvotes_count: u16,

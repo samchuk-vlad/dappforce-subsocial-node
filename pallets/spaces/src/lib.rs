@@ -29,8 +29,8 @@ pub struct Space<T: Trait> {
     pub content: Content,
     pub hidden: bool,
 
-    pub posts_count: u16,
-    pub hidden_posts_count: u16,
+    pub posts_count: u32,
+    pub hidden_posts_count: u32,
     pub followers_count: u32,
 
     pub score: i32,
