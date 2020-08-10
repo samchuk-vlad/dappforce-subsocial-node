@@ -8,13 +8,13 @@
     "space_id": "SpaceId",
     "disabled": "bool",
     "expires_at": "Option<BlockNumber>",
-    "ipfs_hash": "Option<IpfsHash>",
+    "content": "Content",
     "permissions": "SpacePermissionSet"
   },
 
   "RoleUpdate": {
     "disabled": "Option<bool>",
-    "ipfs_hash": "Option<Option<IpfsHash>>",
+    "content": "Option<Content>",
     "permissions": "Option<SpacePermissionSet>"
   }
 }

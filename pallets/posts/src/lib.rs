@@ -1,5 +1,4 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![allow(clippy::string_lit_as_bytes)]
 
 use codec::{Decode, Encode};
 use frame_support::{
@@ -8,14 +7,13 @@ use frame_support::{
 };
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
-use system::ensure_signed;
+use frame_system::{self as system, ensure_signed};
 
 use pallet_permissions::SpacePermission;
-use pallet_spaces::{Module as Spaces, SpaceById};
-use pallet_utils::{Module as Utils, SpaceId, vec_remove_on, WhoAndWhen};
+use pallet_spaces::{Module as Spaces, Space, SpaceById};
+use pallet_utils::{Module as Utils, SpaceId, WhoAndWhen, Content};
 
 pub mod functions;
-// mod tests;
 
 pub type PostId = u64;
 
@@ -24,16 +22,17 @@ pub struct Post<T: Trait> {
     pub id: PostId,
     pub created: WhoAndWhen<T>,
     pub updated: Option<WhoAndWhen<T>>,
-    pub hidden: bool,
 
-    pub space_id: Option<SpaceId>,
+    pub owner: T::AccountId,
+
     pub extension: PostExtension,
 
-    pub ipfs_hash: Vec<u8>,
-    pub edit_history: Vec<PostHistoryRecord<T>>,
+    pub space_id: Option<SpaceId>,
+    pub content: Content,
+    pub hidden: bool,
 
-    pub direct_replies_count: u16,
-    pub total_replies_count: u32,
+    pub replies_count: u16,
+    pub hidden_replies_count: u16,
 
     pub shares_count: u16,
     pub upvotes_count: u16,
@@ -45,26 +44,19 @@ pub struct Post<T: Trait> {
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct PostUpdate {
     pub space_id: Option<SpaceId>,
-    pub ipfs_hash: Option<Vec<u8>>,
+    pub content: Option<Content>,
     pub hidden: Option<bool>,
-}
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct PostHistoryRecord<T: Trait> {
-    pub edited: WhoAndWhen<T>,
-    pub old_data: PostUpdate,
 }
 
 #[derive(Encode, Decode, Clone, Copy, Eq, PartialEq, RuntimeDebug)]
 pub enum PostExtension {
     RegularPost,
-    Comment(CommentExt),
+    Comment(Comment),
     SharedPost(PostId),
 }
 
 #[derive(Encode, Decode, Clone, Copy, Eq, PartialEq, RuntimeDebug)]
-// TODO rename: CommentExt -> Comment
-pub struct CommentExt {
+pub struct Comment {
     pub parent_id: Option<PostId>,
     pub root_post_id: PostId,
 }
@@ -87,6 +79,8 @@ pub trait Trait: system::Trait
     type MaxCommentDepth: Get<u32>;
 
     type PostScores: PostScores<Self>;
+
+    type AfterPostUpdated: AfterPostUpdated<Self>;
 }
 
 pub trait PostScores<T: Trait> {
@@ -103,16 +97,27 @@ impl<T: Trait> PostScores<T> for () {
     }
 }
 
+#[impl_trait_for_tuples::impl_for_tuples(10)]
+pub trait AfterPostUpdated<T: Trait> {
+    fn after_post_updated(account: T::AccountId, post: &Post<T>, old_data: PostUpdate);
+}
+
 // This pallet's storage items.
 decl_storage! {
-    trait Store for Module<T: Trait> as TemplateModule {
+    trait Store for Module<T: Trait> as PostsModule {
         pub NextPostId get(fn next_post_id): PostId = 1;
-        pub PostById get(fn post_by_id): map PostId => Option<Post<T>>;
-        pub ReplyIdsByPostId get(fn reply_ids_by_post_id): map PostId => Vec<PostId>;
-        pub PostIdsBySpaceId get(fn post_ids_by_space_id): map SpaceId => Vec<PostId>;
+
+        pub PostById get(fn post_by_id): map hasher(twox_64_concat) PostId => Option<Post<T>>;
+
+        pub ReplyIdsByPostId get(fn reply_ids_by_post_id):
+            map hasher(twox_64_concat) PostId => Vec<PostId>;
+
+        pub PostIdsBySpaceId get(fn post_ids_by_space_id):
+            map hasher(twox_64_concat) SpaceId => Vec<PostId>;
 
         // TODO rename 'Shared...' to 'Sharing...'
-        pub SharedPostIdsByOriginalPostId get(fn shared_post_ids_by_original_post_id): map PostId => Vec<PostId>;
+        pub SharedPostIdsByOriginalPostId get(fn shared_post_ids_by_original_post_id):
+            map hasher(twox_64_concat) PostId => Vec<PostId>;
     }
 }
 
@@ -140,6 +145,8 @@ decl_error! {
         PostHasNoSpaceId,
         /// Not allowed to create a post/comment when a scope (space or root post) is hidden.
         CannotCreateInHiddenScope,
+        /// Post has no any replies
+        NoRepliesOnPost,
 
         // Sharing related errors:
 
@@ -185,91 +192,48 @@ decl_module! {
 
     const MaxCommentDepth: u32 = T::MaxCommentDepth::get();
 
+    // Initializing errors
+    type Error = Error<T>;
+
     // Initializing events
     fn deposit_event() = default;
 
-    pub fn create_post(origin, space_id_opt: Option<SpaceId>, extension: PostExtension, ipfs_hash: Vec<u8>) {
+    #[weight = 100_000 + T::DbWeight::get().reads_writes(8, 8)]
+    pub fn create_post(origin, space_id_opt: Option<SpaceId>, extension: PostExtension, content: Content) -> DispatchResult {
       let creator = ensure_signed(origin)?;
 
-      Utils::<T>::is_ipfs_hash_valid(ipfs_hash.clone())?;
+      Utils::<T>::is_valid_content(content.clone())?;
 
       let new_post_id = Self::next_post_id();
-      let new_post: Post<T> = Post::new(new_post_id, creator.clone(), space_id_opt, extension, ipfs_hash);
+      let new_post: Post<T> = Post::new(new_post_id, creator.clone(), space_id_opt, extension, content);
 
-      // Get space from either from space_id_opt or extension if a Comment provided
-      let mut space = new_post.get_space()?;
+      // Get space from either space_id_opt or Comment if a comment provided
+      let space = &mut new_post.get_space()?;
       ensure!(!space.hidden, Error::<T>::CannotCreateInHiddenScope);
 
       let root_post = &mut new_post.get_root_post()?;
       ensure!(!root_post.hidden, Error::<T>::CannotCreateInHiddenScope);
 
-      // Check permissions
-      match extension {
-        PostExtension::RegularPost | PostExtension::SharedPost(_) => {
-          Spaces::ensure_account_has_space_permission(
-            creator.clone(),
-            &space,
-            SpacePermission::CreatePosts,
-            Error::<T>::NoPermissionToCreatePosts.into()
-          )?;
-        },
-        PostExtension::Comment(_) => {
-          Spaces::ensure_account_has_space_permission(
-            creator.clone(),
-            &space,
-            SpacePermission::CreateComments,
-            Error::<T>::NoPermissionToCreateComments.into()
-          )?;
-        }
+      // Check whether account has permission to create Post (by extension)
+      let mut permission_to_check = SpacePermission::CreatePosts;
+      let mut error_on_permission_failed = Error::<T>::NoPermissionToCreatePosts;
+
+      if let PostExtension::Comment(_) = extension {
+        permission_to_check = SpacePermission::CreateComments;
+        error_on_permission_failed = Error::<T>::NoPermissionToCreateComments;
       }
 
+      Spaces::ensure_account_has_space_permission(
+        creator.clone(),
+        &space,
+        permission_to_check,
+        error_on_permission_failed.into()
+      )?;
+
       match extension {
-        PostExtension::RegularPost => {
-          space.inc_posts();
-        },
-
-        PostExtension::SharedPost(post_id) => {
-          let original_post = &mut Self::post_by_id(post_id).ok_or(Error::<T>::OriginalPostNotFound)?;
-          ensure!(!original_post.is_sharing_post(), Error::<T>::CannotShareSharingPost);
-
-          // Check if it's allowed to share a post from the space of original post.
-          Spaces::ensure_account_has_space_permission(
-            creator.clone(),
-            &original_post.get_space()?,
-            SpacePermission::Share,
-            Error::<T>::NoPermissionToShare.into()
-          )?;
-
-          space.inc_posts();
-          Self::share_post(creator.clone(), original_post, new_post_id)?;
-        },
-
-        PostExtension::Comment(comment_ext) => {
-          root_post.inc_total_replies();
-
-          if let Some(parent_id) = comment_ext.parent_id {
-            let mut parent_comment = Self::post_by_id(parent_id).ok_or(Error::<T>::UnknownParentComment)?;
-            ensure!(parent_comment.is_comment(), Error::<T>::NotACommentByParentId);
-            parent_comment.inc_direct_replies();
-
-            let mut ancestors = Self::get_post_ancestors(parent_id);
-            ancestors[0] = parent_comment;
-            ensure!(ancestors.len() < T::MaxCommentDepth::get() as usize, Error::<T>::MaxCommentDepthReached);
-            for mut post in ancestors {
-              post.inc_total_replies();
-              <PostById<T>>::insert(post.id, post.clone());
-            }
-
-            ReplyIdsByPostId::mutate(parent_id, |ids| ids.push(new_post_id));
-          } else {
-            root_post.inc_direct_replies();
-            ReplyIdsByPostId::mutate(comment_ext.root_post_id, |ids| ids.push(new_post_id));
-          }
-
-          T::PostScores::score_root_post_on_new_comment(creator.clone(), root_post)?;
-
-          PostById::insert(comment_ext.root_post_id, root_post);
-        }
+        PostExtension::RegularPost => space.inc_posts(),
+        PostExtension::SharedPost(post_id) => Self::create_sharing_post(&creator, new_post_id, post_id, space)?,
+        PostExtension::Comment(comment_ext) => Self::create_comment(&creator, new_post_id, comment_ext, root_post)?,
       }
 
       if new_post.is_root_post() {
@@ -281,14 +245,16 @@ decl_module! {
       NextPostId::mutate(|n| { *n += 1; });
 
       Self::deposit_event(RawEvent::PostCreated(creator, new_post_id));
+      Ok(())
     }
 
-    pub fn update_post(origin, post_id: PostId, update: PostUpdate) {
+    #[weight = 100_000 + T::DbWeight::get().reads_writes(5, 3)]
+    pub fn update_post(origin, post_id: PostId, update: PostUpdate) -> DispatchResult {
       let editor = ensure_signed(origin)?;
 
       let has_updates =
-        update.space_id.is_some() ||
-        update.ipfs_hash.is_some() ||
+        // update.space_id.is_some() ||
+        update.content.is_some() ||
         update.hidden.is_some();
 
       ensure!(has_updates, Error::<T>::NoUpdatesForPost);
@@ -325,29 +291,42 @@ decl_module! {
         permission_error
       )?;
 
-      let mut fields_updated = 0;
-      let mut new_history_record = PostHistoryRecord {
-        edited: WhoAndWhen::<T>::new(editor.clone()),
-        old_data: PostUpdate {space_id: None, ipfs_hash: None, hidden: None}
-      };
+      let mut space_opt: Option<Space<T>> = None;
+      let mut is_update_applied = false;
+      let mut old_data = PostUpdate::default();
 
-      if let Some(ipfs_hash) = update.ipfs_hash {
-        if ipfs_hash != post.ipfs_hash {
-          Utils::<T>::is_ipfs_hash_valid(ipfs_hash.clone())?;
-          new_history_record.old_data.ipfs_hash = Some(post.ipfs_hash);
-          post.ipfs_hash = ipfs_hash;
-          fields_updated += 1;
+      if let Some(content) = update.content {
+        if content != post.content {
+          Utils::<T>::is_valid_content(content.clone())?;
+          old_data.content = Some(post.content);
+          post.content = content;
+          is_update_applied = true;
         }
       }
 
       if let Some(hidden) = update.hidden {
         if hidden != post.hidden {
-          new_history_record.old_data.hidden = Some(post.hidden);
+          space_opt = post.try_get_space().map(|mut space| {
+            if hidden {
+                space.inc_hidden_posts();
+            } else {
+                space.dec_hidden_posts();
+            }
+
+            space
+          });
+
+          if let PostExtension::Comment(comment_ext) = post.extension {
+            Self::update_counters_on_comment_hidden_change(&comment_ext, hidden)?;
+          }
+
+          old_data.hidden = Some(post.hidden);
           post.hidden = hidden;
-          fields_updated += 1;
+          is_update_applied = true;
         }
       }
 
+      /*
       // Move this post to another space:
       if let Some(space_id) = update.space_id {
         ensure!(post.is_root_post(), Error::<T>::CannotUpdateSpaceIdOnComment);
@@ -356,27 +335,40 @@ decl_module! {
           if space_id != post_space_id {
             Spaces::<T>::ensure_space_exists(space_id)?;
             // TODO check that the current user has CreatePosts permission in new space_id.
+            // TODO test whether new_space.posts_count increases
+            // TODO test whether new_space.hidden_posts_count increases if post is hidden
+            // TODO update (hidden_)replies_count of ancestors
+            // TODO test whether reactions are updated correctly:
+            //  - subtract score from an old space
+            //  - add score to a new space
 
             // Remove post_id from its old space:
             PostIdsBySpaceId::mutate(post_space_id, |post_ids| vec_remove_on(post_ids, post_id));
 
             // Add post_id to its new space:
             PostIdsBySpaceId::mutate(space_id, |ids| ids.push(post_id));
-            new_history_record.old_data.space_id = post.space_id;
+            old_data.space_id = post.space_id;
             post.space_id = Some(space_id);
-            fields_updated += 1;
+            is_update_applied = true;
           }
         }
       }
+      */
 
       // Update this post only if at least one field should be updated:
-      if fields_updated > 0 {
+      if is_update_applied {
         post.updated = Some(WhoAndWhen::<T>::new(editor.clone()));
-        post.edit_history.push(new_history_record);
-        <PostById<T>>::insert(post_id, post);
+
+        if let Some(space) = space_opt {
+            <SpaceById<T>>::insert(space.id, space);
+        }
+
+        <PostById<T>>::insert(post.id, post.clone());
+        T::AfterPostUpdated::after_post_updated(editor.clone(), &post, old_data);
 
         Self::deposit_event(RawEvent::PostUpdated(editor, post_id));
       }
+      Ok(())
     }
   }
 }

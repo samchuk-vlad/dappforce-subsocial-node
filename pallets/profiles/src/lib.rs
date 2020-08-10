@@ -1,18 +1,16 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![allow(clippy::string_lit_as_bytes)]
 
 use codec::{Decode, Encode};
 use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage,
-    dispatch::DispatchResult, ensure, traits::Get,
+    decl_error, decl_event, decl_module, decl_storage, ensure,
+    dispatch::{DispatchResult, DispatchError},
+    traits::Get
 };
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
-use system::ensure_signed;
+use frame_system::{self as system, ensure_signed};
 
-use pallet_utils::{is_valid_handle_char, Module as Utils, WhoAndWhen};
-
-// mod tests;
+use pallet_utils::{Module as Utils, WhoAndWhen, Content};
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct SocialAccount<T: Trait> {
@@ -28,22 +26,14 @@ pub struct Profile<T: Trait> {
     pub created: WhoAndWhen<T>,
     pub updated: Option<WhoAndWhen<T>>,
 
-    pub username: Vec<u8>,
-    pub ipfs_hash: Vec<u8>,
-
-    pub edit_history: Vec<ProfileHistoryRecord<T>>,
+    pub handle: Vec<u8>,
+    pub content: Content
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct ProfileUpdate {
-    pub username: Option<Vec<u8>>,
-    pub ipfs_hash: Option<Vec<u8>>,
-}
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct ProfileHistoryRecord<T: Trait> {
-    pub edited: WhoAndWhen<T>,
-    pub old_data: ProfileUpdate,
+    pub handle: Option<Vec<u8>>,
+    pub content: Option<Content>,
 }
 
 /// The pallet's configuration trait.
@@ -53,18 +43,17 @@ pub trait Trait: system::Trait
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
-    /// Minimal length of profile username
-    type MinUsernameLen: Get<u32>;
-
-    /// Maximal length of profile username
-    type MaxUsernameLen: Get<u32>;
+    type AfterProfileUpdated: AfterProfileUpdated<Self>;
 }
 
 // This pallet's storage items.
 decl_storage! {
-    trait Store for Module<T: Trait> as TemplateModule {
-        pub SocialAccountById get(fn social_account_by_id): map T::AccountId => Option<SocialAccount<T>>;
-        pub AccountByProfileUsername get(fn account_by_profile_username): map Vec<u8> => Option<T::AccountId>;
+    trait Store for Module<T: Trait> as ProfilesModule {
+        pub SocialAccountById get(fn social_account_by_id):
+            map hasher(blake2_128_concat) T::AccountId => Option<SocialAccount<T>>;
+
+        pub AccountByProfileHandle get(fn account_by_profile_handle):
+            map hasher(blake2_128_concat) Vec<u8> => Option<T::AccountId>;
     }
 }
 
@@ -87,99 +76,94 @@ decl_error! {
         NoUpdatesForProfile,
         /// Account has no profile yet.
         AccountHasNoProfile,
-        /// Username is taken.
-        UsernameIsTaken,
-        /// Username is too short.
-        UsernameIsTooShort,
-        /// Username is too long.
-        UsernameIsTooLong,
-        /// Username contains invalid chars.
-        UsernameContainsInvalidChars,
+        /// Profile handle is not unique.
+        ProfileHandleIsNotUnique,
     }
 }
 
 decl_module! {
   pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 
-    // TODO replace with MaxHandleLen
-    /// Minimal length of profile username
-    const MinUsernameLen: u32 = T::MinUsernameLen::get();
-
-    // TODO replace with MinHandleLen
-    /// Maximal length of profile username
-    const MaxUsernameLen: u32 = T::MaxUsernameLen::get();
+    // Initializing errors
+    type Error = Error<T>;
 
     // Initializing events
     fn deposit_event() = default;
 
-    pub fn create_profile(origin, username: Vec<u8>, ipfs_hash: Vec<u8>) {
+    #[weight = 100_000 + T::DbWeight::get().reads_writes(1, 2)]
+    pub fn create_profile(origin, handle: Vec<u8>, content: Content) -> DispatchResult {
       let owner = ensure_signed(origin)?;
+
+      Utils::<T>::is_valid_content(content.clone())?;
 
       let mut social_account = Self::get_or_new_social_account(owner.clone());
       ensure!(social_account.profile.is_none(), Error::<T>::ProfileAlreadyCreated);
-      Self::is_username_valid(username.clone())?;
-      Utils::<T>::is_ipfs_hash_valid(ipfs_hash.clone())?;
+
+      let handle_in_lowercase = Self::lowercase_and_validate_profile_handle(handle.clone())?;
 
       social_account.profile = Some(
         Profile {
           created: WhoAndWhen::<T>::new(owner.clone()),
           updated: None,
-          username: username.clone(),
-          ipfs_hash,
-          edit_history: Vec::new()
+          handle,
+          content
         }
       );
-      <AccountByProfileUsername<T>>::insert(username, owner.clone());
+      <AccountByProfileHandle<T>>::insert(handle_in_lowercase, owner.clone());
       <SocialAccountById<T>>::insert(owner.clone(), social_account);
 
       Self::deposit_event(RawEvent::ProfileCreated(owner));
+      Ok(())
     }
 
-    pub fn update_profile(origin, update: ProfileUpdate) {
+    #[weight = 100_000 + T::DbWeight::get().reads_writes(1, 2)]
+    pub fn update_profile(origin, update: ProfileUpdate) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 
       let has_updates =
-        update.username.is_some() ||
-        update.ipfs_hash.is_some();
+        update.handle.is_some() ||
+        update.content.is_some();
 
       ensure!(has_updates, Error::<T>::NoUpdatesForProfile);
 
       let mut social_account = Self::social_account_by_id(owner.clone()).ok_or(Error::<T>::SocialAccountNotFound)?;
       let mut profile = social_account.profile.ok_or(Error::<T>::AccountHasNoProfile)?;
       let mut is_update_applied = false;
-      let mut new_history_record = ProfileHistoryRecord {
-        edited: WhoAndWhen::<T>::new(owner.clone()),
-        old_data: ProfileUpdate {username: None, ipfs_hash: None}
-      };
+      let mut old_data = ProfileUpdate::default();
 
-      if let Some(ipfs_hash) = update.ipfs_hash {
-        if ipfs_hash != profile.ipfs_hash {
-          Utils::<T>::is_ipfs_hash_valid(ipfs_hash.clone())?;
-          new_history_record.old_data.ipfs_hash = Some(profile.ipfs_hash);
-          profile.ipfs_hash = ipfs_hash;
+      if let Some(content) = update.content {
+        if content != profile.content {
+          Utils::<T>::is_valid_content(content.clone())?;
+          old_data.content = Some(profile.content);
+          profile.content = content;
           is_update_applied = true;
         }
       }
 
-      if let Some(username) = update.username {
-        if username != profile.username {
-          Self::is_username_valid(username.clone())?;
-          <AccountByProfileUsername<T>>::remove(profile.username.clone());
-          <AccountByProfileUsername<T>>::insert(username.clone(), owner.clone());
-          new_history_record.old_data.username = Some(profile.username);
-          profile.username = username;
+      if let Some(handle) = update.handle {
+        if handle != profile.handle {
+          let handle_in_lowercase = Self::lowercase_and_validate_profile_handle(handle.clone())?;
+
+          // Note that stored handle is in lowercase unlike profile.handle, but both are valid
+          <AccountByProfileHandle<T>>::remove(profile.handle.to_ascii_lowercase());
+          <AccountByProfileHandle<T>>::insert(handle_in_lowercase, owner.clone());
+
+          old_data.handle = Some(profile.handle);
+          profile.handle = handle;
           is_update_applied = true;
         }
       }
 
       if is_update_applied {
         profile.updated = Some(WhoAndWhen::<T>::new(owner.clone()));
-        profile.edit_history.push(new_history_record);
-        social_account.profile = Some(profile);
+        social_account.profile = Some(profile.clone());
+
         <SocialAccountById<T>>::insert(owner.clone(), social_account);
+        T::AfterProfileUpdated::after_profile_updated(owner.clone(), &profile, old_data);
 
         Self::deposit_event(RawEvent::ProfileUpdated(owner));
       }
+      Ok(())
     }
   }
 }
@@ -221,6 +205,15 @@ impl<T: Trait> SocialAccount<T> {
     }
 }
 
+impl Default for ProfileUpdate {
+    fn default() -> Self {
+        ProfileUpdate {
+            handle: None,
+            content: None
+        }
+    }
+}
+
 impl<T: Trait> Module<T> {
     pub fn get_or_new_social_account(account: T::AccountId) -> SocialAccount<T> {
         Self::social_account_by_id(account).unwrap_or(
@@ -234,12 +227,16 @@ impl<T: Trait> Module<T> {
         )
     }
 
-    // TODO replace with code from ::lowercase_and_validate_a_handle()
-    pub fn is_username_valid(username: Vec<u8>) -> DispatchResult {
-        ensure!(Self::account_by_profile_username(username.clone()).is_none(), Error::<T>::UsernameIsTaken);
-        ensure!(username.len() >= T::MinUsernameLen::get() as usize, Error::<T>::UsernameIsTooShort);
-        ensure!(username.len() <= T::MaxUsernameLen::get() as usize, Error::<T>::UsernameIsTooLong);
-        ensure!(username.iter().all(|&x| is_valid_handle_char(x)), Error::<T>::UsernameContainsInvalidChars);
-        Ok(())
+    pub fn lowercase_and_validate_profile_handle(handle: Vec<u8>) -> Result<Vec<u8>, DispatchError> {
+        let handle_in_lowercase = Utils::<T>::lowercase_and_validate_a_handle(handle)?;
+
+        ensure!(Self::account_by_profile_handle(handle_in_lowercase.clone()).is_none(), Error::<T>::ProfileHandleIsNotUnique);
+
+        Ok(handle_in_lowercase)
     }
+}
+
+#[impl_trait_for_tuples::impl_for_tuples(10)]
+pub trait AfterProfileUpdated<T: Trait> {
+    fn after_profile_updated(account: T::AccountId, post: &Profile<T>, old_data: ProfileUpdate);
 }

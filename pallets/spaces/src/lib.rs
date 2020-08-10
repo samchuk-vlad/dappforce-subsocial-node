@@ -1,39 +1,37 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![allow(clippy::string_lit_as_bytes)]
 
 use codec::{Decode, Encode};
 use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage,
-    dispatch::{DispatchError, DispatchResult}, ensure, traits::Get,
+    decl_error, decl_event, decl_module, decl_storage, ensure,
+    dispatch::{DispatchError, DispatchResult},
+    traits::Get
 };
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
-use system::ensure_signed;
+use frame_system::{self as system, ensure_signed};
 
 use df_traits::{SpaceForRoles, SpaceForRolesProvider};
 use df_traits::{PermissionChecker, SpaceFollowsProvider};
 use pallet_permissions::{SpacePermission, SpacePermissions, SpacePermissionsContext};
-use pallet_utils::{is_valid_handle_char, Module as Utils, SpaceId, WhoAndWhen};
-
-// #[cfg(tests)]
-// mod tests;
+use pallet_utils::{Module as Utils, SpaceId, WhoAndWhen, Content};
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Space<T: Trait> {
     pub id: SpaceId,
     pub created: WhoAndWhen<T>,
     pub updated: Option<WhoAndWhen<T>>,
-    pub hidden: bool,
+
+    pub owner: T::AccountId,
 
     // Can be updated by the owner:
-    pub owner: T::AccountId,
+    pub parent_id: Option<SpaceId>,
     pub handle: Option<Vec<u8>>,
-    pub ipfs_hash: Vec<u8>,
+    pub content: Content,
+    pub hidden: bool,
 
-    pub posts_count: u16,
+    pub posts_count: u32,
+    pub hidden_posts_count: u32,
     pub followers_count: u32,
-
-    pub edit_history: Vec<SpaceHistoryRecord<T>>,
 
     pub score: i32,
 
@@ -44,68 +42,74 @@ pub struct Space<T: Trait> {
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 #[allow(clippy::option_option)]
 pub struct SpaceUpdate {
+    pub parent_id: Option<Option<SpaceId>>,
     pub handle: Option<Option<Vec<u8>>>,
-    pub ipfs_hash: Option<Vec<u8>>,
+    pub content: Option<Content>,
     pub hidden: Option<bool>,
-}
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct SpaceHistoryRecord<T: Trait> {
-    pub edited: WhoAndWhen<T>,
-    pub old_data: SpaceUpdate,
+    pub permissions: Option<Option<SpacePermissions>>,
 }
 
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait
     + pallet_utils::Trait
+    + pallet_permissions::Trait
 {
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
-
-    /// Minimal length of blog handle
-    type MinHandleLen: Get<u32>;
-
-    /// Maximal length of space handle
-    type MaxHandleLen: Get<u32>;
 
     type Roles: PermissionChecker<AccountId=Self::AccountId>;
 
     type SpaceFollows: SpaceFollowsProvider<AccountId=Self::AccountId>;
 
     type BeforeSpaceCreated: BeforeSpaceCreated<Self>;
+
+    type AfterSpaceUpdated: AfterSpaceUpdated<Self>;
 }
 
 decl_error! {
   pub enum Error for Module<T: Trait> {
     /// Space was not found by id.
     SpaceNotFound,
-    /// Space handle is too short.
-    HandleIsTooShort,
-    /// Space handle is too long.
-    HandleIsTooLong,
     /// Space handle is not unique.
-    HandleIsNotUnique,
-    /// Space handle contains invalid characters.
-    HandleContainsInvalidChars,
+    SpaceHandleIsNotUnique,
     /// Nothing to update in space.
     NoUpdatesForSpace,
     /// Only space owner can manage their space.
     NotASpaceOwner,
     /// User has no permission to update this space.
     NoPermissionToUpdateSpace,
+    /// User has no permission to create subspaces in this space
+    NoPermissionToCreateSubspaces,
+    /// Space is at root level, no parent_id specified
+    SpaceIsAtRoot,
   }
 }
 
 // This pallet's storage items.
 decl_storage! {
-    trait Store for Module<T: Trait> as TemplateModule {
+    trait Store for Module<T: Trait> as SpacesModule {
 
-        // TODO reserve space id 0 (zero) for 'Abyss'.
+        pub NextSpaceId get(fn next_space_id): SpaceId = 1001;
 
-        pub NextSpaceId get(fn next_space_id): SpaceId = 1;
-        pub SpaceById get(fn space_by_id): map SpaceId => Option<Space<T>>;
-        pub SpaceIdByHandle get(fn space_id_by_handle): map Vec<u8> => Option<SpaceId>;
-        pub SpaceIdsByOwner get(fn space_ids_by_owner): map T::AccountId => Vec<SpaceId>;
+        pub SpaceById get(fn space_by_id) build(|config: &GenesisConfig<T>| {
+          let mut spaces: Vec<(SpaceId, Space<T>)> = Vec::new();
+          let endowed_account = config.endowed_account.clone();
+          for id in 1..=1000 {
+            spaces.push((id, Space::<T>::new(id, None, endowed_account.clone(), Content::None, None)));
+          }
+          
+          spaces
+        }):
+            map hasher(twox_64_concat) SpaceId => Option<Space<T>>;
+
+        pub SpaceIdByHandle get(fn space_id_by_handle):
+            map hasher(blake2_128_concat) Vec<u8> => Option<SpaceId>;
+
+        pub SpaceIdsByOwner get(fn space_ids_by_owner):
+            map hasher(twox_64_concat) T::AccountId => Vec<SpaceId>;
+    }
+    add_extra_genesis {
+      config(endowed_account): T::AccountId;
     }
 }
 
@@ -123,27 +127,42 @@ decl_event!(
 decl_module! {
   pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 
-    /// Minimal length of space handle
-    const MinHandleLen: u32 = T::MinHandleLen::get();
-
-    /// Maximal length of space handle
-    const MaxHandleLen: u32 = T::MaxHandleLen::get();
+    // Initializing errors
+    type Error = Error<T>;
 
     // Initializing events
     fn deposit_event() = default;
 
-    pub fn create_space(origin, handle_opt: Option<Vec<u8>>, ipfs_hash: Vec<u8>) {
+    #[weight = 500_000 + T::DbWeight::get().reads_writes(4, 4)]
+    pub fn create_space(
+      origin,
+      parent_id_opt: Option<SpaceId>,
+      handle_opt: Option<Vec<u8>>,
+      content: Content
+    ) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 
-      Utils::<T>::is_ipfs_hash_valid(ipfs_hash.clone())?;
+      Utils::<T>::is_valid_content(content.clone())?;
 
       let mut handle_in_lowercase: Vec<u8> = Vec::new();
       if let Some(original_handle) = handle_opt.clone() {
-        handle_in_lowercase = Self::lowercase_and_validate_a_handle(original_handle)?;
+        handle_in_lowercase = Self::lowercase_and_validate_space_handle(original_handle)?;
+      }
+
+      // TODO: add tests for this case
+      if let Some(parent_id) = parent_id_opt {
+        let parent_space = Self::require_space(parent_id)?;
+
+        Self::ensure_account_has_space_permission(
+          owner.clone(),
+          &parent_space,
+          SpacePermission::CreateSubspaces,
+          Error::<T>::NoPermissionToCreateSubspaces.into()
+        )?;
       }
 
       let space_id = Self::next_space_id();
-      let new_space = &mut Space::new(space_id, owner.clone(), ipfs_hash, handle_opt);
+      let new_space = &mut Space::new(space_id, parent_id_opt, owner.clone(), content, handle_opt);
 
       T::BeforeSpaceCreated::before_space_created(owner.clone(), new_space)?;
 
@@ -156,15 +175,19 @@ decl_module! {
       }
 
       Self::deposit_event(RawEvent::SpaceCreated(owner, space_id));
+      Ok(())
     }
 
-    pub fn update_space(origin, space_id: SpaceId, update: SpaceUpdate) {
+    #[weight = 500_000 + T::DbWeight::get().reads_writes(2, 3)]
+    pub fn update_space(origin, space_id: SpaceId, update: SpaceUpdate) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 
       let has_updates =
+        update.parent_id.is_some() ||
         update.handle.is_some() ||
-        update.ipfs_hash.is_some() ||
-        update.hidden.is_some();
+        update.content.is_some() ||
+        update.hidden.is_some() ||
+        update.permissions.is_some();
 
       ensure!(has_updates, Error::<T>::NoUpdatesForSpace);
 
@@ -177,55 +200,94 @@ decl_module! {
         Error::<T>::NoPermissionToUpdateSpace.into()
       )?;
 
-      let mut fields_updated = 0;
-      let mut new_history_record = SpaceHistoryRecord {
-        edited: WhoAndWhen::<T>::new(owner.clone()),
-        old_data: SpaceUpdate {
-            handle: None,
-            ipfs_hash: None,
-            hidden: None
-        }
-      };
+      let mut is_update_applied = false;
+      let mut old_data = SpaceUpdate::default();
 
-      if let Some(ipfs_hash) = update.ipfs_hash {
-        if ipfs_hash != space.ipfs_hash {
-          Utils::<T>::is_ipfs_hash_valid(ipfs_hash.clone())?;
-          new_history_record.old_data.ipfs_hash = Some(space.ipfs_hash);
-          space.ipfs_hash = ipfs_hash;
-          fields_updated += 1;
+      // TODO: add tests for this case
+      if let Some(parent_id_opt) = update.parent_id {
+        if parent_id_opt != space.parent_id {
+
+          if let Some(parent_id) = parent_id_opt {
+            let parent_space = Self::require_space(parent_id)?;
+
+            Self::ensure_account_has_space_permission(
+              owner.clone(),
+              &parent_space,
+              SpacePermission::CreateSubspaces,
+              Error::<T>::NoPermissionToCreateSubspaces.into()
+            )?;
+          }
+
+          old_data.parent_id = Some(space.parent_id);
+          space.parent_id = parent_id_opt;
+          is_update_applied = true;
+        }
+      }
+
+      if let Some(content) = update.content {
+        if content != space.content {
+          Utils::<T>::is_valid_content(content.clone())?;
+
+          old_data.content = Some(space.content);
+          space.content = content;
+          is_update_applied = true;
         }
       }
 
       if let Some(hidden) = update.hidden {
         if hidden != space.hidden {
-          new_history_record.old_data.hidden = Some(space.hidden);
+          old_data.hidden = Some(space.hidden);
           space.hidden = hidden;
-          fields_updated += 1;
+          is_update_applied = true;
+        }
+      }
+
+      if let Some(overrides_opt) = update.permissions {
+        if space.permissions != overrides_opt {
+          old_data.permissions = Some(space.permissions);
+
+          if let Some(mut overrides) = overrides_opt.clone() {
+            overrides.none = overrides.none.map(
+              |mut none_permissions_set| {
+                none_permissions_set.extend(T::DefaultSpacePermissions::get().none.unwrap_or_default());
+                none_permissions_set
+              }
+            );
+
+            space.permissions = Some(overrides);
+          } else {
+            space.permissions = overrides_opt;
+          }
+
+          is_update_applied = true;
         }
       }
 
       if let Some(handle_opt) = update.handle {
         if handle_opt != space.handle {
           if let Some(new_handle) = handle_opt.clone() {
-            let handle_in_lowercase = Self::lowercase_and_validate_a_handle(new_handle)?;
+            let handle_in_lowercase = Self::lowercase_and_validate_space_handle(new_handle)?;
             SpaceIdByHandle::insert(handle_in_lowercase, space_id);
           }
           if let Some(old_handle) = space.handle.clone() {
             SpaceIdByHandle::remove(old_handle);
           }
-          new_history_record.old_data.handle = Some(space.handle);
+          old_data.handle = Some(space.handle);
           space.handle = handle_opt;
-          fields_updated += 1;
+          is_update_applied = true;
         }
       }
 
       // Update this space only if at least one field should be updated:
-      if fields_updated > 0 {
+      if is_update_applied {
         space.updated = Some(WhoAndWhen::<T>::new(owner.clone()));
-        space.edit_history.push(new_history_record);
-        <SpaceById<T>>::insert(space_id, space);
+
+        <SpaceById<T>>::insert(space_id, space.clone());
+        T::AfterSpaceUpdated::after_space_updated(owner.clone(), &space, old_data);
+
         Self::deposit_event(RawEvent::SpaceUpdated(owner, space_id));
       }
+      Ok(())
     }
   }
 }
@@ -233,21 +295,23 @@ decl_module! {
 impl<T: Trait> Space<T> {
     pub fn new(
         id: SpaceId,
+        parent_id: Option<SpaceId>,
         created_by: T::AccountId,
-        ipfs_hash: Vec<u8>,
+        content: Content,
         handle: Option<Vec<u8>>,
     ) -> Self {
         Space {
             id,
             created: WhoAndWhen::<T>::new(created_by.clone()),
             updated: None,
-            hidden: false,
             owner: created_by,
+            parent_id,
             handle,
-            ipfs_hash,
+            content,
+            hidden: false,
             posts_count: 0,
+            hidden_posts_count: 0,
             followers_count: 0,
-            edit_history: Vec::new(),
             score: 0,
             permissions: None,
         }
@@ -274,6 +338,14 @@ impl<T: Trait> Space<T> {
         self.posts_count = self.posts_count.saturating_sub(1);
     }
 
+    pub fn inc_hidden_posts(&mut self) {
+        self.hidden_posts_count = self.hidden_posts_count.saturating_add(1);
+    }
+
+    pub fn dec_hidden_posts(&mut self) {
+        self.hidden_posts_count = self.hidden_posts_count.saturating_sub(1);
+    }
+
     pub fn inc_followers(&mut self) {
         self.followers_count = self.followers_count.saturating_add(1);
     }
@@ -290,6 +362,22 @@ impl<T: Trait> Space<T> {
             self.score = self.score.saturating_sub(diff.abs() as i32);
         }
     }
+
+    pub fn try_get_parent(&self) -> Result<SpaceId, DispatchError> {
+        self.parent_id.ok_or_else(|| Error::<T>::SpaceIsAtRoot.into())
+    }
+}
+
+impl Default for SpaceUpdate {
+    fn default() -> Self {
+        SpaceUpdate {
+            parent_id: None,
+            handle: None,
+            content: None,
+            hidden: None,
+            permissions: None,
+        }
+    }
 }
 
 impl<T: Trait> Module<T> {
@@ -297,7 +385,7 @@ impl<T: Trait> Module<T> {
     /// Check that there is a `Space` with such `space_id` in the storage
     /// or return`SpaceNotFound` error.
     pub fn ensure_space_exists(space_id: SpaceId) -> DispatchResult {
-        ensure!(<SpaceById<T>>::exists(space_id), Error::<T>::SpaceNotFound);
+        ensure!(<SpaceById<T>>::contains_key(space_id), Error::<T>::SpaceNotFound);
         Ok(())
     }
 
@@ -306,22 +394,11 @@ impl<T: Trait> Module<T> {
         Ok(Self::space_by_id(space_id).ok_or(Error::<T>::SpaceNotFound)?)
     }
 
-    /// Check if a handle length fits into min/max values.
-    /// Lowercase a provided handle.
-    /// Check if a handle consists of valid chars: 0-9, a-z, _.
-    /// Check if a handle is unique across all spaces' handles (required one a storage read).
-    pub fn lowercase_and_validate_a_handle(handle: Vec<u8>) -> Result<Vec<u8>, DispatchError> {
-        // Check min and max lengths of a handle:
-        ensure!(handle.len() >= T::MinHandleLen::get() as usize, Error::<T>::HandleIsTooShort);
-        ensure!(handle.len() <= T::MaxHandleLen::get() as usize, Error::<T>::HandleIsTooLong);
-
-        let handle_in_lowercase = handle.to_ascii_lowercase();
-
-        // Check if a handle consists of valid chars: 0-9, a-z, _.
-        ensure!(handle_in_lowercase.iter().all(|&x| is_valid_handle_char(x)), Error::<T>::HandleContainsInvalidChars);
+    pub fn lowercase_and_validate_space_handle(handle: Vec<u8>) -> Result<Vec<u8>, DispatchError> {
+        let handle_in_lowercase = Utils::<T>::lowercase_and_validate_a_handle(handle)?;
 
         // Check if a handle is unique across all spaces' handles:
-        ensure!(Self::space_id_by_handle(handle_in_lowercase.clone()).is_none(), Error::<T>::HandleIsNotUnique);
+        ensure!(Self::space_id_by_handle(handle_in_lowercase.clone()).is_none(), Error::<T>::SpaceHandleIsNotUnique);
 
         Ok(handle_in_lowercase)
     }
@@ -349,6 +426,14 @@ impl<T: Trait> Module<T> {
             error,
         )
     }
+
+    pub fn try_move_space_to_root(space_id: SpaceId) -> DispatchResult {
+        let mut space = Self::require_space(space_id)?;
+        space.parent_id = None;
+
+        SpaceById::<T>::insert(space_id, space);
+        Ok(())
+    }
 }
 
 impl<T: Trait> SpaceForRolesProvider for Module<T> {
@@ -372,4 +457,9 @@ impl<T: Trait> BeforeSpaceCreated<T> for () {
     fn before_space_created(_follower: T::AccountId, _space: &mut Space<T>) -> DispatchResult {
         Ok(())
     }
+}
+
+#[impl_trait_for_tuples::impl_for_tuples(10)]
+pub trait AfterSpaceUpdated<T: Trait> {
+    fn after_space_updated(sender: T::AccountId, space: &Space<T>, old_data: SpaceUpdate);
 }

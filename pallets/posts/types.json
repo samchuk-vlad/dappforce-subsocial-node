@@ -5,16 +5,17 @@
     "id": "PostId",
     "created": "WhoAndWhen",
     "updated": "Option<WhoAndWhen>",
-    "hidden": "bool",
 
-    "space_id": "Option<SpaceId>",
+    "owner": "AccountId",
+
     "extension": "PostExtension",
 
-    "ipfs_hash": "IpfsHash",
-    "edit_history": "Vec<PostHistoryRecord>",
+    "space_id": "Option<SpaceId>",
+    "content": "Content",
+    "hidden": "bool",
 
-    "direct_replies_count": "u16",
-    "total_replies_count": "u32",
+    "replies_count": "u16",
+    "hidden_replies_count": "u16",
 
     "shares_count": "u16",
     "upvotes_count": "u16",
@@ -25,24 +26,19 @@
 
   "PostUpdate": {
     "space_id": "Option<SpaceId>",
-    "ipfs_hash": "Option<IpfsHash>",
+    "content": "Option<Content>",
     "hidden": "Option<bool>"
-  },
-
-  "PostHistoryRecord": {
-    "edited": "WhoAndWhen",
-    "old_data": "PostUpdate"
   },
 
   "PostExtension": {
     "_enum": {
       "RegularPost": "Null",
-      "Comment": "CommentExt",
+      "Comment": "Comment",
       "SharedPost": "PostId"
     }
   },
 
-  "CommentExt": {
+  "Comment": {
     "parent_id": "Option<PostId>",
     "root_post_id": "PostId"
   }

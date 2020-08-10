@@ -11,19 +11,12 @@
     "created": "WhoAndWhen",
     "updated": "Option<WhoAndWhen>",
 
-    "username": "Text",
-    "ipfs_hash": "IpfsHash",
-
-    "edit_history": "Vec<ProfileHistoryRecord>"
+    "handle": "Text",
+    "content": "Content"
   },
 
   "ProfileUpdate": {
-    "username": "Option<Text>",
-    "ipfs_hash": "Option<IpfsHash>"
-  },
-
-  "ProfileHistoryRecord": {
-    "edited": "WhoAndWhen",
-    "old_data": "ProfileUpdate"
+    "handle": "Option<Text>",
+    "content": "Option<Content>"
   }
 }

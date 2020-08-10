@@ -7,7 +7,7 @@
     "owners": "Vec<AccountId>",
     "threshold": "u16",
 
-    "changes_count": "u64"
+    "changes_count": "u16"
   },
   "Change": {
     "created": "WhoAndWhen",

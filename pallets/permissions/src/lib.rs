@@ -10,6 +10,7 @@ use sp_std::{
   collections::btree_set::BTreeSet,
   prelude::*
 };
+use frame_system::{self as system};
 
 use pallet_utils::SpaceId;
 
@@ -26,11 +27,6 @@ pub enum SpacePermission {
   /// Update this space.
   UpdateSpace,
 
-  /// Block accounts and other outer spaces within this space.
-  BlockUsers,
-  /// Report accounts and other outer spaces within this space.
-  ReportUsers,
-
   // Related to subspaces in this space:
   CreateSubspaces,
   UpdateOwnSubspaces,
@@ -40,9 +36,6 @@ pub enum SpacePermission {
   UpdateAnySubspace,
   DeleteAnySubspace,
   HideAnySubspace,
-
-  BlockSubspaces,
-  ReportSubspaces,
 
   // Related to posts in this space:
   CreatePosts,
@@ -54,9 +47,6 @@ pub enum SpacePermission {
   DeleteAnyPost,
   HideAnyPost,
 
-  BlockPosts,
-  ReportPosts,
-
   // Related to comments in this space:
   CreateComments,
   UpdateOwnComments,
@@ -64,10 +54,8 @@ pub enum SpacePermission {
   HideOwnComments,
 
   // NOTE: It was made on purpose that it's not possible to update or delete not own comments.
-  // Instead it's possible to allow to report, hide and block comments.
+  // Instead it's possible to allow to hide and block comments.
   HideAnyComment,
-  BlockComments,
-  ReportComments,
 
   /// Upvote any post or comment in this space.
   Upvote,
@@ -80,6 +68,16 @@ pub enum SpacePermission {
   OverrideSubspacePermissions,
   /// Override permissions per post in this space.
   OverridePostPermissions,
+
+  // Related to moderation pallet
+  /// Suggest new entity status in space (whether it's blocked or allowed)
+  SuggestEntityStatus,
+  /// Update entity status in space
+  UpdateEntityStatus,
+
+  // Related to Space settings
+  /// Update collection of space settings in different pallets
+  UpdateSpaceSettings,
 }
 
 pub type SpacePermissionSet = BTreeSet<SpacePermission>;

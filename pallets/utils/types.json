@@ -12,5 +12,14 @@
       "Account": "AccountId",
       "Space": "SpaceId"
     }
+  },
+
+  "Content": {
+    "_enum": {
+      "None": "Null",
+      "Raw": "Text",
+      "IPFS": "Text",
+      "Hyper": "Text"
+    }
   }
 }
