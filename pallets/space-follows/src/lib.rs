@@ -1,19 +1,17 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![allow(clippy::string_lit_as_bytes)]
 
 use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage,
-    dispatch::DispatchResult, ensure,
+    decl_error, decl_event, decl_module, decl_storage, ensure,
+    dispatch::DispatchResult,
+    traits::Get
 };
 use sp_std::prelude::*;
-use system::ensure_signed;
+use frame_system::{self as system, ensure_signed};
 
 use df_traits::SpaceFollowsProvider;
 use pallet_profiles::{Module as Profiles, SocialAccountById};
 use pallet_spaces::{BeforeSpaceCreated, Module as Spaces, Space, SpaceById};
 use pallet_utils::{SpaceId, vec_remove_on};
-
-// mod tests;
 
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait
@@ -45,9 +43,14 @@ decl_error! {
 // This pallet's storage items.
 decl_storage! {
     trait Store for Module<T: Trait> as SpaceFollowsModule {
-        pub SpaceFollowers get(fn space_followers): map SpaceId => Vec<T::AccountId>;
-        pub SpaceFollowedByAccount get(fn space_followed_by_account): map (T::AccountId, SpaceId) => bool;
-        pub SpacesFollowedByAccount get(fn spaces_followed_by_account): map T::AccountId => Vec<SpaceId>;
+        pub SpaceFollowers get(fn space_followers):
+            map hasher(twox_64_concat) SpaceId => Vec<T::AccountId>;
+
+        pub SpaceFollowedByAccount get(fn space_followed_by_account):
+            map hasher(blake2_128_concat) (T::AccountId, SpaceId) => bool;
+
+        pub SpacesFollowedByAccount get(fn spaces_followed_by_account):
+            map hasher(blake2_128_concat) T::AccountId => Vec<SpaceId>;
     }
 }
 
@@ -63,11 +66,14 @@ decl_event!(
 // The pallet's dispatchable functions.
 decl_module! {
   pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+    // Initializing errors
+    type Error = Error<T>;
 
     // Initializing events
     fn deposit_event() = default;
 
-    pub fn follow_space(origin, space_id: SpaceId) {
+    #[weight = 10_000 + T::DbWeight::get().reads_writes(5, 5)]
+    pub fn follow_space(origin, space_id: SpaceId) -> DispatchResult {
       let follower = ensure_signed(origin)?;
 
       ensure!(!Self::space_followed_by_account((follower.clone(), space_id)), Error::<T>::AlreadySpaceFollower);
@@ -77,28 +83,17 @@ decl_module! {
 
       Self::add_space_follower(follower, space)?;
       <SpaceById<T>>::insert(space_id, space);
+
+      Ok(())
     }
 
-    pub fn unfollow_space(origin, space_id: SpaceId) {
+    #[weight = 10_000 + T::DbWeight::get().reads_writes(5, 5)]
+    pub fn unfollow_space(origin, space_id: SpaceId) -> DispatchResult {
       let follower = ensure_signed(origin)?;
 
-      let space = &mut Spaces::require_space(space_id)?;
       ensure!(Self::space_followed_by_account((follower.clone(), space_id)), Error::<T>::NotSpaceFollower);
 
-      space.dec_followers();
-
-      let mut social_account = Profiles::social_account_by_id(follower.clone()).ok_or(Error::<T>::SocialAccountNotFound)?;
-      social_account.dec_following_spaces();
-
-      T::BeforeSpaceUnfollowed::before_space_unfollowed(follower.clone(), space)?;
-
-      <SpacesFollowedByAccount<T>>::mutate(follower.clone(), |space_ids| vec_remove_on(space_ids, space_id));
-      <SpaceFollowers<T>>::mutate(space_id, |account_ids| vec_remove_on(account_ids, follower.clone()));
-      <SpaceFollowedByAccount<T>>::remove((follower.clone(), space_id));
-      <SocialAccountById<T>>::insert(follower.clone(), social_account);
-      <SpaceById<T>>::insert(space_id, space);
-
-      Self::deposit_event(RawEvent::SpaceUnfollowed(follower, space_id));
+      Self::unfollow_space_by_account(follower, space_id)
     }
   }
 }
@@ -121,6 +116,25 @@ impl<T: Trait> Module<T> {
 
         Self::deposit_event(RawEvent::SpaceFollowed(follower, space_id));
 
+        Ok(())
+    }
+
+    pub fn unfollow_space_by_account(follower: T::AccountId, space_id: SpaceId) -> DispatchResult {
+        let space = &mut Spaces::require_space(space_id)?;
+        space.dec_followers();
+
+        let mut social_account = Profiles::social_account_by_id(follower.clone()).ok_or(Error::<T>::SocialAccountNotFound)?;
+        social_account.dec_following_spaces();
+
+        T::BeforeSpaceUnfollowed::before_space_unfollowed(follower.clone(), space)?;
+
+        <SpacesFollowedByAccount<T>>::mutate(follower.clone(), |space_ids| vec_remove_on(space_ids, space_id));
+        <SpaceFollowers<T>>::mutate(space_id, |account_ids| vec_remove_on(account_ids, follower.clone()));
+        <SpaceFollowedByAccount<T>>::remove((follower.clone(), space_id));
+        <SocialAccountById<T>>::insert(follower.clone(), social_account);
+        <SpaceById<T>>::insert(space_id, space);
+
+        Self::deposit_event(RawEvent::SpaceUnfollowed(follower, space_id));
         Ok(())
     }
 }

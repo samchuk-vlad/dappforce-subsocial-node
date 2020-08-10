@@ -1,21 +1,19 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![allow(clippy::string_lit_as_bytes)]
 
 use codec::{Decode, Encode};
 use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage,
-    dispatch::DispatchResult, ensure,
+    decl_error, decl_event, decl_module, decl_storage, ensure,
+    dispatch::DispatchResult,
+    traits::Get
 };
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
-use system::ensure_signed;
+use frame_system::{self as system, ensure_signed};
 
 use pallet_permissions::SpacePermission;
 use pallet_posts::{Module as Posts, Post, PostById, PostId};
 use pallet_spaces::Module as Spaces;
 use pallet_utils::{vec_remove_on, WhoAndWhen};
-
-// mod tests;
 
 pub type ReactionId = u64;
 
@@ -55,9 +53,15 @@ pub trait Trait: system::Trait
 decl_storage! {
     trait Store for Module<T: Trait> as ReactionsModule {
         pub NextReactionId get(fn next_reaction_id): ReactionId = 1;
-        pub ReactionById get(fn reaction_by_id): map ReactionId => Option<Reaction<T>>;
-        pub ReactionIdsByPostId get(fn reaction_ids_by_post_id): map PostId => Vec<ReactionId>;
-        pub PostReactionIdByAccount get(fn post_reaction_id_by_account): map (T::AccountId, PostId) => ReactionId;
+
+        pub ReactionById get(fn reaction_by_id):
+            map hasher(twox_64_concat) ReactionId => Option<Reaction<T>>;
+
+        pub ReactionIdsByPostId get(fn reaction_ids_by_post_id):
+            map hasher(twox_64_concat) PostId => Vec<ReactionId>;
+
+        pub PostReactionIdByAccount get(fn post_reaction_id_by_account):
+            map hasher(twox_64_concat) (T::AccountId, PostId) => ReactionId;
     }
 }
 
@@ -99,15 +103,19 @@ decl_error! {
 decl_module! {
   pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 
+    // Initializing errors
+    type Error = Error<T>;
+
     // Initializing events
     fn deposit_event() = default;
 
-    pub fn create_post_reaction(origin, post_id: PostId, kind: ReactionKind) {
+    #[weight = 10_000 + T::DbWeight::get().reads_writes(6, 5)]
+    pub fn create_post_reaction(origin, post_id: PostId, kind: ReactionKind) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 
       let post = &mut Posts::require_post(post_id)?;
       ensure!(
-        !<PostReactionIdByAccount<T>>::exists((owner.clone(), post_id)),
+        !<PostReactionIdByAccount<T>>::contains_key((owner.clone(), post_id)),
         Error::<T>::AccountAlreadyReacted
       );
 
@@ -144,16 +152,19 @@ decl_module! {
 
       T::PostReactionScores::score_post_on_reaction(owner.clone(), post, kind)?;
 
-      ReactionIdsByPostId::mutate(post_id, |ids| ids.push(reaction_id));
+      ReactionIdsByPostId::mutate(post.id, |ids| ids.push(reaction_id));
       <PostReactionIdByAccount<T>>::insert((owner.clone(), post_id), reaction_id);
+
       Self::deposit_event(RawEvent::PostReactionCreated(owner, post_id, reaction_id));
+      Ok(())
     }
 
-    pub fn update_post_reaction(origin, post_id: PostId, reaction_id: ReactionId, new_kind: ReactionKind) {
+    #[weight = 10_000 + T::DbWeight::get().reads_writes(3, 2)]
+    pub fn update_post_reaction(origin, post_id: PostId, reaction_id: ReactionId, new_kind: ReactionKind) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 
       ensure!(
-        <PostReactionIdByAccount<T>>::exists((owner.clone(), post_id)),
+        <PostReactionIdByAccount<T>>::contains_key((owner.clone(), post_id)),
         Error::<T>::ReactionByAccountNotFound
       );
 
@@ -185,13 +196,15 @@ decl_module! {
       <PostById<T>>::insert(post_id, post);
 
       Self::deposit_event(RawEvent::PostReactionUpdated(owner, post_id, reaction_id));
+      Ok(())
     }
 
-    pub fn delete_post_reaction(origin, post_id: PostId, reaction_id: ReactionId) {
+    #[weight = 10_000 + T::DbWeight::get().reads_writes(4, 4)]
+    pub fn delete_post_reaction(origin, post_id: PostId, reaction_id: ReactionId) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 
       ensure!(
-        <PostReactionIdByAccount<T>>::exists((owner.clone(), post_id)),
+        <PostReactionIdByAccount<T>>::contains_key((owner.clone(), post_id)),
         Error::<T>::ReactionByAccountNotFound
       );
 
@@ -208,12 +221,13 @@ decl_module! {
 
       T::PostReactionScores::score_post_on_reaction(owner.clone(), post, reaction.kind)?;
 
-      <PostById<T>>::insert(post_id, post);
+      <PostById<T>>::insert(post_id, post.clone());
       <ReactionById<T>>::remove(reaction_id);
-      ReactionIdsByPostId::mutate(post_id, |ids| vec_remove_on(ids, reaction_id));
+      ReactionIdsByPostId::mutate(post.id, |ids| vec_remove_on(ids, reaction_id));
       <PostReactionIdByAccount<T>>::remove((owner.clone(), post_id));
 
       Self::deposit_event(RawEvent::PostReactionDeleted(owner, post_id, reaction_id));
+      Ok(())
     }
   }
 }

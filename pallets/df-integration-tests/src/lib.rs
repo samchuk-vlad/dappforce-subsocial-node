@@ -11,22 +11,21 @@ mod tests {
     };
     use sp_core::H256;
     use sp_io::TestExternalities;
-    use sp_std::{
-        collections::btree_set::BTreeSet,
-        iter::FromIterator,
-    };
+    use sp_std::iter::FromIterator;
     use sp_runtime::{
         traits::{BlakeTwo256, IdentityLookup},
         testing::Header,
         Perbill,
     };
+    use frame_system::{self as system};
 
     use pallet_permissions::{
         SpacePermission,
         SpacePermission as SP,
+        SpacePermissionSet,
         SpacePermissions,
     };
-    use pallet_posts::{PostId, Post, PostUpdate, PostExtension, CommentExt, Error as PostsError};
+    use pallet_posts::{PostId, Post, PostUpdate, PostExtension, Comment, Error as PostsError};
     use pallet_profiles::{ProfileUpdate, Error as ProfilesError};
     use pallet_profile_follows::Error as ProfileFollowsError;
     use pallet_reactions::{ReactionId, ReactionKind, PostReactionScores, Error as ReactionsError};
@@ -51,6 +50,7 @@ mod tests {
     }
 
     impl system::Trait for TestRuntime {
+        type BaseCallFilter = ();
         type Origin = Origin;
         type Call = ();
         type Index = u64;
@@ -63,10 +63,17 @@ mod tests {
         type Event = ();
         type BlockHashCount = BlockHashCount;
         type MaximumBlockWeight = MaximumBlockWeight;
+        type DbWeight = ();
+        type BlockExecutionWeight = ();
+        type ExtrinsicBaseWeight = ();
+        type MaximumExtrinsicWeight = MaximumBlockWeight;
         type MaximumBlockLength = MaximumBlockLength;
         type AvailableBlockRatio = AvailableBlockRatio;
         type Version = ();
         type ModuleToIndex = ();
+        type AccountData = pallet_balances::AccountData<u64>;
+        type OnNewAccount = ();
+        type OnKilledAccount = ();
     }
 
     parameter_types! {
@@ -80,37 +87,50 @@ mod tests {
     }
 
     parameter_types! {
-      pub const IpfsCidLen: u32 = 46;
+        pub const ExistentialDeposit: u64 = 1;
     }
 
-    impl pallet_utils::Trait for TestRuntime {
-        type IpfsCidLen = IpfsCidLen;
+    impl pallet_balances::Trait for TestRuntime {
+        type Balance = u64;
+        type DustRemoval = ();
+        type Event = ();
+        type ExistentialDeposit = ExistentialDeposit;
+        type AccountStore = System;
     }
 
     parameter_types! {
-      pub const DefaultSpacePermissions: SpacePermissions = SpacePermissions {
+      pub const IpfsCidLen: u32 = 46;
+      pub const MinHandleLen: u32 = 5;
+      pub const MaxHandleLen: u32 = 50;
+    }
+
+    impl pallet_utils::Trait for TestRuntime {
+        type Event = ();
+        type Currency = Balances;
+        type IpfsCidLen = IpfsCidLen;
+        type MinHandleLen = MinHandleLen;
+        type MaxHandleLen = MaxHandleLen;
+    }
+
+    parameter_types! {
+      pub DefaultSpacePermissions: SpacePermissions = SpacePermissions {
 
         // No permissions disabled by default
         none: None,
 
-        everyone: Some(BTreeSet::from_iter(vec![
-            SP::ReportUsers,
-
+        everyone: Some(SpacePermissionSet::from_iter(vec![
             SP::UpdateOwnSubspaces,
             SP::DeleteOwnSubspaces,
             SP::HideOwnSubspaces,
-            SP::ReportSubspaces,
 
             SP::UpdateOwnPosts,
             SP::DeleteOwnPosts,
             SP::HideOwnPosts,
-            SP::ReportPosts,
 
             SP::CreateComments,
             SP::UpdateOwnComments,
             SP::DeleteOwnComments,
             SP::HideOwnComments,
-            SP::ReportComments,
 
             SP::Upvote,
             SP::Downvote,
@@ -120,7 +140,7 @@ mod tests {
         // Followers can do everything that everyone else can.
         follower: None,
 
-        space_owner: Some(BTreeSet::from_iter(vec![
+        space_owner: Some(SpacePermissionSet::from_iter(vec![
             SP::ManageRoles,
             SP::RepresentSpaceInternally,
             SP::RepresentSpaceExternally,
@@ -141,10 +161,10 @@ mod tests {
             SP::HideAnyPost,
             SP::HideAnyComment,
 
-            SP::BlockUsers,
-            SP::BlockSubspaces,
-            SP::BlockPosts,
-            SP::BlockComments,
+            SP::SuggestEntityStatus,
+            SP::UpdateEntityStatus,
+
+            SP::UpdateSpaceSettings,
         ].into_iter())),
       };
     }
@@ -176,15 +196,10 @@ mod tests {
         type BeforeAccountUnfollowed = Scores;
     }
 
-    parameter_types! {
-        pub const MinUsernameLen: u32 = 5;
-        pub const MaxUsernameLen: u32 = 50;
-    }
+    parameter_types! {}
 
     impl pallet_profiles::Trait for TestRuntime {
         type Event = ();
-        type MinUsernameLen = MinUsernameLen;
-        type MaxUsernameLen = MaxUsernameLen;
         type AfterProfileUpdated = ProfileHistory;
     }
 
@@ -214,12 +229,12 @@ mod tests {
         pub const FollowSpaceActionWeight: i16 = 7;
         pub const FollowAccountActionWeight: i16 = 3;
 
-        pub const SharePostActionWeight: i16 = 5;
+        pub const SharePostActionWeight: i16 = 7;
         pub const UpvotePostActionWeight: i16 = 5;
         pub const DownvotePostActionWeight: i16 = -3;
 
         pub const CreateCommentActionWeight: i16 = 5;
-        pub const ShareCommentActionWeight: i16 = 3;
+        pub const ShareCommentActionWeight: i16 = 5;
         pub const UpvoteCommentActionWeight: i16 = 4;
         pub const DownvoteCommentActionWeight: i16 = -2;
     }
@@ -254,15 +269,10 @@ mod tests {
         type Event = ();
     }
 
-    parameter_types! {
-        pub const MinHandleLen: u32 = 5;
-        pub const MaxHandleLen: u32 = 50;
-    }
+    parameter_types! {}
 
     impl pallet_spaces::Trait for TestRuntime {
         type Event = ();
-        type MinHandleLen = MinHandleLen;
-        type MaxHandleLen = MaxHandleLen;
         type Roles = Roles;
         type SpaceFollows = SpaceFollows;
         type BeforeSpaceCreated = SpaceFollows;
@@ -274,6 +284,8 @@ mod tests {
     impl pallet_space_history::Trait for TestRuntime {}
 
     type System = system::Module<TestRuntime>;
+    type Balances = pallet_balances::Module<TestRuntime>;
+
     type Posts = pallet_posts::Module<TestRuntime>;
     type PostHistory = pallet_post_history::Module<TestRuntime>;
     type ProfileFollows = pallet_profile_follows::Module<TestRuntime>;
@@ -356,7 +368,7 @@ mod tests {
         }
 
         /// Custom ext configuration with pending ownership transfer without Space
-        pub fn build_with_pending_ownership_transfer() -> TestExternalities {
+        pub fn build_with_pending_ownership_transfer_no_space() -> TestExternalities {
             let storage = system::GenesisConfig::default()
                 .build_storage::<TestRuntime>()
                 .unwrap();
@@ -403,6 +415,25 @@ mod tests {
 
             ext
         }
+
+        /// Custom ext configuration with space follow without Space
+        pub fn build_with_space_follow_no_space() -> TestExternalities {
+            let storage = system::GenesisConfig::default()
+                .build_storage::<TestRuntime>()
+                .unwrap();
+
+            let mut ext = TestExternalities::from(storage);
+            ext.execute_with(|| {
+                System::set_block_number(1);
+
+                assert_ok!(_create_default_space());
+                assert_ok!(_default_follow_space());
+
+                <SpaceById<TestRuntime>>::remove(SPACE1);
+            });
+
+            ext
+        }
     }
 
 
@@ -436,13 +467,15 @@ mod tests {
         parent_id: Option<Option<SpaceId>>,
         handle: Option<Option<Vec<u8>>>,
         content: Option<Content>,
-        hidden: Option<bool>
+        hidden: Option<bool>,
+        permissions: Option<Option<SpacePermissions>>
     ) -> SpaceUpdate {
         SpaceUpdate {
             parent_id,
             handle,
             content,
-            hidden
+            hidden,
+            permissions
         }
     }
 
@@ -474,11 +507,11 @@ mod tests {
         Content::IPFS( b"QmRAQB6YaCyidP37UdDnjFY5vQuiaRtqdyoW2CuDgwxkA5".to_vec())
     }
 
-    fn alice_username() -> Vec<u8> {
+    fn alice_handle() -> Vec<u8> {
         b"al_ice".to_vec()
     }
 
-    fn bob_username() -> Vec<u8> {
+    fn bob_handle() -> Vec<u8> {
         b"bob1337".to_vec()
     }
 
@@ -531,7 +564,7 @@ mod tests {
     }
 
     fn extension_comment(parent_id: Option<PostId>, root_post_id: PostId) -> PostExtension {
-        PostExtension::Comment(CommentExt { parent_id, root_post_id })
+        PostExtension::Comment(Comment { parent_id, root_post_id })
     }
 
     fn extension_shared_post(post_id: PostId) -> PostExtension {
@@ -564,7 +597,7 @@ mod tests {
         Spaces::update_space(
             origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
             space_id.unwrap_or(SPACE1),
-            update.unwrap_or_else(|| self::space_update(None, None, None, None)),
+            update.unwrap_or_else(|| self::space_update(None, None, None, None, None)),
         )
     }
 
@@ -732,25 +765,25 @@ mod tests {
 
     fn _create_profile(
         origin: Option<Origin>,
-        username: Option<Vec<u8>>,
+        handle: Option<Vec<u8>>,
         content: Option<Content>
     ) -> DispatchResult {
         Profiles::create_profile(
             origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
-            username.unwrap_or_else(self::alice_username),
+            handle.unwrap_or_else(self::alice_handle),
             content.unwrap_or_else(self::profile_content_ipfs),
         )
     }
 
     fn _update_profile(
         origin: Option<Origin>,
-        username: Option<Vec<u8>>,
+        handle: Option<Vec<u8>>,
         content: Option<Content>
     ) -> DispatchResult {
         Profiles::update_profile(
             origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
             ProfileUpdate {
-                username,
+                handle,
                 content,
             },
         )
@@ -965,7 +998,7 @@ mod tests {
                 None,
                 Some(Some(handle)),
                 None
-            ), SpacesError::<TestRuntime>::HandleIsTooShort);
+            ), UtilsError::<TestRuntime>::HandleIsTooShort);
         });
     }
 
@@ -980,7 +1013,7 @@ mod tests {
                 None,
                 Some(Some(handle)),
                 None
-            ), SpacesError::<TestRuntime>::HandleIsTooLong);
+            ), UtilsError::<TestRuntime>::HandleIsTooLong);
         });
     }
 
@@ -990,7 +1023,7 @@ mod tests {
             assert_ok!(_create_default_space());
             // SpaceId 1
             // Try to catch an error creating a space with not unique handle
-            assert_noop!(_create_default_space(), SpacesError::<TestRuntime>::HandleIsNotUnique);
+            assert_noop!(_create_default_space(), SpacesError::<TestRuntime>::SpaceHandleIsNotUnique);
         });
     }
 
@@ -1004,7 +1037,7 @@ mod tests {
                 None,
                 Some(Some(handle)),
                 None
-            ), SpacesError::<TestRuntime>::HandleContainsInvalidChars);
+            ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
     }
 
@@ -1018,7 +1051,7 @@ mod tests {
                 None,
                 Some(Some(handle)),
                 None
-            ), SpacesError::<TestRuntime>::HandleContainsInvalidChars);
+            ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
     }
 
@@ -1032,7 +1065,7 @@ mod tests {
                 None,
                 Some(Some(handle)),
                 None
-            ), SpacesError::<TestRuntime>::HandleContainsInvalidChars);
+            ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
     }
 
@@ -1046,7 +1079,7 @@ mod tests {
                 None,
                 Some(Some(handle)),
                 None
-            ), SpacesError::<TestRuntime>::HandleContainsInvalidChars);
+            ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
     }
 
@@ -1081,6 +1114,12 @@ mod tests {
                         Some(Some(handle.clone())),
                         Some(content_ipfs.clone()),
                         Some(true),
+                        Some(Some(SpacePermissions {
+                            none: None,
+                            everyone: None,
+                            follower: None,
+                            space_owner: None
+                        })),
                     )
                 )
             ));
@@ -1109,6 +1148,7 @@ mod tests {
                     b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec()
                 )),
                 Some(true),
+                None,
             );
 
             assert_ok!(_update_space(
@@ -1142,6 +1182,7 @@ mod tests {
                         Some(Some(handle)),
                         None,
                         None,
+                        None,
                     )
                 )
             ), SpacesError::<TestRuntime>::SpaceNotFound);
@@ -1161,6 +1202,7 @@ mod tests {
                     self::space_update(
                         None,
                         Some(Some(handle)),
+                        None,
                         None,
                         None,
                     )
@@ -1184,9 +1226,10 @@ mod tests {
                         Some(Some(handle)),
                         None,
                         None,
+                        None,
                     )
                 )
-            ), SpacesError::<TestRuntime>::HandleIsTooShort);
+            ), UtilsError::<TestRuntime>::HandleIsTooShort);
         });
     }
 
@@ -1205,9 +1248,10 @@ mod tests {
                         Some(Some(handle)),
                         None,
                         None,
+                        None,
                     )
                 )
-            ), SpacesError::<TestRuntime>::HandleIsTooLong);
+            ), UtilsError::<TestRuntime>::HandleIsTooLong);
         });
     }
 
@@ -1233,9 +1277,10 @@ mod tests {
                         Some(Some(handle)),
                         None,
                         None,
+                        None,
                     )
                 )
-            ), SpacesError::<TestRuntime>::HandleIsNotUnique);
+            ), SpacesError::<TestRuntime>::SpaceHandleIsNotUnique);
         });
     }
 
@@ -1253,9 +1298,10 @@ mod tests {
                         Some(Some(handle)),
                         None,
                         None,
+                        None,
                     )
                 )
-            ), SpacesError::<TestRuntime>::HandleContainsInvalidChars);
+            ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
     }
 
@@ -1273,9 +1319,10 @@ mod tests {
                         Some(Some(handle)),
                         None,
                         None,
+                        None,
                     )
                 )
-            ), SpacesError::<TestRuntime>::HandleContainsInvalidChars);
+            ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
     }
 
@@ -1293,9 +1340,10 @@ mod tests {
                         Some(Some(handle)),
                         None,
                         None,
+                        None,
                     )
                 )
-            ), SpacesError::<TestRuntime>::HandleContainsInvalidChars);
+            ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
     }
 
@@ -1313,9 +1361,10 @@ mod tests {
                         Some(Some(handle)),
                         None,
                         None,
+                        None,
                     )
                 )
-            ), SpacesError::<TestRuntime>::HandleContainsInvalidChars);
+            ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
     }
 
@@ -1334,6 +1383,7 @@ mod tests {
                         None,
                         Some(content_ipfs),
                         None,
+                        None,
                     )
                 )
             ), UtilsError::<TestRuntime>::InvalidIpfsCid);
@@ -1350,6 +1400,7 @@ mod tests {
                     b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec()
                 )),
                 Some(true),
+                None,
             );
 
             assert_ok!(_delete_default_role());
@@ -1384,7 +1435,8 @@ mod tests {
 
             assert_eq!(post.content, self::post_content_ipfs());
 
-            assert_eq!(post.total_replies_count, 0);
+            assert_eq!(post.replies_count, 0);
+            assert_eq!(post.hidden_replies_count, 0);
             assert_eq!(post.shares_count, 0);
             assert_eq!(post.upvotes_count, 0);
             assert_eq!(post.downvotes_count, 0);
@@ -1583,9 +1635,10 @@ mod tests {
                 Some(POST2),
                 Some(
                     self::post_update(
-                        Some(SPACE2),
+                        // FIXME: when Post's `space_id` update is fully implemented
+                        None/*Some(SPACE2)*/,
                         None,
-                        None
+                        Some(true)/*None*/
                     )
                 )
             ), PostsError::<TestRuntime>::PostNotFound);
@@ -1603,9 +1656,10 @@ mod tests {
                 None,
                 Some(
                     self::post_update(
-                        Some(SPACE2),
+                        // FIXME: when Post's `space_id` update is fully implemented
+                        None/*Some(SPACE2)*/,
                         None,
-                        None
+                        Some(true)/*None*/
                     )
                 )
             ), PostsError::<TestRuntime>::NoPermissionToUpdateAnyPost);
@@ -1664,8 +1718,8 @@ mod tests {
             // Check storages
             let root_post = Posts::post_by_id(POST1).unwrap();
             assert_eq!(Posts::reply_ids_by_post_id(POST1), vec![POST2]);
-            assert_eq!(root_post.total_replies_count, 1);
-            assert_eq!(root_post.direct_replies_count, 1);
+            assert_eq!(root_post.replies_count, 1);
+            assert_eq!(root_post.hidden_replies_count, 0);
 
             // Check whether data stored correctly
             let comment = Posts::post_by_id(POST2).unwrap();
@@ -1676,7 +1730,8 @@ mod tests {
             assert_eq!(comment.created.account, ACCOUNT1);
             assert!(comment.updated.is_none());
             assert_eq!(comment.content, self::comment_content_ipfs());
-            assert_eq!(comment.total_replies_count, 0);
+            assert_eq!(comment.replies_count, 0);
+            assert_eq!(comment.hidden_replies_count, 0);
             assert_eq!(comment.shares_count, 0);
             assert_eq!(comment.upvotes_count, 0);
             assert_eq!(comment.downvotes_count, 0);
@@ -1687,25 +1742,31 @@ mod tests {
     }
 
     #[test]
-    fn create_comment_should_work_with_parent() {
-        ExtBuilder::build_with_post().execute_with(|| {
-            assert_ok!(_create_default_comment());
-            // PostId 2
-            assert_ok!(_create_comment(None, None, Some(Some(POST2)), None)); // PostId 3 with parent comment with PostId 2
+    fn create_comment_should_work_with_parents() {
+        ExtBuilder::build_with_comment().execute_with(|| {
+            let first_comment_id: PostId = 2;
+            let penultimate_comment_id: PostId = 8;
+            let last_comment_id: PostId = 9;
 
-            // Check storages
-            assert_eq!(Posts::reply_ids_by_post_id(POST1), vec![POST2]);
-            assert_eq!(Posts::reply_ids_by_post_id(POST2), vec![POST3]);
-            let root_post = Posts::post_by_id(POST1).unwrap();
-            let parent_post = Posts::post_by_id(POST2).unwrap();
-            assert_eq!(root_post.total_replies_count, 2);
-            assert_eq!(root_post.direct_replies_count, 1);
-            assert_eq!(parent_post.total_replies_count, 1);
-            assert_eq!(parent_post.direct_replies_count, 1);
+            for parent_id in first_comment_id..last_comment_id as PostId {
+                // last created = `last_comment_id`; last parent = `penultimate_comment_id`
+                assert_ok!(_create_comment(None, None, Some(Some(parent_id)), None));
+            }
 
-            // Check whether data stored correctly
-            let comment_ext = Posts::post_by_id(POST3).unwrap().get_comment_ext().unwrap();
-            assert_eq!(comment_ext.parent_id, Some(POST2));
+            for comment_id in first_comment_id..penultimate_comment_id as PostId {
+                let comment = Posts::post_by_id(comment_id).unwrap();
+                let replies_should_be = last_comment_id-comment_id;
+                assert_eq!(comment.replies_count, replies_should_be as u16);
+                assert_eq!(Posts::reply_ids_by_post_id(comment_id), vec![comment_id + 1]);
+
+                assert_eq!(comment.hidden_replies_count, 0);
+            }
+
+            let last_comment = Posts::post_by_id(last_comment_id).unwrap();
+            assert_eq!(last_comment.replies_count, 0);
+            assert!(Posts::reply_ids_by_post_id(last_comment_id).is_empty());
+
+            assert_eq!(last_comment.hidden_replies_count, 0);
         });
     }
 
@@ -1751,7 +1812,7 @@ mod tests {
             assert_ok!(_update_space(
                 None,
                 None,
-                Some(self::space_update(None, None, None, Some(true)))
+                Some(self::space_update(None, None, None, Some(true), None))
             ));
 
             assert_noop!(_create_default_comment(), PostsError::<TestRuntime>::CannotCreateInHiddenScope);
@@ -1802,6 +1863,37 @@ mod tests {
 
             // Check whether history recorded correctly
             assert_eq!(PostHistory::edit_history(POST2)[0].old_data.content, Some(self::comment_content_ipfs()));
+        });
+    }
+
+    #[test]
+    fn update_comment_hidden_should_work_with_parents() {
+        ExtBuilder::build_with_comment().execute_with(|| {
+            let first_comment_id: PostId = 2;
+            let penultimate_comment_id: PostId = 8;
+            let last_comment_id: PostId = 9;
+
+            for parent_id in first_comment_id..last_comment_id as PostId {
+                // last created = `last_comment_id`; last parent = `penultimate_comment_id`
+                assert_ok!(_create_comment(None, None, Some(Some(parent_id)), None));
+            }
+
+            assert_ok!(_update_comment(
+                None,
+                Some(last_comment_id),
+                Some(self::post_update(
+                    None,
+                    None,
+                    Some(true) // make comment hidden
+                ))
+            ));
+
+            for comment_id in first_comment_id..penultimate_comment_id as PostId {
+                let comment = Posts::post_by_id(comment_id).unwrap();
+                assert_eq!(comment.hidden_replies_count, 1);
+            }
+            let last_comment = Posts::post_by_id(last_comment_id).unwrap();
+            assert_eq!(last_comment.hidden_replies_count, 0);
         });
     }
 
@@ -1921,7 +2013,7 @@ mod tests {
             assert_ok!(_update_space(
                 None,
                 None,
-                Some(self::space_update(None, None, None, Some(true)))
+                Some(self::space_update(None, None, None, Some(true), None))
             ));
 
             assert_noop!(_create_default_post_reaction(), ReactionsError::<TestRuntime>::CannotReactWhenSpaceHidden);
@@ -2633,9 +2725,9 @@ mod tests {
             let profile = Profiles::social_account_by_id(ACCOUNT1).unwrap().profile.unwrap();
             assert_eq!(profile.created.account, ACCOUNT1);
             assert!(profile.updated.is_none());
-            assert_eq!(profile.username, self::alice_username());
+            assert_eq!(profile.handle, self::alice_handle());
             assert_eq!(profile.content, self::profile_content_ipfs());
-            assert_eq!(Profiles::account_by_profile_username(self::alice_username()), Some(ACCOUNT1));
+            assert_eq!(Profiles::account_by_profile_handle(self::alice_handle()), Some(ACCOUNT1));
 
             assert!(ProfileHistory::edit_history(ACCOUNT1).is_empty());
         });
@@ -2664,7 +2756,7 @@ mod tests {
     }
 
     #[test]
-    fn create_profile_should_fail_with_username_is_taken() {
+    fn create_profile_should_fail_with_handle_is_taken() {
         ExtBuilder::build().execute_with(|| {
             assert_ok!(_create_default_profile());
             // AccountId 1
@@ -2672,52 +2764,52 @@ mod tests {
                 Some(Origin::signed(ACCOUNT2)),
                 None,
                 None
-            ), ProfilesError::<TestRuntime>::UsernameIsTaken);
+            ), ProfilesError::<TestRuntime>::ProfileHandleIsNotUnique);
         });
     }
 
     #[test]
-    fn create_profile_should_fail_with_username_too_short() {
+    fn create_profile_should_fail_with_handle_too_short() {
         ExtBuilder::build().execute_with(|| {
-            let username: Vec<u8> = vec![97; (MinUsernameLen::get() - 1) as usize];
+            let handle: Vec<u8> = vec![97; (MinHandleLen::get() - 1) as usize];
 
             assert_ok!(_create_default_profile());
             // AccountId 1
             assert_noop!(_create_profile(
                 Some(Origin::signed(ACCOUNT2)),
-                Some(username),
+                Some(handle),
                 None
-            ), ProfilesError::<TestRuntime>::UsernameIsTooShort);
+            ), UtilsError::<TestRuntime>::HandleIsTooShort);
         });
     }
 
     #[test]
-    fn create_profile_should_fail_with_username_too_long() {
+    fn create_profile_should_fail_with_handle_too_long() {
         ExtBuilder::build().execute_with(|| {
-            let username: Vec<u8> = vec![97; (MaxUsernameLen::get() + 1) as usize];
+            let handle: Vec<u8> = vec![97; (MaxHandleLen::get() + 1) as usize];
 
             assert_ok!(_create_default_profile());
             // AccountId 1
             assert_noop!(_create_profile(
                 Some(Origin::signed(ACCOUNT2)),
-                Some(username),
+                Some(handle),
                 None
-            ), ProfilesError::<TestRuntime>::UsernameIsTooLong);
+            ), UtilsError::<TestRuntime>::HandleIsTooLong);
         });
     }
 
     #[test]
-    fn create_profile_should_fail_with_username_contains_invalid_chars() {
+    fn create_profile_should_fail_with_handle_contains_invalid_chars() {
         ExtBuilder::build().execute_with(|| {
-            let username: Vec<u8> = b"{}sername".to_vec();
+            let handle: Vec<u8> = b"{}sername".to_vec();
 
             assert_ok!(_create_default_profile());
             // AccountId 1
             assert_noop!(_create_profile(
                 Some(Origin::signed(ACCOUNT2)),
-                Some(username),
+                Some(handle),
                 None
-            ), ProfilesError::<TestRuntime>::UsernameContainsInvalidChars);
+            ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
     }
 
@@ -2728,23 +2820,23 @@ mod tests {
             // AccountId 1
             assert_ok!(_update_profile(
                 None,
-                Some(self::bob_username()),
+                Some(self::bob_handle()),
                 Some(self::space_content_ipfs())
             ));
 
             // Check whether profile updated correctly
             let profile = Profiles::social_account_by_id(ACCOUNT1).unwrap().profile.unwrap();
             assert!(profile.updated.is_some());
-            assert_eq!(profile.username, self::bob_username());
+            assert_eq!(profile.handle, self::bob_handle());
             assert_eq!(profile.content, self::space_content_ipfs());
 
             // Check storages
-            assert!(Profiles::account_by_profile_username(self::alice_username()).is_none());
-            assert_eq!(Profiles::account_by_profile_username(self::bob_username()), Some(ACCOUNT1));
+            assert!(Profiles::account_by_profile_handle(self::alice_handle()).is_none());
+            assert_eq!(Profiles::account_by_profile_handle(self::bob_handle()), Some(ACCOUNT1));
 
             // Check whether profile history is written correctly
             let profile_history = ProfileHistory::edit_history(ACCOUNT1)[0].clone();
-            assert_eq!(profile_history.old_data.username, Some(self::alice_username()));
+            assert_eq!(profile_history.old_data.handle, Some(self::alice_handle()));
             assert_eq!(profile_history.old_data.content, Some(self::profile_content_ipfs()));
         });
     }
@@ -2754,7 +2846,7 @@ mod tests {
         ExtBuilder::build().execute_with(|| {
             assert_noop!(_update_profile(
                 None,
-                Some(self::bob_username()),
+                Some(self::bob_handle()),
                 None
             ), ProfilesError::<TestRuntime>::SocialAccountNotFound);
         });
@@ -2766,7 +2858,7 @@ mod tests {
             assert_ok!(ProfileFollows::follow_account(Origin::signed(ACCOUNT1), ACCOUNT2));
             assert_noop!(_update_profile(
                 None,
-                Some(self::bob_username()),
+                Some(self::bob_handle()),
                 None
             ), ProfilesError::<TestRuntime>::AccountHasNoProfile);
         });
@@ -2786,65 +2878,65 @@ mod tests {
     }
 
     #[test]
-    fn update_profile_should_fail_with_username_is_taken() {
+    fn update_profile_should_fail_with_handle_is_taken() {
         ExtBuilder::build().execute_with(|| {
             assert_ok!(_create_default_profile());
             // AccountId 1
             assert_ok!(_create_profile(
                 Some(Origin::signed(ACCOUNT2)),
-                Some(self::bob_username()),
+                Some(self::bob_handle()),
                 None
             ));
             assert_noop!(_update_profile(
                 None,
-                Some(self::bob_username()),
+                Some(self::bob_handle()),
                 None
-            ), ProfilesError::<TestRuntime>::UsernameIsTaken);
+            ), ProfilesError::<TestRuntime>::ProfileHandleIsNotUnique);
         });
     }
 
     #[test]
-    fn update_profile_should_fail_with_username_too_short() {
+    fn update_profile_should_fail_with_handle_too_short() {
         ExtBuilder::build().execute_with(|| {
-            let username: Vec<u8> = vec![97; (MinUsernameLen::get() - 1) as usize];
+            let handle: Vec<u8> = vec![97; (MinHandleLen::get() - 1) as usize];
 
             assert_ok!(_create_default_profile());
             // AccountId 1
             assert_noop!(_update_profile(
                 None,
-                Some(username),
+                Some(handle),
                 None
-            ), ProfilesError::<TestRuntime>::UsernameIsTooShort);
+            ), UtilsError::<TestRuntime>::HandleIsTooShort);
         });
     }
 
     #[test]
-    fn update_profile_should_fail_with_username_too_long() {
+    fn update_profile_should_fail_with_handle_too_long() {
         ExtBuilder::build().execute_with(|| {
-            let username: Vec<u8> = vec![97; (MaxUsernameLen::get() + 1) as usize];
+            let handle: Vec<u8> = vec![97; (MaxHandleLen::get() + 1) as usize];
 
             assert_ok!(_create_default_profile());
             // AccountId 1
             assert_noop!(_update_profile(
                 None,
-                Some(username),
+                Some(handle),
                 None
-            ), ProfilesError::<TestRuntime>::UsernameIsTooLong);
+            ), UtilsError::<TestRuntime>::HandleIsTooLong);
         });
     }
 
     #[test]
-    fn update_profile_should_fail_with_username_contains_invalid_chars() {
+    fn update_profile_should_fail_with_handle_contains_invalid_chars() {
         ExtBuilder::build().execute_with(|| {
-            let username: Vec<u8> = b"{}sername".to_vec();
+            let handle: Vec<u8> = b"{}sername".to_vec();
 
             assert_ok!(_create_default_profile());
             // AccountId 1
             assert_noop!(_update_profile(
                 None,
-                Some(username),
+                Some(handle),
                 None
-            ), ProfilesError::<TestRuntime>::UsernameContainsInvalidChars);
+            ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
     }
 
@@ -2898,7 +2990,7 @@ mod tests {
             assert_ok!(_update_space(
                 None,
                 None,
-                Some(self::space_update(None, None, None, Some(true)))
+                Some(self::space_update(None, None, None, Some(true), None))
             ));
 
             assert_noop!(_default_follow_space(), SpaceFollowsError::<TestRuntime>::CannotFollowHiddenSpace);
@@ -2920,7 +3012,7 @@ mod tests {
 
     #[test]
     fn unfollow_space_should_fail_with_space_not_found() {
-        ExtBuilder::build().execute_with(|| {
+        ExtBuilder::build_with_space_follow_no_space().execute_with(|| {
             assert_noop!(_default_unfollow_space(), SpacesError::<TestRuntime>::SpaceNotFound);
         });
     }
@@ -3054,7 +3146,7 @@ mod tests {
 
     #[test]
     fn accept_pending_ownership_should_fail_with_space_not_found() {
-        ExtBuilder::build_with_pending_ownership_transfer().execute_with(|| {
+        ExtBuilder::build_with_pending_ownership_transfer_no_space().execute_with(|| {
             assert_noop!(_accept_default_pending_ownership(), SpacesError::<TestRuntime>::SpaceNotFound);
         });
     }
@@ -3112,7 +3204,7 @@ mod tests {
 
     #[test]
     fn reject_pending_ownership_should_fail_with_space_not_found() {
-        ExtBuilder::build_with_pending_ownership_transfer().execute_with(|| {
+        ExtBuilder::build_with_pending_ownership_transfer_no_space().execute_with(|| {
             assert_noop!(_reject_default_pending_ownership(), SpacesError::<TestRuntime>::SpaceNotFound);
         });
     }

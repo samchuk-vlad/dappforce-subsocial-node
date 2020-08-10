@@ -10,9 +10,6 @@
 
       "UpdateSpace",
 
-      "BlockUsers",
-      "ReportUsers",
-
       "CreateSubspaces",
       "UpdateOwnSubspaces",
       "DeleteOwnSubspaces",
@@ -21,9 +18,6 @@
       "UpdateAnySubspace",
       "DeleteAnySubspace",
       "HideAnySubspace",
-
-      "BlockSubspaces",
-      "ReportSubspaces",
 
       "CreatePosts",
       "UpdateOwnPosts",
@@ -34,24 +28,24 @@
       "DeleteAnyPost",
       "HideAnyPost",
 
-      "BlockPosts",
-      "ReportPosts",
-
       "CreateComments",
       "UpdateOwnComments",
       "DeleteOwnComments",
       "HideOwnComments",
 
       "HideAnyComment",
-      "BlockComments",
-      "ReportComments",
 
       "Upvote",
       "Downvote",
       "Share",
 
       "OverrideSubspacePermissions",
-      "OverridePostPermissions"
+      "OverridePostPermissions",
+
+      "SuggestEntityStatus",
+      "UpdateEntityStatus",
+
+      "UpdateSpaceSettings"
     ]
   },
 

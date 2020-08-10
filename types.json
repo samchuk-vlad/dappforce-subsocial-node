@@ -1,4 +1,9 @@
 {
+  "Address": "AccountId",
+  "LookupSource": "AccountId",
+  "IpfsCid": "Text",
+
+
   "SpaceId": "u64",
 
   "WhoAndWhen": {
@@ -17,7 +22,8 @@
   "Content": {
     "_enum": {
       "None": "Null",
-      "IPFS": "Text",
+      "Raw": "Text",
+      "IPFS": "IpfsCid",
       "Hyper": "Text"
     }
   },
@@ -41,10 +47,9 @@
     "content": "Content",
     "hidden": "bool",
 
-    "posts_count": "u16",
+    "posts_count": "u32",
+    "hidden_posts_count": "u32",
     "followers_count": "u32",
-
-    "edit_history": "Vec<SpaceHistoryRecord>",
 
     "score": "i32",
 
@@ -55,8 +60,10 @@
     "parent_id": "Option<Option<SpaceId>>",
     "handle": "Option<Option<Text>>",
     "content": "Option<Content>",
-    "hidden": "Option<bool>"
+    "hidden": "Option<bool>",
+    "permissions": "Option<Option<SpacePermissions>>"
   },
+
 
   "SpaceHistoryRecord": {
     "edited": "WhoAndWhen",
@@ -71,16 +78,16 @@
     "created": "WhoAndWhen",
     "updated": "Option<WhoAndWhen>",
 
+    "owner": "AccountId",
+
     "extension": "PostExtension",
 
     "space_id": "Option<SpaceId>",
     "content": "Content",
     "hidden": "bool",
 
-    "edit_history": "Vec<PostHistoryRecord>",
-
-    "direct_replies_count": "u16",
-    "total_replies_count": "u32",
+    "replies_count": "u16",
+    "hidden_replies_count": "u16",
 
     "shares_count": "u16",
     "upvotes_count": "u16",
@@ -95,22 +102,23 @@
     "hidden": "Option<bool>"
   },
 
-  "PostHistoryRecord": {
-    "edited": "WhoAndWhen",
-    "old_data": "PostUpdate"
-  },
-
   "PostExtension": {
     "_enum": {
       "RegularPost": "Null",
-      "Comment": "CommentExt",
+      "Comment": "Comment",
       "SharedPost": "PostId"
     }
   },
 
-  "CommentExt": {
+  "Comment": {
     "parent_id": "Option<PostId>",
     "root_post_id": "PostId"
+  },
+
+
+  "PostHistoryRecord": {
+    "edited": "WhoAndWhen",
+    "old_data": "PostUpdate"
   },
 
 
@@ -126,16 +134,15 @@
     "created": "WhoAndWhen",
     "updated": "Option<WhoAndWhen>",
 
-    "username": "Text",
-    "content": "Content",
-
-    "edit_history": "Vec<ProfileHistoryRecord>"
+    "handle": "Text",
+    "content": "Content"
   },
 
   "ProfileUpdate": {
-    "username": "Option<Text>",
+    "handle": "Option<Text>",
     "content": "Option<Content>"
   },
+
 
   "ProfileHistoryRecord": {
     "edited": "WhoAndWhen",
@@ -186,9 +193,6 @@
 
       "UpdateSpace",
 
-      "BlockUsers",
-      "ReportUsers",
-
       "CreateSubspaces",
       "UpdateOwnSubspaces",
       "DeleteOwnSubspaces",
@@ -197,9 +201,6 @@
       "UpdateAnySubspace",
       "DeleteAnySubspace",
       "HideAnySubspace",
-
-      "BlockSubspaces",
-      "ReportSubspaces",
 
       "CreatePosts",
       "UpdateOwnPosts",
@@ -210,24 +211,24 @@
       "DeleteAnyPost",
       "HideAnyPost",
 
-      "BlockPosts",
-      "ReportPosts",
-
       "CreateComments",
       "UpdateOwnComments",
       "DeleteOwnComments",
       "HideOwnComments",
 
       "HideAnyComment",
-      "BlockComments",
-      "ReportComments",
 
       "Upvote",
       "Downvote",
       "Share",
 
       "OverrideSubspacePermissions",
-      "OverridePostPermissions"
+      "OverridePostPermissions",
+
+      "SuggestEntityStatus",
+      "UpdateEntityStatus",
+
+      "UpdateSpaceSettings"
     ]
   },
 

@@ -6,14 +6,16 @@
     "created": "WhoAndWhen",
     "updated": "Option<WhoAndWhen>",
 
+    "owner": "AccountId",
+
     "extension": "PostExtension",
 
     "space_id": "Option<SpaceId>",
     "content": "Content",
     "hidden": "bool",
 
-    "direct_replies_count": "u16",
-    "total_replies_count": "u32",
+    "replies_count": "u16",
+    "hidden_replies_count": "u16",
 
     "shares_count": "u16",
     "upvotes_count": "u16",
@@ -31,12 +33,12 @@
   "PostExtension": {
     "_enum": {
       "RegularPost": "Null",
-      "Comment": "CommentExt",
+      "Comment": "Comment",
       "SharedPost": "PostId"
     }
   },
 
-  "CommentExt": {
+  "Comment": {
     "parent_id": "Option<PostId>",
     "root_post_id": "PostId"
   }

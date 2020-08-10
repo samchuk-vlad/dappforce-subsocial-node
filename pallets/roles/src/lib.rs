@@ -1,17 +1,24 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![allow(clippy::string_lit_as_bytes)]
 
 use codec::{Decode, Encode};
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get};
+use frame_support::{
+    decl_error, decl_event, decl_module, decl_storage,
+    ensure,
+    traits::Get,
+    dispatch::DispatchResult
+};
 use sp_runtime::RuntimeDebug;
 use sp_std::{collections::btree_set::BTreeSet, iter::FromIterator, prelude::*};
-use system::ensure_signed;
+use frame_system::{self as system, ensure_signed};
 
 use df_traits::{PermissionChecker, SpaceFollowsProvider, SpaceForRolesProvider};
 use pallet_permissions::{Module as Permissions, SpacePermission, SpacePermissionSet};
 use pallet_utils::{Module as Utils, SpaceId, User, WhoAndWhen, Content};
 
 pub mod functions;
+
+#[cfg(test)]
+mod mock;
 
 #[cfg(test)]
 mod tests;
@@ -95,16 +102,20 @@ decl_storage! {
         pub NextRoleId get(fn next_role_id): RoleId = 1;
 
         /// Get role details by its id.
-        pub RoleById get(fn role_by_id): map RoleId => Option<Role<T>>;
+        pub RoleById get(fn role_by_id):
+            map hasher(twox_64_concat) RoleId => Option<Role<T>>;
 
         /// A list of all users (account or space ids) that have this role.
-        pub UsersByRoleId get(fn users_by_role_id): map RoleId => Vec<User<T::AccountId>>;
+        pub UsersByRoleId get(fn users_by_role_id):
+            map hasher(twox_64_concat) RoleId => Vec<User<T::AccountId>>;
 
         /// A list of all role ids available in this space.
-        pub RoleIdsBySpaceId get(fn role_ids_by_space_id): map SpaceId => Vec<RoleId>;
+        pub RoleIdsBySpaceId get(fn role_ids_by_space_id):
+            map hasher(twox_64_concat) SpaceId => Vec<RoleId>;
 
         /// A list of all role ids granted to this user (account or space) within this space.
-        pub RoleIdsByUserInSpace get(fn role_ids_by_user_in_space): map (User<T::AccountId>, SpaceId) => Vec<RoleId>;
+        pub RoleIdsByUserInSpace get(fn role_ids_by_user_in_space):
+            map hasher(blake2_128_concat) (User<T::AccountId>, SpaceId) => Vec<RoleId>;
     }
 }
 
@@ -114,6 +125,9 @@ decl_module! {
 
     const MaxUsersToProcessPerDeleteRole: u16 = T::MaxUsersToProcessPerDeleteRole::get();
 
+    // Initializing errors
+    type Error = Error<T>;
+
     // Initializing events
     fn deposit_event() = default;
 
@@ -121,13 +135,14 @@ decl_module! {
     /// `content` points to the off-chain content with such additional info about this role
     /// as its name, description, color, etc.
     /// Only the space owner or a user with `ManageRoles` permission call this dispatch.
+    #[weight = 10_000 + T::DbWeight::get().reads_writes(2, 3)]
     pub fn create_role(
       origin,
       space_id: SpaceId,
       time_to_live: Option<T::BlockNumber>,
       content: Content,
       permissions: Vec<SpacePermission>
-    ) {
+    ) -> DispatchResult {
       let who = ensure_signed(origin)?;
 
       ensure!(!permissions.is_empty(), Error::<T>::NoPermissionsProvided);
@@ -146,11 +161,13 @@ decl_module! {
       RoleIdsBySpaceId::mutate(space_id, |role_ids| { role_ids.push(new_role.id) });
 
       Self::deposit_event(RawEvent::RoleCreated(who, space_id, new_role.id));
+      Ok(())
     }
 
     /// Update an existing role by its id.
     /// Only the space owner or a user with `ManageRoles` permission call this dispatch.
-    pub fn update_role(origin, role_id: RoleId, update: RoleUpdate) {
+    #[weight = 10_000 + T::DbWeight::get().reads_writes(2, 1)]
+    pub fn update_role(origin, role_id: RoleId, update: RoleUpdate) -> DispatchResult {
       let who = ensure_signed(origin)?;
 
       let has_updates =
@@ -164,12 +181,12 @@ decl_module! {
 
       Self::ensure_role_manager(who.clone(), role.space_id)?;
 
-      let mut fields_updated = 0;
+      let mut is_update_applied = false;
 
       if let Some(disabled) = update.disabled {
         if disabled != role.disabled {
           role.set_disabled(disabled)?;
-          fields_updated += 1;
+          is_update_applied = true;
         }
       }
 
@@ -178,7 +195,7 @@ decl_module! {
           Utils::<T>::is_valid_content(content.clone())?;
 
           role.content = content;
-          fields_updated += 1;
+          is_update_applied = true;
         }
       }
 
@@ -188,22 +205,24 @@ decl_module! {
 
           if !permissions_diff.is_empty() {
             role.permissions = permissions;
-            fields_updated += 1;
+            is_update_applied = true;
           }
         }
       }
 
-      if fields_updated > 0 {
+      if is_update_applied {
         role.updated = Some(WhoAndWhen::<T>::new(who.clone()));
 
         <RoleById<T>>::insert(role_id, role);
         Self::deposit_event(RawEvent::RoleUpdated(who, role_id));
       }
+      Ok(())
     }
 
     /// Delete a role from all associated storage items.
     /// Only the space owner or a user with `ManageRoles` permission call this dispatch.
-    pub fn delete_role(origin, role_id: RoleId) {
+    #[weight = 1_000_000 + T::DbWeight::get().reads_writes(6, 5)]
+    pub fn delete_role(origin, role_id: RoleId) -> DispatchResult {
       let who = ensure_signed(origin)?;
 
       let role = Self::require_role(role_id)?;
@@ -229,11 +248,13 @@ decl_module! {
       <UsersByRoleId<T>>::remove(role_id);
 
       Self::deposit_event(RawEvent::RoleDeleted(who, role_id));
+      Ok(())
     }
 
     /// Grant a role to a list of users.
     /// Only the space owner or a user with `ManageRoles` permission call this dispatch.
-    pub fn grant_role(origin, role_id: RoleId, users: Vec<User<T::AccountId>>) {
+    #[weight = 1_000_000 + T::DbWeight::get().reads_writes(4, 2)]
+    pub fn grant_role(origin, role_id: RoleId, users: Vec<User<T::AccountId>>) -> DispatchResult {
       let who = ensure_signed(origin)?;
 
       ensure!(!users.is_empty(), Error::<T>::NoUsersProvided);
@@ -253,11 +274,13 @@ decl_module! {
       }
 
       Self::deposit_event(RawEvent::RoleGranted(who, role_id, users_set.iter().cloned().collect()));
+      Ok(())
     }
 
     /// Revoke a role from a list of users.
     /// Only the space owner or a user with `ManageRoles` permission call this dispatch.
-    pub fn revoke_role(origin, role_id: RoleId, users: Vec<User<T::AccountId>>) {
+    #[weight = 1_000_000 + T::DbWeight::get().reads_writes(4, 2)]
+    pub fn revoke_role(origin, role_id: RoleId, users: Vec<User<T::AccountId>>) -> DispatchResult {
       let who = ensure_signed(origin)?;
 
       ensure!(!users.is_empty(), Error::<T>::NoUsersProvided);
@@ -269,6 +292,7 @@ decl_module! {
       role.revoke_from_users(users.clone());
 
       Self::deposit_event(RawEvent::RoleRevoked(who, role_id, users));
+      Ok(())
     }
   }
 }

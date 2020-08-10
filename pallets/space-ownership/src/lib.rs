@@ -1,17 +1,16 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![allow(clippy::string_lit_as_bytes)]
 
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
     ensure,
+    dispatch::DispatchResult,
+    traits::Get
 };
 use sp_std::prelude::*;
-use system::ensure_signed;
+use frame_system::{self as system, ensure_signed};
 
 use pallet_spaces::{Module as Spaces, SpaceById};
 use pallet_utils::SpaceId;
-
-// mod tests;
 
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait
@@ -38,7 +37,8 @@ decl_error! {
 // This pallet's storage items.
 decl_storage! {
     trait Store for Module<T: Trait> as SpaceOwnershipModule {
-        pub PendingSpaceOwner get(fn pending_space_owner): map SpaceId => Option<T::AccountId>;
+        pub PendingSpaceOwner get(fn pending_space_owner):
+            map hasher(twox_64_concat) SpaceId => Option<T::AccountId>;
     }
 }
 
@@ -56,10 +56,14 @@ decl_event!(
 decl_module! {
   pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 
+    // Initializing errors
+    type Error = Error<T>;
+
     // Initializing events
     fn deposit_event() = default;
 
-    pub fn transfer_space_ownership(origin, space_id: SpaceId, transfer_to: T::AccountId) {
+    #[weight = 10_000 + T::DbWeight::get().reads_writes(1, 1)]
+    pub fn transfer_space_ownership(origin, space_id: SpaceId, transfer_to: T::AccountId) -> DispatchResult {
       let who = ensure_signed(origin)?;
 
       let space = Spaces::<T>::require_space(space_id)?;
@@ -69,10 +73,13 @@ decl_module! {
       Spaces::<T>::ensure_space_exists(space_id)?;
 
       <PendingSpaceOwner<T>>::insert(space_id, transfer_to.clone());
+
       Self::deposit_event(RawEvent::SpaceOwnershipTransferCreated(who, space_id, transfer_to));
+      Ok(())
     }
 
-    pub fn accept_pending_ownership(origin, space_id: SpaceId) {
+    #[weight = 10_000 + T::DbWeight::get().reads_writes(2, 2)]
+    pub fn accept_pending_ownership(origin, space_id: SpaceId) -> DispatchResult {
       let who = ensure_signed(origin)?;
 
       let mut space = Spaces::require_space(space_id)?;
@@ -84,10 +91,13 @@ decl_module! {
 
       space.owner = who.clone();
       <SpaceById<T>>::insert(space_id, space);
+
       Self::deposit_event(RawEvent::SpaceOwnershipTransferAccepted(who, space_id));
+      Ok(())
     }
 
-    pub fn reject_pending_ownership(origin, space_id: SpaceId) {
+    #[weight = 10_000 + T::DbWeight::get().reads_writes(2, 1)]
+    pub fn reject_pending_ownership(origin, space_id: SpaceId) -> DispatchResult {
       let who = ensure_signed(origin)?;
 
       let space = Spaces::<T>::require_space(space_id)?;
@@ -95,7 +105,9 @@ decl_module! {
       ensure!(who == transfer_to || who == space.owner, Error::<T>::NotAllowedToRejectOwnershipTransfer);
 
       <PendingSpaceOwner<T>>::remove(space_id);
+
       Self::deposit_event(RawEvent::SpaceOwnershipTransferRejected(who, space_id));
+      Ok(())
     }
   }
 }
