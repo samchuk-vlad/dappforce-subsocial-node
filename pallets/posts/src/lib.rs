@@ -199,7 +199,12 @@ decl_module! {
     fn deposit_event() = default;
 
     #[weight = 100_000 + T::DbWeight::get().reads_writes(8, 8)]
-    pub fn create_post(origin, space_id_opt: Option<SpaceId>, extension: PostExtension, content: Content) -> DispatchResult {
+    pub fn create_post(
+      origin,
+      space_id_opt: Option<SpaceId>,
+      extension: PostExtension,
+      content: Content
+    ) -> DispatchResult {
       let creator = ensure_signed(origin)?;
 
       Utils::<T>::is_valid_content(content.clone())?;
