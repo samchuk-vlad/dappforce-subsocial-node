@@ -6,7 +6,7 @@ use sp_runtime::RuntimeDebug;
 
 use frame_support::{
 	decl_module, decl_storage, decl_event, decl_error, ensure,
-	dispatch::DispatchResult,
+	dispatch::{DispatchResult, DispatchError},
 	traits::{Get, Currency},
 };
 use frame_system::{self as system, ensure_signed};
@@ -103,7 +103,7 @@ decl_storage! {
 
 		// From where to withdraw subscribers donation
 		pub PatronWallet get(fn patron_wallet):
-			map hasher(twox_64_concat) T::AccountId => Option<T::AccountId>;
+			map hasher(twox_64_concat) (T::AccountId, SubscriptionId) => Option<T::AccountId>;
 	}
 }
 
@@ -118,7 +118,12 @@ decl_event!(
 
 decl_error! {
 	pub enum Error for Module<T: Trait> {
+		NotAllowedToUpdatePlanWallet,
+		NotAllowedToUpdateSubscriptionWallet,
+		NothingToUpdate,
 		PriceLowerExistencialDeposit,
+		SubscriptionNotFound,
+		SubscriptionPlanNotFound,
 	}
 }
 
@@ -175,13 +180,25 @@ decl_module! {
 			Ok(())
 		}
 
-		#[weight = /*T::DbWeight::get().reads_writes(1, 1) +*/ 10_000]
+		#[weight = T::DbWeight::get().reads_writes(2, 1) + 10_000]
 		pub fn update_plan_wallet(
 			origin,
 			plan_id: SubscriptionPlanId,
 			custom_wallet: Option<T::AccountId>
 		) -> DispatchResult {
-			let _ = ensure_signed(origin)?;
+			let sender = ensure_signed(origin)?;
+
+			let plan = Self::require_subscription_plan(plan_id)?;
+			plan.ensure_has_permission_to_update(&sender)?;
+
+			// todo(i): do we need this check? Implementing this adds +1 reads in worst case.
+			// ensure!(
+			// 	Self::recipient_wallet((plan.space_id, plan_id)) != custom_wallet,
+			// 	Error::<T>::NothingToUpdate
+			// );
+
+			RecipientWallet::<T>::insert((plan.space_id, plan_id), custom_wallet.unwrap_or(sender));
+
 			Ok(())
 		}
 
@@ -192,18 +209,34 @@ decl_module! {
 		}
 
 		#[weight = 10_000]
-		pub fn subscribe(origin, plan_id: SubscriptionPlanId, wallet: T::AccountId) -> DispatchResult {
+		pub fn subscribe(
+			origin,
+			plan_id: SubscriptionPlanId,
+			custom_wallet: Option<T::AccountId>
+		) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
 			Ok(())
 		}
 
-		#[weight = 10_000]
+		#[weight = T::DbWeight::get().reads_writes(1, 1) + 10_000]
 		pub fn update_subscription_wallet(
 			origin,
 			subscription_id: SubscriptionId,
-			wallet: T::AccountId
+			custom_wallet: Option<T::AccountId>
 		) -> DispatchResult {
-			let _ = ensure_signed(origin)?;
+			let sender = ensure_signed(origin)?;
+
+			let subscription = Self::require_subscription(subscription_id)?;
+			subscription.ensure_has_permission_to_update(&sender)?;
+
+			// todo(i): do we need this check? Implementing this adds +1 reads in worst case.
+			// ensure!(
+			// 	Self::patron_wallet((sender.clone(), subscription_id)) != custom_wallet,
+			// 	Error::<T>::NothingToUpdate
+			// );
+
+			PatronWallet::<T>::insert((sender.clone(), subscription_id), custom_wallet.unwrap_or(sender));
+
 			Ok(())
 		}
 
@@ -213,6 +246,18 @@ decl_module! {
 			let _ = ensure_signed(origin)?;
 			Ok(())
 		}
+	}
+}
+
+impl<T: Trait> Module<T> {
+	pub fn require_subscription_plan(
+		plan_id: SubscriptionPlanId
+	) -> Result<SubscriptionPlan<T>, DispatchError> {
+		Ok(Self::plan_by_id(plan_id).ok_or(Error::<T>::SubscriptionPlanNotFound)?)
+	}
+
+	pub fn require_subscription(subscription_id: SubscriptionId) -> Result<Subscription<T>, DispatchError> {
+		Ok(Self::subscription_by_id(subscription_id).ok_or(Error::<T>::SubscriptionNotFound)?)
 	}
 }
 
@@ -234,5 +279,30 @@ impl<T: Trait> SubscriptionPlan<T> {
 			period,
 			content
 		}
+	}
+
+	fn ensure_has_permission_to_update(&self, who: &T::AccountId) -> DispatchResult {
+		Spaces::<T>::require_space(self.space_id).and_then(|space| {
+			ensure!(
+				&self.created.account == who && space.is_owner(who),
+				Error::<T>::NotAllowedToUpdatePlanWallet
+			);
+			Ok(())
+		})
+	}
+}
+
+impl<T: Trait> Subscription<T> {
+	fn new(id: SubscriptionId, created_by: T::AccountId, plan_id: SubscriptionPlanId) -> Self {
+		Self {
+			id,
+			created: WhoAndWhen::<T>::new(created_by),
+			plan_id
+		}
+	}
+
+	fn ensure_has_permission_to_update(&self, who: &T::AccountId) -> DispatchResult {
+		ensure!(&self.created.account == who, Error::<T>::NotAllowedToUpdateSubscriptionWallet);
+		Ok(())
 	}
 }
