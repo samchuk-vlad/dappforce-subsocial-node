@@ -5,13 +5,14 @@ use sp_std::prelude::*;
 use sp_runtime::RuntimeDebug;
 
 use frame_support::{
-	decl_module, decl_storage, decl_event, decl_error,
+	decl_module, decl_storage, decl_event, decl_error, ensure,
 	dispatch::DispatchResult,
-	traits::Currency,
+	traits::{Get, Currency},
 };
 use frame_system::{self as system, ensure_signed};
 
-use pallet_utils::{SpaceId, Content, WhoAndWhen};
+use pallet_spaces::Module as Spaces;
+use pallet_utils::{Module as Utils, SpaceId, Content, WhoAndWhen};
 
 /*#[cfg(test)]
 mod mock;
@@ -37,7 +38,6 @@ pub struct SubscriptionPlan<T: Trait> {
 	pub created: WhoAndWhen<T>,
 	pub updated: Option<WhoAndWhen<T>>,
 	pub space_id: SpaceId, // Describes what space is this plan related to
-	pub wallet: T::AccountId, // Describes where to transfer balance withdrawn from subscribers
 	pub price: BalanceOf<T>,
 	pub period: SubscriptionPeriod<T::BlockNumber>,
 	pub content: Content,
@@ -49,7 +49,6 @@ pub struct SubscriptionPlan<T: Trait> {
 pub struct Subscription<T: Trait> {
 	pub id: SubscriptionId,
 	pub created: WhoAndWhen<T>,
-	pub wallet: T::AccountId, // Describes where to withdraw balance for subscription from
 	pub plan_id: SubscriptionPlanId,
 
 	// ??? pub canceled: boolean, // whether this subscription was canceled by subscriber
@@ -58,7 +57,11 @@ pub struct Subscription<T: Trait> {
 type BalanceOf<T> = <<T as pallet_utils::Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
 
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait + pallet_utils::Trait {
+pub trait Trait:
+	system::Trait
+	+ pallet_utils::Trait
+	+ pallet_spaces::Trait
+{
 	/// The overarching event type.
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 }
@@ -91,6 +94,16 @@ decl_storage! {
 		// todo: this should be used by Scheduler to transfer funds from subscribers' wallets to creator's (space) wallet.
 		pub SubscriptionIdsByPeriod get(fn subscription_ids_by_period):
 			map hasher(twox_64_concat) SubscriptionPeriod<T::BlockNumber> => Vec<SubscriptionId>;
+
+		// Wallets
+
+		// Where to transfer balance withdrawn from subscribers
+		pub RecipientWallet get(fn recipient_wallet):
+			map hasher(twox_64_concat) (SpaceId, SubscriptionPlanId) => Option<T::AccountId>;
+
+		// From where to withdraw subscribers donation
+		pub PatronWallet get(fn patron_wallet):
+			map hasher(twox_64_concat) T::AccountId => Option<T::AccountId>;
 	}
 }
 
@@ -105,6 +118,7 @@ decl_event!(
 
 decl_error! {
 	pub enum Error for Module<T: Trait> {
+		PriceLowerExistencialDeposit,
 	}
 }
 
@@ -117,24 +131,55 @@ decl_module! {
 		// Initializing events
 		fn deposit_event() = default;
 
-		#[weight = 10_000]
+		#[weight = T::DbWeight::get().reads_writes(3, 4) + 25_000]
 		pub fn create_plan(
 			origin,
 			space_id: SpaceId,
-			wallet: T::AccountId,
+			custom_wallet: Option<T::AccountId>,
 			price: BalanceOf<T>,
-			period: T::BlockNumber,
+			period: SubscriptionPeriod<T::BlockNumber>,
 			content: Content
 		) -> DispatchResult {
-			let _ = ensure_signed(origin)?;
+			let sender = ensure_signed(origin)?;
+
+			Utils::<T>::is_valid_content(content.clone())?;
+
+			ensure!(
+				price >= <T as pallet_utils::Trait>::Currency::minimum_balance(),
+				Error::<T>::PriceLowerExistencialDeposit
+			);
+
+			let space = Spaces::<T>::require_space(space_id)?;
+			space.ensure_space_owner(sender.clone())?;
+
+			// todo:
+			// 	- maybe add permission to create subscription plans?
+			// 	- add max subscription plans per space?
+
+			let plan_id = Self::next_plan_id();
+			let subscription_plan = SubscriptionPlan::<T>::new(
+				plan_id,
+				sender.clone(),
+				space_id,
+				price,
+				period,
+				content
+			);
+
+			PlanById::<T>::insert(plan_id, subscription_plan);
+			PlanIdsBySpace::mutate(space_id, |ids| ids.push(plan_id));
+			NextPlanId::mutate(|x| { *x += 1 });
+
+			RecipientWallet::<T>::insert((space_id, plan_id), custom_wallet.unwrap_or(sender));
+
 			Ok(())
 		}
 
-		#[weight = 10_000]
+		#[weight = /*T::DbWeight::get().reads_writes(1, 1) +*/ 10_000]
 		pub fn update_plan_wallet(
 			origin,
 			plan_id: SubscriptionPlanId,
-			wallet: T::AccountId
+			custom_wallet: Option<T::AccountId>
 		) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
 			Ok(())
@@ -167,6 +212,27 @@ decl_module! {
 			// todo(i): maybe we need here subscription_id, not plan_id?
 			let _ = ensure_signed(origin)?;
 			Ok(())
+		}
+	}
+}
+
+impl<T: Trait> SubscriptionPlan<T> {
+	fn new(
+		id: SubscriptionPlanId,
+		created_by: T::AccountId,
+		space_id: SpaceId,
+		price: BalanceOf<T>,
+		period: SubscriptionPeriod<T::BlockNumber>,
+		content: Content
+	) -> Self {
+		Self {
+			id,
+			created: WhoAndWhen::<T>::new(created_by),
+			updated: None,
+			space_id,
+			price,
+			period,
+			content
 		}
 	}
 }
