@@ -40,6 +40,7 @@ std = [
     'pallet-space-follows/std',
     'pallet-space-ownership/std',
     'pallet-space-history/std',
+    'pallet-subscriptions/std',
     'pallet-utils/std',
 ]
 
@@ -276,6 +277,11 @@ version = '0.4.0'
 default-features = false
 path = '../pallets/space-history'
 version = '0.4.0'
+
+[dependencies.pallet-subscriptions]
+default-features = false
+path = '../pallets/subscriptions'
+version = '0.0.1'
 
 [dependencies.pallet-utils]
 default-features = false
