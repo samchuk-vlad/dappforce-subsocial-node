@@ -26,6 +26,7 @@ std = [
     'timestamp/std',
     'node-primitives/std',
     'transaction-payment/std',
+    'pallet-donations/std',
     'pallet-moderation/std',
     'pallet-permissions/std',
     'pallet-posts/std',
@@ -206,6 +207,11 @@ default-features = false
 git = 'https://github.com/paritytech/substrate.git'
 tag = 'v2.0.0-rc4'
 version = '2.0.0-rc4'
+
+[dependencies.pallet-donations]
+default-features = false
+path = '../pallets/donations'
+version = '0.4.0'
 
 [dependencies.pallet-moderation]
 default-features = false
