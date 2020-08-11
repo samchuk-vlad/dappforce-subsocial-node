@@ -11,6 +11,7 @@ use frame_support::{
 };
 use frame_system::{self as system, ensure_signed};
 
+use pallet_permissions::SpacePermission;
 use pallet_posts::{Module as Posts, PostId};
 use pallet_spaces::{Module as Spaces};
 use pallet_utils::{Content, WhoAndWhen, SpaceId};
@@ -38,16 +39,16 @@ pub struct Donation<T: Trait> {
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct DonationSettings<T: Trait> {
-    accept_donations: bool,
-    minAmount: Option<BalanceOf<T>>,
-    maxAmount: Option<BalanceOf<T>>,
+    pub donations_enabled: bool,
+    pub min_amount: Option<BalanceOf<T>>,
+    pub max_amount: Option<BalanceOf<T>>,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct DonationSettingsUpdate<T: Trait> {
-    accept_donations: Option<bool>,
-    minAmount: Option<Option<BalanceOf<T>>>,
-    maxAmount: Option<Option<BalanceOf<T>>>,
+    pub donations_enabled: Option<bool>,
+    pub min_amount: Option<Option<BalanceOf<T>>>,
+    pub max_amount: Option<Option<BalanceOf<T>>>,
 }
 
 pub trait Trait: system::Trait
@@ -75,6 +76,9 @@ decl_storage! {
 
         pub DonationWalletByRecipient get(fn donation_wallet_by_recipient):
             map hasher(blake2_128_concat) DonationRecipient<T::AccountId> => Option<T::AccountId>;
+
+        pub DonationSettingsBySpace get(fn donation_settings_by_space):
+            map hasher(twox_64_concat) SpaceId => Option<DonationSettings<T>>;
     }
 }
 
@@ -106,6 +110,12 @@ decl_event!(
             // From which recipient a wallet was removed.
             DonationRecipient
         ),
+        DonationSettingsUpdated(
+            // Origin - who updated the donation settings.
+            AccountId,
+            // For what space the donation settings have been updated.
+            SpaceId
+        ),
     }
 );
 
@@ -114,6 +124,8 @@ decl_error! {
         /// Thrown if an origin is not allowed to change a donation wallet,
         /// because their are not an owner of this repicient (e.g. space or post owner).
         NotRecipientManager,
+        /// Nothing to update in the donation settings.
+        NoUpdatesForDonationSettings,
     }
 }
 
@@ -135,6 +147,10 @@ decl_module! {
 
         let donation_wallet = Self::get_recipient_wallet(recipient.clone())?;
         let donation_id = Self::next_donation_id();
+
+        // TODO check that donations are enabled per this recipient's space.
+
+        // TODO check donated amount against min / max settings if defined.
 
         // TODO create a comment under the post or a new post in DonationSpace
 
@@ -177,8 +193,74 @@ decl_module! {
         Ok(())
     }
 
-    // TODO impl extrinsics to manage DonationSettings
+    #[weight = 10_000 /* TODO + T::DbWeight::get().reads_writes(_, _) */]
+    pub fn update_settings(
+        origin,
+        space_id: SpaceId,
+        update: DonationSettingsUpdate<T>
+    ) -> DispatchResult {
+        let who = ensure_signed(origin)?;
+
+        let has_updates =
+            update.donations_enabled.is_some() ||
+            update.min_amount.is_some() ||
+            update.max_amount.is_some();
+
+        ensure!(has_updates, Error::<T>::NoUpdatesForDonationSettings);
+
+        let space = Spaces::<T>::require_space(space_id)?;
+
+        Spaces::<T>::ensure_account_has_space_permission(
+            who.clone(),
+            &space,
+            SpacePermission::UpdateSpaceSettings,
+            Error::<T>::NoUpdatesForDonationSettings.into(),
+        )?;
+
+        // `true` if there is at least one updated field.
+        let mut should_update = false;
+
+        let settings = Self::donation_settings_by_space(space_id)
+            .unwrap_or_else(DonationSettings::default);
+
+        if let Some(donations_enabled) = update.donations_enabled {
+            if donations_enabled != settings.donations_enabled {
+                settings.donations_enabled = donations_enabled;
+                should_update = true;
+            }
+        }
+
+        if let Some(min_amount) = update.min_amount {
+            if min_amount != settings.min_amount {
+                settings.min_amount = min_amount;
+                should_update = true;
+            }
+        }
+
+        if let Some(max_amount) = update.max_amount {
+            if max_amount != settings.max_amount {
+                settings.max_amount = max_amount;
+                should_update = true;
+            }
+        }
+
+        if should_update {
+            DonationSettingsBySpace::insert(space_id, settings);
+            Self::deposit_event(RawEvent::DonationSettingsUpdated(who, space_id));
+        }
+        Ok(())
+    }
   }
+}
+
+impl<T: Trait> Default for DonationSettings<T> {
+    fn default() -> Self {
+        DonationSettings {
+            donations_enabled: true,
+            min_amount: None,
+            max_amount: None,
+        }
+    }
 }
 
 impl<T: Trait> Module<T> {
