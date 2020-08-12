@@ -3,7 +3,6 @@
 use codec::{Encode, Decode};
 use sp_std::prelude::*;
 use sp_runtime::RuntimeDebug;
-// use sp_runtime::traits::{Saturating, SaturatedConversion};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure,
     dispatch::{DispatchResult, DispatchError},
@@ -20,6 +19,7 @@ type BalanceOf<T> = <<T as pallet_utils::Trait>::Currency as Currency<<T as syst
 
 pub type DonationId = u64;
 
+// TODO find a better name. Mayne DonationSubject?
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub enum DonationRecipient<AccountId> {
     Account(AccountId),
@@ -31,8 +31,8 @@ pub enum DonationRecipient<AccountId> {
 pub struct Donation<T: Trait> {
     pub id: DonationId,
     pub created: WhoAndWhen<T>,
-    pub recipient: DonationRecipient<T::AccountId>,
-    pub donation_wallet: T::AccountId,
+    pub recipient: DonationRecipient<T::AccountId>, // TODO rename to 'reason'
+    pub donation_wallet: T::AccountId, // TODO rename to 'recipient_wallet' or 'recipient'?
     pub amount: BalanceOf<T>,
     pub comment_id: Option<PostId>,
 }
@@ -42,6 +42,11 @@ pub struct DonationSettings<BalanceOf> {
     pub donations_enabled: bool,
     pub min_amount: Option<BalanceOf>,
     pub max_amount: Option<BalanceOf>,
+
+    // TODO think about 'post owner can receive donations'
+    // or 'who receives donations on post'?
+
+    // TODO % of post donations that space takes. 0% by default.
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -50,6 +55,8 @@ pub struct DonationSettingsUpdate<BalanceOf> {
     pub min_amount: Option<Option<BalanceOf>>,
     pub max_amount: Option<Option<BalanceOf>>,
 }
+
+// TODO rename 'backer' to 'supporter'?
 
 pub trait Trait: system::Trait
     + pallet_posts::Trait
@@ -77,8 +84,9 @@ decl_storage! {
         pub DonationWalletByRecipient get(fn donation_wallet_by_recipient):
             map hasher(blake2_128_concat) DonationRecipient<T::AccountId> => Option<T::AccountId>;
 
-        pub DonationSettingsBySpace get(fn donation_settings_by_space):
-            map hasher(twox_64_concat) SpaceId => Option<DonationSettings<BalanceOf<T>>>;
+        pub DonationSettingsByRecipient get(fn donation_settings_by_recipient):
+            map hasher(blake2_128_concat) DonationRecipient<T::AccountId>
+            => Option<DonationSettings<BalanceOf<T>>>;
     }
 }
 
@@ -113,8 +121,8 @@ decl_event!(
         DonationSettingsUpdated(
             // Origin - who updated the donation settings.
             AccountId,
-            // For what space the donation settings have been updated.
-            SpaceId
+            // For which recipient the donation settings have been updated.
+            DonationRecipient
         ),
     }
 );
@@ -122,10 +130,16 @@ decl_event!(
 decl_error! {
     pub enum Error for Module<T: Trait> {
         /// Thrown if an origin is not allowed to change a donation wallet,
-        /// because their are not an owner of this repicient (e.g. space or post owner).
+        /// because their are not an owner of this recipient (e.g. space or post owner).
         NotRecipientManager,
         /// Nothing to update in the donation settings.
         NoUpdatesForDonationSettings,
+        /// Donation amount is less than a `min_amount` in donation settings.
+        TooSmallDonation,
+        /// Donation amount is greater than a `max_amount` in donation settings.
+        TooLargeDonation,
+        /// A space, a post or an account doesn't accept donations based on its donation settings.
+        DonationsAreDisabled,
     }
 }
 
@@ -145,12 +159,22 @@ decl_module! {
     ) -> DispatchResult {
         let backer = ensure_signed(origin)?;
 
+        let settings = Self::resolve_donation_settings(recipient.clone())?;
+
+        if let Some(donations_enabled) = settings.donations_enabled {
+            ensure!(donations_enabled, Error::<T>::DonationsAreDisabled);
+        }
+        
+        if let Some(min_amount) = settings.min_amount {
+            ensure!(amount >= min_amount, Error::<T>::TooSmallDonation);
+        }
+        
+        if let Some(max_amount) = settings.max_amount {
+            ensure!(amount <= max_amount, Error::<T>::TooLargeDonation);
+        }
+            
         let donation_wallet = Self::get_recipient_wallet(recipient.clone())?;
         let donation_id = Self::next_donation_id();
-
-        // TODO check that donations are enabled per this recipient's space.
-
-        // TODO check donated amount against min / max settings if defined.
 
         // TODO create a comment under the post or a new post in DonationSpace
 
@@ -163,7 +187,7 @@ decl_module! {
             comment_id: None // TODO put id of created comment
         };
 
-        // Transfer tokens from the backer to the recipient...
+        // Transfer donated tokens from a backer to a donation wallet of this reason.
         T::Currency::transfer(&backer, &donation_wallet, amount, ExistenceRequirement::KeepAlive)?;
 
         DonationById::<T>::insert(donation_id, donation);
@@ -196,7 +220,7 @@ decl_module! {
     #[weight = 10_000 /* TODO + T::DbWeight::get().reads_writes(_, _) */]
     pub fn update_settings(
         origin,
-        space_id: SpaceId,
+        recipient: DonationRecipient<T::AccountId>,
         update: DonationSettingsUpdate<BalanceOf<T>>
     ) -> DispatchResult {
         let who = ensure_signed(origin)?;
@@ -208,20 +232,20 @@ decl_module! {
 
         ensure!(has_updates, Error::<T>::NoUpdatesForDonationSettings);
 
-        let space = Spaces::<T>::require_space(space_id)?;
+        // let space = Spaces::<T>::require_space(space_id)?;
 
-        Spaces::<T>::ensure_account_has_space_permission(
-            who.clone(),
-            &space,
-            SpacePermission::UpdateSpaceSettings,
-            Error::<T>::NoUpdatesForDonationSettings.into(),
-        )?;
+        // TODO rethink: what permission to check on space, post, account
+        // Spaces::<T>::ensure_account_has_space_permission(
+        //     who.clone(),
+        //     &space,
+        //     SpacePermission::UpdateSpaceSettings,
+        //     Error::<T>::NoUpdatesForDonationSettings.into(),
+        // )?;
 
         // `true` if there is at least one updated field.
         let mut should_update = false;
 
-        let mut settings = Self::donation_settings_by_space(space_id)
-            .unwrap_or_else(DonationSettings::default);
+        let mut settings = Self::resolve_donation_settings(recipient.clone())?;
 
         if let Some(donations_enabled) = update.donations_enabled {
             if donations_enabled != settings.donations_enabled {
@@ -245,8 +269,8 @@ decl_module! {
         }
 
         if should_update {
-            DonationSettingsBySpace::<T>::insert(space_id, settings);
-            Self::deposit_event(RawEvent::DonationSettingsUpdated(who, space_id));
+            DonationSettingsByRecipient::<T>::insert(recipient.clone(), settings);
+            Self::deposit_event(RawEvent::DonationSettingsUpdated(who, recipient));
         }
         Ok(())
     }
@@ -254,6 +278,7 @@ decl_module! {
 }
 
 impl<BalanceOf> Default for DonationSettings<BalanceOf> {
+    // Move this to module parameters 
     fn default() -> Self {
         DonationSettings {
             donations_enabled: true,
@@ -264,6 +289,44 @@ impl<BalanceOf> Default for DonationSettings<BalanceOf> {
 }
 
 impl<T: Trait> Module<T> {
+
+    /// Get a space owner and wrap it into `DonationRecipient`.
+    pub fn resolve_space_owner_as_recipient(space_id: SpaceId) -> Result<DonationRecipient<T::AccountId>, DispatchError> {
+        let space = Spaces::<T>::require_space(space_id)?;
+        Ok(DonationRecipient::Account(space.owner))
+    }
+
+    /// Get a post owner and wrap it into `DonationRecipient`.
+    pub fn resolve_post_owner_as_recipient(post_id: PostId) -> Result<DonationRecipient<T::AccountId>, DispatchError> {
+        let post = Posts::<T>::require_post(post_id)?;
+        Ok(DonationRecipient::Account(post.owner))
+    }
+
+    /// Resolve the donation settings by a specified reason or its owner's reason
+    /// if it's a space or a post.
+    pub fn resolve_donation_settings(
+        recipient: DonationRecipient<T::AccountId>
+    ) -> Result<DonationSettings<BalanceOf<T>>, DispatchError> {
+        let maybe_settings = Self::donation_settings_by_recipient(recipient.clone());
+        if let Some(settings) = maybe_settings {
+            return Ok(settings)
+        }
+        
+        // If a donation wallet is not defined for this recipient:
+        match recipient {
+            DonationRecipient::Account(_) => {
+                Ok(DonationSettings::default())
+            }
+            DonationRecipient::Space(space_id) => {
+                let space_owner = Self::resolve_space_owner_as_recipient(space_id)?;
+                Self::resolve_donation_settings(space_owner)
+            },
+            DonationRecipient::Post(post_id) => {
+                let post_owner = Self::resolve_space_owner_as_recipient(post_id)?;
+                Self::resolve_donation_settings(post_owner)
+            },
+        }
+    }
 
     /// Returns an account that should be used as a donation wallet for this recipient.
     pub fn get_recipient_wallet(
@@ -280,19 +343,17 @@ impl<T: Trait> Module<T> {
                 Ok(account)
             }
             DonationRecipient::Space(space_id) => {
-                let space = Spaces::<T>::require_space(space_id)?;
-                let owner = DonationRecipient::Account(space.owner);
+                let owner = Self::resolve_space_owner_as_recipient(space_id)?;
                 Self::get_recipient_wallet(owner)
             },
             DonationRecipient::Post(post_id) => {
-                let post = Posts::<T>::require_post(post_id)?;
-                let owner = DonationRecipient::Account(post.owner);
+                let owner = Self::resolve_space_owner_as_recipient(post_id)?;
                 Self::get_recipient_wallet(owner)
             },
         }
     }
 
-    /// Checks if `maybe_owner` can manage / is owner of a `recipient`.
+    /// Checks if `maybe_owner` can manage / is an owner of a `recipient`.
     pub fn ensure_recipient_manager(
         maybe_owner: T::AccountId,
         recipient: DonationRecipient<T::AccountId>,
