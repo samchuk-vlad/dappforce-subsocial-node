@@ -6,8 +6,8 @@ use sp_runtime::RuntimeDebug;
 
 use frame_support::{
 	decl_module, decl_storage, decl_event, decl_error, ensure,
-	dispatch::{DispatchResult, DispatchError},
-	traits::{Get, Currency},
+	dispatch::DispatchResult,
+	traits::{Get, Currency, ExistenceRequirement}
 };
 use frame_system::{self as system, ensure_signed};
 
@@ -20,6 +20,8 @@ mod mock;
 
 #[cfg(test)]
 mod tests;*/
+
+pub mod functions;
 
 pub type SubscriptionPlanId = u64;
 pub type SubscriptionId = u64;
@@ -122,10 +124,12 @@ decl_event!(
 
 decl_error! {
 	pub enum Error for Module<T: Trait> {
+		AlreadySubscribed,
 		NoPermissionToUpdateSubscriptionPlan,
 		NotSubscriber,
 		NothingToUpdate,
 		PriceLowerExistencialDeposit,
+		RecipientNotFound,
 		SubscriptionNotFound,
 		SubscriptionPlanNotFound,
 	}
@@ -226,13 +230,51 @@ decl_module! {
 			Ok(())
 		}
 
-		#[weight = 10_000]
+		#[weight = T::DbWeight::get().reads_writes(5, 1) + 50_000]
 		pub fn subscribe(
 			origin,
 			plan_id: SubscriptionPlanId,
 			custom_wallet: Option<T::AccountId>
 		) -> DispatchResult {
-			let _ = ensure_signed(origin)?;
+			let sender = ensure_signed(origin)?;
+
+			let plan = Self::require_plan(plan_id)?;
+			let subscriptions = Self::subscription_ids_by_patron(&sender);
+
+			let is_already_subscribed = subscriptions.iter().any(|subscription_id| {
+				if let Ok(subscription) = Self::require_subscription(*subscription_id) {
+					return subscription.plan_id == plan_id;
+				}
+				false
+			});
+			ensure!(is_already_subscribed, Error::<T>::AlreadySubscribed);
+
+			let subscription_id = Self::next_subscription_id();
+			let subscription = Subscription::<T>::new(
+				subscription_id,
+				sender.clone(),
+				custom_wallet,
+				plan_id
+			);
+
+			let recipient = plan.wallet.clone()
+				.or_else(|| Self::recipient_wallet(plan.space_id))
+				.or_else(|| {
+					Spaces::<T>::require_space(plan.space_id).map(|space| space.owner).ok()
+				});
+
+			ensure!(recipient.is_some(), Error::<T>::RecipientNotFound);
+			<T as pallet_utils::Trait>::Currency::transfer(
+				&sender,
+				&recipient.unwrap(),
+				plan.price,
+				ExistenceRequirement::KeepAlive
+			)?;
+
+			// todo: schedule recurrent payment
+
+			SubscriptionById::<T>::insert(subscription_id, subscription);
+
 			Ok(())
 		}
 
@@ -278,71 +320,5 @@ decl_module! {
 			let _ = ensure_signed(origin)?;
 			Ok(())
 		}
-	}
-}
-
-impl<T: Trait> Module<T> {
-	pub fn require_plan(
-		plan_id: SubscriptionPlanId
-	) -> Result<SubscriptionPlan<T>, DispatchError> {
-		Ok(Self::plan_by_id(plan_id).ok_or(Error::<T>::SubscriptionPlanNotFound)?)
-	}
-
-	pub fn require_subscription(subscription_id: SubscriptionId) -> Result<Subscription<T>, DispatchError> {
-		Ok(Self::subscription_by_id(subscription_id).ok_or(Error::<T>::SubscriptionNotFound)?)
-	}
-
-	pub fn ensure_subscriptions_manager(account: T::AccountId, space: &Space<T>) -> DispatchResult {
-		Spaces::<T>::ensure_account_has_space_permission(
-			account,
-			space,
-			SpacePermission::ManageSubscriptionPlans,
-			Error::<T>::NoPermissionToUpdateSubscriptionPlan.into()
-		)
-	}
-}
-
-impl<T: Trait> SubscriptionPlan<T> {
-	fn new(
-		id: SubscriptionPlanId,
-		created_by: T::AccountId,
-		space_id: SpaceId,
-		wallet: Option<T::AccountId>,
-		price: BalanceOf<T>,
-		period: SubscriptionPeriod<T::BlockNumber>,
-		content: Content
-	) -> Self {
-		Self {
-			id,
-			created: WhoAndWhen::<T>::new(created_by),
-			updated: None,
-			space_id,
-			wallet,
-			price,
-			period,
-			content
-		}
-	}
-}
-
-impl<T: Trait> Subscription<T> {
-	#[allow(dead_code)]
-	fn new(
-		id: SubscriptionId,
-		created_by: T::AccountId,
-		wallet: Option<T::AccountId>,
-		plan_id: SubscriptionPlanId
-	) -> Self {
-		Self {
-			id,
-			created: WhoAndWhen::<T>::new(created_by),
-			wallet,
-			plan_id
-		}
-	}
-
-	fn ensure_subscriber(&self, who: &T::AccountId) -> DispatchResult {
-		ensure!(&self.created.account == who, Error::<T>::NotSubscriber);
-		Ok(())
 	}
 }
