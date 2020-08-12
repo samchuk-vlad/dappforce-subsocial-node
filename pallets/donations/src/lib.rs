@@ -38,17 +38,17 @@ pub struct Donation<T: Trait> {
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct DonationSettings<T: Trait> {
+pub struct DonationSettings<BalanceOf> {
     pub donations_enabled: bool,
-    pub min_amount: Option<BalanceOf<T>>,
-    pub max_amount: Option<BalanceOf<T>>,
+    pub min_amount: Option<BalanceOf>,
+    pub max_amount: Option<BalanceOf>,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct DonationSettingsUpdate<T: Trait> {
+pub struct DonationSettingsUpdate<BalanceOf> {
     pub donations_enabled: Option<bool>,
-    pub min_amount: Option<Option<BalanceOf<T>>>,
-    pub max_amount: Option<Option<BalanceOf<T>>>,
+    pub min_amount: Option<Option<BalanceOf>>,
+    pub max_amount: Option<Option<BalanceOf>>,
 }
 
 pub trait Trait: system::Trait
@@ -78,7 +78,7 @@ decl_storage! {
             map hasher(blake2_128_concat) DonationRecipient<T::AccountId> => Option<T::AccountId>;
 
         pub DonationSettingsBySpace get(fn donation_settings_by_space):
-            map hasher(twox_64_concat) SpaceId => Option<DonationSettings<T>>;
+            map hasher(twox_64_concat) SpaceId => Option<DonationSettings<BalanceOf<T>>>;
     }
 }
 
@@ -197,7 +197,7 @@ decl_module! {
     pub fn update_settings(
         origin,
         space_id: SpaceId,
-        update: DonationSettingsUpdate<T>
+        update: DonationSettingsUpdate<BalanceOf<T>>
     ) -> DispatchResult {
         let who = ensure_signed(origin)?;
 
@@ -220,7 +220,7 @@ decl_module! {
         // `true` if there is at least one updated field.
         let mut should_update = false;
 
-        let settings = Self::donation_settings_by_space(space_id)
+        let mut settings = Self::donation_settings_by_space(space_id)
             .unwrap_or_else(DonationSettings::default);
 
         if let Some(donations_enabled) = update.donations_enabled {
@@ -245,7 +245,7 @@ decl_module! {
         }
 
         if should_update {
-            DonationSettingsBySpace::insert(space_id, settings);
+            DonationSettingsBySpace::<T>::insert(space_id, settings);
             Self::deposit_event(RawEvent::DonationSettingsUpdated(who, space_id));
         }
         Ok(())
@@ -253,7 +253,7 @@ decl_module! {
   }
 }
 
-impl<T: Trait> Default for DonationSettings<T> {
+impl<BalanceOf> Default for DonationSettings<BalanceOf> {
     fn default() -> Self {
         DonationSettings {
             donations_enabled: true,
