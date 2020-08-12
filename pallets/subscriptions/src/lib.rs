@@ -11,7 +11,8 @@ use frame_support::{
 };
 use frame_system::{self as system, ensure_signed};
 
-use pallet_spaces::Module as Spaces;
+use pallet_permissions::SpacePermission;
+use pallet_spaces::{Module as Spaces, Space};
 use pallet_utils::{Module as Utils, SpaceId, Content, WhoAndWhen};
 
 /*#[cfg(test)]
@@ -38,6 +39,7 @@ pub struct SubscriptionPlan<T: Trait> {
 	pub created: WhoAndWhen<T>,
 	pub updated: Option<WhoAndWhen<T>>,
 	pub space_id: SpaceId, // Describes what space is this plan related to
+	pub wallet: Option<T::AccountId>,
 	pub price: BalanceOf<T>,
 	pub period: SubscriptionPeriod<T::BlockNumber>,
 	pub content: Content,
@@ -49,6 +51,7 @@ pub struct SubscriptionPlan<T: Trait> {
 pub struct Subscription<T: Trait> {
 	pub id: SubscriptionId,
 	pub created: WhoAndWhen<T>,
+	pub wallet: Option<T::AccountId>,
 	pub plan_id: SubscriptionPlanId,
 
 	// ??? pub canceled: boolean, // whether this subscription was canceled by subscriber
@@ -99,11 +102,11 @@ decl_storage! {
 
 		// Where to transfer balance withdrawn from subscribers
 		pub RecipientWallet get(fn recipient_wallet):
-			map hasher(twox_64_concat) (SpaceId, SubscriptionPlanId) => Option<T::AccountId>;
+			map hasher(twox_64_concat) SpaceId => Option<T::AccountId>;
 
 		// From where to withdraw subscribers donation
 		pub PatronWallet get(fn patron_wallet):
-			map hasher(twox_64_concat) (T::AccountId, SubscriptionId) => Option<T::AccountId>;
+			map hasher(twox_64_concat) T::AccountId => Option<T::AccountId>;
 	}
 }
 
@@ -113,13 +116,14 @@ decl_event!(
 		AccountId = <T as system::Trait>::AccountId
 	{
 		SubscriptionPlanCreated(AccountId, SubscriptionPlanId),
+		// todo: complete event list for this pallet once dispatches are implemented
 	}
 );
 
 decl_error! {
 	pub enum Error for Module<T: Trait> {
-		NotAllowedToUpdatePlanWallet,
-		NotAllowedToUpdateSubscriptionWallet,
+		NoPermissionToUpdateSubscriptionPlan,
+		NotSubscriber,
 		NothingToUpdate,
 		PriceLowerExistencialDeposit,
 		SubscriptionNotFound,
@@ -136,7 +140,7 @@ decl_module! {
 		// Initializing events
 		fn deposit_event() = default;
 
-		#[weight = T::DbWeight::get().reads_writes(3, 4) + 25_000]
+		#[weight = T::DbWeight::get().reads_writes(3, 3) + 25_000]
 		pub fn create_plan(
 			origin,
 			space_id: SpaceId,
@@ -164,8 +168,9 @@ decl_module! {
 			let plan_id = Self::next_plan_id();
 			let subscription_plan = SubscriptionPlan::<T>::new(
 				plan_id,
-				sender.clone(),
+				sender,
 				space_id,
+				custom_wallet,
 				price,
 				period,
 				content
@@ -175,29 +180,42 @@ decl_module! {
 			PlanIdsBySpace::mutate(space_id, |ids| ids.push(plan_id));
 			NextPlanId::mutate(|x| { *x += 1 });
 
-			RecipientWallet::<T>::insert((space_id, plan_id), custom_wallet.unwrap_or(sender));
-
 			Ok(())
 		}
 
 		#[weight = T::DbWeight::get().reads_writes(2, 1) + 10_000]
-		pub fn update_plan_wallet(
+		pub fn update_plan(origin, plan_id: SubscriptionPlanId, new_wallet: Option<T::AccountId>) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+
+			let mut plan = Self::require_plan(plan_id)?;
+
+			let space = Spaces::<T>::require_space(plan.space_id)?;
+			Self::ensure_subscriptions_manager(sender, &space)?;
+
+			ensure!(new_wallet != plan.wallet, Error::<T>::NothingToUpdate);
+			plan.wallet = new_wallet;
+			PlanById::<T>::insert(plan_id, plan);
+
+			Ok(())
+		}
+
+		// todo(i): maybe split to `set_space_wallet` and `delete_space_wallet`?
+		#[weight = T::DbWeight::get().reads_writes(1, 1) + 10_000]
+		pub fn update_space_default_wallet(
 			origin,
-			plan_id: SubscriptionPlanId,
+			space_id: SpaceId,
 			custom_wallet: Option<T::AccountId>
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
-			let plan = Self::require_subscription_plan(plan_id)?;
-			plan.ensure_has_permission_to_update(&sender)?;
+			let space = Spaces::<T>::require_space(space_id)?;
+			space.ensure_space_owner(sender)?;
 
-			// todo(i): do we need this check? Implementing this adds +1 reads in worst case.
-			// ensure!(
-			// 	Self::recipient_wallet((plan.space_id, plan_id)) != custom_wallet,
-			// 	Error::<T>::NothingToUpdate
-			// );
-
-			RecipientWallet::<T>::insert((plan.space_id, plan_id), custom_wallet.unwrap_or(sender));
+			if let Some(wallet) = custom_wallet {
+				RecipientWallet::<T>::insert(space.id, wallet);
+			} else {
+				RecipientWallet::<T>::remove(space.id);
+			}
 
 			Ok(())
 		}
@@ -218,24 +236,38 @@ decl_module! {
 			Ok(())
 		}
 
+		// todo(i): maybe split to `set_subscription_wallet` and `delete_subscription_wallet`?
 		#[weight = T::DbWeight::get().reads_writes(1, 1) + 10_000]
-		pub fn update_subscription_wallet(
+		pub fn update_subscribtion(
 			origin,
 			subscription_id: SubscriptionId,
+			new_wallet: Option<T::AccountId>
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+
+			let mut subscription = Self::require_subscription(subscription_id)?;
+			subscription.ensure_subscriber(&sender)?;
+
+			ensure!(new_wallet != subscription.wallet, Error::<T>::NothingToUpdate);
+
+			subscription.wallet = new_wallet;
+			SubscriptionById::<T>::insert(subscription_id, subscription);
+
+			Ok(())
+		}
+
+		#[weight = T::DbWeight::get().reads_writes(0, 1) + 10_000]
+		pub fn update_subscriptions_default_wallet(
+			origin,
 			custom_wallet: Option<T::AccountId>
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
-			let subscription = Self::require_subscription(subscription_id)?;
-			subscription.ensure_has_permission_to_update(&sender)?;
-
-			// todo(i): do we need this check? Implementing this adds +1 reads in worst case.
-			// ensure!(
-			// 	Self::patron_wallet((sender.clone(), subscription_id)) != custom_wallet,
-			// 	Error::<T>::NothingToUpdate
-			// );
-
-			PatronWallet::<T>::insert((sender.clone(), subscription_id), custom_wallet.unwrap_or(sender));
+			if let Some(wallet) = custom_wallet {
+				PatronWallet::<T>::insert(sender, wallet);
+			} else {
+				PatronWallet::<T>::remove(sender);
+			}
 
 			Ok(())
 		}
@@ -250,7 +282,7 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-	pub fn require_subscription_plan(
+	pub fn require_plan(
 		plan_id: SubscriptionPlanId
 	) -> Result<SubscriptionPlan<T>, DispatchError> {
 		Ok(Self::plan_by_id(plan_id).ok_or(Error::<T>::SubscriptionPlanNotFound)?)
@@ -259,6 +291,15 @@ impl<T: Trait> Module<T> {
 	pub fn require_subscription(subscription_id: SubscriptionId) -> Result<Subscription<T>, DispatchError> {
 		Ok(Self::subscription_by_id(subscription_id).ok_or(Error::<T>::SubscriptionNotFound)?)
 	}
+
+	pub fn ensure_subscriptions_manager(account: T::AccountId, space: &Space<T>) -> DispatchResult {
+		Spaces::<T>::ensure_account_has_space_permission(
+			account,
+			space,
+			SpacePermission::ManageSubscriptionPlans,
+			Error::<T>::NoPermissionToUpdateSubscriptionPlan.into()
+		)
+	}
 }
 
 impl<T: Trait> SubscriptionPlan<T> {
@@ -266,6 +307,7 @@ impl<T: Trait> SubscriptionPlan<T> {
 		id: SubscriptionPlanId,
 		created_by: T::AccountId,
 		space_id: SpaceId,
+		wallet: Option<T::AccountId>,
 		price: BalanceOf<T>,
 		period: SubscriptionPeriod<T::BlockNumber>,
 		content: Content
@@ -275,34 +317,32 @@ impl<T: Trait> SubscriptionPlan<T> {
 			created: WhoAndWhen::<T>::new(created_by),
 			updated: None,
 			space_id,
+			wallet,
 			price,
 			period,
 			content
 		}
 	}
-
-	fn ensure_has_permission_to_update(&self, who: &T::AccountId) -> DispatchResult {
-		Spaces::<T>::require_space(self.space_id).and_then(|space| {
-			ensure!(
-				&self.created.account == who && space.is_owner(who),
-				Error::<T>::NotAllowedToUpdatePlanWallet
-			);
-			Ok(())
-		})
-	}
 }
 
 impl<T: Trait> Subscription<T> {
-	fn new(id: SubscriptionId, created_by: T::AccountId, plan_id: SubscriptionPlanId) -> Self {
+	#[allow(dead_code)]
+	fn new(
+		id: SubscriptionId,
+		created_by: T::AccountId,
+		wallet: Option<T::AccountId>,
+		plan_id: SubscriptionPlanId
+	) -> Self {
 		Self {
 			id,
 			created: WhoAndWhen::<T>::new(created_by),
+			wallet,
 			plan_id
 		}
 	}
 
-	fn ensure_has_permission_to_update(&self, who: &T::AccountId) -> DispatchResult {
-		ensure!(&self.created.account == who, Error::<T>::NotAllowedToUpdateSubscriptionWallet);
+	fn ensure_subscriber(&self, who: &T::AccountId) -> DispatchResult {
+		ensure!(&self.created.account == who, Error::<T>::NotSubscriber);
 		Ok(())
 	}
 }

@@ -341,6 +341,8 @@ parameter_types! {
       SP::UpdateEntityStatus,
 
       SP::UpdateSpaceSettings,
+
+      SP::ManageSubscriptionPlans,
     ].into_iter())),
   };
 }

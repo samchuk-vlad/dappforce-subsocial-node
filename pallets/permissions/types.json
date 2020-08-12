@@ -45,7 +45,9 @@
       "SuggestEntityStatus",
       "UpdateEntityStatus",
 
-      "UpdateSpaceSettings"
+      "UpdateSpaceSettings",
+
+      "ManageSubscriptionPlans"
     ]
   },
 

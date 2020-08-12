@@ -165,6 +165,8 @@ mod tests {
             SP::UpdateEntityStatus,
 
             SP::UpdateSpaceSettings,
+
+            SP::ManageSubscriptionPlans,
         ].into_iter())),
       };
     }
