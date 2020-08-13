@@ -10,7 +10,7 @@ use frame_support::{
 };
 use frame_system::{self as system, ensure_signed};
 
-use pallet_permissions::SpacePermission;
+// use pallet_permissions::SpacePermission;
 use pallet_posts::{Module as Posts, PostId};
 use pallet_spaces::{Module as Spaces};
 use pallet_utils::{Content, WhoAndWhen, SpaceId};
@@ -161,10 +161,8 @@ decl_module! {
 
         let settings = Self::resolve_donation_settings(recipient.clone())?;
 
-        if let Some(donations_enabled) = settings.donations_enabled {
-            ensure!(donations_enabled, Error::<T>::DonationsAreDisabled);
-        }
-        
+        ensure!(settings.donations_enabled, Error::<T>::DonationsAreDisabled);
+
         if let Some(min_amount) = settings.min_amount {
             ensure!(amount >= min_amount, Error::<T>::TooSmallDonation);
         }
