@@ -41,7 +41,8 @@ impl<T: Trait> SubscriptionPlan<T> {
             wallet,
             price,
             period,
-            content
+            content,
+            is_active: true
         }
     }
 }
@@ -56,8 +57,10 @@ impl<T: Trait> Subscription<T> {
         Self {
             id,
             created: WhoAndWhen::<T>::new(created_by),
+            updated: None,
             wallet,
-            plan_id
+            plan_id,
+            is_active: true
         }
     }
 
