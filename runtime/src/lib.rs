@@ -271,6 +271,17 @@ impl sudo::Trait for Runtime {
 	type Call = Call;
 }
 
+parameter_types! {
+	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(80) * MaximumBlockWeight::get();
+}
+
+impl pallet_scheduler::Trait for Runtime {
+	type Event = Event;
+	type Origin = Origin;
+	type Call = Call;
+	type MaximumWeight = MaximumSchedulerWeight;
+}
+
 // Subsocial custom pallets go below:
 // ------------------------------------------------------------------------------------------------
 
@@ -512,6 +523,7 @@ construct_runtime!(
 		Balances: balances::{Module, Call, Storage, Config<T>, Event<T>},
 		TransactionPayment: transaction_payment::{Module, Storage},
 		Sudo: sudo::{Module, Call, Config<T>, Storage, Event<T>},
+		Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
 
 		// Subsocial custom pallets:
 		Permissions: pallet_permissions::{Module, Call},
