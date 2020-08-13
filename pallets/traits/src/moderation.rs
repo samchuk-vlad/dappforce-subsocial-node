@@ -1,15 +1,23 @@
 use crate::{SpaceId};
 
+use pallet_utils::Content;
+
 pub trait IsAccountBlocked {
     type AccountId;
 
     fn is_account_blocked(account: Self::AccountId, scope: SpaceId) -> bool;
 }
 
-pub trait IsSpaceBlocked {
-    type SpaceId;
+impl IsAccountBlocked for () {
+    type AccountId = u64;
 
-    fn is_space_blocked(space_id: Self::SpaceId, scope: SpaceId) -> bool;
+    fn is_account_blocked(_account: Self::AccountId, _scope: u64) -> bool {
+        true
+    }
+}
+
+pub trait IsSpaceBlocked {
+    fn is_space_blocked(space_id: SpaceId, scope: SpaceId) -> bool;
 }
 
 pub trait IsPostBlocked {
@@ -19,7 +27,11 @@ pub trait IsPostBlocked {
 }
 
 pub trait IsContentBlocked {
-    type Content;
+    fn is_content_blocked(content: Content, scope: SpaceId) -> bool;
+}
 
-    fn is_content_blocked(content: Self::Content, scope: SpaceId) -> bool;
+impl IsContentBlocked for () {
+    fn is_content_blocked(_content: Content, _scope: u64) -> bool {
+        true
+    }
 }

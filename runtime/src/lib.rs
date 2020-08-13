@@ -412,6 +412,8 @@ impl pallet_roles::Trait for Runtime {
 	type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
 	type Spaces = Spaces;
 	type SpaceFollows = SpaceFollows;
+	type IsAccountBlocked = Moderation;
+	type IsContentBlocked = Moderation;
 }
 
 parameter_types! {
@@ -466,6 +468,8 @@ impl pallet_spaces::Trait for Runtime {
 	type SpaceFollows = SpaceFollows;
 	type BeforeSpaceCreated = SpaceFollows;
 	type AfterSpaceUpdated = SpaceHistory;
+	type IsAccountBlocked = Moderation;
+	type IsContentBlocked = Moderation;
 }
 
 parameter_types! {}
@@ -509,6 +513,15 @@ impl session_keys::Trait for Runtime {
 	type BaseFilter = SessionKeysProxyFilter;
 }*/
 
+parameter_types! {
+	pub const DefaultAutoblockThreshold: u16 = 20;
+}
+
+impl pallet_moderation::Trait for Runtime {
+	type Event = Event;
+	type DefaultAutoblockThreshold = DefaultAutoblockThreshold;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -541,6 +554,7 @@ construct_runtime!(
 		Spaces: pallet_spaces::{Module, Call, Storage, Event<T>, Config<T>},
 		Utils: pallet_utils::{Storage, Event<T>, Config<T>},
 		// SessionKeys: session_keys::{Module, Call, Storage, Config<T>, Event<T>},
+		Moderation: pallet_moderation::{Module, Call, Storage, Event<T>},
 	}
 );
 

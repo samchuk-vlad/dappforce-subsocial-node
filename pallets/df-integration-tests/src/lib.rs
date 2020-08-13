@@ -225,6 +225,8 @@ mod tests {
         type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
         type Spaces = Spaces;
         type SpaceFollows = SpaceFollows;
+        type IsAccountBlocked = Moderation;
+        type IsContentBlocked = Moderation;
     }
 
     parameter_types! {
@@ -279,11 +281,22 @@ mod tests {
         type SpaceFollows = SpaceFollows;
         type BeforeSpaceCreated = SpaceFollows;
         type AfterSpaceUpdated = SpaceHistory;
+        type IsAccountBlocked = Moderation;
+        type IsContentBlocked = Moderation;
     }
 
     parameter_types! {}
 
     impl pallet_space_history::Trait for TestRuntime {}
+
+    parameter_types! {
+        pub const DefaultAutoblockThreshold: u16 = 20;
+    }
+
+    impl pallet_moderation::Trait for TestRuntime {
+        type Event = ();
+        type DefaultAutoblockThreshold = DefaultAutoblockThreshold;
+    }
 
     type System = system::Module<TestRuntime>;
     type Balances = pallet_balances::Module<TestRuntime>;
@@ -300,6 +313,7 @@ mod tests {
     type SpaceHistory = pallet_space_history::Module<TestRuntime>;
     type SpaceOwnership = pallet_space_ownership::Module<TestRuntime>;
     type Spaces = pallet_spaces::Module<TestRuntime>;
+    type Moderation = pallet_moderation::Module<TestRuntime>;
 
     pub type AccountId = u64;
     type BlockNumber = u64;
