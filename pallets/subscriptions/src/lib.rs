@@ -28,11 +28,11 @@ pub type SubscriptionId = u64;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub enum SubscriptionPeriod<BlockNumber> {
-	Custom(BlockNumber), // Currently not supported
 	Daily,
 	Weekly,
 	Quarterly,
 	Yearly,
+	Custom(BlockNumber), // Currently not supported
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -45,18 +45,17 @@ pub struct SubscriptionPlan<T: Trait> {
 	pub price: BalanceOf<T>,
 	pub period: SubscriptionPeriod<T::BlockNumber>,
 	pub content: Content,
-
-	// ??? pub canceled: boolean,  // whether this plan was canceled by creator
+	pub is_active: bool,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Subscription<T: Trait> {
 	pub id: SubscriptionId,
 	pub created: WhoAndWhen<T>,
+	pub updated: Option<WhoAndWhen<T>>,
 	pub wallet: Option<T::AccountId>,
 	pub plan_id: SubscriptionPlanId,
-
-	// ??? pub canceled: boolean, // whether this subscription was canceled by subscriber
+	pub is_active: bool,
 }
 
 type BalanceOf<T> = <<T as pallet_utils::Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
@@ -166,8 +165,7 @@ decl_module! {
 			space.ensure_space_owner(sender.clone())?;
 
 			// todo:
-			// 	- maybe add permission to create subscription plans?
-			// 	- add max subscription plans per space?
+			// 	- use permission to manage (here: create) subscription plans
 
 			let plan_id = Self::next_plan_id();
 			let subscription_plan = SubscriptionPlan::<T>::new(
@@ -198,12 +196,13 @@ decl_module! {
 
 			ensure!(new_wallet != plan.wallet, Error::<T>::NothingToUpdate);
 			plan.wallet = new_wallet;
+			// todo: change updated field
 			PlanById::<T>::insert(plan_id, plan);
 
 			Ok(())
 		}
 
-		// todo(i): maybe split to `set_space_wallet` and `delete_space_wallet`?
+		// todo: split to `set_space_wallet` and `remove_space_wallet`
 		#[weight = T::DbWeight::get().reads_writes(1, 1) + 10_000]
 		pub fn update_space_default_wallet(
 			origin,
@@ -278,7 +277,6 @@ decl_module! {
 			Ok(())
 		}
 
-		// todo(i): maybe split to `set_subscription_wallet` and `delete_subscription_wallet`?
 		#[weight = T::DbWeight::get().reads_writes(1, 1) + 10_000]
 		pub fn update_subscribtion(
 			origin,
@@ -292,12 +290,14 @@ decl_module! {
 
 			ensure!(new_wallet != subscription.wallet, Error::<T>::NothingToUpdate);
 
+			// todo: change updated field
 			subscription.wallet = new_wallet;
 			SubscriptionById::<T>::insert(subscription_id, subscription);
 
 			Ok(())
 		}
 
+		// todo: split to `set_subscription_wallet` and `remove_subscription_wallet`
 		#[weight = T::DbWeight::get().reads_writes(0, 1) + 10_000]
 		pub fn update_subscriptions_default_wallet(
 			origin,
