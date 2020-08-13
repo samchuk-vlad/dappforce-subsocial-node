@@ -443,9 +443,9 @@ mod tests {
     const ACCOUNT2: AccountId = 2;
     const ACCOUNT3: AccountId = 3;
 
-    const SPACE1: SpaceId = 1;
-    const SPACE2: SpaceId = 2;
-    const _SPACE3: SpaceId = 3;
+    const SPACE1: SpaceId = 1001;
+    const SPACE2: SpaceId = 1002;
+    const _SPACE3: SpaceId = 1003;
 
     const POST1: PostId = 1;
     const POST2: PostId = 2;
