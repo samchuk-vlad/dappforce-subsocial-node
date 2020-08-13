@@ -488,7 +488,7 @@ impl Filter<Call> for BaseFilter {
 	}
 }
 
-/*parameter_types! {
+parameter_types! {
 	pub const MaxSessionKeysPerAccount: u16 = 10;
 }
 
@@ -511,7 +511,11 @@ impl session_keys::Trait for Runtime {
 	type Call = Call;
 	type MaxSessionKeysPerAccount = MaxSessionKeysPerAccount;
 	type BaseFilter = SessionKeysProxyFilter;
-}*/
+}
+
+impl pallet_donations::Trait for Runtime {
+	type Event = Event;
+}
 
 parameter_types! {
 	pub const DefaultAutoblockThreshold: u16 = 20;
@@ -552,9 +556,10 @@ construct_runtime!(
 		SpaceHistory: pallet_space_history::{Module, Storage},
 		SpaceOwnership: pallet_space_ownership::{Module, Call, Storage, Event<T>},
 		Spaces: pallet_spaces::{Module, Call, Storage, Event<T>, Config<T>},
-		Utils: pallet_utils::{Storage, Event<T>, Config<T>},
-		// SessionKeys: session_keys::{Module, Call, Storage, Config<T>, Event<T>},
+		Utils: pallet_utils::{Module, Storage, Event<T>, Config<T>},
+		SessionKeys: session_keys::{Module, Call, Storage, Event<T>},
 		Moderation: pallet_moderation::{Module, Call, Storage, Event<T>},
+		Donations: pallet_donations::{Module, Call, Storage, Event<T>},
 	}
 );
 
