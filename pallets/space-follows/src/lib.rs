@@ -8,10 +8,13 @@ use frame_support::{
 use sp_std::prelude::*;
 use frame_system::{self as system, ensure_signed};
 
-use df_traits::SpaceFollowsProvider;
+use df_traits::{
+    SpaceFollowsProvider,
+    moderation::IsAccountBlocked,
+};
 use pallet_profiles::{Module as Profiles, SocialAccountById};
 use pallet_spaces::{BeforeSpaceCreated, Module as Spaces, Space, SpaceById};
-use pallet_utils::{SpaceId, vec_remove_on};
+use pallet_utils::{Error as UtilsError, SpaceId, vec_remove_on};
 
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait
@@ -80,6 +83,8 @@ decl_module! {
 
       let space = &mut Spaces::require_space(space_id)?;
       ensure!(!space.hidden, Error::<T>::CannotFollowHiddenSpace);
+
+      ensure!(!T::IsAccountBlocked::is_account_blocked(follower.clone(), space.id), UtilsError::<T>::AccountIsBlocked);
 
       Self::add_space_follower(follower, space)?;
       <SpaceById<T>>::insert(space_id, space);

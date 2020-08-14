@@ -11,9 +11,12 @@ use sp_runtime::RuntimeDebug;
 use sp_std::{collections::btree_set::BTreeSet, iter::FromIterator, prelude::*};
 use frame_system::{self as system, ensure_signed};
 
-use df_traits::{PermissionChecker, SpaceFollowsProvider, SpaceForRolesProvider};
+use df_traits::{
+    PermissionChecker, SpaceFollowsProvider, SpaceForRolesProvider,
+    moderation::{IsAccountBlocked, IsContentBlocked},
+};
 use pallet_permissions::{Module as Permissions, SpacePermission, SpacePermissionSet};
-use pallet_utils::{Module as Utils, SpaceId, User, WhoAndWhen, Content};
+use pallet_utils::{Module as Utils, Error as UtilsError, SpaceId, User, WhoAndWhen, Content};
 
 pub mod functions;
 
@@ -57,6 +60,10 @@ pub trait Trait: system::Trait
     type Spaces: SpaceForRolesProvider<AccountId=Self::AccountId>;
 
     type SpaceFollows: SpaceFollowsProvider<AccountId=Self::AccountId>;
+
+    type IsAccountBlocked: IsAccountBlocked<AccountId=Self::AccountId>;
+
+    type IsContentBlocked: IsContentBlocked;
 }
 
 decl_event!(
@@ -148,8 +155,10 @@ decl_module! {
       ensure!(!permissions.is_empty(), Error::<T>::NoPermissionsProvided);
 
       Utils::<T>::is_valid_content(content.clone())?;
-
+      ensure!(!T::IsAccountBlocked::is_account_blocked(who.clone(), space_id), UtilsError::<T>::AccountIsBlocked);
       Self::ensure_role_manager(who.clone(), space_id)?;
+
+      ensure!(!T::IsContentBlocked::is_content_blocked(content.clone(), space_id), UtilsError::<T>::ContentIsBlocked);
 
       let permissions_set = BTreeSet::from_iter(permissions.into_iter());
       let new_role = Role::<T>::new(who.clone(), space_id, time_to_live, content, permissions_set)?;
@@ -179,6 +188,7 @@ decl_module! {
 
       let mut role = Self::require_role(role_id)?;
 
+      ensure!(!T::IsAccountBlocked::is_account_blocked(who.clone(), role.space_id), UtilsError::<T>::AccountIsBlocked);
       Self::ensure_role_manager(who.clone(), role.space_id)?;
 
       let mut is_update_applied = false;
@@ -193,6 +203,7 @@ decl_module! {
       if let Some(content) = update.content {
         if content != role.content {
           Utils::<T>::is_valid_content(content.clone())?;
+          ensure!(!T::IsContentBlocked::is_content_blocked(content.clone(), role.space_id), UtilsError::<T>::ContentIsBlocked);
 
           role.content = content;
           is_update_applied = true;
@@ -227,6 +238,7 @@ decl_module! {
 
       let role = Self::require_role(role_id)?;
 
+      ensure!(!T::IsAccountBlocked::is_account_blocked(who.clone(), role.space_id), UtilsError::<T>::AccountIsBlocked);
       Self::ensure_role_manager(who.clone(), role.space_id)?;
 
       let users = Self::users_by_role_id(role_id);
@@ -262,6 +274,7 @@ decl_module! {
 
       let role = Self::require_role(role_id)?;
 
+      ensure!(!T::IsAccountBlocked::is_account_blocked(who.clone(), role.space_id), UtilsError::<T>::AccountIsBlocked);
       Self::ensure_role_manager(who.clone(), role.space_id)?;
 
       for user in users_set.iter() {
@@ -287,6 +300,7 @@ decl_module! {
 
       let role = Self::require_role(role_id)?;
 
+      ensure!(!T::IsAccountBlocked::is_account_blocked(who.clone(), role.space_id), UtilsError::<T>::AccountIsBlocked);
       Self::ensure_role_manager(who.clone(), role.space_id)?;
 
       role.revoke_from_users(users.clone());

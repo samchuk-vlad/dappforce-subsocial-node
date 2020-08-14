@@ -271,6 +271,17 @@ impl sudo::Trait for Runtime {
 	type Call = Call;
 }
 
+parameter_types! {
+	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(80) * MaximumBlockWeight::get();
+}
+
+impl pallet_scheduler::Trait for Runtime {
+	type Event = Event;
+	type Origin = Origin;
+	type Call = Call;
+	type MaximumWeight = MaximumSchedulerWeight;
+}
+
 // Subsocial custom pallets go below:
 // ------------------------------------------------------------------------------------------------
 
@@ -341,6 +352,8 @@ parameter_types! {
       SP::UpdateEntityStatus,
 
       SP::UpdateSpaceSettings,
+
+      SP::ManageSubscriptionPlans,
     ].into_iter())),
   };
 }
@@ -399,6 +412,8 @@ impl pallet_roles::Trait for Runtime {
 	type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
 	type Spaces = Spaces;
 	type SpaceFollows = SpaceFollows;
+	type IsAccountBlocked = Moderation;
+	type IsContentBlocked = Moderation;
 }
 
 parameter_types! {
@@ -453,6 +468,8 @@ impl pallet_spaces::Trait for Runtime {
 	type SpaceFollows = SpaceFollows;
 	type BeforeSpaceCreated = SpaceFollows;
 	type AfterSpaceUpdated = SpaceHistory;
+	type IsAccountBlocked = Moderation;
+	type IsContentBlocked = Moderation;
 }
 
 parameter_types! {}
@@ -471,7 +488,7 @@ impl Filter<Call> for BaseFilter {
 	}
 }
 
-/*parameter_types! {
+parameter_types! {
 	pub const MaxSessionKeysPerAccount: u16 = 10;
 }
 
@@ -494,7 +511,24 @@ impl session_keys::Trait for Runtime {
 	type Call = Call;
 	type MaxSessionKeysPerAccount = MaxSessionKeysPerAccount;
 	type BaseFilter = SessionKeysProxyFilter;
-}*/
+}
+
+impl pallet_donations::Trait for Runtime {
+	type Event = Event;
+}
+
+parameter_types! {
+	pub const DefaultAutoblockThreshold: u16 = 20;
+}
+
+impl pallet_moderation::Trait for Runtime {
+	type Event = Event;
+	type DefaultAutoblockThreshold = DefaultAutoblockThreshold;
+}
+
+impl pallet_subscriptions::Trait for Runtime {
+	type Event = Event;
+}
 
 construct_runtime!(
 	pub enum Runtime where
@@ -510,6 +544,7 @@ construct_runtime!(
 		Balances: balances::{Module, Call, Storage, Config<T>, Event<T>},
 		TransactionPayment: transaction_payment::{Module, Storage},
 		Sudo: sudo::{Module, Call, Config<T>, Storage, Event<T>},
+		Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
 
 		// Subsocial custom pallets:
 		Permissions: pallet_permissions::{Module, Call},
@@ -525,8 +560,11 @@ construct_runtime!(
 		SpaceHistory: pallet_space_history::{Module, Storage},
 		SpaceOwnership: pallet_space_ownership::{Module, Call, Storage, Event<T>},
 		Spaces: pallet_spaces::{Module, Call, Storage, Event<T>, Config<T>},
-		Utils: pallet_utils::{Storage, Event<T>, Config<T>},
-		// SessionKeys: session_keys::{Module, Call, Storage, Config<T>, Event<T>},
+		Utils: pallet_utils::{Module, Storage, Event<T>, Config<T>},
+		SessionKeys: session_keys::{Module, Call, Storage, Event<T>},
+		Moderation: pallet_moderation::{Module, Call, Storage, Event<T>},
+		Donations: pallet_donations::{Module, Call, Storage, Event<T>},
+		Subscriptions: pallet_subscriptions::{Module, Call, Storage, Event<T>},
 	}
 );
 

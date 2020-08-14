@@ -171,6 +171,8 @@ impl Trait for Test {
     type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
     type Spaces = Roles;
     type SpaceFollows = Roles;
+    type IsAccountBlocked = ();
+    type IsContentBlocked = ();
 }
 
 type System = system::Module<Test>;

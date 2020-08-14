@@ -165,6 +165,8 @@ mod tests {
             SP::UpdateEntityStatus,
 
             SP::UpdateSpaceSettings,
+
+            SP::ManageSubscriptionPlans,
         ].into_iter())),
       };
     }
@@ -223,6 +225,8 @@ mod tests {
         type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
         type Spaces = Spaces;
         type SpaceFollows = SpaceFollows;
+        type IsAccountBlocked = Moderation;
+        type IsContentBlocked = Moderation;
     }
 
     parameter_types! {
@@ -277,11 +281,22 @@ mod tests {
         type SpaceFollows = SpaceFollows;
         type BeforeSpaceCreated = SpaceFollows;
         type AfterSpaceUpdated = SpaceHistory;
+        type IsAccountBlocked = Moderation;
+        type IsContentBlocked = Moderation;
     }
 
     parameter_types! {}
 
     impl pallet_space_history::Trait for TestRuntime {}
+
+    parameter_types! {
+        pub const DefaultAutoblockThreshold: u16 = 20;
+    }
+
+    impl pallet_moderation::Trait for TestRuntime {
+        type Event = ();
+        type DefaultAutoblockThreshold = DefaultAutoblockThreshold;
+    }
 
     type System = system::Module<TestRuntime>;
     type Balances = pallet_balances::Module<TestRuntime>;
@@ -298,6 +313,7 @@ mod tests {
     type SpaceHistory = pallet_space_history::Module<TestRuntime>;
     type SpaceOwnership = pallet_space_ownership::Module<TestRuntime>;
     type Spaces = pallet_spaces::Module<TestRuntime>;
+    type Moderation = pallet_moderation::Module<TestRuntime>;
 
     pub type AccountId = u64;
     type BlockNumber = u64;
@@ -443,9 +459,9 @@ mod tests {
     const ACCOUNT2: AccountId = 2;
     const ACCOUNT3: AccountId = 3;
 
-    const SPACE1: SpaceId = 1;
-    const SPACE2: SpaceId = 2;
-    const _SPACE3: SpaceId = 3;
+    const SPACE1: SpaceId = 1001;
+    const SPACE2: SpaceId = 1002;
+    const _SPACE3: SpaceId = 1003;
 
     const POST1: PostId = 1;
     const POST2: PostId = 2;

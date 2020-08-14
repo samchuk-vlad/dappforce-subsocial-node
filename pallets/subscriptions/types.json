@@ -1,0 +1,35 @@
+{
+  "SubscriptionPlanId": "u64",
+  "SubscriptionId": "u64",
+
+  "SubscriptionPeriod": {
+    "_enum": {
+      "Daily": "Null",
+      "Weekly": "Null",
+      "Quarterly": "Null",
+      "Yearly": "Null",
+      "Custom": "BlockNumber"
+    }
+  },
+
+  "SubscriptionPlan": {
+    "id": "SubscriptionPlanId",
+    "created": "WhoAndWhen",
+    "updated": "Option<WhoAndWhen>",
+    "space_id": "SpaceId",
+    "wallet": "Option<AccountId>",
+    "price": "Balance",
+    "period": "SubscriptionPeriod",
+    "content": "Content",
+    "is_active": "bool"
+  },
+
+  "Subscription": {
+    "id": "SubscriptionPlanId",
+    "created": "WhoAndWhen",
+    "updated": "Option<WhoAndWhen>",
+    "wallet": "Option<AccountId>",
+    "plan_id": "SubscriptionPlanId",
+    "is_active": "bool"
+  }
+}

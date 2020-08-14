@@ -26,6 +26,8 @@ std = [
     'timestamp/std',
     'node-primitives/std',
     'transaction-payment/std',
+    'pallet-scheduler/std',
+    'pallet-donations/std',
     'pallet-moderation/std',
     'pallet-permissions/std',
     'pallet-posts/std',
@@ -36,10 +38,12 @@ std = [
     'pallet-reactions/std',
     'pallet-roles/std',
     'pallet-scores/std',
+    'session-keys/std',
     'pallet-spaces/std',
     'pallet-space-follows/std',
     'pallet-space-ownership/std',
     'pallet-space-history/std',
+    'pallet-subscriptions/std',
     'pallet-utils/std',
 ]
 
@@ -207,6 +211,17 @@ git = 'https://github.com/paritytech/substrate.git'
 tag = 'v2.0.0-rc4'
 version = '2.0.0-rc4'
 
+[dependencies.pallet-scheduler]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
+
+[dependencies.pallet-donations]
+default-features = false
+path = '../pallets/donations'
+version = '0.4.0'
+
 [dependencies.pallet-moderation]
 default-features = false
 path = '../pallets/moderation'
@@ -277,16 +292,21 @@ default-features = false
 path = '../pallets/space-history'
 version = '0.4.0'
 
+[dependencies.pallet-subscriptions]
+default-features = false
+path = '../pallets/subscriptions'
+version = '0.0.1'
+
 [dependencies.pallet-utils]
 default-features = false
 path = '../pallets/utils'
 version = '0.4.0'
 
-# [dependencies.session-keys]
-# default-features = false
-# package = 'pallet-session-keys'
-# path = '../pallets/session-keys'
-# version = '0.4.0'
+[dependencies.session-keys]
+default-features = false
+package = 'pallet-session-keys'
+path = '../pallets/session-keys'
+version = '0.4.0'
 
 [package]
 name = 'subsocial-runtime'
