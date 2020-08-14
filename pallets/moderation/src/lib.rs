@@ -1,3 +1,21 @@
+//! # Moderation Module
+//!
+//! The Moderation module allows any user (account) to report an account, space, post or even
+//! IPFS CID, if they think it's a spam, abuse or inappropriate for a particular space.
+//!
+//! Moderators of a space can review reported entities and suggest a moderation status for them:
+//! `Block` or `Allowed`. A space owner can make a final decision: either block or allow any entity
+//! within the space they control.
+//!
+//! This pallet also has a setting to auto-block the content after a specific number of statuses
+//! from moderators that suggest to block the entity. If the entity is added to allow list,
+//! then the entity cannot be blocked.
+//!
+//! The next rules applied to the blocked entities:
+//!
+//! - A post cannot be added to a space if an IPFS CID of this post is blocked within this space.
+//! - An account cannot create posts in a space if this account is blocked within this space.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Encode, Decode};
@@ -34,6 +52,9 @@ pub enum EntityId<AccountId> {
     Post(PostId),
 }
 
+/// Entity status is used in two cases: when moderators suggest a moderation status
+/// for a reported entity; or when a space owner makes a final decision to either block
+/// or allow this entity within the space.
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub enum EntityStatus {
     Allowed,
@@ -44,23 +65,32 @@ pub enum EntityStatus {
 pub struct Report<T: Trait> {
     id: ReportId,
     created: WhoAndWhen<T>,
+    /// An id of reported entity: account, space, post or IPFS CID.
     reported_entity: EntityId<T::AccountId>,
+    /// Within what space (scope) this entity has been reported.
     reported_within: SpaceId,
+    /// A reason should describe why this entity should be blocked within this space.
     reason: Content,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct SuggestedStatus<T: Trait> {
+    /// An account id of a moderator who suggested this status.
     suggested: WhoAndWhen<T>,
+    /// `None` if a moderator wants to signal that they have reviewed the entity,
+    /// but they are not sure about what status should be applied to it.
     status: Option<EntityStatus>,
+    /// `None` if a suggested status is not based on any reports.
     report_id: Option<ReportId>,
 }
 
+// TODO rename to ModerationSettings?
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct SpaceModerationSettings {
     autoblock_threshold: Option<u16>
 }
 
+// TODO rename to ModerationSettingsUpdate?
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct SpaceModerationSettingsUpdate {
     autoblock_threshold: Option<Option<u16>>
@@ -82,31 +112,42 @@ pub trait Trait: system::Trait
 // This pallet's storage items.
 decl_storage! {
     trait Store for Module<T: Trait> as ModerationModule {
-        NextReportId get(fn next_report_id): ReportId = 1;
 
+        /// An id for the next report.
+        pub NextReportId get(fn next_report_id): ReportId = 1;
+
+        /// Report details by its id (key).
         pub ReportById get(fn report_by_id):
             map hasher(twox_64_concat) ReportId => Option<Report<T>>;
 
+        /// Report id if entity (key 1) was reported by account (key 2)
         pub ReportIdByAccount get(fn report_id_by_account):
-            map hasher(twox_64_concat) (EntityId<T::AccountId>, T::AccountId) => Option<ReportId>;
+            map hasher(twox_64_concat) (EntityId<T::AccountId>, T::AccountId)
+            => Option<ReportId>;
 
-        pub ReportIdsBySpaceId: map hasher(twox_64_concat) SpaceId => Vec<ReportId>;
+        /// Ids of all reports sent to this space (key).
+        pub ReportIdsBySpaceId get(fn report_ids_by_space_id):
+            map hasher(twox_64_concat) SpaceId => Vec<ReportId>;
 
+        /// Ids of all reports related to a particular entity (key 1) sent to this space (key 2).
         pub ReportIdsByEntityInSpace get(fn report_ids_by_entity_in_space): double_map
             hasher(twox_64_concat) EntityId<T::AccountId>,
             hasher(twox_64_concat) SpaceId
-                => Vec<ReportId>;
+            => Vec<ReportId>;
 
+        /// An entity (key 1) status (`Blocked` or `Allowed`) in this space (key 2).
         pub StatusByEntityInSpace get(fn status_by_entity_in_space): double_map
             hasher(twox_64_concat) EntityId<T::AccountId>,
             hasher(twox_64_concat) SpaceId
-                => Option<EntityStatus>;
+            => Option<EntityStatus>;
 
+        /// Entity (key 1) statuses suggested by a space (key 2) moderators.
         pub SuggestedStatusesByEntityInSpace get(fn suggested_statuses): double_map
             hasher(twox_64_concat) EntityId<T::AccountId>,
             hasher(twox_64_concat) SpaceId
-             => Vec<SuggestedStatus<T>>;
+            => Vec<SuggestedStatus<T>>;
 
+        /// A custom moderation settings for a certain space (key).
         pub SpaceSettings get(fn space_settings):
             map hasher(twox_64_concat) SpaceId => Option<SpaceModerationSettings>;
     }
@@ -122,6 +163,8 @@ decl_event!(
         EntityStatusSuggested(AccountId, SpaceId, EntityId, Option<EntityStatus>),
         EntityStatusUpdated(AccountId, SpaceId, EntityId, Option<EntityStatus>),
         EntityStatusDeleted(AccountId, SpaceId, EntityId),
+        
+        // TODO rename to 'ModerationSettingsUpdated'
         SpaceSettingsUpdated(AccountId, SpaceId),
     }
 );
@@ -184,7 +227,9 @@ decl_module! {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
+            // TODO check this func, if looks strange
             Utils::<T>::ensure_content_is_some(&reason).map_err(|_| Error::<T>::ReasonIsEmpty)?;
+            
             Utils::<T>::is_valid_content(reason.clone())?;
 
             ensure!(Spaces::<T>::require_space(scope).is_ok(), Error::<T>::InvalidScope);
@@ -207,7 +252,7 @@ decl_module! {
 
         /// Leave a feedback on the report either it's confirmation or ignore.
         /// `origin` - any permitted account (e.g. Space owner or moderator that's set via role)
-        #[weight = 10_000]
+        #[weight = 10_000 /* TODO + T::DbWeight::get().reads_writes(_, _) */]
         pub fn suggest_entity_status(
             origin,
             entity: EntityId<T::AccountId>,
@@ -257,9 +302,8 @@ decl_module! {
             Ok(())
         }
 
-        /// Block any `entity` provided.
-        /// `origin` - any permitted account (e.g. Space owner or moderator that's set via role)
-        #[weight = 10_000]
+        /// Allows a space owner/admin to update the final moderation status of a reported entity.
+        #[weight = 10_000 /* TODO + T::DbWeight::get().reads_writes(_, _) */]
         pub fn update_entity_status(
             origin,
             entity: EntityId<T::AccountId>,
@@ -290,8 +334,13 @@ decl_module! {
             Ok(())
         }
 
-        #[weight = 10_000]
-        pub fn delete_entity_status(origin, entity: EntityId<T::AccountId>, scope: SpaceId) -> DispatchResult {
+        /// Allows a space owner/admin to delete a current status of a reported entity.
+        #[weight = 10_000 /* TODO + T::DbWeight::get().reads_writes(_, _) */]
+        pub fn delete_entity_status(
+            origin,
+            entity: EntityId<T::AccountId>,
+            scope: SpaceId
+        ) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
             let status = Self::status_by_entity_in_space(&entity, scope);
@@ -308,8 +357,13 @@ decl_module! {
 
         // todo: add ability to delete report_ids
 
-        #[weight = 10_000]
-        fn update_space_settings(origin, space_id: SpaceId, update: SpaceModerationSettingsUpdate) -> DispatchResult {
+        // TODO rename to update_settings?
+        #[weight = 10_000 /* TODO + T::DbWeight::get().reads_writes(_, _) */]
+        fn update_space_settings(
+            origin,
+            space_id: SpaceId,
+            update: SpaceModerationSettingsUpdate
+        ) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
             let has_updates = update.autoblock_threshold.is_some();
@@ -324,7 +378,8 @@ decl_module! {
                 Error::<T>::NoPermissionToUpdateSpaceSettings.into(),
             )?;
 
-            let mut is_updated = false;
+            // `true` if there is at least one updated field.
+            let mut should_update = false;
 
             let mut space_settings = Self::space_settings(space_id)
                 .unwrap_or_else(Self::default_autoblock_threshold_as_settings);
@@ -332,11 +387,11 @@ decl_module! {
             if let Some(autoblock_threshold) = update.autoblock_threshold {
                 if autoblock_threshold != space_settings.autoblock_threshold {
                     space_settings.autoblock_threshold = autoblock_threshold;
-                    is_updated = true;
+                    should_update = true;
                 }
             }
 
-            if is_updated {
+            if should_update {
                 SpaceSettings::insert(space_id, space_settings);
                 Self::deposit_event(RawEvent::SpaceSettingsUpdated(who, space_id));
             }

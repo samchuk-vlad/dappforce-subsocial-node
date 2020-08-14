@@ -877,6 +877,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "pallet-balances",
+ "pallet-moderation",
  "pallet-permissions",
  "pallet-post-history",
  "pallet-posts",
@@ -3144,6 +3145,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-donations"
+version = "0.4.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-permissions",
+ "pallet-posts",
+ "pallet-spaces",
+ "pallet-utils",
+ "parity-scale-codec",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-finality-tracker"
 version = "2.0.0-rc4"
 source = "git+https://github.com/paritytech/substrate.git?tag=v2.0.0-rc4#00768a1f21a579c478fe5d4f51e1fa71f7db9fd4"
@@ -3229,6 +3245,7 @@ dependencies = [
 name = "pallet-posts"
 version = "0.4.0"
 dependencies = [
+ "df-traits",
  "frame-support",
  "frame-system",
  "impl-trait-for-tuples",
@@ -3296,6 +3313,7 @@ dependencies = [
 name = "pallet-reactions"
 version = "0.4.0"
 dependencies = [
+ "df-traits",
  "frame-support",
  "frame-system",
  "pallet-permissions",
@@ -3380,6 +3398,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-session-keys"
+version = "0.4.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-permissions",
+ "pallet-utils",
+ "parity-scale-codec",
+ "serde",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-space-follows"
 version = "0.4.0"
 dependencies = [
@@ -3410,6 +3442,7 @@ dependencies = [
 name = "pallet-space-ownership"
 version = "0.4.0"
 dependencies = [
+ "df-traits",
  "frame-support",
  "frame-system",
  "pallet-spaces",
@@ -6276,6 +6309,7 @@ dependencies = [
  "node-primitives",
  "pallet-aura",
  "pallet-balances",
+ "pallet-donations",
  "pallet-grandpa",
  "pallet-moderation",
  "pallet-permissions",
@@ -6289,6 +6323,7 @@ dependencies = [
  "pallet-roles",
  "pallet-scheduler",
  "pallet-scores",
+ "pallet-session-keys",
  "pallet-space-follows",
  "pallet-space-history",
  "pallet-space-ownership",

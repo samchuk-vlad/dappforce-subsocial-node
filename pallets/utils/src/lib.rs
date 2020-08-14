@@ -49,15 +49,23 @@ pub enum User<AccountId> {
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub enum Content {
+    /// No content.
     None,
+    /// A raw vector of bytes.
     Raw(Vec<u8>),
+    /// IPFS CID v0 of content.
     IPFS(Vec<u8>),
+    /// Hypercore protocol (former DAT) id of content.
     Hyper(Vec<u8>),
 }
 
 impl Content {
     pub fn is_none(&self) -> bool {
         self == &Self::None
+    }
+
+    pub fn is_some(&self) -> bool {
+        !self.is_none()
     }
 }
 
@@ -119,6 +127,10 @@ decl_module! {
 
 decl_error! {
     pub enum Error for Module<T: Trait> {
+        /// Account is blocked within this space (common error)
+        AccountIsBlocked,
+        /// Content is blocked within this space (common error)
+        ContentIsBlocked,
         /// IPFS CID is invalid.
         InvalidIpfsCid,
         /// Unsupported yet type of content 'Raw' is used

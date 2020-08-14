@@ -2,7 +2,6 @@ use super::*;
 
 use frame_support::dispatch::DispatchError;
 use pallet_permissions::SpacePermissionsContext;
-use pallet_utils::SpaceId;
 
 impl<T: Trait> Module<T> {
 
