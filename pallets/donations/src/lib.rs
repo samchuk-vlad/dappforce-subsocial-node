@@ -1,3 +1,8 @@
+//! # Donations Module
+//!
+//! The Donations module allows accounts to make donations (aka tips) to other accounts, spaces,
+//! or posts.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Encode, Decode};
