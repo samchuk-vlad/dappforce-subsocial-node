@@ -19,13 +19,13 @@
   },
 
   "DonationSettings": {
-    "donations_enabled": "bool",
+    "donations_allowed": "bool",
     "min_amount": "Option<Balance>",
     "max_amount": "Option<Balance>"
   },
 
   "DonationSettingsUpdate": {
-    "donations_enabled": "Option<bool>",
+    "donations_allowed": "Option<bool>",
     "min_amount": "Option<Option<Balance>>",
     "max_amount": "Option<Option<Balance>>"
   }
