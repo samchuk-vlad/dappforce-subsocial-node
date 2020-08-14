@@ -163,6 +163,7 @@ decl_module! {
       let permissions_set = BTreeSet::from_iter(permissions.into_iter());
       let new_role = Role::<T>::new(who.clone(), space_id, time_to_live, content, permissions_set)?;
 
+      // TODO review strange code:
       let next_role_id = new_role.id.checked_add(1).ok_or(Error::<T>::RoleIdOverflow)?;
       NextRoleId::put(next_role_id);
 
