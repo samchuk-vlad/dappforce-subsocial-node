@@ -19,7 +19,7 @@ type BalanceOf<T> = <<T as pallet_utils::Trait>::Currency as Currency<<T as syst
 
 pub type DonationId = u64;
 
-// TODO find a better name. Mayne DonationSubject?
+// TODO find a better name. Mayne DonationSubject or DonationReason?
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub enum DonationRecipient<AccountId> {
     Account(AccountId),
@@ -31,7 +31,7 @@ pub enum DonationRecipient<AccountId> {
 pub struct Donation<T: Trait> {
     pub id: DonationId,
     pub created: WhoAndWhen<T>,
-    pub recipient: DonationRecipient<T::AccountId>, // TODO rename to 'reason'
+    pub recipient: DonationRecipient<T::AccountId>, // TODO rename to 'reason'?
     pub donation_wallet: T::AccountId, // TODO rename to 'recipient_wallet' or 'recipient'?
     pub amount: BalanceOf<T>,
     pub comment_id: Option<PostId>,
@@ -73,16 +73,20 @@ decl_storage! {
             DonationId = 1;
 
         pub DonationById get(fn donation_by_id):
-            map hasher(twox_64_concat) DonationId => Option<Donation<T>>;
+            map hasher(twox_64_concat) DonationId
+            => Option<Donation<T>>;
 
         pub DonationIdsByBacker get(fn donations_by_backer):
-            map hasher(blake2_128_concat) T::AccountId => Vec<DonationId>;
+            map hasher(blake2_128_concat) T::AccountId
+            => Vec<DonationId>;
 
         pub DonationIdsByRecipient get(fn donation_ids_by_recipient):
-            map hasher(blake2_128_concat) DonationRecipient<T::AccountId> => Vec<DonationId>;
+            map hasher(blake2_128_concat) DonationRecipient<T::AccountId>
+            => Vec<DonationId>;
 
         pub DonationWalletByRecipient get(fn donation_wallet_by_recipient):
-            map hasher(blake2_128_concat) DonationRecipient<T::AccountId> => Option<T::AccountId>;
+            map hasher(blake2_128_concat) DonationRecipient<T::AccountId>
+            => Option<T::AccountId>;
 
         pub DonationSettingsByRecipient get(fn donation_settings_by_recipient):
             map hasher(blake2_128_concat) DonationRecipient<T::AccountId>
@@ -104,7 +108,7 @@ decl_event!(
             // Amount of donated tokens.
             BalanceOf
         ),
-        DonationWalletSet(
+        DonationWalletUpdated(
             // Origin - who set a new wallet.
             AccountId,
             // For which recipient a new wallet was set.
@@ -197,25 +201,34 @@ decl_module! {
         Ok(())
     }
 
-    #[weight = 10_000 /* TODO + T::DbWeight::get().reads_writes(_, _) */]
-    pub fn update_donation_wallet(
+    #[weight = 10_000 + T::DbWeight::get().reads_writes(1, 1)]
+    pub fn set_donation_wallet(
         origin,
         recipient: DonationRecipient<T::AccountId>,
-        maybe_wallet: Option<T::AccountId>
+        new_wallet: T::AccountId,
     ) -> DispatchResult {
         let who = ensure_signed(origin)?;
-        Self::ensure_recipient_manager(who, recipient)?;
+        Self::ensure_recipient_manager(who.clone(), recipient.clone())?;
 
-        // TODO continue...
-
-        // TODO maybe split into two tx:
-        // - set_donation_wallet
-        // - remove_donation_wallet
-
+        DonationWalletByRecipient::<T>::insert(recipient.clone(), new_wallet.clone());
+        Self::deposit_event(RawEvent::DonationWalletUpdated(who, recipient, new_wallet));
         Ok(())
     }
 
-    #[weight = 10_000 /* TODO + T::DbWeight::get().reads_writes(_, _) */]
+    #[weight = 10_000 + T::DbWeight::get().reads_writes(1, 1)]
+    pub fn remove_donation_wallet(
+        origin,
+        recipient: DonationRecipient<T::AccountId>,
+    ) -> DispatchResult {
+        let who = ensure_signed(origin)?;
+        Self::ensure_recipient_manager(who.clone(), recipient.clone())?;
+
+        DonationWalletByRecipient::<T>::remove(recipient.clone());
+        Self::deposit_event(RawEvent::DonationWalletRemoved(who, recipient));
+        Ok(())
+    }
+
+    #[weight = 10_000 + T::DbWeight::get().reads_writes(3, 1)]
     pub fn update_settings(
         origin,
         recipient: DonationRecipient<T::AccountId>,
@@ -230,15 +243,7 @@ decl_module! {
 
         ensure!(has_updates, Error::<T>::NoUpdatesForDonationSettings);
 
-        // let space = Spaces::<T>::require_space(space_id)?;
-
-        // TODO rethink: what permission to check on space, post, account
-        // Spaces::<T>::ensure_account_has_space_permission(
-        //     who.clone(),
-        //     &space,
-        //     SpacePermission::UpdateSpaceSettings,
-        //     Error::<T>::NoUpdatesForDonationSettings.into(),
-        // )?;
+        Self::ensure_recipient_manager(who.clone(), recipient.clone())?;
 
         // `true` if there is at least one updated field.
         let mut should_update = false;
@@ -276,7 +281,6 @@ decl_module! {
 }
 
 impl<BalanceOf> Default for DonationSettings<BalanceOf> {
-    // Move this to module parameters 
     fn default() -> Self {
         DonationSettings {
             donations_enabled: true,
