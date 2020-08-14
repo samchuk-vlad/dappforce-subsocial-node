@@ -6,14 +6,16 @@ use sp_runtime::RuntimeDebug;
 
 use frame_support::{
 	decl_module, decl_storage, decl_event, decl_error, ensure,
-	dispatch::DispatchResult,
-	traits::{Get, Currency, ExistenceRequirement}
+	dispatch::{Dispatchable, DispatchResult},
+	traits::{
+		Get, Currency, ExistenceRequirement,
+		schedule::Named as ScheduleNamed, LockIdentifier,
+	}
 };
-use frame_system::{self as system, ensure_signed};
+use frame_system::{self as system, ensure_signed, ensure_root};
 
-use pallet_permissions::SpacePermission;
-use pallet_spaces::{Module as Spaces, Space};
-use pallet_utils::{Module as Utils, SpaceId, Content, WhoAndWhen};
+use pallet_spaces::Module as Spaces;
+use pallet_utils::{Module as Utils, SpaceId, Content, WhoAndWhen, vec_remove_on};
 
 /*#[cfg(test)]
 mod mock;
@@ -22,6 +24,8 @@ mod mock;
 mod tests;*/
 
 pub mod functions;
+
+const SUBSCRIPTIONS_ID: LockIdentifier = *b"subscrip";
 
 pub type SubscriptionPlanId = u64;
 pub type SubscriptionId = u64;
@@ -40,12 +44,15 @@ pub struct SubscriptionPlan<T: Trait> {
 	pub id: SubscriptionPlanId,
 	pub created: WhoAndWhen<T>,
 	pub updated: Option<WhoAndWhen<T>>,
+
+	pub is_active: bool,
+
+	pub content: Content,
 	pub space_id: SpaceId, // Describes what space is this plan related to
+
 	pub wallet: Option<T::AccountId>,
 	pub price: BalanceOf<T>,
 	pub period: SubscriptionPeriod<T::BlockNumber>,
-	pub content: Content,
-	pub is_active: bool,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -53,9 +60,11 @@ pub struct Subscription<T: Trait> {
 	pub id: SubscriptionId,
 	pub created: WhoAndWhen<T>,
 	pub updated: Option<WhoAndWhen<T>>,
+
+	pub is_active: bool,
+
 	pub wallet: Option<T::AccountId>,
 	pub plan_id: SubscriptionPlanId,
-	pub is_active: bool,
 }
 
 type BalanceOf<T> = <<T as pallet_utils::Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
@@ -68,6 +77,18 @@ pub trait Trait:
 {
 	/// The overarching event type.
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+
+	type Subscription: Dispatchable<Origin=<Self as system::Trait>::Origin> + From<Call<Self>>;
+
+	type Scheduler: ScheduleNamed<Self::BlockNumber, Self::Subscription>;
+
+	type DailyPeriodInBlocks: Get<Self::BlockNumber>;
+
+	type WeeklyPeriodInBlocks: Get<Self::BlockNumber>;
+
+	type QuarterlyPeriodInBlocks: Get<Self::BlockNumber>;
+
+	type YearlyPeriodInBlocks: Get<Self::BlockNumber>;
 }
 
 decl_storage! {
@@ -95,10 +116,6 @@ decl_storage! {
 		pub SubscriptionIdsBySpace get(fn subscription_ids_by_space):
 			map hasher(twox_64_concat) SpaceId => Vec<SubscriptionId>;
 
-		// todo: this should be used by Scheduler to transfer funds from subscribers' wallets to creator's (space) wallet.
-		pub SubscriptionIdsByPeriod get(fn subscription_ids_by_period):
-			map hasher(twox_64_concat) SubscriptionPeriod<T::BlockNumber> => Vec<SubscriptionId>;
-
 		// Wallets
 
 		// Where to transfer balance withdrawn from subscribers
@@ -124,11 +141,15 @@ decl_event!(
 decl_error! {
 	pub enum Error for Module<T: Trait> {
 		AlreadySubscribed,
+		CannotScheduleReccurentPayment,
 		NoPermissionToUpdateSubscriptionPlan,
 		NotSubscriber,
 		NothingToUpdate,
+		PlanIsNotActive,
 		PriceLowerExistencialDeposit,
 		RecipientNotFound,
+		RecurringPaymentMissing,
+		SubscriptionIsNotActive,
 		SubscriptionNotFound,
 		SubscriptionPlanNotFound,
 	}
@@ -136,7 +157,15 @@ decl_error! {
 
 decl_module! {
 	/// The module declaration.
-	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+	pub struct Module<T: Trait> for enum Call where origin: <T as system::Trait>::Origin {
+		const DailyPeriodInBlocks: T::BlockNumber = T::DailyPeriodInBlocks::get();
+
+		const WeeklyPeriodInBlocks: T::BlockNumber = T::WeeklyPeriodInBlocks::get();
+
+		const QuarterlyPeriodInBlocks: T::BlockNumber = T::QuarterlyPeriodInBlocks::get();
+
+		const YearlyPeriodInBlocks: T::BlockNumber = T::YearlyPeriodInBlocks::get();
+
 		// Initializing errors
 		type Error = Error<T>;
 
@@ -162,10 +191,7 @@ decl_module! {
 			);
 
 			let space = Spaces::<T>::require_space(space_id)?;
-			space.ensure_space_owner(sender.clone())?;
-
-			// todo:
-			// 	- use permission to manage (here: create) subscription plans
+			Self::ensure_subscriptions_manager(sender.clone(), &space)?;
 
 			let plan_id = Self::next_plan_id();
 			let subscription_plan = SubscriptionPlan::<T>::new(
@@ -192,40 +218,64 @@ decl_module! {
 			let mut plan = Self::require_plan(plan_id)?;
 
 			let space = Spaces::<T>::require_space(plan.space_id)?;
-			Self::ensure_subscriptions_manager(sender, &space)?;
+			Self::ensure_subscriptions_manager(sender.clone(), &space)?;
 
 			ensure!(new_wallet != plan.wallet, Error::<T>::NothingToUpdate);
 			plan.wallet = new_wallet;
-			// todo: change updated field
+			plan.updated = Some(WhoAndWhen::<T>::new(sender));
 			PlanById::<T>::insert(plan_id, plan);
-
-			Ok(())
-		}
-
-		// todo: split to `set_space_wallet` and `remove_space_wallet`
-		#[weight = T::DbWeight::get().reads_writes(1, 1) + 10_000]
-		pub fn update_space_default_wallet(
-			origin,
-			space_id: SpaceId,
-			custom_wallet: Option<T::AccountId>
-		) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
-
-			let space = Spaces::<T>::require_space(space_id)?;
-			space.ensure_space_owner(sender)?;
-
-			if let Some(wallet) = custom_wallet {
-				RecipientWallet::<T>::insert(space.id, wallet);
-			} else {
-				RecipientWallet::<T>::remove(space.id);
-			}
 
 			Ok(())
 		}
 
 		#[weight = 10_000]
 		pub fn delete_plan(origin, plan_id: SubscriptionPlanId) -> DispatchResult {
-			let _ = ensure_signed(origin)?;
+			let sender = ensure_signed(origin)?;
+
+			let mut plan = Self::require_plan(plan_id)?;
+			ensure!(plan.is_active, Error::<T>::PlanIsNotActive);
+
+			let space = Spaces::<T>::require_space(plan.space_id)?;
+			Self::ensure_subscriptions_manager(sender, &space)?;
+
+			let space_subscriptions = SubscriptionIdsBySpace::take(plan.space_id);
+			let plan_subscriptions = space_subscriptions.iter()
+				.filter(|id| Self::filter_subscriptions_by_plan(**id, plan_id));
+
+			for id in plan_subscriptions {
+				if let Ok(mut subscription) = Self::require_subscription(*id) {
+					Self::cancel_recurring_payment(*id);
+					subscription.is_active = false;
+					SubscriptionById::<T>::insert(id, subscription);
+				}
+			}
+
+			plan.is_active = false;
+			PlanById::<T>::insert(plan_id, plan.clone());
+			PlanIdsBySpace::mutate(plan.space_id, |ids| vec_remove_on(ids, plan_id));
+
+			Ok(())
+		}
+
+		#[weight = T::DbWeight::get().reads_writes(1, 1) + 10_000]
+		pub fn set_space_wallet(origin, space_id: SpaceId, wallet: T::AccountId) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+
+			let space = Spaces::<T>::require_space(space_id)?;
+			space.ensure_space_owner(sender)?;
+
+			RecipientWallet::<T>::insert(space.id, wallet);
+			Ok(())
+		}
+
+		#[weight = T::DbWeight::get().reads_writes(1, 1) + 10_000]
+		pub fn remove_space_wallet(origin, space_id: SpaceId) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+
+			let space = Spaces::<T>::require_space(space_id)?;
+			space.ensure_space_owner(sender)?;
+
+			RecipientWallet::<T>::remove(space.id);
 			Ok(())
 		}
 
@@ -238,8 +288,9 @@ decl_module! {
 			let sender = ensure_signed(origin)?;
 
 			let plan = Self::require_plan(plan_id)?;
-			let subscriptions = Self::subscription_ids_by_patron(&sender);
+			ensure!(plan.is_active, Error::<T>::PlanIsNotActive);
 
+			let subscriptions = Self::subscription_ids_by_patron(&sender);
 			let is_already_subscribed = subscriptions.iter().any(|subscription_id| {
 				if let Ok(subscription) = Self::require_subscription(*subscription_id) {
 					return subscription.plan_id == plan_id;
@@ -256,23 +307,25 @@ decl_module! {
 				plan_id
 			);
 
-			let recipient = plan.wallet.clone()
-				.or_else(|| Self::recipient_wallet(plan.space_id))
-				.or_else(|| {
-					Spaces::<T>::require_space(plan.space_id).map(|space| space.owner).ok()
-				});
+			Self::schedule_recurring_payment(subscription_id, plan.period.clone())?;
 
+			let recipient = plan.try_get_recipient();
 			ensure!(recipient.is_some(), Error::<T>::RecipientNotFound);
+
+			// todo: maybe implement function `transfer_or_reserve`?
 			<T as pallet_utils::Trait>::Currency::transfer(
 				&sender,
 				&recipient.unwrap(),
 				plan.price,
 				ExistenceRequirement::KeepAlive
-			)?;
-
-			// todo: schedule recurrent payment
+			).map_err(|err| {
+				Self::cancel_recurring_payment(subscription_id);
+				err
+			})?;
 
 			SubscriptionById::<T>::insert(subscription_id, subscription);
+			SubscriptionIdsByPatron::<T>::mutate(sender, |ids| ids.push(subscription_id));
+			SubscriptionIdsBySpace::mutate(plan.space_id, |ids| ids.push(subscription_id));
 
 			Ok(())
 		}
@@ -290,34 +343,68 @@ decl_module! {
 
 			ensure!(new_wallet != subscription.wallet, Error::<T>::NothingToUpdate);
 
-			// todo: change updated field
 			subscription.wallet = new_wallet;
+			subscription.updated = Some(WhoAndWhen::<T>::new(sender));
 			SubscriptionById::<T>::insert(subscription_id, subscription);
 
 			Ok(())
 		}
 
-		// todo: split to `set_subscription_wallet` and `remove_subscription_wallet`
-		#[weight = T::DbWeight::get().reads_writes(0, 1) + 10_000]
-		pub fn update_subscriptions_default_wallet(
-			origin,
-			custom_wallet: Option<T::AccountId>
-		) -> DispatchResult {
+		#[weight = T::DbWeight::get().reads_writes(4, 3) + 25_000]
+		pub fn unsubscribe(origin, subscription_id: SubscriptionId) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
-			if let Some(wallet) = custom_wallet {
-				PatronWallet::<T>::insert(sender, wallet);
-			} else {
-				PatronWallet::<T>::remove(sender);
-			}
+			let mut subscription = Self::require_subscription(subscription_id)?;
+			subscription.ensure_subscriber(&sender)?;
+
+			ensure!(subscription.is_active, Error::<T>::SubscriptionIsNotActive);
+
+			// todo: add scheduled task to make subscription inactive at the end
+			Self::do_unsubscribe(sender, &mut subscription)?;
 
 			Ok(())
 		}
 
-		#[weight = 10_000]
-		pub fn unsubscribe(origin, plan_id: SubscriptionPlanId) -> DispatchResult {
-			// todo(i): maybe we need here subscription_id, not plan_id?
-			let _ = ensure_signed(origin)?;
+		#[weight = T::DbWeight::get().reads_writes(0, 1) + 10_000]
+		pub fn set_subscription_wallet(
+			origin,
+			wallet: T::AccountId
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+
+			PatronWallet::<T>::insert(sender, wallet);
+
+			Ok(())
+		}
+
+		#[weight = T::DbWeight::get().reads_writes(0, 1) + 10_000]
+		pub fn remove_subscription_wallet(origin) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+
+			PatronWallet::<T>::remove(sender);
+
+			Ok(())
+		}
+
+		#[weight = T::DbWeight::get().reads_writes(4, 1) + 25_000]
+		pub fn withdraw_subscription_payment(origin, subscription_id: SubscriptionId) -> DispatchResult {
+			let _ = ensure_root(origin)?;
+
+			// todo: remove recurring payment if something in this block goes wrong
+			let mut subscription = Self::require_subscription(subscription_id)?;
+			let plan = Self::require_plan(subscription.plan_id)?;
+			let recipient = plan.try_get_recipient();
+			ensure!(recipient.is_some(), Error::<T>::RecipientNotFound);
+
+			subscription.is_active = <T as pallet_utils::Trait>::Currency::transfer(
+				&subscription.created.account,
+				&recipient.unwrap(),
+				plan.price,
+				ExistenceRequirement::KeepAlive
+			).is_err();
+
+			SubscriptionById::<T>::insert(subscription_id, subscription);
+
 			Ok(())
 		}
 	}

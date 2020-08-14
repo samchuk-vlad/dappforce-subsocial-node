@@ -1,6 +1,11 @@
 use crate::*;
 
+use sp_runtime::traits::Saturating;
+
 use frame_support::dispatch::DispatchError;
+
+use pallet_permissions::SpacePermission;
+use pallet_spaces::Space;
 
 impl<T: Trait> Module<T> {
     pub fn require_plan(
@@ -21,6 +26,64 @@ impl<T: Trait> Module<T> {
             Error::<T>::NoPermissionToUpdateSubscriptionPlan.into()
         )
     }
+
+    pub fn get_period_in_blocks(period: SubscriptionPeriod<T::BlockNumber>) -> T::BlockNumber {
+        match period {
+            SubscriptionPeriod::Daily => T::DailyPeriodInBlocks::get(),
+            SubscriptionPeriod::Weekly => T::WeeklyPeriodInBlocks::get(),
+            SubscriptionPeriod::Quarterly => T::QuarterlyPeriodInBlocks::get(),
+            SubscriptionPeriod::Yearly => T::YearlyPeriodInBlocks::get(),
+            SubscriptionPeriod::Custom(block_number) => block_number,
+        }
+    }
+
+    pub(crate) fn schedule_recurring_payment(
+        subscription_id: SubscriptionId,
+        period: SubscriptionPeriod<T::BlockNumber>
+    ) -> DispatchResult {
+        let period_in_blocks = Self::get_period_in_blocks(period);
+        let task_name = (SUBSCRIPTIONS_ID, subscription_id).encode();
+        let when = <system::Module<T>>::block_number().saturating_add(period_in_blocks);
+
+        T::Scheduler::schedule_named(
+            task_name,
+            when,
+            Some((period_in_blocks, 12)),
+            1,
+            Call::withdraw_subscription_payment(subscription_id).into()
+        ).map_err(|_| Error::<T>::CannotScheduleReccurentPayment)?;
+        Ok(())
+    }
+
+    pub(crate) fn cancel_recurring_payment(subscription_id: SubscriptionId) {
+        let _ = T::Scheduler::cancel_named((SUBSCRIPTIONS_ID, subscription_id).encode())
+            .map_err(|_| Error::<T>::RecurringPaymentMissing);
+        // todo: emmit event with status
+    }
+
+    pub(crate) fn do_unsubscribe(who: T::AccountId, subscription: &mut Subscription<T>) -> DispatchResult {
+        let space_id = Self::require_plan(subscription.plan_id)?.space_id;
+        let subscription_id = subscription.id;
+
+        Self::cancel_recurring_payment(subscription_id);
+        subscription.is_active = false;
+
+        SubscriptionById::<T>::insert(subscription_id, subscription);
+        SubscriptionIdsByPatron::<T>::mutate(who, |ids| vec_remove_on(ids, subscription_id));
+        SubscriptionIdsBySpace::mutate(space_id, |ids| vec_remove_on(ids, subscription_id));
+
+        Ok(())
+    }
+
+    pub(crate) fn filter_subscriptions_by_plan(
+        subscription_id: SubscriptionId,
+        plan_id: SubscriptionPlanId
+    ) -> bool {
+        if let Ok(subscription) = Self::require_subscription(subscription_id) {
+            return subscription.plan_id == plan_id;
+        }
+        false
+    }
 }
 
 impl<T: Trait> SubscriptionPlan<T> {
@@ -37,13 +100,21 @@ impl<T: Trait> SubscriptionPlan<T> {
             id,
             created: WhoAndWhen::<T>::new(created_by),
             updated: None,
+            is_active: true,
+            content,
             space_id,
             wallet,
             price,
             period,
-            content,
-            is_active: true
         }
+    }
+
+    pub fn try_get_recipient(&self) -> Option<T::AccountId> {
+        self.wallet.clone()
+            .or_else(|| Module::<T>::recipient_wallet(self.space_id))
+            .or_else(|| {
+                Spaces::<T>::require_space(self.space_id).map(|space| space.owner).ok()
+            })
     }
 }
 
@@ -58,9 +129,9 @@ impl<T: Trait> Subscription<T> {
             id,
             created: WhoAndWhen::<T>::new(created_by),
             updated: None,
+            is_active: true,
             wallet,
             plan_id,
-            is_active: true
         }
     }
 
