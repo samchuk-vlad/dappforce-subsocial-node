@@ -62,8 +62,6 @@ pub struct DonationSettingsUpdate<BalanceOf> {
     pub max_amount: Option<Option<BalanceOf>>,
 }
 
-// TODO rename 'backer' to 'supporter'?
-
 pub trait Trait: system::Trait
     + pallet_posts::Trait
     + pallet_spaces::Trait
@@ -82,7 +80,7 @@ decl_storage! {
             map hasher(twox_64_concat) DonationId
             => Option<Donation<T>>;
 
-        pub DonationIdsByBacker get(fn donations_by_backer):
+        pub DonationIdsBySupporter get(fn donations_by_supporter):
             map hasher(blake2_128_concat) T::AccountId
             => Vec<DonationId>;
 
@@ -107,7 +105,7 @@ decl_event!(
         BalanceOf = BalanceOf<T>
     {
         Donated(
-            // Backer - from whom if was donated.
+            // Supporter - from whom if was donated.
             AccountId,
             // To which recipient it was donated.
             DonationRecipient,
@@ -167,7 +165,7 @@ decl_module! {
         amount: BalanceOf<T>,
         comment_content: Content
     ) -> DispatchResult {
-        let backer = ensure_signed(origin)?;
+        let supporter = ensure_signed(origin)?;
 
         let settings = Self::resolve_donation_settings(recipient.clone())?;
 
@@ -189,22 +187,22 @@ decl_module! {
 
         let donation = Donation {
             id: donation_id,
-            created: WhoAndWhen::<T>::new(backer.clone()),
+            created: WhoAndWhen::<T>::new(supporter.clone()),
             recipient: recipient.clone(),
             donation_wallet: donation_wallet.clone(),
             amount,
             comment_id: None // TODO put id of created comment
         };
 
-        // Transfer donated tokens from a backer to a donation wallet of this reason.
-        T::Currency::transfer(&backer, &donation_wallet, amount, ExistenceRequirement::KeepAlive)?;
+        // Transfer donated tokens from a supporter to a donation wallet of this reason.
+        T::Currency::transfer(&supporter, &donation_wallet, amount, ExistenceRequirement::KeepAlive)?;
 
         DonationById::<T>::insert(donation_id, donation);
-        DonationIdsByBacker::<T>::mutate(backer.clone(), |ids| ids.push(donation_id));
+        DonationIdsBySupporter::<T>::mutate(supporter.clone(), |ids| ids.push(donation_id));
         DonationIdsByRecipient::<T>::mutate(recipient.clone(), |ids| ids.push(donation_id));
         NextDonationId::mutate(|n| { *n += 1; });
 
-        Self::deposit_event(RawEvent::Donated(backer, recipient, amount));
+        Self::deposit_event(RawEvent::Donated(supporter, recipient, amount));
         Ok(())
     }
 
