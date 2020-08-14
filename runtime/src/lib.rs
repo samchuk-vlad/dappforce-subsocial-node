@@ -526,8 +526,21 @@ impl pallet_moderation::Trait for Runtime {
 	type DefaultAutoblockThreshold = DefaultAutoblockThreshold;
 }
 
+parameter_types! {
+	pub const DailyPeriodInBlocks: BlockNumber = DAYS;
+	pub const WeeklyPeriodInBlocks: BlockNumber = DAYS * 7;
+	pub const QuarterlyPeriodInBlocks: BlockNumber = DAYS * 30 * 3;
+	pub const YearlyPeriodInBlocks: BlockNumber = DAYS * 365;
+}
+
 impl pallet_subscriptions::Trait for Runtime {
 	type Event = Event;
+	type Subscription = Call;
+	type Scheduler = Scheduler;
+	type DailyPeriodInBlocks = DailyPeriodInBlocks;
+	type WeeklyPeriodInBlocks = WeeklyPeriodInBlocks;
+	type QuarterlyPeriodInBlocks = QuarterlyPeriodInBlocks;
+	type YearlyPeriodInBlocks = YearlyPeriodInBlocks;
 }
 
 construct_runtime!(
