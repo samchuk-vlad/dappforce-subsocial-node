@@ -69,16 +69,19 @@ pub enum SpacePermission {
   /// Override permissions per post in this space.
   OverridePostPermissions,
 
-  // Related to moderation pallet
+  // Related to the moderation pallet:
+
   /// Suggest new entity status in space (whether it's blocked or allowed)
   SuggestEntityStatus,
   /// Update entity status in space
   UpdateEntityStatus,
 
-  // Related to Space settings
-  /// Update collection of space settings in different pallets
+  // Related to space settings:
+
+  /// Allows to update space settings across different pallets.
   UpdateSpaceSettings,
 
+  /// Allows to manage plans of paid subscriptions for a space.
   ManageSubscriptionPlans,
 }
 
