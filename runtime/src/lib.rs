@@ -526,6 +526,10 @@ impl pallet_moderation::Trait for Runtime {
 	type DefaultAutoblockThreshold = DefaultAutoblockThreshold;
 }
 
+impl pallet_subscriptions::Trait for Runtime {
+	type Event = Event;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -560,6 +564,7 @@ construct_runtime!(
 		SessionKeys: session_keys::{Module, Call, Storage, Event<T>},
 		Moderation: pallet_moderation::{Module, Call, Storage, Event<T>},
 		Donations: pallet_donations::{Module, Call, Storage, Event<T>},
+		Subscriptions: pallet_subscriptions::{Module, Call, Storage, Event<T>},
 	}
 );
 
