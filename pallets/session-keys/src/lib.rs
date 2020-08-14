@@ -1,3 +1,15 @@
+//! # Session Keys Module
+//!
+//! Session Keys module (not related to validator's session keys) allows to set up a proxy
+//! for a user's main account and specify the max limit of tokens that this proxy can spend.
+//! Plus it is possible to specify the expiration block time after which this proxy
+//! will dysfunction.
+//!
+//! This pallet is very useful for Substrate dapps from UX point of view because it allows
+//! to create a utility proxy account that will act (sign txs) on behalf of the main account
+//! so that UI will not ask a "Sign tx" confirmation modal for a specific set of extrinsic
+//! initiated by this proxy session key.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::boxed_local)]
 
@@ -23,6 +35,7 @@ use frame_system::{self as system, ensure_signed};
 use pallet_utils::WhoAndWhen;
 
 struct CalculateProxyWeight<T: Trait>(Box<<T as Trait>::Call>);
+
 impl<T: Trait> WeighData<(&Box<<T as Trait>::Call>,)> for CalculateProxyWeight<T> {
     fn weigh_data(&self, target: (&Box<<T as Trait>::Call>,)) -> Weight {
         let call_dispatch_info = target.0.get_dispatch_info();
@@ -68,7 +81,7 @@ pub struct SessionKey<T: Trait> {
     /// Max amount of tokens allowed to spend with this session key.
     pub limit: Option<BalanceOf<T>>,
 
-    /// How much tokens this session key already spent.
+    /// How many tokens this session key already spent.
     pub spent: BalanceOf<T>,
 
     // TODO allowed_actions: ...
@@ -223,7 +236,7 @@ decl_module! {
             Ok(())
         }
 
-        /// `origin` is a session key
+        /// Execute the call by a session key (`origin`) on behalf of its owner.
         #[weight = CalculateProxyWeight::<T>(call.clone())]
         fn proxy(origin, call: Box<<T as Trait>::Call>) -> DispatchResult {
             let key = ensure_signed(origin)?;
@@ -271,6 +284,7 @@ decl_module! {
             Ok(())
         }
 
+        /// Delete expired session keys from the storage of this pallet.
         fn on_finalize(block_number: T::BlockNumber) {
             let keys_to_remove = SessionKeysByExpireBlock::<T>::take(block_number);
             for key in keys_to_remove {
@@ -318,6 +332,7 @@ impl<T: Trait> SessionKey<T> {
 }
 
 impl<T: Trait> Module<T> {
+
     /// Get `SessionKey` details by `key_account` from the storage
     /// or return `SessionKeyNotFound` error.
     pub fn require_key(key_account: T::AccountId) -> Result<SessionKey<T>, DispatchError> {
