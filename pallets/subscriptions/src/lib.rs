@@ -1,3 +1,17 @@
+//! # Subscription Module
+//!
+//! The Subscription module allows supporters of any space that represents a creator or
+//! a nonprofit organization to contribute financially (with native tokens) a daily, weekly,
+//! monthly, quarterly or yearly basis. This module allows content creators to monetize
+//! their content via recurring payments from their supporters.
+//!
+//! This pallet provides a way for creators to create a list of subscription plans (aka levels, tiers)
+//! and specify a different price and time period per each plan. There are several pre-built
+//! subscription periods: `Daily`, `Weekly`, `Monthly`, `Quarterly` and `Yearly`.
+//!
+//! This pallet uses Substrate's Schedule pallet to schedule recurring transfers from supporters'
+//! (patrons') wallets to creators' wallets.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Encode, Decode};
@@ -172,6 +186,10 @@ decl_module! {
 		// Initializing events
 		fn deposit_event() = default;
 
+		/// Create a new subscription plan for a specified space.
+		/// It's possible to specify a price and time period (in blocks) for the plan.
+		/// Content could be an IPFS CID that points to an off-chain data such as
+		/// plan's title, description and cover image.
 		#[weight = T::DbWeight::get().reads_writes(3, 3) + 25_000]
 		pub fn create_plan(
 			origin,
@@ -211,6 +229,7 @@ decl_module! {
 			Ok(())
 		}
 
+		/// Update some details (a wallet) on a specific subscription plan.
 		#[weight = T::DbWeight::get().reads_writes(2, 1) + 10_000]
 		pub fn update_plan(origin, plan_id: SubscriptionPlanId, new_wallet: Option<T::AccountId>) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
@@ -228,6 +247,7 @@ decl_module! {
 			Ok(())
 		}
 
+		/// Delete a subscription plan by its id.
 		#[weight = 10_000]
 		pub fn delete_plan(origin, plan_id: SubscriptionPlanId) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
@@ -257,6 +277,8 @@ decl_module! {
 			Ok(())
 		}
 
+		/// Specify a default wallet to which subscribers will pay in case a subscription plan
+		/// does not specify its own wallet.
 		#[weight = T::DbWeight::get().reads_writes(1, 1) + 10_000]
 		pub fn set_space_wallet(origin, space_id: SpaceId, wallet: T::AccountId) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
@@ -279,6 +301,8 @@ decl_module! {
 			Ok(())
 		}
 
+		/// Subscribe to a selected subscription plan and optionally specify a wallet
+		/// that will be used for recurring payments fro this subscription.
 		#[weight = T::DbWeight::get().reads_writes(5, 1) + 50_000]
 		pub fn subscribe(
 			origin,
@@ -350,6 +374,7 @@ decl_module! {
 			Ok(())
 		}
 
+		/// Unsubscribe from one of your current subscriptions by its id.
 		#[weight = T::DbWeight::get().reads_writes(4, 3) + 25_000]
 		pub fn unsubscribe(origin, subscription_id: SubscriptionId) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
@@ -365,6 +390,7 @@ decl_module! {
 			Ok(())
 		}
 
+		/// Specify a default wallet that will be used to pay for subscriptions of this `origin`.
 		#[weight = T::DbWeight::get().reads_writes(0, 1) + 10_000]
 		pub fn set_subscription_wallet(
 			origin,
@@ -377,6 +403,9 @@ decl_module! {
 			Ok(())
 		}
 
+		/// Remove a default wallet that was used to pay for subscriptions of this `origin`.
+		/// If an account has no default subscription wallet, then the payments will be made
+		/// from its account id.
 		#[weight = T::DbWeight::get().reads_writes(0, 1) + 10_000]
 		pub fn remove_subscription_wallet(origin) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
