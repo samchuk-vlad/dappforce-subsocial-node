@@ -561,6 +561,8 @@ construct_runtime!(
 		SpaceOwnership: pallet_space_ownership::{Module, Call, Storage, Event<T>},
 		Spaces: pallet_spaces::{Module, Call, Storage, Event<T>, Config<T>},
 		Utils: pallet_utils::{Module, Storage, Event<T>, Config<T>},
+
+		// New experimental pallets. Not recommended to use in production.
 		SessionKeys: session_keys::{Module, Call, Storage, Event<T>},
 		Moderation: pallet_moderation::{Module, Call, Storage, Event<T>},
 		Donations: pallet_donations::{Module, Call, Storage, Event<T>},
