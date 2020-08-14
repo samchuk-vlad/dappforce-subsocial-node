@@ -4,13 +4,12 @@ use codec::{Encode, Decode};
 use sp_std::prelude::*;
 use sp_runtime::RuntimeDebug;
 use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage, ensure,
+    decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get,
     dispatch::{DispatchResult, DispatchError},
     traits::{Currency, ExistenceRequirement}
 };
 use frame_system::{self as system, ensure_signed};
 
-// use pallet_permissions::SpacePermission;
 use pallet_posts::{Module as Posts, PostId};
 use pallet_spaces::{Module as Spaces};
 use pallet_utils::{Content, WhoAndWhen, SpaceId};
@@ -47,6 +46,7 @@ pub struct DonationSettings<BalanceOf> {
     // or 'who receives donations on post'?
 
     // TODO % of post donations that space takes. 0% by default.
+    // TODO donation_posts_allowed: bool
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -154,12 +154,12 @@ decl_module! {
 
     fn deposit_event() = default;
 
-    #[weight = 10_000 /* TODO + T::DbWeight::get().reads_writes(_, _) */]
+    #[weight = 10_000 + T::DbWeight::get().reads_writes(5, 4)]
     pub fn donate(
         origin,
         recipient: DonationRecipient<T::AccountId>,
         amount: BalanceOf<T>,
-        comment: Content
+        comment_content: Content
     ) -> DispatchResult {
         let backer = ensure_signed(origin)?;
 
@@ -178,6 +178,7 @@ decl_module! {
         let donation_wallet = Self::get_recipient_wallet(recipient.clone())?;
         let donation_id = Self::next_donation_id();
 
+        // TODO check settings.donation_posts_allowed to post as a root post to space.
         // TODO create a comment under the post or a new post in DonationSpace
 
         let donation = Donation {
