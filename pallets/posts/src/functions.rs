@@ -344,24 +344,28 @@ impl<T: Trait> Module<T> {
             Self::for_each_post_ancestor(parent_id, |p| update_replies_change(p))?;
 
             // Subtract CreateComment score weight on root post and its space
-            T::PostScores::score_root_post_on_new_comment(post.created.account, root_post)?;
+            T::PostScores::score_root_post_on_new_comment(post.created.account.clone(), root_post)?;
             let replies = Self::get_post_replies(post_id)?;
             for reply in replies.iter() {
                 T::PostScores::score_root_post_on_new_comment(reply.created.account.clone(), root_post)?;
             }
         } else {
-            let mut space = post.get_space()?;
+            let space_id = post.get_space_id()?;
+            Spaces::<T>::mutate_space_by_id(space_id, |space: &mut Space<T>| {
+                if post.hidden {
+                    space.hidden_posts_count = space.hidden_posts_count.saturating_sub(1);
+                } else {
+                    space.posts_count = space.posts_count.saturating_sub(1);
+                }
+
+                space.score = space.score.saturating_sub(post.score);
+            })?;
             post.space_id = None;
-            if post.hidden {
-                space.hidden_posts_count = space.hidden_posts_count.saturating_sub(1);
-            } else {
-                space.posts_count = space.posts_count.saturating_sub(1);
-            }
 
-            space.score = space.score.saturating_sub(post.score);
-
-            PostIdsBySpaceId::mutate(space.id, |post_ids| vec_remove_on(post_ids, post_id));
+            PostIdsBySpaceId::mutate(space_id, |post_ids| vec_remove_on(post_ids, post_id));
         }
+
+        PostById::<T>::insert(post.id, post);
 
         Ok(())
     }
