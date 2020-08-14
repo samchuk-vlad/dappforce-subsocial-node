@@ -260,7 +260,8 @@ decl_module! {
 
             let call_dispatch_info = call.get_dispatch_info();
             if call_dispatch_info.pays_fee == Pays::Yes {
-                let spent_on_call = BalanceOf::<T>::saturated_from(call_dispatch_info.weight.into());
+                let spent_on_call = BalanceOf::<T>::saturated_from(call_dispatch_info.weight.into())
+                    .saturating_mul(BalanceOf::<T>::from(2));
                 T::Currency::transfer(&real, &key, spent_on_call, ExistenceRequirement::KeepAlive)?;
 
                 // TODO: what if balance left is less than InclusionFee on the next call?

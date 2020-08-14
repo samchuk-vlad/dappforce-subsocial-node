@@ -450,6 +450,22 @@ impl<T: Trait> Module<T> {
         SpaceById::<T>::insert(space_id, space);
         Ok(())
     }
+
+    pub fn mutate_space_by_id<F: FnOnce(&mut Space<T>)> (
+        space_id: SpaceId,
+        f: F
+    ) -> Result<Space<T>, DispatchError> {
+        <SpaceById<T>>::mutate(space_id, |space_opt| {
+            if let Some(ref mut space) = space_opt.clone() {
+                f(space);
+                *space_opt = Some(space.clone());
+
+                return Ok(space.clone());
+            }
+
+            Err(Error::<T>::SpaceNotFound.into())
+        })
+    }
 }
 
 impl<T: Trait> SpaceForRolesProvider for Module<T> {
