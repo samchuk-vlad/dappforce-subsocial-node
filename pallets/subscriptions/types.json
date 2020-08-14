@@ -16,20 +16,25 @@
     "id": "SubscriptionPlanId",
     "created": "WhoAndWhen",
     "updated": "Option<WhoAndWhen>",
+
+    "is_active": "bool",
+
+    "content": "Content",
     "space_id": "SpaceId",
+
     "wallet": "Option<AccountId>",
     "price": "Balance",
-    "period": "SubscriptionPeriod",
-    "content": "Content",
-    "is_active": "bool"
+    "period": "SubscriptionPeriod"
   },
 
   "Subscription": {
     "id": "SubscriptionPlanId",
     "created": "WhoAndWhen",
     "updated": "Option<WhoAndWhen>",
+
+    "is_active": "bool",
+
     "wallet": "Option<AccountId>",
-    "plan_id": "SubscriptionPlanId",
-    "is_active": "bool"
+    "plan_id": "SubscriptionPlanId"
   }
 }
