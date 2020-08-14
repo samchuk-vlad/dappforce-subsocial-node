@@ -148,7 +148,7 @@ decl_error! {
 		PlanIsNotActive,
 		PriceLowerExistencialDeposit,
 		RecipientNotFound,
-		RecurrentPaymentMissing,
+		RecurringPaymentMissing,
 		SubscriptionIsNotActive,
 		SubscriptionNotFound,
 		SubscriptionPlanNotFound,
@@ -244,7 +244,7 @@ decl_module! {
 
 			for id in plan_subscriptions {
 				if let Ok(mut subscription) = Self::require_subscription(*id) {
-					Self::cancel_recurrent_payment(*id);
+					Self::cancel_recurring_payment(*id);
 					subscription.is_active = false;
 					SubscriptionById::<T>::insert(id, subscription);
 				}
@@ -307,7 +307,7 @@ decl_module! {
 				plan_id
 			);
 
-			Self::schedule_recurrent_payment(subscription_id, plan.period.clone())?;
+			Self::schedule_recurring_payment(subscription_id, plan.period.clone())?;
 
 			let recipient = plan.try_get_recipient();
 			ensure!(recipient.is_some(), Error::<T>::RecipientNotFound);
@@ -319,7 +319,7 @@ decl_module! {
 				plan.price,
 				ExistenceRequirement::KeepAlive
 			).map_err(|err| {
-				Self::cancel_recurrent_payment(subscription_id);
+				Self::cancel_recurring_payment(subscription_id);
 				err
 			})?;
 
@@ -390,7 +390,7 @@ decl_module! {
 		pub fn withdraw_subscription_payment(origin, subscription_id: SubscriptionId) -> DispatchResult {
 			let _ = ensure_root(origin)?;
 
-			// todo: remove recurrent payment if something in this block goes wrong
+			// todo: remove recurring payment if something in this block goes wrong
 			let mut subscription = Self::require_subscription(subscription_id)?;
 			let plan = Self::require_plan(subscription.plan_id)?;
 			let recipient = plan.try_get_recipient();

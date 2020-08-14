@@ -37,7 +37,7 @@ impl<T: Trait> Module<T> {
         }
     }
 
-    pub(crate) fn schedule_recurrent_payment(
+    pub(crate) fn schedule_recurring_payment(
         subscription_id: SubscriptionId,
         period: SubscriptionPeriod<T::BlockNumber>
     ) -> DispatchResult {
@@ -55,9 +55,9 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
-    pub(crate) fn cancel_recurrent_payment(subscription_id: SubscriptionId) {
+    pub(crate) fn cancel_recurring_payment(subscription_id: SubscriptionId) {
         let _ = T::Scheduler::cancel_named((SUBSCRIPTIONS_ID, subscription_id).encode())
-            .map_err(|_| Error::<T>::RecurrentPaymentMissing);
+            .map_err(|_| Error::<T>::RecurringPaymentMissing);
         // todo: emmit event with status
     }
 
@@ -65,7 +65,7 @@ impl<T: Trait> Module<T> {
         let space_id = Self::require_plan(subscription.plan_id)?.space_id;
         let subscription_id = subscription.id;
 
-        Self::cancel_recurrent_payment(subscription_id);
+        Self::cancel_recurring_payment(subscription_id);
         subscription.is_active = false;
 
         SubscriptionById::<T>::insert(subscription_id, subscription);
