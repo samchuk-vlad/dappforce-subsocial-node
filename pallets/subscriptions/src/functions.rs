@@ -55,9 +55,34 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
-    pub(crate) fn cancel_recurrent_payment(subscription_id: SubscriptionId) -> DispatchResult {
-        Ok(T::Scheduler::cancel_named((SUBSCRIPTIONS_ID, subscription_id).encode())
-            .map_err(|_| Error::<T>::RecurrentPaymentMissing)?)
+    pub(crate) fn cancel_recurrent_payment(subscription_id: SubscriptionId) {
+        let _ = T::Scheduler::cancel_named((SUBSCRIPTIONS_ID, subscription_id).encode())
+            .map_err(|_| Error::<T>::RecurrentPaymentMissing);
+        // todo: emmit event with status
+    }
+
+    pub(crate) fn do_unsubscribe(who: T::AccountId, subscription: &mut Subscription<T>) -> DispatchResult {
+        let space_id = Self::require_plan(subscription.plan_id)?.space_id;
+        let subscription_id = subscription.id;
+
+        Self::cancel_recurrent_payment(subscription_id);
+        subscription.is_active = false;
+
+        SubscriptionById::<T>::insert(subscription_id, subscription);
+        SubscriptionIdsByPatron::<T>::mutate(who, |ids| vec_remove_on(ids, subscription_id));
+        SubscriptionIdsBySpace::mutate(space_id, |ids| vec_remove_on(ids, subscription_id));
+
+        Ok(())
+    }
+
+    pub(crate) fn filter_subscriptions_by_plan(
+        subscription_id: SubscriptionId,
+        plan_id: SubscriptionPlanId
+    ) -> bool {
+        if let Ok(subscription) = Self::require_subscription(subscription_id) {
+            return subscription.plan_id == plan_id;
+        }
+        false
     }
 }
 

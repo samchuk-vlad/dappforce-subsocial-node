@@ -15,7 +15,7 @@ use frame_support::{
 use frame_system::{self as system, ensure_signed, ensure_root};
 
 use pallet_spaces::Module as Spaces;
-use pallet_utils::{Module as Utils, SpaceId, Content, WhoAndWhen};
+use pallet_utils::{Module as Utils, SpaceId, Content, WhoAndWhen, vec_remove_on};
 
 /*#[cfg(test)]
 mod mock;
@@ -145,9 +145,11 @@ decl_error! {
 		NoPermissionToUpdateSubscriptionPlan,
 		NotSubscriber,
 		NothingToUpdate,
+		PlanIsNotActive,
 		PriceLowerExistencialDeposit,
 		RecipientNotFound,
 		RecurrentPaymentMissing,
+		SubscriptionIsNotActive,
 		SubscriptionNotFound,
 		SubscriptionPlanNotFound,
 	}
@@ -189,10 +191,7 @@ decl_module! {
 			);
 
 			let space = Spaces::<T>::require_space(space_id)?;
-			space.ensure_space_owner(sender.clone())?;
-
-			// todo:
-			// 	- use permission to manage (here: create) subscription plans
+			Self::ensure_subscriptions_manager(sender.clone(), &space)?;
 
 			let plan_id = Self::next_plan_id();
 			let subscription_plan = SubscriptionPlan::<T>::new(
@@ -231,7 +230,30 @@ decl_module! {
 
 		#[weight = 10_000]
 		pub fn delete_plan(origin, plan_id: SubscriptionPlanId) -> DispatchResult {
-			let _ = ensure_signed(origin)?;
+			let sender = ensure_signed(origin)?;
+
+			let mut plan = Self::require_plan(plan_id)?;
+			ensure!(plan.is_active, Error::<T>::PlanIsNotActive);
+
+			let space = Spaces::<T>::require_space(plan.space_id)?;
+			Self::ensure_subscriptions_manager(sender, &space)?;
+
+			let space_subscriptions = SubscriptionIdsBySpace::take(plan.space_id);
+			let plan_subscriptions = space_subscriptions.iter()
+				.filter(|id| Self::filter_subscriptions_by_plan(**id, plan_id));
+
+			for id in plan_subscriptions {
+				if let Ok(mut subscription) = Self::require_subscription(*id) {
+					Self::cancel_recurrent_payment(*id);
+					subscription.is_active = false;
+					SubscriptionById::<T>::insert(id, subscription);
+				}
+			}
+
+			plan.is_active = false;
+			PlanById::<T>::insert(plan_id, plan.clone());
+			PlanIdsBySpace::mutate(plan.space_id, |ids| vec_remove_on(ids, plan_id));
+
 			Ok(())
 		}
 
@@ -266,8 +288,9 @@ decl_module! {
 			let sender = ensure_signed(origin)?;
 
 			let plan = Self::require_plan(plan_id)?;
-			let subscriptions = Self::subscription_ids_by_patron(&sender);
+			ensure!(plan.is_active, Error::<T>::PlanIsNotActive);
 
+			let subscriptions = Self::subscription_ids_by_patron(&sender);
 			let is_already_subscribed = subscriptions.iter().any(|subscription_id| {
 				if let Ok(subscription) = Self::require_subscription(*subscription_id) {
 					return subscription.plan_id == plan_id;
@@ -296,7 +319,7 @@ decl_module! {
 				plan.price,
 				ExistenceRequirement::KeepAlive
 			).map_err(|err| {
-				let _ = Self::cancel_recurrent_payment(subscription_id);
+				Self::cancel_recurrent_payment(subscription_id);
 				err
 			})?;
 
@@ -320,17 +343,25 @@ decl_module! {
 
 			ensure!(new_wallet != subscription.wallet, Error::<T>::NothingToUpdate);
 
-			// todo: change updated field
 			subscription.wallet = new_wallet;
+			subscription.updated = Some(WhoAndWhen::<T>::new(sender));
 			SubscriptionById::<T>::insert(subscription_id, subscription);
 
 			Ok(())
 		}
 
-		#[weight = 10_000]
-		pub fn unsubscribe(origin, plan_id: SubscriptionPlanId) -> DispatchResult {
-			// todo(i): maybe we need here subscription_id, not plan_id?
-			let _ = ensure_signed(origin)?;
+		#[weight = T::DbWeight::get().reads_writes(4, 3) + 25_000]
+		pub fn unsubscribe(origin, subscription_id: SubscriptionId) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+
+			let mut subscription = Self::require_subscription(subscription_id)?;
+			subscription.ensure_subscriber(&sender)?;
+
+			ensure!(subscription.is_active, Error::<T>::SubscriptionIsNotActive);
+
+			// todo: add scheduled task to make subscription inactive at the end
+			Self::do_unsubscribe(sender, &mut subscription)?;
+
 			Ok(())
 		}
 
@@ -355,9 +386,25 @@ decl_module! {
 			Ok(())
 		}
 
-		#[weight = 10_000]
+		#[weight = T::DbWeight::get().reads_writes(4, 1) + 25_000]
 		pub fn withdraw_subscription_payment(origin, subscription_id: SubscriptionId) -> DispatchResult {
 			let _ = ensure_root(origin)?;
+
+			// todo: remove recurrent payment if something in this block goes wrong
+			let mut subscription = Self::require_subscription(subscription_id)?;
+			let plan = Self::require_plan(subscription.plan_id)?;
+			let recipient = plan.try_get_recipient();
+			ensure!(recipient.is_some(), Error::<T>::RecipientNotFound);
+
+			subscription.is_active = <T as pallet_utils::Trait>::Currency::transfer(
+				&subscription.created.account,
+				&recipient.unwrap(),
+				plan.price,
+				ExistenceRequirement::KeepAlive
+			).is_err();
+
+			SubscriptionById::<T>::insert(subscription_id, subscription);
+
 			Ok(())
 		}
 	}
