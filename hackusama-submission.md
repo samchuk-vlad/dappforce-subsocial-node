@@ -26,10 +26,9 @@ docker stop subsocial-node
 
 ```
 docker run -d --rm --name subsocial-apps -p 3000:80 dappforce/subsocial-apps:hackusama
--p 3000:80
 ```
 
-Note: `3000` port could be changed to another value.
+Note: port `3000` could be changed to another value.
 
 ## Stop Polkadot.js Apps
 
