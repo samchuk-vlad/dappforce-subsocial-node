@@ -26,6 +26,7 @@ pub enum DonationRecipient<AccountId> {
     Post(PostId),
 }
 
+/// A struct that describes a single donation mad
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Donation<T: Trait> {
     pub id: DonationId,
@@ -38,7 +39,7 @@ pub struct Donation<T: Trait> {
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct DonationSettings<BalanceOf> {
-    pub donations_enabled: bool,
+    pub donations_allowed: bool,
     pub min_amount: Option<BalanceOf>,
     pub max_amount: Option<BalanceOf>,
 
@@ -51,7 +52,7 @@ pub struct DonationSettings<BalanceOf> {
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct DonationSettingsUpdate<BalanceOf> {
-    pub donations_enabled: Option<bool>,
+    pub donations_allowed: Option<bool>,
     pub min_amount: Option<Option<BalanceOf>>,
     pub max_amount: Option<Option<BalanceOf>>,
 }
@@ -165,7 +166,7 @@ decl_module! {
 
         let settings = Self::resolve_donation_settings(recipient.clone())?;
 
-        ensure!(settings.donations_enabled, Error::<T>::DonationsAreDisabled);
+        ensure!(settings.donations_allowed, Error::<T>::DonationsAreDisabled);
 
         if let Some(min_amount) = settings.min_amount {
             ensure!(amount >= min_amount, Error::<T>::TooSmallDonation);
@@ -238,7 +239,7 @@ decl_module! {
         let who = ensure_signed(origin)?;
 
         let has_updates =
-            update.donations_enabled.is_some() ||
+            update.donations_allowed.is_some() ||
             update.min_amount.is_some() ||
             update.max_amount.is_some();
 
@@ -251,9 +252,9 @@ decl_module! {
 
         let mut settings = Self::resolve_donation_settings(recipient.clone())?;
 
-        if let Some(donations_enabled) = update.donations_enabled {
-            if donations_enabled != settings.donations_enabled {
-                settings.donations_enabled = donations_enabled;
+        if let Some(donations_allowed) = update.donations_allowed {
+            if donations_allowed != settings.donations_allowed {
+                settings.donations_allowed = donations_allowed;
                 should_update = true;
             }
         }
@@ -284,7 +285,7 @@ decl_module! {
 impl<BalanceOf> Default for DonationSettings<BalanceOf> {
     fn default() -> Self {
         DonationSettings {
-            donations_enabled: true,
+            donations_allowed: true,
             min_amount: None,
             max_amount: None,
         }
