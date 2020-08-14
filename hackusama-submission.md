@@ -10,7 +10,14 @@ During Hackusama hackathon we developed several new pallets that can be used by 
 
 4. [Paid Subscriptions](./pallets/subscriptions) pallet. Similar to the feature of Patreon and Substack, where fans/patrons/supporters of the creator or nonprofit organization can contribute to the project/person they love on a monthly, quarterly, yearly bases. This feature allows content creators to monetize their content via their community. Pallet provides a way for creators to create a list of subscription plans (aka levels, tiers) and specify a different price and period per each plan. There are several pre-built subscription plans: Daily, Weekly, Monthly, Yearly. We are planning to use Substrate Schedule pallet to schedule recurring transfers from patrons' wallets to creators' wallets.
 
+## Live chain and Apps
+
+For your convenience, we launched a live chain that includes the pallets that we have created during Hackusama:
+http://161.35.193.43/bc
+
 ## Run Subsocial node in a `dev` mode:
+
+To run the node locally, execute the next command:
 
 ```
 docker run -d --rm --name subsocial-node -p 9944:9944 dappforce/subsocial-apps:hackusama subsocial-node --dev
