@@ -1,4 +1,4 @@
-# What we built during [Hackusama](https://hackusama.devpost.com/)?
+# What we built during [Hackusama](https://hackusama.devpost.com/)
 
 During Hackusama hackathon we developed several new pallets that can be used by Kusama community:
 
@@ -9,3 +9,30 @@ During Hackusama hackathon we developed several new pallets that can be used by 
 3. [Donations](./pallets/donations) pallet. Allows a user to donate any amount of tokens to space, post, or account they like. This feature allows content creators to monetize their content via community donations. Also, it's possible to use this pallet for nonprofit / charity projects to collect contributions. Pallet provides a few settings to specify a donation wallet per-account, per-space, per-post. It's possible to enable/disable donations per space. It's possible to specify an optional min and max amount per donation that could be accepted.
 
 4. [Paid Subscriptions](./pallets/subscriptions) pallet. Similar to the feature of Patreon and Substack, where fans/patrons/supporters of the creator or nonprofit organization can contribute to the project/person they love on a monthly, quarterly, yearly bases. This feature allows content creators to monetize their content via their community. Pallet provides a way for creators to create a list of subscription plans (aka levels, tiers) and specify a different price and period per each plan. There are several pre-built subscription plans: Daily, Weekly, Monthly, Yearly. We are planning to use Substrate Schedule pallet to schedule recurring transfers from patrons' wallets to creators' wallets.
+
+## Run Subsocial node in a `dev` mode:
+
+```
+docker run -d --rm --name subsocial-node -p 9944:9944 dappforce/subsocial-apps:hackusama subsocial-node --dev
+```
+
+## Stop Subsocial node
+
+```
+docker stop subsocial-node
+```
+
+## Run Polkadot.js Apps with [Subsocial types](./types.json)
+
+```
+docker run -d --rm --name subsocial-apps -p 3000:80 dappforce/subsocial-apps:hackusama
+-p 3000:80
+```
+
+Note: `3000` port could be changed to another value.
+
+## Stop Polkadot.js Apps
+
+```
+docker stop subsocial-apps
+```
