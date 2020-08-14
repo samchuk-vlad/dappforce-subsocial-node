@@ -23,7 +23,7 @@ type BalanceOf<T> = <<T as pallet_utils::Trait>::Currency as Currency<<T as syst
 
 pub type DonationId = u64;
 
-// TODO find a better name. Mayne DonationSubject or DonationReason?
+// TODO find a better name. Maybe DonationReason?
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub enum DonationRecipient<AccountId> {
     Account(AccountId),
@@ -31,7 +31,7 @@ pub enum DonationRecipient<AccountId> {
     Post(PostId),
 }
 
-/// A struct that describes a single donation mad
+/// A struct that describes a single donation made by an account.
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Donation<T: Trait> {
     pub id: DonationId,
@@ -48,9 +48,7 @@ pub struct DonationSettings<BalanceOf> {
     pub min_amount: Option<BalanceOf>,
     pub max_amount: Option<BalanceOf>,
 
-    // TODO think about 'post owner can receive donations'
-    // or 'who receives donations on post'?
-
+    // TODO think about 'post owner can receive donations' or 'who receives donations on post'?
     // TODO % of post donations that space takes. 0% by default.
     // TODO donation_posts_allowed: bool
 }
@@ -73,25 +71,36 @@ pub trait Trait: system::Trait
 decl_storage! {
     trait Store for Module<T: Trait> as DonationsModule {
 
+        /// An id for the next donation.
         pub NextDonationId get(fn next_donation_id):
             DonationId = 1;
 
+        /// Donation details by its id (key).
         pub DonationById get(fn donation_by_id):
             map hasher(twox_64_concat) DonationId
             => Option<Donation<T>>;
 
+        /// Ids of all donations made by a supporter account (key).
         pub DonationIdsBySupporter get(fn donations_by_supporter):
             map hasher(blake2_128_concat) T::AccountId
             => Vec<DonationId>;
 
+        /// Ids of all donations received by this recipient (key).
+        /// A recipient can be either account, space or post.
         pub DonationIdsByRecipient get(fn donation_ids_by_recipient):
             map hasher(blake2_128_concat) DonationRecipient<T::AccountId>
             => Vec<DonationId>;
 
+        /// A custom wallet for a certain recipient (key).
+        /// This means that any account, space or post can set up a custom wallet address
+        /// that will be used for future donations to this recipient.
         pub DonationWalletByRecipient get(fn donation_wallet_by_recipient):
             map hasher(blake2_128_concat) DonationRecipient<T::AccountId>
             => Option<T::AccountId>;
 
+        /// A custom donation settings for a certain recipient (key).
+        /// This means that any account, space or post can set up a custom donation settings
+        /// that will be applied to future donations to this recipient.å
         pub DonationSettingsByRecipient get(fn donation_settings_by_recipient):
             map hasher(blake2_128_concat) DonationRecipient<T::AccountId>
             => Option<DonationSettings<BalanceOf<T>>>;
@@ -158,6 +167,7 @@ decl_module! {
 
     fn deposit_event() = default;
 
+    /// Donate a certain `amount` of tokens to a `recipient` with an optional comment message.
     #[weight = 10_000 + T::DbWeight::get().reads_writes(5, 4)]
     pub fn donate(
         origin,
@@ -206,6 +216,7 @@ decl_module! {
         Ok(())
     }
 
+    /// Set a new wallet address for a `recipient`.
     #[weight = 10_000 + T::DbWeight::get().reads_writes(1, 1)]
     pub fn set_donation_wallet(
         origin,
@@ -220,6 +231,9 @@ decl_module! {
         Ok(())
     }
 
+    /// Remove a custom wallet address from a `recipient`.
+    /// When donations wallet is removed, an address of `recipient` manager (owner)
+    /// will be used as a wallet address for donations.
     #[weight = 10_000 + T::DbWeight::get().reads_writes(1, 1)]
     pub fn remove_donation_wallet(
         origin,
@@ -233,6 +247,8 @@ decl_module! {
         Ok(())
     }
 
+    /// Override the default donation settings of this pallet with the settings
+    /// specific to this `recipient`.
     #[weight = 10_000 + T::DbWeight::get().reads_writes(3, 1)]
     pub fn update_settings(
         origin,
@@ -286,6 +302,8 @@ decl_module! {
 }
 
 impl<BalanceOf> Default for DonationSettings<BalanceOf> {
+
+    /// Returns a default value for donation settings.
     fn default() -> Self {
         DonationSettings {
             donations_allowed: true,
