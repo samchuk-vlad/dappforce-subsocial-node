@@ -2,9 +2,14 @@
 //!
 //! The Moderation module allows any user (account) to report an account, space, post or even
 //! IPFS CID, if they think it's a spam, abuse or inappropriate for a particular space.
+//!
 //! Moderators of a space can review reported entities and suggest a moderation status for them:
 //! `Block` or `Allowed`. A space owner can make a final decision: either block or allow any entity
 //! within the space they control.
+//!
+//! This pallet also has a setting to auto-block the content after a specific number of statuses
+//! from moderators that suggest to block the entity. If the entity is added to allow list,
+//! then the entity cannot be blocked.
 //!
 //! The next rules applied to the blocked entities:
 //!
