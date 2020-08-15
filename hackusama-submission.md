@@ -10,6 +10,21 @@ During Hackusama hackathon we developed several new pallets that can be used by 
 
 4. [Paid Subscriptions](./pallets/subscriptions) pallet. Similar to the feature of Patreon and Substack, where fans/patrons/supporters of the creator or nonprofit organization can contribute to the project/person they love on a monthly, quarterly, yearly bases. This feature allows content creators to monetize their content via their community. Pallet provides a way for creators to create a list of subscription plans (aka levels, tiers) and specify a different price and period per each plan. There are several pre-built subscription plans: Daily, Weekly, Monthly, Yearly. We are planning to use Substrate Schedule pallet to schedule recurring transfers from patrons' wallets to creators' wallets.
 
+## Improved web UI
+
+During Hackusama we also improved our web UI a lot:
+
+- Created and used a new improved TxButton & Substrate Context for React.
+- Implemented hide/show spaces, posts via UI and blockchain.
+- Started using Redux for instant add of comments on UI.
+- Remove Semantic UI dependency (legacy from Polkadot Apps)
+- Migrate from Ant Design v3 to v4 (UI components)
+- Migrate to Substrate v2.0.0-rc4
+- Added support Kusama identities and showing role labels: Validator, Council member, etc.
+
+To see changes that have been made during Hackusama to Subsocial's web UI, check out this PR:
+https://github.com/dappforce/dappforce-subsocial-ui/pull/260
+
 ## Live chain and Apps
 
 For your convenience, we launched a live chain that includes the pallets that we have created during Hackusama:
