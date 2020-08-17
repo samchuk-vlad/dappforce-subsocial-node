@@ -109,7 +109,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("subsocial"),
 	impl_name: create_runtime_str!("dappforce-subsocial"),
 	authoring_version: 0,
-	spec_version: 1,
+	spec_version: 2,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -412,8 +412,8 @@ impl pallet_roles::Trait for Runtime {
 	type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
 	type Spaces = Spaces;
 	type SpaceFollows = SpaceFollows;
-	type IsAccountBlocked = Moderation;
-	type IsContentBlocked = Moderation;
+	type IsAccountBlocked = ()/*Moderation*/;
+	type IsContentBlocked = ()/*Moderation*/;
 }
 
 parameter_types! {
@@ -468,8 +468,8 @@ impl pallet_spaces::Trait for Runtime {
 	type SpaceFollows = SpaceFollows;
 	type BeforeSpaceCreated = SpaceFollows;
 	type AfterSpaceUpdated = SpaceHistory;
-	type IsAccountBlocked = Moderation;
-	type IsContentBlocked = Moderation;
+	type IsAccountBlocked = ()/*Moderation*/;
+	type IsContentBlocked = ()/*Moderation*/;
 }
 
 parameter_types! {}
@@ -487,7 +487,7 @@ impl Filter<Call> for BaseFilter {
 		}
 	}
 }
-
+/*
 parameter_types! {
 	pub const MaxSessionKeysPerAccount: u16 = 10;
 }
@@ -542,7 +542,7 @@ impl pallet_subscriptions::Trait for Runtime {
 	type QuarterlyPeriodInBlocks = QuarterlyPeriodInBlocks;
 	type YearlyPeriodInBlocks = YearlyPeriodInBlocks;
 }
-
+*/
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -576,10 +576,10 @@ construct_runtime!(
 		Utils: pallet_utils::{Module, Storage, Event<T>, Config<T>},
 
 		// New experimental pallets. Not recommended to use in production.
-		SessionKeys: session_keys::{Module, Call, Storage, Event<T>},
-		Moderation: pallet_moderation::{Module, Call, Storage, Event<T>},
-		Donations: pallet_donations::{Module, Call, Storage, Event<T>},
-		Subscriptions: pallet_subscriptions::{Module, Call, Storage, Event<T>},
+		// SessionKeys: session_keys::{Module, Call, Storage, Event<T>},
+		// Moderation: pallet_moderation::{Module, Call, Storage, Event<T>},
+		// Donations: pallet_donations::{Module, Call, Storage, Event<T>},
+		// Subscriptions: pallet_subscriptions::{Module, Call, Storage, Event<T>},
 	}
 );
 

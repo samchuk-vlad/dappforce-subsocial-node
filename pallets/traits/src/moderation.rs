@@ -9,10 +9,10 @@ pub trait IsAccountBlocked {
 }
 
 impl IsAccountBlocked for () {
-    type AccountId = u64;
+    type AccountId = sp_runtime::AccountId32;
 
     fn is_account_blocked(_account: Self::AccountId, _scope: u64) -> bool {
-        true
+        false
     }
 }
 
@@ -32,6 +32,6 @@ pub trait IsContentBlocked {
 
 impl IsContentBlocked for () {
     fn is_content_blocked(_content: Content, _scope: u64) -> bool {
-        true
+        false
     }
 }
