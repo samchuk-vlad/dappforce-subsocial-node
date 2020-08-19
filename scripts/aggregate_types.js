@@ -1,4 +1,4 @@
-// Reads in the type definitions from all pallets in the runtime and the runtime's own tpes
+// Reads in the type definitions from all pallets in the runtime and the runtime's own types
 // Naively aggregates types and writes them to disk.
 
 const fs = require('fs');
@@ -28,8 +28,12 @@ const runtimeOwnTypes = {
   "LookupSource": "AccountId"
 }
 
+const subsocialCustomTypes = {
+  "IpfsCid": "Text"
+}
+
 // Loop through all pallets aggregating types
-let finalTypes = runtimeOwnTypes;
+let finalTypes = {...runtimeOwnTypes, ...subsocialCustomTypes};
 let palletTypes;
 for (let dirname of pallets) {
   let path = `../pallets/${dirname}/types.json`;
