@@ -5,6 +5,7 @@ const fs = require('fs');
 
 const pallets = [
   "donations",
+  "faucet",
   "moderation",
   "permissions",
   "post-history",
