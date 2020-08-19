@@ -40,17 +40,11 @@ impl<T: Trait> Post<T> {
     }
 
     pub fn is_comment(&self) -> bool {
-        match self.extension {
-            PostExtension::Comment(_) => true,
-            _ => false,
-        }
+        matches!(self.extension, PostExtension::Comment(_))
     }
 
     pub fn is_sharing_post(&self) -> bool {
-        match self.extension {
-            PostExtension::SharedPost(_) => true,
-            _ => false,
-        }
+        matches!(self.extension, PostExtension::SharedPost(_))
     }
 
     pub fn get_comment_ext(&self) -> Result<Comment, DispatchError> {

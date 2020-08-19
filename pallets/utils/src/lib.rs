@@ -207,10 +207,7 @@ impl<T: Trait> Module<T> {
 
     /// An example of a valid handle: `good_handle`.
     fn is_valid_handle_char(c: u8) -> bool {
-        match c {
-            b'0'..=b'9' | b'a'..=b'z' | b'_' => true,
-            _ => false,
-        }
+        matches!(c, b'0'..=b'9' | b'a'..=b'z' | b'_')
     }
 
     /// Check if a handle length fits into min/max values.
