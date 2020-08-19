@@ -548,6 +548,11 @@ impl pallet_subscriptions::Trait for Runtime {
 	type YearlyPeriodInBlocks = YearlyPeriodInBlocks;
 }
 */
+impl pallet_faucet::Trait for Runtime {
+	type Event = Event;
+	type Currency = Balances;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -566,6 +571,7 @@ construct_runtime!(
 		Utility: pallet_utility::{Module, Call, Event},
 
 		// Subsocial custom pallets:
+		Faucet: pallet_faucet::{Module, Call, Storage, Event<T>},
 		Permissions: pallet_permissions::{Module, Call},
 		Posts: pallet_posts::{Module, Call, Storage, Event<T>},
 		PostHistory: pallet_post_history::{Module, Storage},
