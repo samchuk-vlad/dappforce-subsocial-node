@@ -341,6 +341,9 @@ parameter_types! {
       SP::UpdateEntityStatus,
 
       SP::UpdateSpaceSettings,
+
+      SP::ManageBadges,
+      SP::ManageAwards
     ].into_iter())),
   };
 }
@@ -496,6 +499,8 @@ impl session_keys::Trait for Runtime {
 	type BaseFilter = SessionKeysProxyFilter;
 }*/
 
+impl pallet_badges::Trait for Runtime {}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -512,6 +517,7 @@ construct_runtime!(
 		Sudo: sudo::{Module, Call, Config<T>, Storage, Event<T>},
 
 		// Subsocial custom pallets:
+    	Badges: pallet_badges::{Module, Call, Storage},
 		Permissions: pallet_permissions::{Module, Call},
 		Posts: pallet_posts::{Module, Call, Storage, Event<T>},
 		PostHistory: pallet_post_history::{Module, Storage},
