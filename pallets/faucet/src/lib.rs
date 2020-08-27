@@ -45,15 +45,16 @@ type DropId = u64;
 pub struct Drop<T: Trait> {
 	id: DropId,
 	first_drop: T::BlockNumber, // TODO rename to first_drop_at
-	dropped_amount: BalanceOf<T> // TODO rename to total_dropped or total_dripped
+	dropped_amount: BalanceOf<T> // TODO rename to: total_dripped_amount, total_dropped or total_dripped
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct FaucetSettings<BlockNumber, Balance> {
 	period: Option<BlockNumber>, // TODO rename
-	limit: Balance // TODO rename
+	limit: Balance // TODO rename to period_limit
 
-	// TODO add setting: min_amount: Balance
+	// TODO add: min_amount: Balance
+	// TODO add: max_limit: Balance
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
