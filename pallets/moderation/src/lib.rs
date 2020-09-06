@@ -378,7 +378,7 @@ decl_module! {
             Spaces::<T>::ensure_account_has_space_permission(
                 who.clone(),
                 &space,
-                pallet_permissions::SpacePermission::UpdateSpaceSettings, // TODO rename to ManageModeration?
+                pallet_permissions::SpacePermission::UpdateSpaceSettings,
                 Error::<T>::NoPermissionToUpdateModerationSettings.into(),
             )?;
 

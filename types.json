@@ -108,8 +108,7 @@
       "OverridePostPermissions",
       "SuggestEntityStatus",
       "UpdateEntityStatus",
-      "UpdateSpaceSettings",
-      "ManageSubscriptionPlans"
+      "UpdateSpaceSettings"
     ]
   },
   "SpacePermissions": {

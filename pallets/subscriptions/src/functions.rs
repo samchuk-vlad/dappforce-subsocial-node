@@ -19,7 +19,7 @@ impl<T: Trait> Module<T> {
         Spaces::<T>::ensure_account_has_space_permission(
             account,
             space,
-            SpacePermission::ManageSubscriptionPlans,
+            SpacePermission::UpdateSpaceSettings,
             Error::<T>::NoPermissionToUpdateSubscriptionPlan.into()
         )
     }
