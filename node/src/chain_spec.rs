@@ -52,8 +52,9 @@ pub fn development_config() -> ChainSpec {
 			let endowed_accounts = vec![
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				get_account_id_from_seed::<sr25519::Public>("Bob"),
-				get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
-				get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
+				get_account_id_from_seed::<sr25519::Public>("Charlie"),
+				get_account_id_from_seed::<sr25519::Public>("Dave"),
+				get_account_id_from_seed::<sr25519::Public>("Eve"),
 			];
 
 			testnet_genesis(
@@ -62,7 +63,7 @@ pub fn development_config() -> ChainSpec {
 				],
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				endowed_accounts.iter().cloned().map(|k| (k, 10_000)).collect(),
-				get_account_id_from_seed::<sr25519::Public>("Alice"),
+				get_account_id_from_seed::<sr25519::Public>("Ferdie"),
 				true,
 			)
 		},

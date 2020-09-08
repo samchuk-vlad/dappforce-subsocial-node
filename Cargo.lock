@@ -877,6 +877,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "pallet-balances",
+ "pallet-moderation",
  "pallet-permissions",
  "pallet-post-history",
  "pallet-posts",
@@ -905,6 +906,7 @@ dependencies = [
  "frame-support",
  "pallet-permissions",
  "pallet-utils",
+ "sp-runtime",
 ]
 
 [[package]]
@@ -3245,6 +3247,7 @@ dependencies = [
 name = "pallet-posts"
 version = "0.4.0"
 dependencies = [
+ "df-traits",
  "frame-support",
  "frame-system",
  "impl-trait-for-tuples",
@@ -3312,6 +3315,7 @@ dependencies = [
 name = "pallet-reactions"
 version = "0.4.0"
 dependencies = [
+ "df-traits",
  "frame-support",
  "frame-system",
  "pallet-permissions",
@@ -3336,6 +3340,21 @@ dependencies = [
  "pallet-utils",
  "parity-scale-codec",
  "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-scheduler"
+version = "2.0.0-rc4"
+source = "git+https://github.com/paritytech/substrate.git?tag=v2.0.0-rc4#00768a1f21a579c478fe5d4f51e1fa71f7db9fd4"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "serde",
  "sp-io",
  "sp-runtime",
  "sp-std",
@@ -3411,6 +3430,7 @@ dependencies = [
 name = "pallet-space-ownership"
 version = "0.4.0"
 dependencies = [
+ "df-traits",
  "frame-support",
  "frame-system",
  "pallet-spaces",
@@ -3490,6 +3510,21 @@ dependencies = [
  "parity-scale-codec",
  "serde",
  "sp-api",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-utility"
+version = "2.0.0-rc4"
+source = "git+https://github.com/paritytech/substrate.git?tag=v2.0.0-rc4#00768a1f21a579c478fe5d4f51e1fa71f7db9fd4"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
 ]
@@ -6263,7 +6298,6 @@ dependencies = [
  "pallet-badges",
  "pallet-balances",
  "pallet-grandpa",
- "pallet-moderation",
  "pallet-permissions",
  "pallet-post-history",
  "pallet-posts",
@@ -6273,6 +6307,7 @@ dependencies = [
  "pallet-randomness-collective-flip",
  "pallet-reactions",
  "pallet-roles",
+ "pallet-scheduler",
  "pallet-scores",
  "pallet-space-follows",
  "pallet-space-history",
@@ -6282,6 +6317,7 @@ dependencies = [
  "pallet-timestamp",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
+ "pallet-utility",
  "pallet-utils",
  "parity-scale-codec",
  "serde",

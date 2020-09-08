@@ -9,9 +9,10 @@ use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 use frame_system::{self as system, ensure_signed};
 
+use df_traits::moderation::{IsAccountBlocked, IsContentBlocked};
 use pallet_permissions::SpacePermission;
 use pallet_spaces::{Module as Spaces, Space, SpaceById};
-use pallet_utils::{Module as Utils, SpaceId, WhoAndWhen, Content};
+use pallet_utils::{Module as Utils, Error as UtilsError, SpaceId, WhoAndWhen, Content};
 
 pub mod functions;
 
@@ -199,7 +200,12 @@ decl_module! {
     fn deposit_event() = default;
 
     #[weight = 100_000 + T::DbWeight::get().reads_writes(8, 8)]
-    pub fn create_post(origin, space_id_opt: Option<SpaceId>, extension: PostExtension, content: Content) -> DispatchResult {
+    pub fn create_post(
+      origin,
+      space_id_opt: Option<SpaceId>,
+      extension: PostExtension,
+      content: Content
+    ) -> DispatchResult {
       let creator = ensure_signed(origin)?;
 
       Utils::<T>::is_valid_content(content.clone())?;
@@ -210,6 +216,8 @@ decl_module! {
       // Get space from either space_id_opt or Comment if a comment provided
       let space = &mut new_post.get_space()?;
       ensure!(!space.hidden, Error::<T>::CannotCreateInHiddenScope);
+
+      ensure!(!T::IsAccountBlocked::is_account_blocked(creator.clone(), space.id), UtilsError::<T>::AccountIsBlocked);
 
       let root_post = &mut new_post.get_root_post()?;
       ensure!(!root_post.hidden, Error::<T>::CannotCreateInHiddenScope);
@@ -298,6 +306,11 @@ decl_module! {
       if let Some(content) = update.content {
         if content != post.content {
           Utils::<T>::is_valid_content(content.clone())?;
+
+          if let Some(space_id) = post.try_get_space_id() {
+              ensure!(!T::IsContentBlocked::is_content_blocked(content.clone(), space_id), UtilsError::<T>::ContentIsBlocked);
+          }
+
           old_data.content = Some(post.content);
           post.content = content;
           is_update_applied = true;
@@ -338,6 +351,7 @@ decl_module! {
             // TODO test whether new_space.posts_count increases
             // TODO test whether new_space.hidden_posts_count increases if post is hidden
             // TODO update (hidden_)replies_count of ancestors
+            // TODO check whether post and its content are not blocked within a new space
             // TODO test whether reactions are updated correctly:
             //  - subtract score from an old space
             //  - add score to a new space

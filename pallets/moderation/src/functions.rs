@@ -70,7 +70,7 @@ impl<T: Trait> Module<T> {
 
     pub(crate) fn ensure_entity_in_scope(entity: &EntityId<T::AccountId>, scope: SpaceId) -> DispatchResult {
         if let Some(entity_scope) = Self::get_entity_scope(entity)? {
-            ensure!(entity_scope == scope, Error::<T>::EntityIsNotInScope);
+            ensure!(entity_scope == scope, Error::<T>::EntityNotInScope);
         }
         Ok(())
     }
@@ -122,9 +122,7 @@ impl<T: Trait> IsAccountBlocked for Module<T> {
 }
 
 impl<T: Trait> IsSpaceBlocked for Module<T> {
-    type SpaceId = SpaceId;
-
-    fn is_space_blocked(space_id: Self::SpaceId, scope: SpaceId) -> bool {
+    fn is_space_blocked(space_id: SpaceId, scope: SpaceId) -> bool {
         let entity = EntityId::Space(space_id);
 
         Self::status_by_entity_in_space(entity, scope) == Some(EntityStatus::Blocked)
@@ -142,9 +140,8 @@ impl<T: Trait> IsPostBlocked for Module<T> {
 }
 
 impl<T: Trait> IsContentBlocked for Module<T> {
-    type Content = Content;
 
-    fn is_content_blocked(content: Self::Content, scope: SpaceId) -> bool {
+    fn is_content_blocked(content: Content, scope: SpaceId) -> bool {
         let entity = EntityId::Content(content);
 
         Self::status_by_entity_in_space(entity, scope) == Some(EntityStatus::Blocked)
