@@ -3180,26 +3180,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-moderation"
-version = "0.4.0"
-dependencies = [
- "df-traits",
- "frame-support",
- "frame-system",
- "pallet-permissions",
- "pallet-posts",
- "pallet-space-follows",
- "pallet-spaces",
- "pallet-timestamp",
- "pallet-utils",
- "parity-scale-codec",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-permissions"
 version = "0.4.0"
 dependencies = [
@@ -6276,7 +6256,6 @@ dependencies = [
  "pallet-aura",
  "pallet-balances",
  "pallet-grandpa",
- "pallet-moderation",
  "pallet-permissions",
  "pallet-post-history",
  "pallet-posts",
