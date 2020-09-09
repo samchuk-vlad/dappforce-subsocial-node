@@ -558,7 +558,9 @@ impl pallet_faucet::Trait for Runtime {
 }
 */
 
-impl pallet_badges::Trait for Runtime {}
+impl pallet_badges::Trait for Runtime {
+	type Event = Event;
+}
 
 construct_runtime!(
 	pub enum Runtime where
@@ -578,7 +580,7 @@ construct_runtime!(
 		Utility: pallet_utility::{Module, Call, Event},
 
 		// Subsocial custom pallets:
-    	Badges: pallet_badges::{Module, Call, Storage},
+    	Badges: pallet_badges::{Module, Call, Storage, Event<T>},
 		Permissions: pallet_permissions::{Module, Call},
 		Posts: pallet_posts::{Module, Call, Storage, Event<T>},
 		PostHistory: pallet_post_history::{Module, Storage},
