@@ -10,7 +10,8 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use sp_std::{
 	prelude::*,
-	iter::FromIterator
+	iter::FromIterator,
+	convert::TryInto
 };
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
@@ -461,7 +462,9 @@ impl pallet_space_ownership::Trait for Runtime {
 	type Event = Event;
 }
 
-parameter_types! {}
+parameter_types! {
+	pub SpaceCreationWeight: Weight = (50 * CENTS).try_into().unwrap();
+}
 
 impl pallet_spaces::Trait for Runtime {
 	type Event = Event;
@@ -469,6 +472,7 @@ impl pallet_spaces::Trait for Runtime {
 	type SpaceFollows = SpaceFollows;
 	type BeforeSpaceCreated = SpaceFollows;
 	type AfterSpaceUpdated = SpaceHistory;
+	type SpaceCreationWeight = SpaceCreationWeight;
 }
 
 parameter_types! {}
