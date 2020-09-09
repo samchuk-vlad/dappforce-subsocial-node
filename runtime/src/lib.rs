@@ -463,7 +463,7 @@ impl pallet_space_ownership::Trait for Runtime {
 }
 
 parameter_types! {
-	pub SpaceCreationWeight: Weight = (50 * CENTS).try_into().unwrap();
+	pub SpaceCreationWeight: Weight = (25 * CENTS).try_into().unwrap();
 }
 
 impl pallet_spaces::Trait for Runtime {
