@@ -109,7 +109,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("subsocial"),
 	impl_name: create_runtime_str!("dappforce-subsocial"),
 	authoring_version: 0,
-	spec_version: 1,
+	spec_version: 2,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -267,6 +267,22 @@ impl transaction_payment::Trait for Runtime {
 }
 
 impl sudo::Trait for Runtime {
+	type Event = Event;
+	type Call = Call;
+}
+
+parameter_types! {
+	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(80) * MaximumBlockWeight::get();
+}
+
+impl pallet_scheduler::Trait for Runtime {
+	type Event = Event;
+	type Origin = Origin;
+	type Call = Call;
+	type MaximumWeight = MaximumSchedulerWeight;
+}
+
+impl pallet_utility::Trait for Runtime {
 	type Event = Event;
 	type Call = Call;
 }
@@ -510,6 +526,8 @@ construct_runtime!(
 		Balances: balances::{Module, Call, Storage, Config<T>, Event<T>},
 		TransactionPayment: transaction_payment::{Module, Storage},
 		Sudo: sudo::{Module, Call, Config<T>, Storage, Event<T>},
+		Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
+		Utility: pallet_utility::{Module, Call, Event},
 
 		// Subsocial custom pallets:
 		Permissions: pallet_permissions::{Module, Call},
@@ -525,7 +543,7 @@ construct_runtime!(
 		SpaceHistory: pallet_space_history::{Module, Storage},
 		SpaceOwnership: pallet_space_ownership::{Module, Call, Storage, Event<T>},
 		Spaces: pallet_spaces::{Module, Call, Storage, Event<T>, Config<T>},
-		Utils: pallet_utils::{Storage, Event<T>, Config<T>},
+		Utils: pallet_utils::{Module, Storage, Event<T>, Config<T>},
 		// SessionKeys: session_keys::{Module, Call, Storage, Config<T>, Event<T>},
 	}
 );
