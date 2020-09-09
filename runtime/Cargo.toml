@@ -27,7 +27,7 @@ std = [
     'node-primitives/std',
     'transaction-payment/std',
     'pallet-scheduler/std',
-    'pallet-moderation/std',
+    'pallet-utility/std',
     'pallet-permissions/std',
     'pallet-posts/std',
     'pallet-post-history/std',
@@ -214,10 +214,11 @@ git = 'https://github.com/paritytech/substrate.git'
 tag = 'v2.0.0-rc4'
 version = '2.0.0-rc4'
 
-[dependencies.pallet-moderation]
+[dependencies.pallet-utility]
 default-features = false
-path = '../pallets/moderation'
-version = '0.4.0'
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
 
 [dependencies.pallet-permissions]
 default-features = false

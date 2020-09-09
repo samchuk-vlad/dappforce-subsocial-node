@@ -282,6 +282,11 @@ impl pallet_scheduler::Trait for Runtime {
 	type MaximumWeight = MaximumSchedulerWeight;
 }
 
+impl pallet_utility::Trait for Runtime {
+	type Event = Event;
+	type Call = Call;
+}
+
 // Subsocial custom pallets go below:
 // ------------------------------------------------------------------------------------------------
 
@@ -522,6 +527,7 @@ construct_runtime!(
 		TransactionPayment: transaction_payment::{Module, Storage},
 		Sudo: sudo::{Module, Call, Config<T>, Storage, Event<T>},
 		Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
+		Utility: pallet_utility::{Module, Call, Event},
 
 		// Subsocial custom pallets:
 		Permissions: pallet_permissions::{Module, Call},
