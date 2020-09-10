@@ -6261,6 +6261,7 @@ dependencies = [
  "pallet-aura",
  "pallet-balances",
  "pallet-grandpa",
+ "pallet-moderation",
  "pallet-permissions",
  "pallet-post-history",
  "pallet-posts",

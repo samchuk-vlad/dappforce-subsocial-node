@@ -521,6 +521,7 @@ impl session_keys::Trait for Runtime {
 impl pallet_donations::Trait for Runtime {
 	type Event = Event;
 }
+*/
 
 parameter_types! {
 	pub const DefaultAutoblockThreshold: u16 = 20;
@@ -531,6 +532,7 @@ impl pallet_moderation::Trait for Runtime {
 	type DefaultAutoblockThreshold = DefaultAutoblockThreshold;
 }
 
+/*
 parameter_types! {
 	pub const DailyPeriodInBlocks: BlockNumber = DAYS;
 	pub const WeeklyPeriodInBlocks: BlockNumber = DAYS * 7;
@@ -594,7 +596,7 @@ construct_runtime!(
 
 		// Faucet: pallet_faucet::{Module, Call, Storage, Event<T>},
 		// SessionKeys: session_keys::{Module, Call, Storage, Event<T>},
-		// Moderation: pallet_moderation::{Module, Call, Storage, Event<T>},
+		Moderation: pallet_moderation::{Module, Call, Storage, Event<T>},
 		// Donations: pallet_donations::{Module, Call, Storage, Event<T>},
 		// Subscriptions: pallet_subscriptions::{Module, Call, Storage, Event<T>},
 	}
