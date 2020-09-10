@@ -283,6 +283,7 @@ mod tests {
         type AfterSpaceUpdated = SpaceHistory;
         type IsAccountBlocked = Moderation;
         type IsContentBlocked = Moderation;
+        type SpaceCreationWeight = ();
     }
 
     parameter_types! {}
