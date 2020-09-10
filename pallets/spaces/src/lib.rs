@@ -4,7 +4,8 @@ use codec::{Decode, Encode};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure,
     dispatch::{DispatchError, DispatchResult},
-    traits::Get
+    traits::Get,
+    weights::Weight,
 };
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
@@ -70,6 +71,8 @@ pub trait Trait: system::Trait
     type IsAccountBlocked: IsAccountBlocked<AccountId=Self::AccountId>;
 
     type IsContentBlocked: IsContentBlocked;
+
+    type SpaceCreationWeight: Get<Weight>;
 }
 
 decl_error! {
@@ -133,13 +136,15 @@ decl_event!(
 decl_module! {
   pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 
+    const SpaceCreationWeight: Weight = T::SpaceCreationWeight::get();
+
     // Initializing errors
     type Error = Error<T>;
 
     // Initializing events
     fn deposit_event() = default;
 
-    #[weight = 500_000 + T::DbWeight::get().reads_writes(4, 4)]
+    #[weight = T::SpaceCreationWeight::get() + T::DbWeight::get().reads_writes(4, 4)]
     pub fn create_space(
       origin,
       parent_id_opt: Option<SpaceId>,
