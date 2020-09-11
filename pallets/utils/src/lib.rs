@@ -72,9 +72,6 @@ pub trait Trait: system::Trait + pallet_timestamp::Trait
     /// The currency mechanism.
     type Currency: Currency<Self::AccountId>;
 
-    /// A valid length of IPFS CID in bytes.
-    type IpfsCidLen: Get<u32>;
-
     /// Minimal length of space/profile handle
     type MinHandleLen: Get<u32>;
 
@@ -100,8 +97,6 @@ decl_storage! {
 
 decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-        /// A valid length of IPFS CID in bytes.
-        const IpfsCidLen: u32 = T::IpfsCidLen::get();
 
         /// Minimal length of space/profile handle
         const MinHandleLen: u32 = T::MinHandleLen::get();
@@ -172,9 +167,10 @@ impl<T: Trait> Module<T> {
             Content::None => Ok(()),
             Content::Raw(_) => Err(Error::<T>::RawContentTypeNotSupported.into()),
             Content::IPFS(ipfs_cid) => {
-                // TODO write tests for IPFS CID v0 and v1.
-
-                ensure!(ipfs_cid.len() == T::IpfsCidLen::get() as usize, Error::<T>::InvalidIpfsCid);
+                let len = ipfs_cid.len();
+                // IPFS CID v0 is 46 bytes.
+                // IPFS CID v1 is 59 bytes.df-integration-tests/src/lib.rs:272:5
+                ensure!(len == 46 || len == 59, Error::<T>::InvalidIpfsCid);
                 Ok(())
             },
             Content::Hyper(_) => Err(Error::<T>::HypercoreContentTypeNotSupported.into())

@@ -99,7 +99,6 @@ mod tests {
     }
 
     parameter_types! {
-      pub const IpfsCidLen: u32 = 46;
       pub const MinHandleLen: u32 = 5;
       pub const MaxHandleLen: u32 = 50;
     }
@@ -107,7 +106,6 @@ mod tests {
     impl pallet_utils::Trait for TestRuntime {
         type Event = ();
         type Currency = Balances;
-        type IpfsCidLen = IpfsCidLen;
         type MinHandleLen = MinHandleLen;
         type MaxHandleLen = MaxHandleLen;
     }
@@ -277,6 +275,7 @@ mod tests {
         type SpaceFollows = SpaceFollows;
         type BeforeSpaceCreated = SpaceFollows;
         type AfterSpaceUpdated = SpaceHistory;
+        type SpaceCreationWeight = ();
     }
 
     parameter_types! {}
