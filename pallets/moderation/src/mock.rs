@@ -168,8 +168,9 @@ impl pallet_spaces::Trait for Test {
     type SpaceFollows = SpaceFollows;
     type BeforeSpaceCreated = SpaceFollows;
     type AfterSpaceUpdated = ();
-    type IsAccountBlocked = ModerationForTest;
-    type IsContentBlocked = ModerationForTest;
+    type IsAccountBlocked = Moderation;
+    type IsContentBlocked = Moderation;
+    type SpaceCreationWeight = ();
 }
 
 parameter_types! {}
@@ -189,6 +190,7 @@ impl pallet_posts::Trait for Test {
     type MaxCommentDepth = MaxCommentDepth;
     type PostScores = ();
     type AfterPostUpdated = ();
+    type IsPostBlocked = Moderation;
 }
 
 parameter_types! {
@@ -200,8 +202,8 @@ impl pallet_roles::Trait for Test {
     type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
     type Spaces = Spaces;
     type SpaceFollows = SpaceFollows;
-    type IsAccountBlocked = ModerationForTest;
-    type IsContentBlocked = ModerationForTest;
+    type IsAccountBlocked = Moderation;
+    type IsContentBlocked = Moderation;
 }
 
 parameter_types! {}
@@ -221,7 +223,7 @@ impl Trait for Test {
 }
 
 type System = system::Module<Test>;
-pub type ModerationForTest = Module<Test>;
+pub(crate) type Moderation = Module<Test>;
 type SpaceFollows = pallet_space_follows::Module<Test>;
 type Balances = pallet_balances::Module<Test>;
 type Spaces = pallet_spaces::Module<Test>;
@@ -332,7 +334,7 @@ pub(crate) fn _report_entity(
     scope: Option<SpaceId>,
     reason: Option<Content>,
 ) -> DispatchResult {
-    ModerationForTest::report_entity(
+    Moderation::report_entity(
         origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
         entity.unwrap_or(EntityId::Post(POST1)),
         scope.unwrap_or(SPACE1),
@@ -351,7 +353,7 @@ pub(crate) fn _suggest_entity_status(
     status: Option<Option<EntityStatus>>,
     report_id_opt: Option<Option<ReportId>>,
 ) -> DispatchResult {
-    ModerationForTest::suggest_entity_status(
+    Moderation::suggest_entity_status(
         origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
         entity.unwrap_or(EntityId::Post(POST1)),
         scope.unwrap_or(SPACE1),
@@ -370,7 +372,7 @@ pub(crate) fn _update_entity_status(
     scope: Option<SpaceId>,
     status_opt: Option<Option<EntityStatus>>,
 ) -> DispatchResult {
-    ModerationForTest::update_entity_status(
+    Moderation::update_entity_status(
         origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
         entity.unwrap_or(EntityId::Post(POST1)),
         scope.unwrap_or(SPACE1),
@@ -387,7 +389,7 @@ pub(crate) fn _delete_entity_status(
     entity: Option<EntityId<AccountId>>,
     scope: Option<SpaceId>,
 ) -> DispatchResult {
-    ModerationForTest::delete_entity_status(
+    Moderation::delete_entity_status(
         origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
         entity.unwrap_or(EntityId::Post(POST1)),
         scope.unwrap_or(SPACE1),
@@ -403,7 +405,7 @@ pub(crate) fn _update_moderation_settings(
     space_id: Option<SpaceId>,
     settings_update: Option<SpaceModerationSettingsUpdate>,
 ) -> DispatchResult {
-    ModerationForTest::update_moderation_settings(
+    Moderation::update_moderation_settings(
         origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
         space_id.unwrap_or(SPACE1),
         settings_update.unwrap_or_else(|| default_moderation_settings_update()),

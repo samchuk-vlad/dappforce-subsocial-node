@@ -372,6 +372,7 @@ impl pallet_posts::Trait for Runtime {
 	type MaxCommentDepth = MaxCommentDepth;
 	type PostScores = Scores;
 	type AfterPostUpdated = PostHistory;
+	type IsPostBlocked = Moderation;
 }
 
 parameter_types! {}

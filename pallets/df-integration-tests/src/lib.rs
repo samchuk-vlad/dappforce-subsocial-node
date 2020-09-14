@@ -181,6 +181,7 @@ mod tests {
         type MaxCommentDepth = MaxCommentDepth;
         type PostScores = Scores;
         type AfterPostUpdated = PostHistory;
+        type IsPostBlocked = Moderation;
     }
 
     parameter_types! {}
@@ -1018,7 +1019,7 @@ mod tests {
     // Moderation tests
 
     #[test]
-    fn create_space_should_fail_with_content_blocked() {
+    fn create_space_should_fail_with_content_is_blocked() {
         ExtBuilder::build_with_post().execute_with(|| {
             assert_ok!(
                 _update_entity_status(
@@ -1040,7 +1041,7 @@ mod tests {
     }
 
     #[test]
-    fn create_space_should_fail_with_account_blocked() {
+    fn create_space_should_fail_with_account_is_blocked() {
         ExtBuilder::build_with_post().execute_with(|| {
             assert_ok!(
                 _update_entity_status(
@@ -1062,7 +1063,7 @@ mod tests {
     }
 
     #[test]
-    fn update_space_should_fail_with_account_blocked() {
+    fn update_space_should_fail_with_account_is_blocked() {
         ExtBuilder::build_with_post().execute_with(|| {
             assert_ok!(
                 _update_entity_status(
@@ -1095,7 +1096,7 @@ mod tests {
     }
 
     #[test]
-    fn update_space_should_fail_with_content_blocked() {
+    fn update_space_should_fail_with_content_is_blocked() {
         ExtBuilder::build_with_post().execute_with(|| {
             assert_ok!(
                 _update_entity_status(
@@ -1128,7 +1129,7 @@ mod tests {
     }
 
     #[test]
-    fn create_post_should_fail_with_content_blocked() {
+    fn create_post_should_fail_with_content_is_blocked() {
         ExtBuilder::build_with_post().execute_with(|| {
             assert_ok!(
                 _update_entity_status(
@@ -1150,7 +1151,7 @@ mod tests {
     }
 
     #[test]
-    fn create_post_should_fail_with_account_blocked() {
+    fn create_post_should_fail_with_account_is_blocked() {
         ExtBuilder::build_with_post().execute_with(|| {
             assert_ok!(
                 _update_entity_status(
@@ -1172,7 +1173,7 @@ mod tests {
     }
 
     #[test]
-    fn update_post_should_fail_with_content_blocked() {
+    fn update_post_should_fail_with_content_is_blocked() {
         ExtBuilder::build_with_post().execute_with(|| {
             assert_ok!(
                 _update_entity_status(
@@ -1199,7 +1200,7 @@ mod tests {
     }
 
     #[test]
-    fn update_post_should_fail_with_account_blocked() {
+    fn update_post_should_fail_with_account_is_blocked() {
         ExtBuilder::build_with_post().execute_with(|| {
             assert_ok!(
                 _update_entity_status(
@@ -1224,6 +1225,36 @@ mod tests {
             );
         });
     }
+
+    // FIXME: uncomment when `update_post` will be able to move post from one space to another
+    /*
+    #[test]
+    fn update_post_should_fail_with_post_is_blocked() {
+        ExtBuilder::build_with_post().execute_with(|| {
+            assert_ok!(
+                _update_entity_status(
+                    None,
+                    Some(EntityId::Post(POST1)),
+                    Some(SPACE1),
+                    Some(Some(EntityStatus::Blocked))
+                )
+            );
+            assert_noop!(
+                _update_post(
+                    None, // From ACCOUNT1 (has default permission to UpdateOwnPosts)
+                    Some(POST1),
+                    Some(
+                        self::post_update(
+                            Some(SPACE1),
+                            None,
+                            None
+                        )
+                    )
+                ), UtilsError::<TestRuntime>::PostIsBlocked
+            );
+        });
+    }
+    */
     /*---------------------------------------------------------------------------------------------------*/
     // Space tests
     #[test]
