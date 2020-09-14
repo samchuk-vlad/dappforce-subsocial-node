@@ -11,9 +11,9 @@ fn report_entity_should_work() {
     ExtBuilder::build_with_space_and_post().execute_with(|| {
         assert_ok!(_report_default_entity());
 
-        assert_eq!(ModerationForTest::next_report_id(), REPORT2);
+        assert_eq!(Moderation::next_report_id(), REPORT2);
 
-        let report = ModerationForTest::report_by_id(REPORT1).unwrap();
+        let report = Moderation::report_by_id(REPORT1).unwrap();
         assert_eq!(report.id, REPORT1);
         assert_eq!(report.created.account, ACCOUNT1);
         assert_eq!(report.reported_entity, EntityId::Post(POST1));
@@ -72,7 +72,7 @@ fn suggest_entity_status_should_work() {
         assert_ok!(_report_default_entity());
         assert_ok!(_suggest_default_entity_status());
 
-        let suggestions = ModerationForTest::suggested_statuses(EntityId::Post(POST1), SPACE1);
+        let suggestions = Moderation::suggested_statuses(EntityId::Post(POST1), SPACE1);
         let suggested_status = SuggestedStatus::<Test>::new(
             ACCOUNT1,
             Some(EntityStatus::Blocked),
@@ -164,7 +164,7 @@ fn update_entity_status_should_work_status_allowed() {
         assert_ok!(_suggest_default_entity_status());
         assert_ok!(_update_default_entity_status());
 
-        let status = ModerationForTest::status_by_entity_in_space(EntityId::Post(POST1), SPACE1).unwrap();
+        let status = Moderation::status_by_entity_in_space(EntityId::Post(POST1), SPACE1).unwrap();
         assert_eq!(status, EntityStatus::Allowed);
         // let post = PostById::<Test>::get(POST1).unwrap();
         // assert!(post.space_id.is_none());
@@ -220,7 +220,7 @@ fn delete_entity_status_should_work() {
         assert_ok!(_update_default_entity_status());
         assert_ok!(_delete_default_entity_status());
 
-        let status = ModerationForTest::status_by_entity_in_space(EntityId::Post(POST1), SPACE1);
+        let status = Moderation::status_by_entity_in_space(EntityId::Post(POST1), SPACE1);
         assert!(status.is_none());
     });
 }
@@ -267,7 +267,7 @@ fn update_moderation_settings_should_work() {
     ExtBuilder::build_with_space_and_post().execute_with(|| {
         assert_ok!(_update_default_moderation_settings());
 
-        let settings = ModerationForTest::moderation_settings(SPACE1).unwrap();
+        let settings = Moderation::moderation_settings(SPACE1).unwrap();
         assert_eq!(settings.autoblock_threshold, Some(AUTOBLOCK_THRESHOLD));
     });
 }
