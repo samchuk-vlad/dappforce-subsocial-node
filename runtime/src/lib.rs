@@ -496,7 +496,7 @@ impl Filter<Call> for BaseFilter {
 	}
 }
 
-/*
+
 parameter_types! {
 	pub const MaxSessionKeysPerAccount: u16 = 10;
 }
@@ -522,10 +522,10 @@ impl session_keys::Trait for Runtime {
 	type BaseFilter = SessionKeysProxyFilter;
 }
 
-impl pallet_donations::Trait for Runtime {
+/*impl pallet_donations::Trait for Runtime {
 	type Event = Event;
-}
-*/
+}*/
+
 
 parameter_types! {
 	pub const DefaultAutoblockThreshold: u16 = 20;
@@ -599,7 +599,7 @@ construct_runtime!(
 		// New experimental pallets. Not recommended to use in production yet.
 
 		// Faucet: pallet_faucet::{Module, Call, Storage, Event<T>},
-		// SessionKeys: session_keys::{Module, Call, Storage, Event<T>},
+		SessionKeys: session_keys::{Module, Call, Storage, Event<T>},
 		Moderation: pallet_moderation::{Module, Call, Storage, Event<T>},
 		// Donations: pallet_donations::{Module, Call, Storage, Event<T>},
 		// Subscriptions: pallet_subscriptions::{Module, Call, Storage, Event<T>},
