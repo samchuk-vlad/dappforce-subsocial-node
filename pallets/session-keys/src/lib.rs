@@ -18,7 +18,7 @@ use sp_std::prelude::*;
 use sp_runtime::RuntimeDebug;
 use sp_runtime::traits::{Zero, Dispatchable, Saturating, SaturatedConversion};
 use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage, ensure,
+    decl_error, decl_event, decl_module, decl_storage, ensure, fail,
     weights::{
         GetDispatchInfo, DispatchClass, WeighData,
         Weight, ClassifyDispatch, PaysFee, Pays,
@@ -251,7 +251,7 @@ decl_module! {
 
             if details.is_expired() {
                 Self::try_remove_key(details.created.account, key)?;
-                return Err(Error::<T>::SessionKeyExpired.into());
+                fail!(Error::<T>::SessionKeyExpired);
             }
 
             let real = details.owner();

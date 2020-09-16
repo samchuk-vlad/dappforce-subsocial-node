@@ -21,6 +21,7 @@ use pallet_permissions::{
 };
 use pallet_utils::{Content, SpaceId};
 use pallet_spaces::Call as SpacesCall;
+use frame_support::traits::Currency;
 
 impl_outer_origin! {
 	pub enum Origin for Test {}
@@ -218,7 +219,7 @@ impl pallet_profiles::Trait for Test {
 }
 
 parameter_types! {
-    pub const MaxSessionKeysPerAccount: u16 = 10;
+    pub const MaxSessionKeysPerAccount: u16 = 2;
 }
 
 impl Trait for Test {
@@ -228,8 +229,8 @@ impl Trait for Test {
     type BaseFilter = ();
 }
 
-type System = system::Module<Test>;
-pub(crate) type Session_keys = Module<Test>;
+pub(crate) type System = system::Module<Test>;
+pub(crate) type SessionKeys = Module<Test>;
 type Balances = pallet_balances::Module<Test>;
 type SpaceFollows = pallet_space_follows::Module<Test>;
 type Spaces = pallet_spaces::Module<Test>;
@@ -252,10 +253,27 @@ impl ExtBuilder {
 
         ext
     }
+
+    pub fn build_with_balance() -> TestExternalities {
+        let storage = system::GenesisConfig::default()
+            .build_storage::<Test>()
+            .unwrap();
+
+        let mut ext = TestExternalities::from(storage);
+        ext.execute_with(|| {
+            System::set_block_number(1);
+
+            pallet_balances::Module::<Test>::make_free_balance_be(&ACCOUNT1, 10);
+        });
+
+        ext
+    }
 }
 
 pub(crate) const ACCOUNT1: AccountId = 1;
 pub(crate) const ACCOUNT2: AccountId = 2;
+pub(crate) const ACCOUNT3: AccountId = 3;
+pub(crate) const ACCOUNT4: AccountId = 4;
 
 pub(crate) const BALANCE1: Balance = 2;
 pub(crate) const BLOCK_NUMBER: BlockNumber = 20;
@@ -272,9 +290,9 @@ pub(crate) fn _add_key(
     time_to_live: Option<BlockNumber>,
     limit: Option<Option<Balance>>,
 ) -> DispatchResult {
-    Session_keys::add_key(
+    SessionKeys::add_key(
         origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
-        key_account.unwrap_or(ACCOUNT1),
+        key_account.unwrap_or(ACCOUNT2),
         time_to_live.unwrap_or(BLOCK_NUMBER),
         limit.unwrap_or(Some(BALANCE1)),
     )
@@ -286,9 +304,9 @@ pub(crate) fn _remove_key(
     origin: Option<Origin>,
     key_account: Option<AccountId>,
 ) -> DispatchResult {
-    Session_keys::remove_key(
+    SessionKeys::remove_key(
         origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
-        key_account.unwrap_or(ACCOUNT1),
+        key_account.unwrap_or(ACCOUNT2),
     )
 }
 
@@ -297,7 +315,7 @@ pub(crate) fn _remove_default_keys() -> DispatchResult { _remove_keys(None)}
 pub(crate) fn _remove_keys(
     origin: Option<Origin>
 ) -> DispatchResult {
-    Session_keys::remove_keys(
+    SessionKeys::remove_keys(
         origin.unwrap_or_else(|| Origin::signed(ACCOUNT1))
     )
 }
@@ -308,8 +326,8 @@ pub(crate) fn _proxy(
     origin: Option<Origin>,
     call: Option<Call>,
 ) -> DispatchResult {
-    Session_keys::proxy(
-        origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
+    SessionKeys::proxy(
+        origin.unwrap_or_else(|| Origin::signed(ACCOUNT2)),
         Box::new(call.unwrap_or(Call::Spaces(SpacesCall::create_space(Some(ACCOUNT1), None, valid_content_ipfs_1())))),
     )
 }
