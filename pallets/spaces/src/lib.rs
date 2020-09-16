@@ -100,7 +100,6 @@ decl_storage! {
           for id in 1..=1000 {
             spaces.push((id, Space::<T>::new(id, None, endowed_account.clone(), Content::None, None)));
           }
-          
           spaces
         }):
             map hasher(twox_64_concat) SpaceId => Option<Space<T>>;
