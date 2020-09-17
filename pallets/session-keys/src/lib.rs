@@ -140,7 +140,7 @@ decl_error! {
         /// Reached the limit of tokens this session key can spend.
         SessionKeyLimitReached,
         /// Only a session key owner can manage their keys.
-        NeitherSessionKeyOwnerNorExpired,
+        NotASessionKeyOwner,
     }
 }
 
@@ -221,7 +221,7 @@ decl_module! {
             let who = ensure_signed(origin)?;
 
             let key = Self::require_key(key_account.clone())?;
-            key.ensure_owner_or_expired(who.clone())?;
+            ensure!(key.is_owner(&who), Error::<T>::NotASessionKeyOwner);
 
             // Deposits event on success
             Self::try_remove_key(who, key_account)?;
@@ -327,14 +327,6 @@ impl<T: Trait> SessionKey<T> {
 
     pub fn is_expired(&self) -> bool {
         self.expires_at <= <system::Module<T>>::block_number()
-    }
-
-    pub fn ensure_owner_or_expired(&self, maybe_owner: T::AccountId) -> DispatchResult {
-        ensure!(
-            self.is_owner(&maybe_owner) || self.is_expired(),
-            Error::<T>::NeitherSessionKeyOwnerNorExpired
-        );
-        Ok(())
     }
 }
 

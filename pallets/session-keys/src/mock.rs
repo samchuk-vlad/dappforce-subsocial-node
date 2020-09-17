@@ -9,7 +9,7 @@ use sp_runtime::{
 
 use frame_system as system;
 use frame_support::{
-    impl_outer_origin, impl_outer_dispatch, parameter_types, assert_ok, StorageMap,
+    impl_outer_origin, impl_outer_dispatch, parameter_types,
     weights::Weight,
     dispatch::{DispatchResult},
 };
@@ -172,7 +172,7 @@ impl pallet_permissions::Trait for Test {
 impl df_traits::moderation::IsAccountBlocked for Test {
     type AccountId = u64;
 
-    fn is_account_blocked(account: Self::AccountId, scope: SpaceId) -> bool {
+    fn is_account_blocked(_account: Self::AccountId, _scope: SpaceId) -> bool {
         false
     }
 }
@@ -231,7 +231,7 @@ impl Trait for Test {
 
 pub(crate) type System = system::Module<Test>;
 pub(crate) type SessionKeys = Module<Test>;
-type Balances = pallet_balances::Module<Test>;
+pub(crate) type Balances = pallet_balances::Module<Test>;
 type SpaceFollows = pallet_space_follows::Module<Test>;
 type Spaces = pallet_spaces::Module<Test>;
 type Roles = pallet_roles::Module<Test>;
@@ -263,7 +263,7 @@ impl ExtBuilder {
         ext.execute_with(|| {
             System::set_block_number(1);
 
-            pallet_balances::Module::<Test>::make_free_balance_be(&ACCOUNT1, 10);
+            Balances::make_free_balance_be(&ACCOUNT1, 10);
         });
 
         ext
@@ -275,7 +275,7 @@ pub(crate) const ACCOUNT2: AccountId = 2;
 pub(crate) const ACCOUNT3: AccountId = 3;
 pub(crate) const ACCOUNT4: AccountId = 4;
 
-pub(crate) const BALANCE1: Balance = 2;
+pub(crate) const DEFAULT_SESSION_KEY_BALANCE: Balance = 2;
 pub(crate) const BLOCK_NUMBER: BlockNumber = 20;
 
 pub(crate) fn valid_content_ipfs_1() -> Content {
@@ -294,7 +294,7 @@ pub(crate) fn _add_key(
         origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
         key_account.unwrap_or(ACCOUNT2),
         time_to_live.unwrap_or(BLOCK_NUMBER),
-        limit.unwrap_or(Some(BALANCE1)),
+        limit.unwrap_or(Some(DEFAULT_SESSION_KEY_BALANCE)),
     )
 }
 
