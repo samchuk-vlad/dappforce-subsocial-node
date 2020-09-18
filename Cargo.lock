@@ -3397,6 +3397,7 @@ dependencies = [
  "pallet-space-follows",
  "pallet-spaces",
  "pallet-timestamp",
+ "pallet-transaction-payment",
  "pallet-utils",
  "parity-scale-codec",
  "serde",

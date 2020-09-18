@@ -16,11 +16,11 @@
 use codec::{Decode, Encode};
 use sp_std::prelude::*;
 use sp_runtime::RuntimeDebug;
-use sp_runtime::traits::{Zero, Dispatchable, Saturating, SaturatedConversion};
+use sp_runtime::traits::{Zero, Dispatchable, Saturating, SaturatedConversion, Extrinsic};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure, fail,
     weights::{
-        GetDispatchInfo, DispatchClass, WeighData,
+        DispatchInfo, GetDispatchInfo, DispatchClass, WeighData,
         Weight, ClassifyDispatch, PaysFee, Pays,
     },
     dispatch::{DispatchError, DispatchResult, PostDispatchInfo},
@@ -31,29 +31,21 @@ use frame_support::{
     Parameter,
 };
 use frame_system::{self as system, ensure_signed};
+use transaction_payment::Module as TransactionPayment;
 
 use pallet_utils::WhoAndWhen;
 
-#[cfg(test)]
-mod mock;
-
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod mock;
+//
+// #[cfg(test)]
+// mod tests;
 
 struct CalculateProxyWeight<T: Trait>(Box<<T as Trait>::Call>);
 
 impl<T: Trait> WeighData<(&Box<<T as Trait>::Call>,)> for CalculateProxyWeight<T> {
     fn weigh_data(&self, target: (&Box<<T as Trait>::Call>,)) -> Weight {
-        let call_dispatch_info = target.0.get_dispatch_info();
-        let db_weight = T::DbWeight::get();
-        let mut weight = call_dispatch_info.weight;
-
-        match call_dispatch_info.pays_fee {
-            Pays::Yes => weight = weight.saturating_add(db_weight.reads_writes(1, 1)),
-            Pays::No => weight = weight.saturating_add(db_weight.reads_writes(1, 0)),
-        }
-
-        weight
+        target.0.get_dispatch_info().weight
     }
 }
 
@@ -64,12 +56,13 @@ impl<T: Trait> ClassifyDispatch<(&Box<<T as Trait>::Call>,)> for CalculateProxyW
 }
 
 impl<T: Trait> PaysFee<(&Box<<T as Trait>::Call>,)> for CalculateProxyWeight<T> {
-    fn pays_fee(&self, _target: (&Box<<T as Trait>::Call>,)) -> Pays {
-        Pays::Yes
+    fn pays_fee(&self, target: (&Box<<T as Trait>::Call>,)) -> Pays {
+        target.0.get_dispatch_info().pays_fee
     }
 }
 
-type BalanceOf<T> = <<T as pallet_utils::Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
+type BalanceOf<T> =
+    <<T as transaction_payment::Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
 
 // TODO define session key permissions
 
@@ -94,13 +87,16 @@ pub struct SessionKey<T: Trait> {
 }
 
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait + pallet_utils::Trait {
+pub trait Trait: system::Trait
+    + pallet_utils::Trait
+    + transaction_payment::Trait
+{
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
     /// The overarching call type.
     type Call: Parameter
-        + Dispatchable<Origin=Self::Origin, PostInfo=PostDispatchInfo>
+        + Dispatchable<Origin=Self::Origin, PostInfo=PostDispatchInfo, Info=DispatchInfo>
         + GetDispatchInfo + From<frame_system::Call<Self>>
         + IsType<<Self as frame_system::Trait>::Call>;
 
@@ -264,11 +260,19 @@ decl_module! {
                 ensure!(can_spend > Zero::zero(), Error::<T>::SessionKeyLimitReached);
             }
 
+            // TODO check that this call is among allowed calls per this account/session key.
+            let mut origin: T::Origin = frame_system::RawOrigin::Signed(real).into();
+			origin.add_filter(move |c: &<T as frame_system::Trait>::Call| {
+				let c = <T as Trait>::Call::from_ref(c);
+				T::BaseFilter::filter(c)
+			});
+
             let call_dispatch_info = call.get_dispatch_info();
             if call_dispatch_info.pays_fee == Pays::Yes {
+                let _payment_info = Self::get_extrinsic_fees(call.clone(), origin.clone());
                 let spent_on_call = BalanceOf::<T>::saturated_from(call_dispatch_info.weight.into())
                     .saturating_mul(BalanceOf::<T>::from(2));
-                T::Currency::transfer(&real, &key, spent_on_call, ExistenceRequirement::KeepAlive)?;
+                <T as transaction_payment::Trait>::Currency::transfer(&real, &key, spent_on_call, ExistenceRequirement::KeepAlive)?;
 
                 // TODO: what if balance left is less than InclusionFee on the next call?
 
@@ -277,13 +281,6 @@ decl_module! {
 
                 KeyDetails::<T>::insert(key, details);
             }
-
-            // TODO check that this call is among allowed calls per this account/session key.
-            let mut origin: T::Origin = frame_system::RawOrigin::Signed(real).into();
-			origin.add_filter(move |c: &<T as frame_system::Trait>::Call| {
-				let c = <T as Trait>::Call::from_ref(c);
-				T::BaseFilter::filter(c)
-			});
 
             let e = call.dispatch(origin);
             Self::deposit_event(RawEvent::ProxyExecuted(e.map(|_| ()).map_err(|e| e.error)));
@@ -359,20 +356,28 @@ impl<T: Trait> Module<T> {
         owner: &T::AccountId,
         amount: Option<BalanceOf<T>>
     ) -> DispatchResult {
-        T::Currency::transfer(
+        <T as transaction_payment::Trait>::Currency::transfer(
             key_account,
             owner,
-            amount.unwrap_or_else(|| T::Currency::free_balance(key_account)),
+            amount.unwrap_or_else(||
+                <T as transaction_payment::Trait>::Currency::free_balance(key_account)
+            ),
             ExistenceRequirement::AllowDeath
         )
     }
 
     fn keep_session_alive(source: &T::AccountId, key_account: &T::AccountId) -> DispatchResult {
-        T::Currency::transfer(
+        <T as transaction_payment::Trait>::Currency::transfer(
             source,
             key_account,
-            T::Currency::minimum_balance().saturating_mul(BalanceOf::<T>::from(2)),
+            <T as transaction_payment::Trait>::Currency::minimum_balance()
+                .saturating_mul(BalanceOf::<T>::from(2)),
             ExistenceRequirement::KeepAlive
         )
+    }
+
+    fn get_extrinsic_fees(call: Box<<T as Trait>::Call>, origin: T::Origin) {
+        let extrinsic = Extrinsic::new(call, Some(origin));
+        TransactionPayment::<T>::query_info(extrinsic, extrinsic.encode().len() as u32);
     }
 }
