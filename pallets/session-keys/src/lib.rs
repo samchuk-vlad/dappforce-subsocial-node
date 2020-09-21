@@ -16,11 +16,11 @@
 use codec::{Decode, Encode};
 use sp_std::prelude::*;
 use sp_runtime::RuntimeDebug;
-use sp_runtime::traits::{Zero, Dispatchable, Saturating, SaturatedConversion, Extrinsic};
+use sp_runtime::traits::{Zero, One, Dispatchable, Saturating};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure, fail,
     weights::{
-        DispatchInfo, GetDispatchInfo, DispatchClass, WeighData,
+        GetDispatchInfo, DispatchClass, WeighData, WeightToFeePolynomial,
         Weight, ClassifyDispatch, PaysFee, Pays,
     },
     dispatch::{DispatchError, DispatchResult, PostDispatchInfo},
@@ -31,7 +31,6 @@ use frame_support::{
     Parameter,
 };
 use frame_system::{self as system, ensure_signed};
-use transaction_payment::Module as TransactionPayment;
 
 use pallet_utils::WhoAndWhen;
 
@@ -96,7 +95,7 @@ pub trait Trait: system::Trait
 
     /// The overarching call type.
     type Call: Parameter
-        + Dispatchable<Origin=Self::Origin, PostInfo=PostDispatchInfo, Info=DispatchInfo>
+        + Dispatchable<Origin=Self::Origin, PostInfo=PostDispatchInfo>
         + GetDispatchInfo + From<frame_system::Call<Self>>
         + IsType<<Self as frame_system::Trait>::Call>;
 
@@ -261,7 +260,7 @@ decl_module! {
             }
 
             // TODO check that this call is among allowed calls per this account/session key.
-            let mut origin: T::Origin = frame_system::RawOrigin::Signed(real).into();
+            let mut origin: T::Origin = frame_system::RawOrigin::Signed(real.clone()).into();
 			origin.add_filter(move |c: &<T as frame_system::Trait>::Call| {
 				let c = <T as Trait>::Call::from_ref(c);
 				T::BaseFilter::filter(c)
@@ -269,9 +268,9 @@ decl_module! {
 
             let call_dispatch_info = call.get_dispatch_info();
             if call_dispatch_info.pays_fee == Pays::Yes {
-                let _payment_info = Self::get_extrinsic_fees(call.clone(), origin.clone());
-                let spent_on_call = BalanceOf::<T>::saturated_from(call_dispatch_info.weight.into())
-                    .saturating_mul(BalanceOf::<T>::from(2));
+                let spent_on_call = Self::get_extrinsic_fees(call.clone());
+                // let spent_on_call = BalanceOf::<T>::saturated_from(call_dispatch_info.weight.into())
+                //     .saturating_mul(BalanceOf::<T>::from(2));
                 <T as transaction_payment::Trait>::Currency::transfer(&real, &key, spent_on_call, ExistenceRequirement::KeepAlive)?;
 
                 // TODO: what if balance left is less than InclusionFee on the next call?
@@ -370,14 +369,17 @@ impl<T: Trait> Module<T> {
         <T as transaction_payment::Trait>::Currency::transfer(
             source,
             key_account,
-            <T as transaction_payment::Trait>::Currency::minimum_balance()
-                .saturating_mul(BalanceOf::<T>::from(2)),
+            One::one(),
             ExistenceRequirement::KeepAlive
         )
     }
 
-    fn get_extrinsic_fees(call: Box<<T as Trait>::Call>, origin: T::Origin) {
-        let extrinsic = Extrinsic::new(call, Some(origin));
-        TransactionPayment::<T>::query_info(extrinsic, extrinsic.encode().len() as u32);
+    fn get_extrinsic_fees(call: Box<<T as Trait>::Call>) -> BalanceOf<T> {
+        let byte_fee = T::TransactionByteFee::get();
+        let call_length = call.encode().len() as u32;
+        let length_fee = BalanceOf::<T>::from(call_length).saturating_mul(byte_fee);
+        let weight_fee = T::WeightToFee::calc(&call.get_dispatch_info().weight);
+
+        length_fee + weight_fee
     }
 }
