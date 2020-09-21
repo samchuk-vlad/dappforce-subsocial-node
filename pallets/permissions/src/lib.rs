@@ -14,6 +14,8 @@ use frame_system::{self as system};
 
 use pallet_utils::SpaceId;
 
+pub mod default_permissions;
+
 #[derive(Encode, Decode, Ord, PartialOrd, Clone, Eq, PartialEq, RuntimeDebug)]
 pub enum SpacePermission {
   /// Create, update, delete, grant and revoke roles in this space.
