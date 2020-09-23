@@ -11,7 +11,6 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 use sp_std::{
 	prelude::*,
 	iter::FromIterator,
-	convert::TryInto
 };
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
@@ -110,7 +109,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("subsocial"),
 	impl_name: create_runtime_str!("dappforce-subsocial"),
 	authoring_version: 0,
-	spec_version: 4,
+	spec_version: 5,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -461,7 +460,7 @@ impl pallet_space_ownership::Trait for Runtime {
 }
 
 parameter_types! {
-	pub SpaceCreationWeight: Weight = (25 * CENTS).try_into().unwrap();
+	pub SpaceCreationFee: Balance = 25 * CENTS;
 }
 
 impl pallet_spaces::Trait for Runtime {
@@ -470,7 +469,7 @@ impl pallet_spaces::Trait for Runtime {
 	type SpaceFollows = SpaceFollows;
 	type BeforeSpaceCreated = SpaceFollows;
 	type AfterSpaceUpdated = SpaceHistory;
-	type SpaceCreationWeight = SpaceCreationWeight;
+	type SpaceCreationFee = SpaceCreationFee;
 }
 
 parameter_types! {}

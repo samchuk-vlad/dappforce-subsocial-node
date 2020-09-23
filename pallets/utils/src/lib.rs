@@ -62,6 +62,7 @@ impl Content {
 }
 
 type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
+
 type NegativeImbalanceOf<T> = <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::NegativeImbalance;
 
 pub trait Trait: system::Trait + pallet_timestamp::Trait
@@ -81,7 +82,7 @@ pub trait Trait: system::Trait + pallet_timestamp::Trait
 
 decl_storage! {
     trait Store for Module<T: Trait> as UtilsModule {
-        TreasuryAccount build(|config| config.treasury_account.clone()): T::AccountId;
+        pub TreasuryAccount get(fn treasury_account) build(|config| config.treasury_account.clone()): T::AccountId;
     }
     add_extra_genesis {
         config(treasury_account): T::AccountId;

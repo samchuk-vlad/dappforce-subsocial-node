@@ -275,7 +275,7 @@ mod tests {
         type SpaceFollows = SpaceFollows;
         type BeforeSpaceCreated = SpaceFollows;
         type AfterSpaceUpdated = SpaceHistory;
-        type SpaceCreationWeight = ();
+        type SpaceCreationFee = ();
     }
 
     parameter_types! {}
@@ -3158,12 +3158,24 @@ mod tests {
     }
 
     #[test]
-    fn accept_pending_ownership_should_fail_with_not_allowed_to_accept() {
+    fn accept_pending_ownership_should_fail_if_origin_is_already_an_owner() {
         ExtBuilder::build_with_space().execute_with(|| {
             assert_ok!(_transfer_default_space_ownership());
 
             assert_noop!(_accept_pending_ownership(
                 Some(Origin::signed(ACCOUNT1)),
+                None
+            ), SpaceOwnershipError::<TestRuntime>::AlreadyASpaceOwner);
+        });
+    }
+
+    #[test]
+    fn accept_pending_ownership_should_fail_if_origin_is_not_equal_to_pending_account() {
+        ExtBuilder::build_with_space().execute_with(|| {
+            assert_ok!(_transfer_default_space_ownership());
+
+            assert_noop!(_accept_pending_ownership(
+                Some(Origin::signed(ACCOUNT3)),
                 None
             ), SpaceOwnershipError::<TestRuntime>::NotAllowedToAcceptOwnershipTransfer);
         });
