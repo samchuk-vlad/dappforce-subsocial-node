@@ -43,6 +43,7 @@ std = [
     'pallet-space-history/std',
     'pallet-utils/std',
     'spaces-runtime-api/std',
+    'posts-runtime-api/std',
 ]
 
 [dependencies.aura]
@@ -300,6 +301,10 @@ version = '0.4.0'
 [dependencies.spaces-runtime-api]
 default-features = false
 path = '../pallets/spaces/runtime-api'
+
+[dependencies.posts-runtime-api]
+default-features = false
+path = '../pallets/posts/runtime-api'
 
 [package]
 name = 'subsocial-runtime'
