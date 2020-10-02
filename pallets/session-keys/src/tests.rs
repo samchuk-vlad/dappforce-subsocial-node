@@ -17,7 +17,7 @@ fn add_key_should_work() {
 
         let account_balance_after_key_created = Balances::free_balance(ACCOUNT1);
         let session_key_balance = Balances::free_balance(ACCOUNT2);
-        assert_eq!(session_key_balance, DEFAULT_SESSION_KEY_BALANCE);
+        assert_eq!(session_key_balance, 1);
         assert_eq!(account_balance_after_key_created, initial_account_balance - session_key_balance);
     });
 }
@@ -144,15 +144,21 @@ fn remove_keys_should_work() {
     });
 }
 
-
-
 //---------------------------------------------------------------------------------------------
 
 #[test]
 fn proxy_should_work() {
     ExtBuilder::build_with_balance().execute_with(|| {
         assert_ok!(_add_default_key());
+        let account_balance_after_key_created = Balances::free_balance(ACCOUNT1);
+
         assert_ok!(_default_proxy());
+        let account_balance_after_call = Balances::free_balance(ACCOUNT1);
+
+        assert_eq!(account_balance_after_call, account_balance_after_key_created - DEFAULT_SESSION_KEY_BALANCE);
+
+        let details = SessionKeys::key_details(ACCOUNT2).unwrap();
+        assert_eq!(details.spent, DEFAULT_SESSION_KEY_BALANCE);
     });
 }
 
@@ -179,5 +185,18 @@ fn proxy_should_fail_with_session_key_expired() {
     });
 }
 
-// TODO: Add test for currencies behavior
-
+#[test]
+fn proxy_should_fail_with_session_key_limit_reached() {
+    ExtBuilder::build_with_balance().execute_with(|| {
+        assert_ok!(
+            _add_key(
+                None,
+                None,
+                None,
+                None
+            )
+        );
+        assert_ok!(_default_proxy());
+        assert_noop!(_default_proxy(), Error::<Test>::SessionKeyLimitReached);
+    });
+}

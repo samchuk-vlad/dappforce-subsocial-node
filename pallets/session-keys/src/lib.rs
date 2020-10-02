@@ -34,11 +34,11 @@ use frame_system::{self as system, ensure_signed};
 
 use pallet_utils::WhoAndWhen;
 
-// #[cfg(test)]
-// mod mock;
-//
-// #[cfg(test)]
-// mod tests;
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
 
 struct CalculateProxyWeight<T: Trait>(Box<<T as Trait>::Call>);
 
