@@ -4,13 +4,13 @@ use sp_std::iter::FromIterator;
 use sp_io::TestExternalities;
 use sp_core::H256;
 use sp_runtime::{
-    traits::{BlakeTwo256, IdentityLookup}, testing::Header, Perbill,
+    traits::{BlakeTwo256, IdentityLookup}, testing::Header, Perbill, Perquintill, FixedPointNumber,
 };
 
 use frame_system as system;
 use frame_support::{
     impl_outer_origin, impl_outer_dispatch, parameter_types,
-    weights::Weight,
+    weights::{Weight, IdentityFee},
     dispatch::{DispatchResult},
 };
 
@@ -22,6 +22,12 @@ use pallet_permissions::{
 use pallet_utils::{Content, SpaceId};
 use pallet_spaces::Call as SpacesCall;
 use frame_support::traits::Currency;
+pub use transaction_payment::{Multiplier, TargetedFeeAdjustment};
+
+pub const SMNS: Balance = 1_000_000_000_000;
+pub const DOLLARS: Balance = SMNS;             // 1_000_000_000_000
+pub const CENTS: Balance = DOLLARS / 100;
+pub const MILLICENTS: Balance = CENTS / 1_000;
 
 impl_outer_origin! {
 	pub enum Origin for Test {}
@@ -219,6 +225,22 @@ impl pallet_profiles::Trait for Test {
 }
 
 parameter_types! {
+	pub const TransactionByteFee: Balance = 1 * MILLICENTS;
+	pub const TargetBlockFullness: Perquintill = Perquintill::from_percent(25);
+	pub AdjustmentVariable: Multiplier = Multiplier::saturating_from_rational(1, 100_000);
+	pub MinimumMultiplier: Multiplier = Multiplier::saturating_from_rational(1, 1_000_000_000u128);
+}
+
+impl transaction_payment::Trait for Test {
+    type Currency = Balances;
+    type OnTransactionPayment = ();
+    type TransactionByteFee = TransactionByteFee;
+    type WeightToFee = IdentityFee<Balance>;
+    type FeeMultiplierUpdate =
+    TargetedFeeAdjustment<Self, TargetBlockFullness, AdjustmentVariable, MinimumMultiplier>;
+}
+
+parameter_types! {
     pub const MaxSessionKeysPerAccount: u16 = 2;
 }
 
@@ -263,7 +285,7 @@ impl ExtBuilder {
         ext.execute_with(|| {
             System::set_block_number(1);
 
-            Balances::make_free_balance_be(&ACCOUNT1, 10);
+            Balances::make_free_balance_be(&ACCOUNT1, 1_000_000_000);
         });
 
         ext
@@ -275,7 +297,7 @@ pub(crate) const ACCOUNT2: AccountId = 2;
 pub(crate) const ACCOUNT3: AccountId = 3;
 pub(crate) const ACCOUNT4: AccountId = 4;
 
-pub(crate) const DEFAULT_SESSION_KEY_BALANCE: Balance = 2;
+pub(crate) const DEFAULT_SESSION_KEY_BALANCE: Balance = 600_000_000;
 pub(crate) const BLOCK_NUMBER: BlockNumber = 20;
 
 pub(crate) fn valid_content_ipfs_1() -> Content {
