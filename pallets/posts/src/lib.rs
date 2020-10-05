@@ -2,7 +2,7 @@
 
 use codec::{Decode, Encode};
 use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage,
+    decl_error, decl_event, decl_module, decl_storage, fail,
     dispatch::{DispatchError, DispatchResult}, ensure, traits::Get,
 };
 use sp_runtime::RuntimeDebug;
@@ -12,7 +12,10 @@ use frame_system::{self as system, ensure_signed};
 use df_traits::moderation::{IsAccountBlocked, IsContentBlocked};
 use pallet_permissions::SpacePermission;
 use pallet_spaces::{Module as Spaces, Space, SpaceById};
-use pallet_utils::{Module as Utils, Error as UtilsError, SpaceId, WhoAndWhen, Content};
+use pallet_utils::{
+    Module as Utils, Error as UtilsError,
+    SpaceId, WhoAndWhen, Content
+};
 
 pub mod functions;
 
@@ -261,13 +264,13 @@ decl_module! {
       let editor = ensure_signed(origin)?;
 
       let has_updates =
-        // update.space_id.is_some() ||
+        update.space_id.is_some() ||
         update.content.is_some() ||
         update.hidden.is_some();
 
       ensure!(has_updates, Error::<T>::NoUpdatesForPost);
 
-      let mut post = Self::require_post(post_id)?;
+      let post = &mut Self::require_post(post_id)?;
 
       let is_owner = post.is_owner(&editor);
       let is_comment = post.is_comment();
@@ -311,7 +314,7 @@ decl_module! {
               ensure!(!T::IsContentBlocked::is_content_blocked(content.clone(), space_id), UtilsError::<T>::ContentIsBlocked);
           }
 
-          old_data.content = Some(post.content);
+          old_data.content = Some(post.content.clone());
           post.content = content;
           is_update_applied = true;
         }
@@ -339,35 +342,35 @@ decl_module! {
         }
       }
 
-      /*
       // Move this post to another space:
-      if let Some(space_id) = update.space_id {
+      if let Some(new_space_id) = update.space_id {
         ensure!(post.is_root_post(), Error::<T>::CannotUpdateSpaceIdOnComment);
 
         if let Some(post_space_id) = post.space_id {
-          if space_id != post_space_id {
-            Spaces::<T>::ensure_space_exists(space_id)?;
+          if new_space_id != post_space_id {
+
             // TODO check that the current user has CreatePosts permission in new space_id.
-            // TODO test whether new_space.posts_count increases
-            // TODO test whether new_space.hidden_posts_count increases if post is hidden
-            // TODO update (hidden_)replies_count of ancestors
-            // TODO check whether post and its content are not blocked within a new space
+            // TODO update (hidden_)replies_count of ancestors (?unneeded, because we can't move comments)
+
             // TODO test whether reactions are updated correctly:
             //  - subtract score from an old space
             //  - add score to a new space
+            // TODO test whether new_space.posts_count increases
+            // TODO test whether new_space.hidden_posts_count increases if post is hidden
 
-            // Remove post_id from its old space:
-            PostIdsBySpaceId::mutate(post_space_id, |post_ids| vec_remove_on(post_ids, post_id));
+            Self::move_post_to_space(
+                editor.clone(),
+                post,
+                new_space_id
+            )?;
 
-            // Add post_id to its new space:
-            PostIdsBySpaceId::mutate(space_id, |ids| ids.push(post_id));
+            // FIXME: post.space_id is equal to new_space_id at this point
             old_data.space_id = post.space_id;
-            post.space_id = Some(space_id);
+            post.space_id = Some(new_space_id);
             is_update_applied = true;
           }
         }
       }
-      */
 
       // Update this post only if at least one field should be updated:
       if is_update_applied {
@@ -378,7 +381,7 @@ decl_module! {
         }
 
         <PostById<T>>::insert(post.id, post.clone());
-        T::AfterPostUpdated::after_post_updated(editor.clone(), &post, old_data);
+        T::AfterPostUpdated::after_post_updated(editor.clone(), post, old_data);
 
         Self::deposit_event(RawEvent::PostUpdated(editor, post_id));
       }
