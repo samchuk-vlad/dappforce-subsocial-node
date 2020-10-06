@@ -3242,6 +3242,7 @@ dependencies = [
  "pallet-spaces",
  "pallet-utils",
  "parity-scale-codec",
+ "sp-core",
  "sp-runtime",
  "sp-std",
 ]

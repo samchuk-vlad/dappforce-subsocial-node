@@ -1,13 +1,27 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
+use sp_core::storage::StorageMap;
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
     dispatch::{DispatchError, DispatchResult}, ensure, traits::Get,
 };
-use sp_runtime::RuntimeDebug;
+use sp_runtime::{
+    RuntimeDebug,
+    offchain::storage::StorageValueRef,
+};
 use sp_std::prelude::*;
-use frame_system::{self as system, ensure_signed};
+use sp_std::convert::TryInto;
+use frame_system::{
+    self as system,
+    Module as SystemModule,
+    EventRecord,
+    ensure_signed,
+    offchain::{
+        AppCrypto, CreateSignedTransaction, /*SendUnsignedTransaction, SendSignedTransaction,
+        SignedPayload, SigningTypes, Signer, SubmitTransaction,*/
+    }
+};
 
 use df_traits::moderation::{IsAccountBlocked, IsContentBlocked, IsPostBlocked};
 use pallet_permissions::SpacePermission;
@@ -69,12 +83,18 @@ impl Default for PostExtension {
 }
 
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait
+pub trait Trait: CreateSignedTransaction<Call<Self>>
+    + system::Trait
     + pallet_utils::Trait
     + pallet_spaces::Trait
 {
+
+    type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
+
+    type Call: From<Call<Self>>;
     /// The overarching event type.
-    type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+    type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>
+        + From<<Self as system::Trait>::Event> + Into<RawEvent<Self>>;
 
     /// Max comments depth
     type MaxCommentDepth: Get<u32>;
@@ -132,6 +152,7 @@ decl_event!(
         PostUpdated(AccountId, PostId),
         PostDeleted(AccountId, PostId),
         PostShared(AccountId, PostId),
+        TestEvent,
     }
 );
 
@@ -392,5 +413,136 @@ decl_module! {
       }
       Ok(())
     }
+
+    fn offchain_worker(block: T::BlockNumber) {
+      Self::on_post_ids_by_space_id_changes();
+    }
   }
+}
+
+impl<T: Trait> Module<T> {
+
+    fn on_post_ids_by_space_id_changes() {
+        let posts_ids_by_space_id = StorageValueRef::persistent(b"posts::PostIdsBySpaceId");
+
+        let events: Vec<EventRecord<<T as system::Trait>::Event, T::Hash>> = SystemModule::<T>::events();
+
+        for EventRecord { event, .. } in events.iter() {
+            let generic_event: <T as Trait>::Event = event.clone().into();
+            let raw_event: Result<RawEvent<T>, _> = generic_event.try_into();
+
+            if let Ok(e) = raw_event {
+                if let RawEvent::PostCreated(_, post_id) = e {
+                    if let Ok(post) = Self::require_post(post_id) {
+                        if let Some(space_id) = post.try_get_space_id() {
+
+                            let mut storage_map = StorageMap::new();
+                            let val = posts_ids_by_space_id.get();
+
+                            if let Some(storage_map_opt) = val {
+                                storage_map = storage_map_opt.unwrap_or(StorageMap::new());
+                                let space_id_encoded = space_id.encode();
+
+                                if storage_map.contains_key(&space_id_encoded) {
+                                    let mut decoded = storage_map.get(&space_id_encoded)
+                                        .as_deref().map(|v| Decode::decode(&mut &v[..]).unwrap())
+                                        .unwrap_or(Vec::new());
+
+                                    decoded.push(post_id);
+                                } else {
+                                    storage_map.insert(space_id.encode(), vec![post_id].encode());
+                                }
+                            }
+
+                            posts_ids_by_space_id.set(&storage_map);
+                        }
+                    }
+                }
+            }
+        }
+
+        // let needed_events = events.iter().filter(|EventRecord { event, .. }| {
+        //     let generic_event: <T as Trait>::Event = RawEvent::TestEvent.into();
+        //     let system_event: <T as frame_system::Trait>::Event = generic_event.into();
+        //
+        //     matches!(event, system_event)
+        // });
+
+        // for event in events.iter() {
+        //     let event: RawEvent<T> = event.event.clone().into(); // FIXME: incorrect conversion
+        //     if let RawEvent::PostCreated(_, post_id) = event {
+        //         if let Ok(post) = Self::require_post(post_id) {
+        //             posts_ids_by_space_id.mutate(post.space_id)
+        //         }
+        //     }
+        // }
+    }
+
+    fn space_is_public(space_id: SpaceId) -> bool {
+        let space_opt = Spaces::<T>::space_by_id(space_id);
+        let mut result: bool = false;
+        if let Some(space) = space_opt.clone() {
+            if !space.hidden && !space.content.is_none() {
+                result = true;
+            }
+        }
+        result
+    }
+
+    fn post_is_public(post_id: &u64) -> bool {
+        let post_opt = Self::post_by_id(post_id);
+        let mut result: bool = false;
+        if let Some(post) = post_opt.clone() {
+            if !post.hidden && !post.content.is_none() {
+                result = true;
+            }
+        }
+        result
+    }
+
+    pub fn find_public_post_ids_in_space(space_id: SpaceId, offset: u64, limit: u64) -> Vec<PostId> {
+
+        let mut public_post_ids_in_space = Vec::new();
+        if Self::space_is_public(space_id) {
+            let mut post_ids: Vec<PostId> = Self::post_ids_by_space_id(space_id);
+            post_ids.sort();
+
+
+            let post_id_length = post_ids.len();
+            let last_post_id_index = post_id_length.saturating_sub(offset as usize);
+            let first_post_id_index = last_post_id_index.saturating_sub(limit as usize);
+
+            for (idx, post_id) in post_ids.iter().enumerate() {
+                if idx >= first_post_id_index && idx <= last_post_id_index {
+                    if Self::post_is_public(post_id) {
+                        public_post_ids_in_space.push(post_id.clone());
+                    }
+                }
+            }
+        }
+
+        public_post_ids_in_space
+    }
+
+    pub fn find_unlisted_post_ids_in_space(space_id: SpaceId, offset: u64, limit: u64) -> Vec<PostId> {
+        let mut unlisted_post_ids_in_space = Vec::new();
+        if Self::space_is_public(space_id) {
+            let mut post_ids: Vec<PostId> = Self::post_ids_by_space_id(space_id);
+            post_ids.sort();
+
+            let post_id_length = post_ids.len();
+            let last_post_id_index = post_id_length.saturating_sub(offset as usize);
+            let first_post_id_index = last_post_id_index.saturating_sub(limit as usize);
+
+            for (idx, post_id) in post_ids.iter().enumerate() {
+                if idx >= first_post_id_index && idx <= last_post_id_index {
+                    if !Self::post_is_public(post_id) {
+                        unlisted_post_ids_in_space.push(post_id.clone());
+                    }
+                }
+            }
+        }
+
+        unlisted_post_ids_in_space
+    }
 }
