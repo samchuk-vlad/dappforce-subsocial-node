@@ -54,6 +54,11 @@ version = '2.0.0-rc4'
 default-features = false
 path = '../runtime-api'
 
+[dependencies.pallet-spaces]
+default-features = false
+path = '../../spaces'
+version = '0.4.0'
+
 [dependencies.pallet-utils]
 default-features = false
 path = '../../utils'
@@ -67,4 +72,5 @@ std = [
   'sp-api/std',
   'spaces-runtime-api/std',
   'pallet-utils/std',
+  'pallet-spaces/std'
 ]

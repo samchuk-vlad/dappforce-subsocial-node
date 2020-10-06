@@ -53,6 +53,7 @@ use pallet_permissions::{
 };
 use pallet_utils::SpaceId;
 use pallet_posts::PostId;
+use pallet_spaces::Space;
 
 pub mod constants;
 use constants::{currency::*, time::*};
@@ -756,7 +757,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl spaces_runtime_api::SpacesApi<Block> for Runtime
+	impl spaces_runtime_api::SpacesApi<Block, Runtime> for Runtime
 	{
         fn get_last_space_id() -> SpaceId {
             Spaces::get_last_space_id()
@@ -772,6 +773,10 @@ impl_runtime_apis! {
 
         fn find_unlisted_space_ids(offset: u64, limit: u64) -> Vec<SpaceId> {
         	Spaces::find_unlisted_space_ids(offset, limit)
+        }
+
+        fn find_public_spaces(offset: u64, limit: u64) -> Vec<Space<Runtime>> {
+        	Spaces::find_public_spaces(offset, limit)
         }
     }
 

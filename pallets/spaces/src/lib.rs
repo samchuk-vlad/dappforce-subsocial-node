@@ -571,6 +571,19 @@ impl<T: Trait> Module<T> {
         unlisted_space_ids
     }
 
+    pub fn find_public_spaces(offset: u64, limit: u64) -> Vec<Space<T>> {
+        let mut public_spaces: Vec<Space<T>> = Vec::new();
+
+        let public_space_ids = Self::find_public_space_ids(offset, limit);
+
+        for space_id in public_space_ids {
+            let space_opt = Self::space_by_id(space_id);
+            if let Some(space) = space_opt {
+                public_spaces.push(space);
+            }
+        }
+        public_spaces
+    }
 }
 
 impl<T: Trait> SpaceForRolesProvider for Module<T> {

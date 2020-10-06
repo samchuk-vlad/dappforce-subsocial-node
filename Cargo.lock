@@ -6199,6 +6199,7 @@ dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
  "jsonrpc-derive",
+ "pallet-spaces",
  "pallet-utils",
  "parity-scale-codec",
  "serde",
@@ -6213,6 +6214,7 @@ dependencies = [
 name = "spaces-runtime-api"
 version = "0.1.0"
 dependencies = [
+ "pallet-spaces",
  "pallet-utils",
  "parity-scale-codec",
  "serde_json",
