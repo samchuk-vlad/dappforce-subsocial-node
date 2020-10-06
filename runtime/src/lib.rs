@@ -10,7 +10,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use sp_std::{
 	prelude::*,
-	iter::FromIterator
+	iter::FromIterator,
 };
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
@@ -109,7 +109,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("subsocial"),
 	impl_name: create_runtime_str!("dappforce-subsocial"),
 	authoring_version: 0,
-	spec_version: 2,
+	spec_version: 7,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -291,7 +291,6 @@ impl pallet_utility::Trait for Runtime {
 // ------------------------------------------------------------------------------------------------
 
 parameter_types! {
-  pub const IpfsCidLen: u32 = 46;
   pub const MinHandleLen: u32 = 5;
   pub const MaxHandleLen: u32 = 50;
 }
@@ -299,7 +298,6 @@ parameter_types! {
 impl pallet_utils::Trait for Runtime {
 	type Event = Event;
 	type Currency = Balances;
-	type IpfsCidLen = IpfsCidLen;
 	type MinHandleLen = MinHandleLen;
 	type MaxHandleLen = MaxHandleLen;
 }
@@ -463,7 +461,9 @@ impl pallet_space_ownership::Trait for Runtime {
 	type Event = Event;
 }
 
-parameter_types! {}
+parameter_types! {
+	pub SpaceCreationFee: Balance = 50 * CENTS;
+}
 
 impl pallet_spaces::Trait for Runtime {
 	type Event = Event;
@@ -473,6 +473,7 @@ impl pallet_spaces::Trait for Runtime {
 	type AfterSpaceUpdated = SpaceHistory;
 	type IsAccountBlocked = ()/*Moderation*/;
 	type IsContentBlocked = ()/*Moderation*/;
+	type SpaceCreationFee = SpaceCreationFee;
 }
 
 parameter_types! {}

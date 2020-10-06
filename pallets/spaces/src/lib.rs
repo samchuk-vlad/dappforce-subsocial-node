@@ -4,7 +4,7 @@ use codec::{Decode, Encode};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure,
     dispatch::{DispatchError, DispatchResult},
-    traits::Get
+    traits::{Get, Currency, ExistenceRequirement},
 };
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
@@ -51,6 +51,8 @@ pub struct SpaceUpdate {
     pub permissions: Option<Option<SpacePermissions>>,
 }
 
+type BalanceOf<T> = <<T as pallet_utils::Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
+
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait
     + pallet_utils::Trait
@@ -70,6 +72,8 @@ pub trait Trait: system::Trait
     type IsAccountBlocked: IsAccountBlocked<AccountId=Self::AccountId>;
 
     type IsContentBlocked: IsContentBlocked;
+
+    type SpaceCreationFee: Get<BalanceOf<Self>>;
 }
 
 decl_error! {
@@ -103,7 +107,6 @@ decl_storage! {
           for id in 1..=1000 {
             spaces.push((id, Space::<T>::new(id, None, endowed_account.clone(), Content::None, None)));
           }
-          
           spaces
         }):
             map hasher(twox_64_concat) SpaceId => Option<Space<T>>;
@@ -132,6 +135,8 @@ decl_event!(
 // The pallet's dispatchable functions.
 decl_module! {
   pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+
+    const SpaceCreationFee: BalanceOf<T> = T::SpaceCreationFee::get();
 
     // Initializing errors
     type Error = Error<T>;
@@ -169,6 +174,13 @@ decl_module! {
           Error::<T>::NoPermissionToCreateSubspaces.into()
         )?;
       }
+
+      <T as pallet_utils::Trait>::Currency::transfer(
+        &owner,
+        &Utils::<T>::treasury_account(),
+        T::SpaceCreationFee::get(),
+        ExistenceRequirement::KeepAlive
+      )?;
 
       let space_id = Self::next_space_id();
       let new_space = &mut Space::new(space_id, parent_id_opt, owner.clone(), content, handle_opt);
