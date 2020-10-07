@@ -9,7 +9,7 @@ use std::sync::Arc;
 use spaces_runtime_api::SpacesApi as SpacesRuntimeApi;
 
 use pallet_utils::{SpaceId};
-use pallet_spaces::{Trait as SpacesTrait, Space};
+use pallet_spaces::{Trait as SpacesTrait, Space, WhoAndWhen1};
 
 
 #[rpc]
@@ -41,13 +41,19 @@ pub trait SpacesApi<BlockHash, T> {
         limit: u64,
     ) -> Result<Vec<SpaceId>>;
 
-    #[rpc(name = "spaces_findPublicSpace")]
-    fn find_public_spaces(
+    // #[rpc(name = "spaces_findPublicSpace")]
+    // fn find_public_spaces(
+    //     &self,
+    //     at: Option<BlockHash>,
+    //     offset: u64,
+    //     limit: u64,
+    // ) -> Result<Vec<Space<T>>> where T: SpacesTrait;
+
+    #[rpc(name = "spaces_findStruct")]
+    fn find_struct(
         &self,
         at: Option<BlockHash>,
-        offset: u64,
-        limit: u64,
-    ) -> Result<Vec<Space<T>>> where T: SpacesTrait;
+    ) -> Result<Vec<WhoAndWhen1<T>>> where T: SpacesTrait;
 }
 
 pub struct Spaces<C, M> {
@@ -150,18 +156,37 @@ impl<C, Block, T> SpacesApi<<Block as BlockT>::Hash, T> for Spaces<C, Block>
         })
     }
 
-    fn find_public_spaces(
+    // fn find_public_spaces(
+    //     &self,
+    //     at: Option<<Block as BlockT>::Hash>,
+    //     offset: u64,
+    //     limit: u64
+    // ) -> Result<Vec<Space<T>>> {
+    //     let api = self.client.runtime_api();
+    //     let at = BlockId::hash(at.unwrap_or_else(||
+    //         // If the block hash is not supplied assume the best block.
+    //         self.client.info().best_hash));
+    //
+    //     let runtime_api_result = api.find_public_spaces(&at, offset, limit);
+    //     runtime_api_result.map_err(|e| RpcError {
+    //         // TODO: research on error codes and change a value
+    //         code: ErrorCode::ServerError(9876), // No real reason for this value
+    //         // TODO: change error message (?use errors macro)
+    //         message: "Something wrong".into(),
+    //         data: Some(format!("{:?}", e).into()),
+    //     })
+    // }
+
+    fn find_struct(
         &self,
         at: Option<<Block as BlockT>::Hash>,
-        offset: u64,
-        limit: u64
-    ) -> Result<Vec<Space<T>>> {
+    ) -> Result<Vec<WhoAndWhen1<T>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(||
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash));
 
-        let runtime_api_result = api.find_public_spaces(&at, offset, limit);
+        let runtime_api_result = api.find_struct(&at);
         runtime_api_result.map_err(|e| RpcError {
             // TODO: research on error codes and change a value
             code: ErrorCode::ServerError(9876), // No real reason for this value

@@ -53,7 +53,7 @@ use pallet_permissions::{
 };
 use pallet_utils::SpaceId;
 use pallet_posts::PostId;
-use pallet_spaces::Space;
+use pallet_spaces::{Space, WhoAndWhen1};
 
 pub mod constants;
 use constants::{currency::*, time::*};
@@ -775,8 +775,12 @@ impl_runtime_apis! {
         	Spaces::find_unlisted_space_ids(offset, limit)
         }
 
-        fn find_public_spaces(offset: u64, limit: u64) -> Vec<Space<Runtime>> {
-        	Spaces::find_public_spaces(offset, limit)
+        // fn find_public_spaces(offset: u64, limit: u64) -> Vec<Space<Runtime>> {
+        // 	Spaces::find_public_spaces(offset, limit)
+        // }
+
+        fn find_struct() -> Vec<WhoAndWhen1<Runtime>> {
+        	Spaces::find_struct()
         }
     }
 
