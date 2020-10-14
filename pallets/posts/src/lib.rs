@@ -152,6 +152,8 @@ decl_error! {
         CannotCreateInHiddenScope,
         /// Post has no any replies
         NoRepliesOnPost,
+        /// Trying to move post to the same space.
+        MoveToTheSameSpace,
 
         // Sharing related errors:
 
@@ -363,23 +365,24 @@ decl_module! {
       let who = ensure_signed(origin)?;
 
       let post = &mut Self::require_post(post_id)?;
-      let mut historical_data = PostUpdate::default();
 
-      if new_space_id != post.space_id {
-        let old_space_id = post.get_space_id()?;
+      ensure!(new_space_id != post.space_id, Error::<T>::MoveToTheSameSpace);
 
-        if let Some(space_id) = new_space_id {
-          Self::move_post_to_space(who.clone(), post, space_id)?;
-        } else {
-          Self::delete_post_from_space(post_id)?;
-        }
+      let old_space_id = post.space_id;
 
-        historical_data.space_id = Some(old_space_id);
+      if let Some(space_id) = new_space_id {
+        Self::move_post_to_space(who.clone(), post, space_id)?;
+      } else {
+        Self::delete_post_from_space(post_id)?;
       }
 
-      if historical_data.space_id.is_some() {
-        T::AfterPostUpdated::after_post_updated(who.clone(), &post, historical_data);
-      }
+      let historical_data = PostUpdate {
+        space_id: old_space_id,
+        content: None,
+        hidden: None,
+      };
+
+      T::AfterPostUpdated::after_post_updated(who.clone(), &post, historical_data);
 
       Self::deposit_event(RawEvent::PostMoved(who, post_id));
       Ok(())
