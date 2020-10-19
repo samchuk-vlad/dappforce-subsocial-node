@@ -188,13 +188,13 @@ impl<T: Trait> Module<T> {
         let mut space = post.get_space()?;
 
         if let Some(score_diff) = Self::post_score_by_account((account.clone(), post_id, action)) {
-            let reputation_diff = Self::account_reputation_diff_by_account((account.clone(), post.created.account.clone(), action))
+            let reputation_diff = Self::account_reputation_diff_by_account((account.clone(), post.owner.clone(), action))
                 .ok_or(Error::<T>::ReputationDiffNotFound)?;
 
             // Revert this score diff:
             post.change_score(-score_diff);
             space.change_score(-score_diff);
-            Self::change_social_account_reputation(post.created.account.clone(), account.clone(), -reputation_diff, action)?;
+            Self::change_social_account_reputation(post.owner.clone(), account.clone(), -reputation_diff, action)?;
             <PostScoreByAccount<T>>::remove((account, post_id, action));
         } else {
             match action {
@@ -215,7 +215,7 @@ impl<T: Trait> Module<T> {
             let score_diff = Self::score_diff_for_action(social_account.reputation, action);
             post.change_score(score_diff);
             space.change_score(score_diff);
-            Self::change_social_account_reputation(post.created.account.clone(), account.clone(), score_diff, action)?;
+            Self::change_social_account_reputation(post.owner.clone(), account.clone(), score_diff, action)?;
             <PostScoreByAccount<T>>::insert((account, post_id, action), score_diff);
         }
 
@@ -248,12 +248,12 @@ impl<T: Trait> Module<T> {
         }
 
         if let Some(score_diff) = Self::post_score_by_account((account.clone(), comment_id, action)) {
-            let reputation_diff = Self::account_reputation_diff_by_account((account.clone(), comment.created.account.clone(), action))
+            let reputation_diff = Self::account_reputation_diff_by_account((account.clone(), comment.owner.clone(), action))
                 .ok_or(Error::<T>::ReputationDiffNotFound)?;
 
             // Revert this score diff:
             comment.change_score(-score_diff);
-            Self::change_social_account_reputation(comment.created.account.clone(), account.clone(), -reputation_diff, action)?;
+            Self::change_social_account_reputation(comment.owner.clone(), account.clone(), -reputation_diff, action)?;
             <PostScoreByAccount<T>>::remove((account, comment_id, action));
         } else {
             match action {
@@ -275,7 +275,7 @@ impl<T: Trait> Module<T> {
             }
             let score_diff = Self::score_diff_for_action(social_account.reputation, action);
             comment.change_score(score_diff);
-            Self::change_social_account_reputation(comment.created.account.clone(), account.clone(), score_diff, action)?;
+            Self::change_social_account_reputation(comment.owner.clone(), account.clone(), score_diff, action)?;
             <PostScoreByAccount<T>>::insert((account, comment_id, action), score_diff);
         }
         <PostById<T>>::insert(comment_id, comment.clone());
