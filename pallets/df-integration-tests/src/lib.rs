@@ -98,7 +98,6 @@ mod tests {
     }
 
     parameter_types! {
-      pub const IpfsCidLen: u32 = 46;
       pub const MinHandleLen: u32 = 5;
       pub const MaxHandleLen: u32 = 50;
     }
@@ -106,7 +105,6 @@ mod tests {
     impl pallet_utils::Trait for TestRuntime {
         type Event = ();
         type Currency = Balances;
-        type IpfsCidLen = IpfsCidLen;
         type MinHandleLen = MinHandleLen;
         type MaxHandleLen = MaxHandleLen;
     }
@@ -226,7 +224,7 @@ mod tests {
         type AfterSpaceUpdated = SpaceHistory;
         type IsAccountBlocked = Moderation;
         type IsContentBlocked = Moderation;
-        type SpaceCreationWeight = ();
+        type SpaceCreationFee = ();
     }
 
     parameter_types! {}
@@ -469,14 +467,6 @@ mod tests {
 
     fn profile_content_ipfs() -> Content {
         Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiaRtqdyoW2CuDgwxkA5".to_vec())
-    }
-
-    fn alice_handle() -> Vec<u8> {
-        b"al_ice".to_vec()
-    }
-
-    fn bob_handle() -> Vec<u8> {
-        b"bob1337".to_vec()
     }
 
     fn reaction_upvote() -> ReactionKind {
@@ -724,30 +714,26 @@ mod tests {
     }
 
     fn _create_default_profile() -> DispatchResult {
-        _create_profile(None, None, None)
+        _create_profile(None, None)
     }
 
     fn _create_profile(
         origin: Option<Origin>,
-        handle: Option<Vec<u8>>,
-        content: Option<Content>,
+        content: Option<Content>
     ) -> DispatchResult {
         Profiles::create_profile(
             origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
-            handle.unwrap_or_else(self::alice_handle),
             content.unwrap_or_else(self::profile_content_ipfs),
         )
     }
 
     fn _update_profile(
         origin: Option<Origin>,
-        handle: Option<Vec<u8>>,
-        content: Option<Content>,
+        content: Option<Content>
     ) -> DispatchResult {
         Profiles::update_profile(
             origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
             ProfileUpdate {
-                handle,
                 content,
             },
         )
@@ -2994,9 +2980,7 @@ mod tests {
             let profile = Profiles::social_account_by_id(ACCOUNT1).unwrap().profile.unwrap();
             assert_eq!(profile.created.account, ACCOUNT1);
             assert!(profile.updated.is_none());
-            assert_eq!(profile.handle, self::alice_handle());
             assert_eq!(profile.content, self::profile_content_ipfs());
-            assert_eq!(Profiles::account_by_profile_handle(self::alice_handle()), Some(ACCOUNT1));
 
             assert!(ProfileHistory::edit_history(ACCOUNT1).is_empty());
         });
@@ -3018,67 +3002,8 @@ mod tests {
 
             assert_noop!(_create_profile(
                 None,
-                None,
                 Some(content_ipfs)
             ), UtilsError::<TestRuntime>::InvalidIpfsCid);
-        });
-    }
-
-    #[test]
-    fn create_profile_should_fail_with_handle_is_taken() {
-        ExtBuilder::build().execute_with(|| {
-            assert_ok!(_create_default_profile());
-            // AccountId 1
-            assert_noop!(_create_profile(
-                Some(Origin::signed(ACCOUNT2)),
-                None,
-                None
-            ), ProfilesError::<TestRuntime>::ProfileHandleIsNotUnique);
-        });
-    }
-
-    #[test]
-    fn create_profile_should_fail_with_handle_too_short() {
-        ExtBuilder::build().execute_with(|| {
-            let handle: Vec<u8> = vec![97; (MinHandleLen::get() - 1) as usize];
-
-            assert_ok!(_create_default_profile());
-            // AccountId 1
-            assert_noop!(_create_profile(
-                Some(Origin::signed(ACCOUNT2)),
-                Some(handle),
-                None
-            ), UtilsError::<TestRuntime>::HandleIsTooShort);
-        });
-    }
-
-    #[test]
-    fn create_profile_should_fail_with_handle_too_long() {
-        ExtBuilder::build().execute_with(|| {
-            let handle: Vec<u8> = vec![97; (MaxHandleLen::get() + 1) as usize];
-
-            assert_ok!(_create_default_profile());
-            // AccountId 1
-            assert_noop!(_create_profile(
-                Some(Origin::signed(ACCOUNT2)),
-                Some(handle),
-                None
-            ), UtilsError::<TestRuntime>::HandleIsTooLong);
-        });
-    }
-
-    #[test]
-    fn create_profile_should_fail_with_handle_contains_invalid_chars() {
-        ExtBuilder::build().execute_with(|| {
-            let handle: Vec<u8> = b"{}sername".to_vec();
-
-            assert_ok!(_create_default_profile());
-            // AccountId 1
-            assert_noop!(_create_profile(
-                Some(Origin::signed(ACCOUNT2)),
-                Some(handle),
-                None
-            ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
     }
 
@@ -3089,23 +3014,16 @@ mod tests {
             // AccountId 1
             assert_ok!(_update_profile(
                 None,
-                Some(self::bob_handle()),
                 Some(self::space_content_ipfs())
             ));
 
             // Check whether profile updated correctly
             let profile = Profiles::social_account_by_id(ACCOUNT1).unwrap().profile.unwrap();
             assert!(profile.updated.is_some());
-            assert_eq!(profile.handle, self::bob_handle());
             assert_eq!(profile.content, self::space_content_ipfs());
-
-            // Check storages
-            assert!(Profiles::account_by_profile_handle(self::alice_handle()).is_none());
-            assert_eq!(Profiles::account_by_profile_handle(self::bob_handle()), Some(ACCOUNT1));
 
             // Check whether profile history is written correctly
             let profile_history = ProfileHistory::edit_history(ACCOUNT1)[0].clone();
-            assert_eq!(profile_history.old_data.handle, Some(self::alice_handle()));
             assert_eq!(profile_history.old_data.content, Some(self::profile_content_ipfs()));
         });
     }
@@ -3115,8 +3033,7 @@ mod tests {
         ExtBuilder::build().execute_with(|| {
             assert_noop!(_update_profile(
                 None,
-                Some(self::bob_handle()),
-                None
+                Some(self::profile_content_ipfs())
             ), ProfilesError::<TestRuntime>::SocialAccountNotFound);
         });
     }
@@ -3127,8 +3044,7 @@ mod tests {
             assert_ok!(ProfileFollows::follow_account(Origin::signed(ACCOUNT1), ACCOUNT2));
             assert_noop!(_update_profile(
                 None,
-                Some(self::bob_handle()),
-                None
+                Some(self::profile_content_ipfs())
             ), ProfilesError::<TestRuntime>::AccountHasNoProfile);
         });
     }
@@ -3140,72 +3056,8 @@ mod tests {
             // AccountId 1
             assert_noop!(_update_profile(
                 None,
-                None,
                 None
             ), ProfilesError::<TestRuntime>::NoUpdatesForProfile);
-        });
-    }
-
-    #[test]
-    fn update_profile_should_fail_with_handle_is_taken() {
-        ExtBuilder::build().execute_with(|| {
-            assert_ok!(_create_default_profile());
-            // AccountId 1
-            assert_ok!(_create_profile(
-                Some(Origin::signed(ACCOUNT2)),
-                Some(self::bob_handle()),
-                None
-            ));
-            assert_noop!(_update_profile(
-                None,
-                Some(self::bob_handle()),
-                None
-            ), ProfilesError::<TestRuntime>::ProfileHandleIsNotUnique);
-        });
-    }
-
-    #[test]
-    fn update_profile_should_fail_with_handle_too_short() {
-        ExtBuilder::build().execute_with(|| {
-            let handle: Vec<u8> = vec![97; (MinHandleLen::get() - 1) as usize];
-
-            assert_ok!(_create_default_profile());
-            // AccountId 1
-            assert_noop!(_update_profile(
-                None,
-                Some(handle),
-                None
-            ), UtilsError::<TestRuntime>::HandleIsTooShort);
-        });
-    }
-
-    #[test]
-    fn update_profile_should_fail_with_handle_too_long() {
-        ExtBuilder::build().execute_with(|| {
-            let handle: Vec<u8> = vec![97; (MaxHandleLen::get() + 1) as usize];
-
-            assert_ok!(_create_default_profile());
-            // AccountId 1
-            assert_noop!(_update_profile(
-                None,
-                Some(handle),
-                None
-            ), UtilsError::<TestRuntime>::HandleIsTooLong);
-        });
-    }
-
-    #[test]
-    fn update_profile_should_fail_with_handle_contains_invalid_chars() {
-        ExtBuilder::build().execute_with(|| {
-            let handle: Vec<u8> = b"{}sername".to_vec();
-
-            assert_ok!(_create_default_profile());
-            // AccountId 1
-            assert_noop!(_update_profile(
-                None,
-                Some(handle),
-                None
-            ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
     }
 
@@ -3216,7 +3068,6 @@ mod tests {
 
             assert_ok!(_create_default_profile());
             assert_noop!(_update_profile(
-                None,
                 None,
                 Some(content_ipfs)
             ), UtilsError::<TestRuntime>::InvalidIpfsCid);
@@ -3428,12 +3279,24 @@ mod tests {
     }
 
     #[test]
-    fn accept_pending_ownership_should_fail_with_not_allowed_to_accept() {
+    fn accept_pending_ownership_should_fail_if_origin_is_already_an_owner() {
         ExtBuilder::build_with_space().execute_with(|| {
             assert_ok!(_transfer_default_space_ownership());
 
             assert_noop!(_accept_pending_ownership(
                 Some(Origin::signed(ACCOUNT1)),
+                None
+            ), SpaceOwnershipError::<TestRuntime>::AlreadyASpaceOwner);
+        });
+    }
+
+    #[test]
+    fn accept_pending_ownership_should_fail_if_origin_is_not_equal_to_pending_account() {
+        ExtBuilder::build_with_space().execute_with(|| {
+            assert_ok!(_transfer_default_space_ownership());
+
+            assert_noop!(_accept_pending_ownership(
+                Some(Origin::signed(ACCOUNT3)),
                 None
             ), SpaceOwnershipError::<TestRuntime>::NotAllowedToAcceptOwnershipTransfer);
         });
