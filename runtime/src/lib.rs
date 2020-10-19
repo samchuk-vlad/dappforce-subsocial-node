@@ -413,6 +413,8 @@ impl pallet_roles::Trait for Runtime {
 	type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
 	type Spaces = Spaces;
 	type SpaceFollows = SpaceFollows;
+	type IsAccountBlocked = ()/*Moderation*/;
+	type IsContentBlocked = ()/*Moderation*/;
 }
 
 parameter_types! {
@@ -469,6 +471,8 @@ impl pallet_spaces::Trait for Runtime {
 	type SpaceFollows = SpaceFollows;
 	type BeforeSpaceCreated = SpaceFollows;
 	type AfterSpaceUpdated = SpaceHistory;
+	type IsAccountBlocked = ()/*Moderation*/;
+	type IsContentBlocked = ()/*Moderation*/;
 	type SpaceCreationFee = SpaceCreationFee;
 }
 
@@ -488,7 +492,8 @@ impl Filter<Call> for BaseFilter {
 	}
 }
 
-/*parameter_types! {
+/*
+parameter_types! {
 	pub const MaxSessionKeysPerAccount: u16 = 10;
 }
 
@@ -511,7 +516,45 @@ impl session_keys::Trait for Runtime {
 	type Call = Call;
 	type MaxSessionKeysPerAccount = MaxSessionKeysPerAccount;
 	type BaseFilter = SessionKeysProxyFilter;
-}*/
+}
+
+impl pallet_donations::Trait for Runtime {
+	type Event = Event;
+}
+
+parameter_types! {
+	pub const DefaultAutoblockThreshold: u16 = 20;
+}
+
+impl pallet_moderation::Trait for Runtime {
+	type Event = Event;
+	type DefaultAutoblockThreshold = DefaultAutoblockThreshold;
+}
+
+parameter_types! {
+	pub const DailyPeriodInBlocks: BlockNumber = DAYS;
+	pub const WeeklyPeriodInBlocks: BlockNumber = DAYS * 7;
+	pub const MonthlyPeriodInBlocks: BlockNumber = DAYS * 30;
+	pub const QuarterlyPeriodInBlocks: BlockNumber = DAYS * 30 * 3;
+	pub const YearlyPeriodInBlocks: BlockNumber = DAYS * 365;
+}
+
+impl pallet_subscriptions::Trait for Runtime {
+	type Event = Event;
+	type Subscription = Call;
+	type Scheduler = Scheduler;
+	type DailyPeriodInBlocks = DailyPeriodInBlocks;
+	type WeeklyPeriodInBlocks = WeeklyPeriodInBlocks;
+	type MonthlyPeriodInBlocks = MonthlyPeriodInBlocks;
+	type QuarterlyPeriodInBlocks = QuarterlyPeriodInBlocks;
+	type YearlyPeriodInBlocks = YearlyPeriodInBlocks;
+}
+
+impl pallet_faucet::Trait for Runtime {
+	type Event = Event;
+	type Currency = Balances;
+}
+*/
 
 construct_runtime!(
 	pub enum Runtime where
@@ -531,6 +574,7 @@ construct_runtime!(
 		Utility: pallet_utility::{Module, Call, Event},
 
 		// Subsocial custom pallets:
+
 		Permissions: pallet_permissions::{Module, Call},
 		Posts: pallet_posts::{Module, Call, Storage, Event<T>},
 		PostHistory: pallet_post_history::{Module, Storage},
@@ -545,7 +589,14 @@ construct_runtime!(
 		SpaceOwnership: pallet_space_ownership::{Module, Call, Storage, Event<T>},
 		Spaces: pallet_spaces::{Module, Call, Storage, Event<T>, Config<T>},
 		Utils: pallet_utils::{Module, Storage, Event<T>, Config<T>},
-		// SessionKeys: session_keys::{Module, Call, Storage, Config<T>, Event<T>},
+
+		// New experimental pallets. Not recommended to use in production yet.
+
+		// Faucet: pallet_faucet::{Module, Call, Storage, Event<T>},
+		// SessionKeys: session_keys::{Module, Call, Storage, Event<T>},
+		// Moderation: pallet_moderation::{Module, Call, Storage, Event<T>},
+		// Donations: pallet_donations::{Module, Call, Storage, Event<T>},
+		// Subscriptions: pallet_subscriptions::{Module, Call, Storage, Event<T>},
 	}
 );
 

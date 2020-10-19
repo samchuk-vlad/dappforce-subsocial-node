@@ -13,10 +13,17 @@ categories = ['cryptography::cryptocurrencies']
 [features]
 default = ['std']
 std = [
+    'sp-runtime/std',
     'frame-support/std',
     'pallet-permissions/std',
     'pallet-utils/std'
 ]
+
+[dependencies.sp-runtime]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
 
 [dependencies.frame-support]
 default-features = false
