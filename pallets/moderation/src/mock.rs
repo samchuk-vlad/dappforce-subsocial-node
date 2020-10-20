@@ -75,7 +75,6 @@ parameter_types! {
 impl pallet_utils::Trait for Test {
     type Event = ();
     type Currency = Balances;
-    type IpfsCidLen = IpfsCidLen;
     type MinHandleLen = MinHandleLen;
     type MaxHandleLen = MaxHandleLen;
 }
@@ -108,7 +107,7 @@ impl pallet_spaces::Trait for Test {
     type AfterSpaceUpdated = ();
     type IsAccountBlocked = Moderation;
     type IsContentBlocked = Moderation;
-    type SpaceCreationWeight = ();
+    type SpaceCreationFee = ();
 }
 
 parameter_types! {}

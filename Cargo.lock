@@ -3188,8 +3188,11 @@ dependencies = [
  "df-traits",
  "frame-support",
  "frame-system",
+ "pallet-balances",
  "pallet-permissions",
  "pallet-posts",
+ "pallet-profiles",
+ "pallet-roles",
  "pallet-space-follows",
  "pallet-spaces",
  "pallet-timestamp",
@@ -3381,30 +3384,6 @@ dependencies = [
  "sp-staking",
  "sp-std",
  "sp-trie",
-]
-
-[[package]]
-name = "pallet-session-keys"
-version = "0.4.0"
-dependencies = [
- "df-traits",
- "frame-support",
- "frame-system",
- "pallet-balances",
- "pallet-permissions",
- "pallet-profiles",
- "pallet-roles",
- "pallet-space-follows",
- "pallet-spaces",
- "pallet-timestamp",
- "pallet-transaction-payment",
- "pallet-utils",
- "parity-scale-codec",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
 ]
 
 [[package]]
@@ -6305,7 +6284,6 @@ dependencies = [
  "pallet-aura",
  "pallet-balances",
  "pallet-grandpa",
- "pallet-moderation",
  "pallet-permissions",
  "pallet-post-history",
  "pallet-posts",
@@ -6317,7 +6295,6 @@ dependencies = [
  "pallet-roles",
  "pallet-scheduler",
  "pallet-scores",
- "pallet-session-keys",
  "pallet-space-follows",
  "pallet-space-history",
  "pallet-space-ownership",
