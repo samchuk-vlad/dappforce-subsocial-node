@@ -9,7 +9,7 @@ fn add_faucet_should_work() {
     ExtBuilder::build().execute_with(|| {
         assert_ok!(_add_default_faucet());
 
-        let faucet_settings = Faucet::faucet_settings_by_account(FAUCET1).unwrap();
+        let faucet_settings = Faucet::settings_by_faucet(FAUCET1).unwrap();
         assert_eq!(faucet_settings, default_faucet_settings());
     });
 }
@@ -63,7 +63,7 @@ fn update_faucet_should_work() {
         const SETTINGS_UPDATE: FaucetSettingsUpdate<BlockNumber, Balance>
             = default_faucet_settings_update();
 
-        let faucet_settings = Faucet::faucet_settings_by_account(FAUCET1).unwrap();
+        let faucet_settings = Faucet::settings_by_faucet(FAUCET1).unwrap();
         let updated_faucet_settings = FaucetSettings {
             period: SETTINGS_UPDATE.period.unwrap_or(faucet_settings.period),
             period_limit: SETTINGS_UPDATE.period_limit.unwrap_or(faucet_settings.period_limit)
@@ -155,9 +155,9 @@ fn remove_faucets_should_work() {
         );
 
         for account in FAUCET1..FAUCET8 {
-            assert!(Faucet::faucet_settings_by_account(account).is_none());
+            assert!(Faucet::settings_by_faucet(account).is_none());
         }
-        assert!(Faucet::faucet_settings_by_account(FAUCET8).is_some());
+        assert!(Faucet::settings_by_faucet(FAUCET8).is_some());
     });
 }
 
@@ -183,9 +183,9 @@ fn remove_faucets_should_work_with_duplicates() {
         );
 
         for account in FAUCET1..FAUCET8 {
-            assert!(Faucet::faucet_settings_by_account(account).is_none());
+            assert!(Faucet::settings_by_faucet(account).is_none());
         }
-        assert!(Faucet::faucet_settings_by_account(FAUCET8).is_some());
+        assert!(Faucet::settings_by_faucet(FAUCET8).is_some());
     });
 }
 

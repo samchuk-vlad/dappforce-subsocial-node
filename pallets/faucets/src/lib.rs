@@ -3,7 +3,6 @@
 //! The Faucet module allows a root key (sudo) to add accounts (faucets) that are eligible
 //! to drip free tokens to other accounts (recipients).
 
-// TODO rename pallet 'faucet' to 'faucets'? (y)
 // TODO refactor sudo to generic account + add 'created' to FaucetSettings so we can check owner
 // TODO possible improvement: add `remove_alias`
 
@@ -83,8 +82,7 @@ decl_storage! {
 			map hasher(blake2_128_concat) Vec<u8>
 			=> Option<DropId>;
 
-		// TODO rename to SettingsByFaucet ? (maybe)
-		pub FaucetSettingsByAccount get(fn faucet_settings_by_account):
+		pub SettingsByFaucet get(fn settings_by_faucet):
 			map hasher(twox_64_concat) T::AccountId
 			=> Option<FaucetSettings<T::BlockNumber, BalanceOf<T>>>;
 	}
@@ -147,7 +145,7 @@ decl_module! {
 				Error::<T>::NoFreeBalanceOnAccount
 			);
 
-			FaucetSettingsByAccount::<T>::insert(faucet.clone(), settings);
+			SettingsByFaucet::<T>::insert(faucet.clone(), settings);
 
 			Self::deposit_event(RawEvent::FaucetAdded(faucet));
 			Ok(())
@@ -187,7 +185,7 @@ decl_module! {
 			}
 
 			if should_update {
-				FaucetSettingsByAccount::<T>::insert(faucet.clone(), settings);
+				SettingsByFaucet::<T>::insert(faucet.clone(), settings);
 				Self::deposit_event(RawEvent::FaucetUpdated(faucet));
 				return Ok(());
 			}
@@ -216,7 +214,7 @@ decl_module! {
 						ExistenceRequirement::AllowDeath
 					)?;
 
-					FaucetSettingsByAccount::<T>::remove(faucet);
+					SettingsByFaucet::<T>::remove(faucet);
 				}
 			}
 
@@ -296,7 +294,7 @@ impl<T: Trait> Module<T> {
 	pub fn require_faucet_settings(
 		faucet: &T::AccountId
 	) -> Result<FaucetSettings<T::BlockNumber, BalanceOf<T>>, DispatchError> {
-		Ok(Self::faucet_settings_by_account(faucet).ok_or(Error::<T>::FaucetNotFound)?)
+		Ok(Self::settings_by_faucet(faucet).ok_or(Error::<T>::FaucetNotFound)?)
 	}
 }
 
