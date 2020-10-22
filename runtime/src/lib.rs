@@ -550,7 +550,7 @@ impl pallet_subscriptions::Trait for Runtime {
 	type YearlyPeriodInBlocks = YearlyPeriodInBlocks;
 }
 
-impl pallet_faucet::Trait for Runtime {
+impl pallet_faucets::Trait for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 }
@@ -592,7 +592,7 @@ construct_runtime!(
 
 		// New experimental pallets. Not recommended to use in production yet.
 
-		// Faucet: pallet_faucet::{Module, Call, Storage, Event<T>},
+		// Faucets: pallet_faucets::{Module, Call, Storage, Event<T>},
 		// SessionKeys: session_keys::{Module, Call, Storage, Event<T>},
 		// Moderation: pallet_moderation::{Module, Call, Storage, Event<T>},
 		// Donations: pallet_donations::{Module, Call, Storage, Event<T>},

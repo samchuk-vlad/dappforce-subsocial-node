@@ -1,5 +1,5 @@
 [package]
-name = 'pallet-faucet'
+name = 'pallet-faucets'
 version = '0.1.0'
 authors = ['DappForce <dappforce@pm.me>']
 edition = '2018'

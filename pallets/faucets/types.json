@@ -3,7 +3,7 @@
 
   "Drop": {
     "id": "DropId",
-    "first_drop_at": "BlockNumber",
+    "last_drop_at": "BlockNumber",
     "total_dropped": "Balance"
   },
 
