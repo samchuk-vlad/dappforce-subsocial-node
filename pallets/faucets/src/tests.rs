@@ -273,7 +273,7 @@ fn drip_should_fail_faucet_limit_reached_with_same_recipient() {
 
         assert_ok!(_default_drip()); // Drip to ACCOUNT1 with `valid_sha_1` alias
         assert_noop!(
-            _drip(None, None, None, Some(self::valid_sha_2())),
+            _drip(None, None, None, Some(vec![valid_sha_2()])),
             Error::<Test>::FaucetLimitReached
         );
     });

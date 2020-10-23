@@ -1,5 +1,6 @@
 {
   "DropId": "u64",
+  "FaucetAlias": "Vec<u8>",
 
   "Drop": {
     "id": "DropId",

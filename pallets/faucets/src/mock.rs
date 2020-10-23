@@ -1,5 +1,5 @@
 // Creating mock runtime here
-use crate::{Module, Trait, FaucetSettings, FaucetSettingsUpdate};
+use crate::{Module, Trait, FaucetSettings, FaucetSettingsUpdate, FaucetAlias};
 
 use sp_core::H256;
 use sp_io::TestExternalities;
@@ -204,12 +204,14 @@ pub(crate) const fn default_faucet_settings_update() -> FaucetSettingsUpdate<Blo
 	}
 }
 
-pub(crate) fn valid_sha_1() -> Vec<u8> {
-	b"cad97e5d047555b38b13365c082066753b713b58194ed422210c1051678f4153".to_vec()
+use multihash::Sha2_256;
+
+pub(crate) fn valid_sha_1() -> FaucetAlias {
+	Sha2_256::digest(b"valid_hash_1").to_vec()
 }
 
-pub(crate) fn valid_sha_2() -> Vec<u8> {
-	b"2da01e0b02ba0169f4e2b43b8db7062a4f30b58bcae6623affc0be1273a2ac46".to_vec()
+pub(crate) fn valid_sha_2() -> FaucetAlias {
+	Sha2_256::digest(b"valid_hash_2").to_vec()
 }
 
 pub(crate) fn _add_default_faucet() -> DispatchResult {
@@ -266,12 +268,12 @@ pub(crate) fn _drip(
 	origin: Option<Origin>,
 	amount: Option<Balance>,
 	recipient: Option<AccountId>,
-	recipient_aliases: Option<Vec<u8>>
+	recipient_aliases: Option<Vec<FaucetAlias>>
 ) -> DispatchResult {
 	Faucet::drip(
 		origin.unwrap_or_else(|| Origin::signed(FAUCET1)),
 		amount.unwrap_or(default_faucet_settings().period_limit),
 		recipient.unwrap_or(ACCOUNT1),
-		recipient_aliases.unwrap_or_else(valid_sha_1)
+		recipient_aliases.unwrap_or(vec![valid_sha_1()])
 	)
 }

@@ -25,6 +25,7 @@ use frame_support::{
 };
 use frame_system::{self as system, ensure_signed, ensure_root};
 use pallet_sudo::Module as SudoModule;
+// use multihash::{Code, MultihashGeneric}; // TODO: use multihash to validate aliases' hash
 
 #[cfg(test)]
 mod mock;
@@ -33,6 +34,7 @@ mod mock;
 mod tests;
 
 type DropId = u64;
+type FaucetAlias = Vec<u8>;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Drop<T: Trait> {
@@ -79,7 +81,7 @@ decl_storage! {
 			=> Option<DropId>;
 
 		pub DropIdByAlias get(fn drop_id_by_alias):
-			map hasher(blake2_128_concat) Vec<u8>
+			map hasher(blake2_128_concat) FaucetAlias
 			=> Option<DropId>;
 
 		pub SettingsByFaucet get(fn settings_by_faucet):
@@ -227,23 +229,24 @@ decl_module! {
 			Pays::No
 		)]
 		pub fn drip(
-			origin, // faucet
+			origin, // faucet account
 			amount: BalanceOf<T>,
 			recipient: T::AccountId,
-			recipient_aliases: Vec<u8> // TODO refactor to Vec<Vec<u8>> ? (yes)
+			recipient_aliases: Vec<FaucetAlias>
 		) -> DispatchResult {
 			let faucet = ensure_signed(origin)?;
 
 			ensure!(amount > Zero::zero(), Error::<T>::ZeroAmount);
 
 			let settings = Self::require_faucet_settings(&faucet)?;
-
-			// TODO check amount against settings.min_amount
+			// TODO: add MaxAliases const
+			let aliases_set = BTreeSet::from_iter(recipient_aliases.iter().cloned());
 
 			let maybe_drop = Self::drop_id_by_recipient(&recipient)
-				.or_else(|| Self::drop_id_by_alias(&recipient_aliases))
+				.or_else(|| Self::try_get_drop_id_by_alias(&aliases_set))
 				.and_then(Self::drop_by_id);
 
+			// TODO check amount against settings.min_amount
 			let mut is_new_drop = false;
 			let mut drop = maybe_drop.unwrap_or_else(|| {
 				is_new_drop = true;
@@ -277,7 +280,7 @@ decl_module! {
 
 			drop.total_dropped = drop.total_dropped.saturating_add(amount);
 
-			DropIdByAlias::insert(recipient_aliases, drop.id);
+			Self::filter_and_insert_new_aliases(aliases_set, drop.id);
 			DropIdByRecipient::<T>::insert(&recipient, drop.id);
 			DropById::<T>::insert(drop.id, drop);
 			if is_new_drop {
@@ -295,6 +298,22 @@ impl<T: Trait> Module<T> {
 		faucet: &T::AccountId
 	) -> Result<FaucetSettings<T::BlockNumber, BalanceOf<T>>, DispatchError> {
 		Ok(Self::settings_by_faucet(faucet).ok_or(Error::<T>::FaucetNotFound)?)
+	}
+
+	fn try_get_drop_id_by_alias(aliases: &BTreeSet<FaucetAlias>) -> Option<DropId> {
+		aliases.iter().find_map(|alias| Self::drop_id_by_alias(alias))
+	}
+
+	fn filter_and_insert_new_aliases(aliases_set: BTreeSet<FaucetAlias>, drop_id: DropId) {
+		let new_aliases = aliases_set
+			.iter()
+			.filter(|alias| {
+				Self::drop_id_by_alias(alias.clone()).is_none()
+			});
+
+		for alias in new_aliases {
+			DropIdByAlias::insert(alias, drop_id);
+		}
 	}
 }
 
