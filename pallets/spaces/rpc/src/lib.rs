@@ -1,19 +1,20 @@
 //! RPC interface for the transaction payment module.
 
+use codec::Codec;
 use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
 use jsonrpc_derive::rpc;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_runtime::{generic::BlockId, traits::Block as BlockT};
+use sp_runtime::generic::BlockId;
+use sp_runtime::traits::Block as BlockT;
 use std::sync::Arc;
 use spaces_runtime_api::SpacesApi as SpacesRuntimeApi;
 
 use pallet_utils::{SpaceId};
-use pallet_spaces::{Trait as SpacesTrait, Space, WhoAndWhen1};
-
+use spaces_runtime_api::SpaceInfo;
 
 #[rpc]
-pub trait SpacesApi<BlockHash, T> {
+pub trait SpacesApi<BlockHash, AccountId> {
     #[rpc(name = "spaces_getLastSpaceId")]
     fn get_last_space_id(&self, at: Option<BlockHash>) -> Result<SpaceId>;
 
@@ -53,7 +54,8 @@ pub trait SpacesApi<BlockHash, T> {
     fn find_struct(
         &self,
         at: Option<BlockHash>,
-    ) -> Result<Vec<WhoAndWhen1<T>>> where T: SpacesTrait;
+        space_id: SpaceId,
+    ) -> Result<SpaceInfo<AccountId>>;
 }
 
 pub struct Spaces<C, M> {
@@ -70,14 +72,14 @@ impl<C, M> Spaces<C, M> {
     }
 }
 
-impl<C, Block, T> SpacesApi<<Block as BlockT>::Hash, T> for Spaces<C, Block>
+impl<C, Block, AccountId> SpacesApi<<Block as BlockT>::Hash, AccountId> for Spaces<C, Block>
     where
         Block: BlockT,
-        T: SpacesTrait,
+        AccountId: Codec,
         C: Send + Sync + 'static,
         C: ProvideRuntimeApi<Block>,
         C: HeaderBackend<Block>,
-        C::Api: SpacesRuntimeApi<Block, T>,
+        C::Api: SpacesRuntimeApi<Block, AccountId>,
 {
     fn get_last_space_id(&self, at: Option<<Block as BlockT>::Hash>) -> Result<SpaceId> {
         let api = self.client.runtime_api();
@@ -180,13 +182,14 @@ impl<C, Block, T> SpacesApi<<Block as BlockT>::Hash, T> for Spaces<C, Block>
     fn find_struct(
         &self,
         at: Option<<Block as BlockT>::Hash>,
-    ) -> Result<Vec<WhoAndWhen1<T>>> {
+        space_id: SpaceId,
+    ) -> Result<SpaceInfo<AccountId>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(||
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash));
 
-        let runtime_api_result = api.find_struct(&at);
+        let runtime_api_result = api.find_struct(&at, space_id);
         runtime_api_result.map_err(|e| RpcError {
             // TODO: research on error codes and change a value
             code: ErrorCode::ServerError(9876), // No real reason for this value

@@ -1,6 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
+#[cfg(feature = "std")]
+use serde::{Serialize, Deserialize};
 use frame_support::{
   decl_module,
   traits::Get
@@ -15,6 +17,7 @@ use frame_system::{self as system};
 use pallet_utils::SpaceId;
 
 #[derive(Encode, Decode, Ord, PartialOrd, Clone, Eq, PartialEq, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum SpacePermission {
   /// Create, update, delete, grant and revoke roles in this space.
   ManageRoles,
@@ -83,6 +86,7 @@ pub enum SpacePermission {
 pub type SpacePermissionSet = BTreeSet<SpacePermission>;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct SpacePermissions {
   pub none: Option<SpacePermissionSet>,
   pub everyone: Option<SpacePermissionSet>,

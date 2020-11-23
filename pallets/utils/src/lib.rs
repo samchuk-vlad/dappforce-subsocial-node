@@ -1,6 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
+#[cfg(feature = "std")]
+use serde::{Serialize, Deserialize};
 use frame_support::{
     decl_error, decl_module, decl_storage, decl_event,
     dispatch::{DispatchError, DispatchResult}, ensure,
@@ -48,6 +50,7 @@ pub enum User<AccountId> {
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum Content {
     None,
     Raw(Vec<u8>),

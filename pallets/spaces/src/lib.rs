@@ -1,8 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-#[cfg(feature = "std")]
-use serde::{Serialize, Deserialize};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure,
     dispatch::{DispatchError, DispatchResult},
@@ -16,6 +14,8 @@ use df_traits::{SpaceForRoles, SpaceForRolesProvider};
 use df_traits::{PermissionChecker, SpaceFollowsProvider};
 use pallet_permissions::{SpacePermission, SpacePermissions, SpacePermissionsContext};
 use pallet_utils::{Module as Utils, SpaceId, WhoAndWhen, Content};
+
+mod rpc;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Space<T: Trait> {
@@ -39,14 +39,6 @@ pub struct Space<T: Trait> {
 
     /// Allows to override the default permissions for this space.
     pub permissions: Option<SpacePermissions>,
-}
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct WhoAndWhen1<T: Trait> {
-    pub account: T::AccountId,
-    pub block: T::BlockNumber,
-    pub time: u64,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -525,6 +517,7 @@ impl<T: Trait> Module<T> {
         hidden_space_ids
     }
 
+    // TODO: maybe move this to Space impl?
     fn space_is_public(space_id: u64) -> bool {
         let space_opt = Self::space_by_id(space_id);
         let mut result: bool = false;
@@ -535,6 +528,9 @@ impl<T: Trait> Module<T> {
         }
         result
     }
+
+    // TODO: move this to `mod rpc`
+    // RPC related functions
 
     pub fn find_public_space_ids(offset: u64, limit: u64) -> Vec<SpaceId> {
         let mut last_space_id = Self::next_space_id();
@@ -584,10 +580,6 @@ impl<T: Trait> Module<T> {
             }
         }
         public_spaces
-    }
-
-    pub fn find_struct() -> Vec<WhoAndWhen1<T>> {
-        unimplemented!()
     }
 }
 

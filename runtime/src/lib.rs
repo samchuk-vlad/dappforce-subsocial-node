@@ -52,7 +52,8 @@ use pallet_permissions::{
 };
 use pallet_utils::SpaceId;
 use pallet_posts::PostId;
-use pallet_spaces::{Space, WhoAndWhen1};
+
+use spaces_runtime_api::SpaceInfo;
 
 pub mod constants;
 use constants::{currency::*, time::*};
@@ -700,7 +701,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl spaces_runtime_api::SpacesApi<Block, Runtime> for Runtime
+	impl spaces_runtime_api::SpacesApi<Block, AccountId> for Runtime
 	{
         fn get_last_space_id() -> SpaceId {
             Spaces::get_last_space_id()
@@ -722,8 +723,8 @@ impl_runtime_apis! {
         // 	Spaces::find_public_spaces(offset, limit)
         // }
 
-        fn find_struct() -> Vec<WhoAndWhen1<Runtime>> {
-        	Spaces::find_struct()
+        fn find_struct(space_id: SpaceId) -> SpaceInfo<AccountId> {
+        	Spaces::find_struct(space_id)
         }
     }
 
