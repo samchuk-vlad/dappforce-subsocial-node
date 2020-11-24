@@ -79,5 +79,5 @@ version = '0.4.0'
 
 [dependencies.spaces-runtime-api]
 default-features = false
-path = './runtime-api'
+path = 'rpc/runtime-api'
 version = '0.1.0'

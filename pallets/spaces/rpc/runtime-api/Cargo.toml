@@ -41,12 +41,12 @@ version = '2.0.0-rc4'
 
 [dependencies.pallet-permissions]
 default-features = false
-path = '../../permissions'
+path = '../../../permissions'
 version = '0.4.0'
 
 [dependencies.pallet-utils]
 default-features = false
-path = '../../utils'
+path = '../../../utils'
 version = '0.4.0'
 
 [features]

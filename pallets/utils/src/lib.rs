@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Decode, Encode};
+use codec::{Encode, Decode};
 #[cfg(feature = "std")]
 use serde::{Serialize, Deserialize};
 use frame_support::{
@@ -56,6 +56,12 @@ pub enum Content {
     Raw(Vec<u8>),
     IPFS(Vec<u8>),
     Hyper(Vec<u8>),
+}
+
+impl Default for Content {
+    fn default() -> Self {
+        Self::None
+    }
 }
 
 impl Content {

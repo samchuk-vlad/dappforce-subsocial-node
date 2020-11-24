@@ -11,10 +11,10 @@ use std::sync::Arc;
 use spaces_runtime_api::SpacesApi as SpacesRuntimeApi;
 
 use pallet_utils::{SpaceId};
-use spaces_runtime_api::SpaceInfo;
+use spaces_runtime_api::SpaceSerializable;
 
 #[rpc]
-pub trait SpacesApi<BlockHash, AccountId> {
+pub trait SpacesApi<BlockHash, AccountId, BlockNumber> {
     #[rpc(name = "spaces_getLastSpaceId")]
     fn get_last_space_id(&self, at: Option<BlockHash>) -> Result<SpaceId>;
 
@@ -55,7 +55,7 @@ pub trait SpacesApi<BlockHash, AccountId> {
         &self,
         at: Option<BlockHash>,
         space_id: SpaceId,
-    ) -> Result<SpaceInfo<AccountId>>;
+    ) -> Result<SpaceSerializable<AccountId, BlockNumber>>;
 }
 
 pub struct Spaces<C, M> {
@@ -72,14 +72,16 @@ impl<C, M> Spaces<C, M> {
     }
 }
 
-impl<C, Block, AccountId> SpacesApi<<Block as BlockT>::Hash, AccountId> for Spaces<C, Block>
+impl<C, Block, AccountId, BlockNumber> SpacesApi<<Block as BlockT>::Hash, AccountId, BlockNumber>
+for Spaces<C, Block>
     where
         Block: BlockT,
         AccountId: Codec,
+        BlockNumber: Codec,
         C: Send + Sync + 'static,
         C: ProvideRuntimeApi<Block>,
         C: HeaderBackend<Block>,
-        C::Api: SpacesRuntimeApi<Block, AccountId>,
+        C::Api: SpacesRuntimeApi<Block, AccountId, BlockNumber>,
 {
     fn get_last_space_id(&self, at: Option<<Block as BlockT>::Hash>) -> Result<SpaceId> {
         let api = self.client.runtime_api();
@@ -183,7 +185,7 @@ impl<C, Block, AccountId> SpacesApi<<Block as BlockT>::Hash, AccountId> for Spac
         &self,
         at: Option<<Block as BlockT>::Hash>,
         space_id: SpaceId,
-    ) -> Result<SpaceInfo<AccountId>> {
+    ) -> Result<SpaceSerializable<AccountId, BlockNumber>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(||
             // If the block hash is not supplied assume the best block.
