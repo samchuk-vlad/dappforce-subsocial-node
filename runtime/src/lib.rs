@@ -707,24 +707,12 @@ impl_runtime_apis! {
             Spaces::get_last_space_id()
         }
 
-        fn get_hidden_space_ids(limit_opt: Option<u64>, offset_opt: Option<u64>) -> Vec<SpaceId> {
-        	Spaces::get_hidden_space_ids(limit_opt, offset_opt)
+        fn find_public_spaces(offset: u64, limit: u64) -> Vec<SpaceSerializable<AccountId, BlockNumber>> {
+        	Spaces::find_public_spaces(offset, limit)
         }
 
-        fn find_public_space_ids(offset: u64, limit: u64) -> Vec<SpaceId> {
-        	Spaces::find_public_space_ids(offset, limit)
-        }
-
-        fn find_unlisted_space_ids(offset: u64, limit: u64) -> Vec<SpaceId> {
-        	Spaces::find_unlisted_space_ids(offset, limit)
-        }
-
-        // fn find_public_spaces(offset: u64, limit: u64) -> Vec<Space<Runtime>> {
-        // 	Spaces::find_public_spaces(offset, limit)
-        // }
-
-        fn find_struct(space_id: SpaceId) -> SpaceSerializable<AccountId, BlockNumber> {
-        	Spaces::find_struct(space_id)
+        fn find_unlisted_spaces(offset: u64, limit: u64) -> Vec<SpaceSerializable<AccountId, BlockNumber>> {
+        	Spaces::find_unlisted_spaces(offset, limit)
         }
     }
 

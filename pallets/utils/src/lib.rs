@@ -24,6 +24,8 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+pub mod rpc;
+
 pub type SpaceId = u64;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]

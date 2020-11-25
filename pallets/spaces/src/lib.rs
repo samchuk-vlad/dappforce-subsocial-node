@@ -384,6 +384,10 @@ impl<T: Trait> Space<T> {
     pub fn try_get_parent(&self) -> Result<SpaceId, DispatchError> {
         self.parent_id.ok_or_else(|| Error::<T>::SpaceIsAtRoot.into())
     }
+
+    pub fn is_public(&self) -> bool {
+        !self.clone().hidden && !self.content.is_none()
+    }
 }
 
 impl Default for SpaceUpdate {
@@ -467,119 +471,6 @@ impl<T: Trait> Module<T> {
 
             Err(Error::<T>::SpaceNotFound.into())
         })
-    }
-
-    pub fn get_last_space_id() -> SpaceId {
-        Self::next_space_id().saturating_sub(1)
-    }
-
-    pub fn get_last_space() -> Option<Space<T>> {
-        let last_space_id = Self::next_space_id().saturating_sub(1);
-
-        let limit_space_id = last_space_id.saturating_sub(T::DefaultRPCLimit::get());
-
-        for space_id in last_space_id..limit_space_id {
-            let space_opt = Self::space_by_id(space_id);
-            if space_opt.is_some() {
-                return space_opt
-            }
-        }
-
-        None
-    }
-
-    pub fn get_hidden_space_ids(limit_opt: Option<u64>, offset_opt: Option<u64>) -> Vec<SpaceId> {
-        let mut last_space_id = Self::next_space_id();
-
-        if let Some(offset) = offset_opt {
-            last_space_id = last_space_id.saturating_sub(offset);
-        }
-
-        let first_space_id: u64;
-        if let Some(limit) = limit_opt {
-            first_space_id = last_space_id.saturating_sub(limit);
-        } else {
-            first_space_id = last_space_id.saturating_sub(T::DefaultRPCLimit::get());
-        }
-
-        let mut hidden_space_ids: Vec<SpaceId> = Vec::new();
-
-        for space_id in first_space_id..last_space_id {
-            let space_opt = Self::space_by_id(space_id);
-
-            if let Some(space) = space_opt.clone() {
-                if space.hidden {
-                    hidden_space_ids.push(space.id);
-                }
-            }
-        }
-
-        hidden_space_ids
-    }
-
-    // TODO: maybe move this to Space impl?
-    fn space_is_public(space_id: u64) -> bool {
-        let space_opt = Self::space_by_id(space_id);
-        let mut result: bool = false;
-        if let Some(space) = space_opt.clone() {
-            if !space.hidden && !space.content.is_none() {
-                result = true;
-            }
-        }
-        result
-    }
-
-    // TODO: move this to `mod rpc`
-    // RPC related functions
-
-    pub fn find_public_space_ids(offset: u64, limit: u64) -> Vec<SpaceId> {
-        let mut last_space_id = Self::next_space_id();
-        last_space_id = last_space_id.saturating_sub(offset);
-
-        let first_space_id: u64;
-        first_space_id = last_space_id.saturating_sub(limit);
-
-        let mut public_space_ids: Vec<SpaceId> = Vec::new();
-        for space_id in first_space_id..=last_space_id {
-            if Self::space_is_public(space_id) {
-                public_space_ids.push(space_id);
-            }
-        }
-
-        public_space_ids
-    }
-
-    pub fn find_unlisted_space_ids(offset: u64, limit: u64) -> Vec<SpaceId> {
-        let mut last_space_id = Self::next_space_id();
-
-        last_space_id = last_space_id.saturating_sub(offset);
-
-        let first_space_id: u64;
-        first_space_id = last_space_id.saturating_sub(limit);
-
-        let mut unlisted_space_ids: Vec<SpaceId> = Vec::new();
-
-        for space_id in first_space_id..last_space_id {
-            if !Self::space_is_public(space_id) {
-                unlisted_space_ids.push(space_id);
-            }
-        }
-
-        unlisted_space_ids
-    }
-
-    pub fn find_public_spaces(offset: u64, limit: u64) -> Vec<Space<T>> {
-        let mut public_spaces: Vec<Space<T>> = Vec::new();
-
-        let public_space_ids = Self::find_public_space_ids(offset, limit);
-
-        for space_id in public_space_ids {
-            let space_opt = Self::space_by_id(space_id);
-            if let Some(space) = space_opt {
-                public_spaces.push(space);
-            }
-        }
-        public_spaces
     }
 }
 

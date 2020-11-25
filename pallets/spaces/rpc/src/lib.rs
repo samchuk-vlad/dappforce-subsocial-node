@@ -1,5 +1,7 @@
 //! RPC interface for the transaction payment module.
 
+use std::sync::Arc;
+
 use codec::Codec;
 use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
 use jsonrpc_derive::rpc;
@@ -7,10 +9,9 @@ use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::generic::BlockId;
 use sp_runtime::traits::Block as BlockT;
-use std::sync::Arc;
-use spaces_runtime_api::SpacesApi as SpacesRuntimeApi;
 
-use pallet_utils::{SpaceId};
+use pallet_utils::SpaceId;
+use spaces_runtime_api::SpacesApi as SpacesRuntimeApi;
 use spaces_runtime_api::SpaceSerializable;
 
 #[rpc]
@@ -18,44 +19,21 @@ pub trait SpacesApi<BlockHash, AccountId, BlockNumber> {
     #[rpc(name = "spaces_getLastSpaceId")]
     fn get_last_space_id(&self, at: Option<BlockHash>) -> Result<SpaceId>;
 
-    #[rpc(name = "spaces_getHiddenSpaceIds")]
-    fn get_hidden_space_ids(
-        &self,
-        at: Option<BlockHash>,
-        limit_opt: Option<u64>,
-        offset_opt: Option<u64>
-    ) -> Result<Vec<SpaceId>>;
-
-    #[rpc(name = "spaces_findPublicSpaceIds")]
-    fn find_public_space_ids(
-        &self,
-        at: Option<BlockHash>,
-        offset: u64,
-        limit: u64
-    ) -> Result<Vec<SpaceId>>;
-
-    #[rpc(name = "spaces_findUnlistedSpaceIds")]
-    fn find_unlisted_space_ids(
+    #[rpc(name = "spaces_findPublicSpaces")]
+    fn find_public_spaces(
         &self,
         at: Option<BlockHash>,
         offset: u64,
         limit: u64,
-    ) -> Result<Vec<SpaceId>>;
+    ) -> Result<Vec<SpaceSerializable<AccountId, BlockNumber>>>;
 
-    // #[rpc(name = "spaces_findPublicSpace")]
-    // fn find_public_spaces(
-    //     &self,
-    //     at: Option<BlockHash>,
-    //     offset: u64,
-    //     limit: u64,
-    // ) -> Result<Vec<Space<T>>> where T: SpacesTrait;
-
-    #[rpc(name = "spaces_findStruct")]
-    fn find_struct(
+    #[rpc(name = "spaces_findUnlistedSpaces")]
+    fn find_unlisted_spaces(
         &self,
         at: Option<BlockHash>,
-        space_id: SpaceId,
-    ) -> Result<SpaceSerializable<AccountId, BlockNumber>>;
+        offset: u64,
+        limit: u64,
+    ) -> Result<Vec<SpaceSerializable<AccountId, BlockNumber>>>;
 }
 
 pub struct Spaces<C, M> {
@@ -97,39 +75,18 @@ for Spaces<C, Block>
         })
     }
 
-    fn get_hidden_space_ids(
-        &self,
-        at: Option<<Block as BlockT>::Hash>,
-        limit_opt: Option<u64>,
-        offset_opt: Option<u64>
-    ) -> Result<Vec<SpaceId>> {
-        let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or_else(||
-            // If the block hash is not supplied assume the best block.
-            self.client.info().best_hash));
-
-        let runtime_api_result = api.get_hidden_space_ids(&at, limit_opt, offset_opt);
-        runtime_api_result.map_err(|e| RpcError {
-            // TODO: research on error codes and change a value
-            code: ErrorCode::ServerError(9876), // No real reason for this value
-            // TODO: change error message (?use errors macro)
-            message: "Something wrong".into(),
-            data: Some(format!("{:?}", e).into()),
-        })
-    }
-
-    fn find_public_space_ids(
+    fn find_public_spaces(
         &self,
         at: Option<<Block as BlockT>::Hash>,
         offset: u64,
         limit: u64,
-    ) -> Result<Vec<SpaceId>> {
+    ) -> Result<Vec<SpaceSerializable<AccountId, BlockNumber>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(||
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash));
 
-        let runtime_api_result = api.find_public_space_ids(&at, offset, limit);
+        let runtime_api_result = api.find_public_spaces(&at, offset, limit);
         runtime_api_result.map_err(|e| RpcError {
             // TODO: research on error codes and change a value
             code: ErrorCode::ServerError(9876), // No real reason for this value
@@ -139,59 +96,18 @@ for Spaces<C, Block>
         })
     }
 
-    fn find_unlisted_space_ids(
+    fn find_unlisted_spaces(
         &self,
         at: Option<<Block as BlockT>::Hash>,
         offset: u64,
-        limit: u64
-    ) -> Result<Vec<SpaceId>> {
+        limit: u64,
+    ) -> Result<Vec<SpaceSerializable<AccountId, BlockNumber>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(||
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash));
 
-        let runtime_api_result = api.find_unlisted_space_ids(&at, offset, limit);
-        runtime_api_result.map_err(|e| RpcError {
-            // TODO: research on error codes and change a value
-            code: ErrorCode::ServerError(9876), // No real reason for this value
-            // TODO: change error message (?use errors macro)
-            message: "Something wrong".into(),
-            data: Some(format!("{:?}", e).into()),
-        })
-    }
-
-    // fn find_public_spaces(
-    //     &self,
-    //     at: Option<<Block as BlockT>::Hash>,
-    //     offset: u64,
-    //     limit: u64
-    // ) -> Result<Vec<Space<T>>> {
-    //     let api = self.client.runtime_api();
-    //     let at = BlockId::hash(at.unwrap_or_else(||
-    //         // If the block hash is not supplied assume the best block.
-    //         self.client.info().best_hash));
-    //
-    //     let runtime_api_result = api.find_public_spaces(&at, offset, limit);
-    //     runtime_api_result.map_err(|e| RpcError {
-    //         // TODO: research on error codes and change a value
-    //         code: ErrorCode::ServerError(9876), // No real reason for this value
-    //         // TODO: change error message (?use errors macro)
-    //         message: "Something wrong".into(),
-    //         data: Some(format!("{:?}", e).into()),
-    //     })
-    // }
-
-    fn find_struct(
-        &self,
-        at: Option<<Block as BlockT>::Hash>,
-        space_id: SpaceId,
-    ) -> Result<SpaceSerializable<AccountId, BlockNumber>> {
-        let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or_else(||
-            // If the block hash is not supplied assume the best block.
-            self.client.info().best_hash));
-
-        let runtime_api_result = api.find_struct(&at, space_id);
+        let runtime_api_result = api.find_unlisted_spaces(&at, offset, limit);
         runtime_api_result.map_err(|e| RpcError {
             // TODO: research on error codes and change a value
             code: ErrorCode::ServerError(9876), // No real reason for this value

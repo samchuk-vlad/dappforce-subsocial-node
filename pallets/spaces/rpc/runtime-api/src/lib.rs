@@ -6,29 +6,9 @@ use codec::{Encode, Codec, Decode};
 use serde::{Serialize, Deserialize};
 
 use sp_std::vec::Vec;
-use sp_runtime::SaturatedConversion;
 
-use pallet_utils::{SpaceId, Content, WhoAndWhen};
+use pallet_utils::{SpaceId, Content, rpc::WhoAndWhenSerializable};
 use pallet_permissions::SpacePermissions;
-
-#[derive(Eq, PartialEq, Encode, Decode, Default)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
-pub struct WhoAndWhenSerializable<AccountId, BlockNumber> {
-    pub account: AccountId,
-    pub block: BlockNumber,
-    pub time: u64,
-}
-
-impl<T: pallet_utils::Trait> From<WhoAndWhen<T>> for WhoAndWhenSerializable<T::AccountId, T::BlockNumber> {
-    fn from(from: WhoAndWhen<T>) -> Self {
-        Self {
-            account: from.account,
-            block: from.block,
-            time: from.time.saturated_into::<u64>()
-        }
-    }
-}
 
 #[derive(Eq, PartialEq, Encode, Decode, Default)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
@@ -38,6 +18,7 @@ pub struct SpaceSerializable<AccountId, BlockNumber> {
     #[cfg_attr(feature = "std", serde(flatten))]
     pub created: WhoAndWhenSerializable<AccountId, BlockNumber>,
     #[cfg_attr(feature = "std", serde(flatten))]
+    // FIXME: if `Some()`, replaces `created` flattened fields
     pub updated: Option<WhoAndWhenSerializable<AccountId, BlockNumber>>,
 
     pub owner: AccountId,
@@ -45,6 +26,7 @@ pub struct SpaceSerializable<AccountId, BlockNumber> {
     // Can be updated by the owner:
     pub parent_id: Option<SpaceId>,
     pub handle: Option<Vec<u8>>,
+    #[cfg_attr(features = "std", serde(untagged, rename = "contentId"))]
     pub content: Content,
     pub hidden: bool,
 
@@ -65,14 +47,8 @@ sp_api::decl_runtime_apis! {
     {
         fn get_last_space_id() -> SpaceId;
 
-        fn get_hidden_space_ids(limit_opt: Option<u64>, offset_opt: Option<u64>) -> Vec<SpaceId>;
+        fn find_public_spaces(offset: u64, limit: u64) -> Vec<SpaceSerializable<AccountId, BlockNumber>>;
 
-        fn find_public_space_ids(offset: u64, limit: u64) -> Vec<SpaceId>;
-
-        fn find_unlisted_space_ids(offset: u64, limit: u64) -> Vec<SpaceId>;
-
-        // fn find_public_spaces(offset: u64, limit: u64) -> Vec<Space<T>>;
-
-        fn find_struct(space_id: SpaceId) -> SpaceSerializable<AccountId, BlockNumber>;
+        fn find_unlisted_spaces(offset: u64, limit: u64) -> Vec<SpaceSerializable<AccountId, BlockNumber>>;
     }
 }
