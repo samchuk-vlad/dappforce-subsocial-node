@@ -8,8 +8,7 @@ use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 use std::sync::Arc;
 use posts_runtime_api::PostsApi as PostsRuntimeApi;
 
-use pallet_utils::SpaceId;
-use pallet_posts::PostId;
+use pallet_utils::{SpaceId, PostId};
 
 #[rpc]
 pub trait PostsApi<BlockHash> {

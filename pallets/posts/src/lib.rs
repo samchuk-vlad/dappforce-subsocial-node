@@ -11,11 +11,9 @@ use frame_system::{self as system, ensure_signed};
 
 use pallet_permissions::SpacePermission;
 use pallet_spaces::{Module as Spaces, Space, SpaceById};
-use pallet_utils::{Module as Utils, SpaceId, WhoAndWhen, Content};
+use pallet_utils::{Module as Utils, SpaceId, WhoAndWhen, Content, PostId};
 
 pub mod functions;
-
-pub type PostId = u64;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Post<T: Trait> {

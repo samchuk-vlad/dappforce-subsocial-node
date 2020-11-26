@@ -50,8 +50,7 @@ use pallet_permissions::{
 	SpacePermissions,
 	SpacePermissionSet
 };
-use pallet_utils::SpaceId;
-use pallet_posts::PostId;
+use pallet_utils::{SpaceId, PostId};
 
 use spaces_runtime_api::SpaceSerializable;
 

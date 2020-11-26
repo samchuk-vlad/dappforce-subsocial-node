@@ -3,8 +3,7 @@
 
 use sp_std::vec::Vec;
 
-use pallet_utils::SpaceId;
-use pallet_posts::PostId;
+use pallet_utils::{SpaceId, PostId};
 
 sp_api::decl_runtime_apis! {
     pub trait PostsApi {

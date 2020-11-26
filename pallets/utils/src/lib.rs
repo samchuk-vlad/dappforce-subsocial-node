@@ -27,6 +27,7 @@ mod tests;
 pub mod rpc;
 
 pub type SpaceId = u64;
+pub type PostId = u64;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct WhoAndWhen<T: Trait> {

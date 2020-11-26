@@ -33,7 +33,7 @@ mod tests {
     use pallet_spaces::{SpaceById, SpaceUpdate, Error as SpacesError};
     use pallet_space_follows::Error as SpaceFollowsError;
     use pallet_space_ownership::Error as SpaceOwnershipError;
-    use pallet_utils::{SpaceId, Error as UtilsError, User, Content};
+    use pallet_utils::{SpaceId, Error as UtilsError, User, Content, PostId};
 
     impl_outer_origin! {
         pub enum Origin for TestRuntime {}
