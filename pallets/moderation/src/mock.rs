@@ -67,6 +67,84 @@ impl pallet_utils::Trait for Test {
 	type MaxHandleLen = MaxHandleLen;
 }
 
+parameter_types! {
+        pub const ExistentialDeposit: u64 = 1;
+    }
+
+impl pallet_balances::Trait for Test {
+    type Balance = u64;
+    type DustRemoval = ();
+    type Event = ();
+    type ExistentialDeposit = ExistentialDeposit;
+    type AccountStore = System;
+}
+
+use pallet_permissions::default_permissions::DefaultSpacePermissions;
+
+impl pallet_permissions::Trait for Test {
+    type DefaultSpacePermissions = DefaultSpacePermissions;
+}
+
+parameter_types! {
+    pub const DefaultRPCLimit: u64 = 20;
+}
+
+impl pallet_spaces::Trait for Test {
+    type Event = ();
+    type Roles = Roles;
+    type SpaceFollows = SpaceFollows;
+    type BeforeSpaceCreated = SpaceFollows;
+    type AfterSpaceUpdated = ();
+    type IsAccountBlocked = Moderation;
+    type IsContentBlocked = Moderation;
+    type SpaceCreationFee = ();
+    type DefaultRPCLimit = DefaultRPCLimit;
+}
+
+parameter_types! {}
+
+impl pallet_space_follows::Trait for Test {
+    type Event = ();
+    type BeforeSpaceFollowed = ();
+    type BeforeSpaceUnfollowed = ();
+}
+
+parameter_types! {
+        pub const MaxCommentDepth: u32 = 10;
+    }
+
+impl pallet_posts::Trait for Test {
+    type Event = ();
+    type MaxCommentDepth = MaxCommentDepth;
+    type PostScores = ();
+    type AfterPostUpdated = ();
+    type IsPostBlocked = Moderation;
+}
+
+parameter_types! {
+        pub const MaxUsersToProcessPerDeleteRole: u16 = 40;
+    }
+
+impl pallet_roles::Trait for Test {
+    type Event = ();
+    type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
+    type Spaces = Spaces;
+    type SpaceFollows = SpaceFollows;
+    type IsAccountBlocked = Moderation;
+    type IsContentBlocked = Moderation;
+}
+
+parameter_types! {}
+
+impl pallet_profiles::Trait for Test {
+    type Event = ();
+    type AfterProfileUpdated = ();
+}
+
+parameter_types! {
+	pub const DefaultAutoblockThreshold: u16 = 20;
+}
+
 impl Trait for Test {
 	type Event = ();
 }
