@@ -702,17 +702,21 @@ impl_runtime_apis! {
 
 	impl spaces_runtime_api::SpacesApi<Block, AccountId, BlockNumber> for Runtime
 	{
-        fn get_last_space_id() -> SpaceId {
-            Spaces::get_last_space_id()
-        }
+		fn get_spaces(offset: u64, limit: u64) -> Vec<SpaceSerializable<AccountId, BlockNumber>> {
+			Spaces::get_spaces(offset, limit)
+		}
 
-        fn find_public_spaces(offset: u64, limit: u64) -> Vec<SpaceSerializable<AccountId, BlockNumber>> {
-        	Spaces::find_public_spaces(offset, limit)
-        }
+		fn get_spaces_by_ids(space_ids: Vec<SpaceId>) -> Vec<SpaceSerializable<AccountId, BlockNumber>> {
+			Spaces::get_spaces_by_ids(space_ids)
+		}
 
-        fn find_unlisted_spaces(offset: u64, limit: u64) -> Vec<SpaceSerializable<AccountId, BlockNumber>> {
-        	Spaces::find_unlisted_spaces(offset, limit)
-        }
+		fn get_public_spaces(offset: u64, limit: u64) -> Vec<SpaceSerializable<AccountId, BlockNumber>> {
+			Spaces::get_public_spaces(offset, limit)
+		}
+
+		fn get_unlisted_spaces(offset: u64, limit: u64) -> Vec<SpaceSerializable<AccountId, BlockNumber>> {
+			Spaces::get_unlisted_spaces(offset, limit)
+		}
     }
 
     impl posts_runtime_api::PostsApi<Block> for Runtime

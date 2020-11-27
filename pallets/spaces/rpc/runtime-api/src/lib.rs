@@ -12,10 +12,12 @@ sp_api::decl_runtime_apis! {
         AccountId: Codec,
         BlockNumber: Codec
     {
-        fn get_last_space_id() -> SpaceId;
+        fn get_spaces(offset: u64, limit: u64) -> Vec<SpaceSerializable<AccountId, BlockNumber>>;
 
-        fn find_public_spaces(offset: u64, limit: u64) -> Vec<SpaceSerializable<AccountId, BlockNumber>>;
+        fn get_spaces_by_ids(space_ids: Vec<SpaceId>) -> Vec<SpaceSerializable<AccountId, BlockNumber>>;
 
-        fn find_unlisted_spaces(offset: u64, limit: u64) -> Vec<SpaceSerializable<AccountId, BlockNumber>>;
+        fn get_public_spaces(offset: u64, limit: u64) -> Vec<SpaceSerializable<AccountId, BlockNumber>>;
+
+        fn get_unlisted_spaces(offset: u64, limit: u64) -> Vec<SpaceSerializable<AccountId, BlockNumber>>;
     }
 }

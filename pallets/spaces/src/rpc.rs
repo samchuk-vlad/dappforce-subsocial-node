@@ -26,6 +26,7 @@ pub struct SpaceSerializable<AccountId, BlockNumber> {
 
     pub parent_id: Option<SpaceId>,
     pub handle: Option<Vec<u8>>,
+    #[cfg_attr(feature = "std", serde(flatten))]
     pub content: Content,
 
     pub is_ipfs_content: Option<bool>,
@@ -71,47 +72,54 @@ impl<T: Trait> From<Space<T>> for SpaceSerializable<T::AccountId, T::BlockNumber
 }
 
 impl<T: Trait> Module<T> {
-    pub fn get_last_space_id() -> SpaceId {
-        Self::next_space_id().saturating_sub(1)
+    pub fn get_spaces_by_ids(space_ids: Vec<SpaceId>) -> Vec<SpaceSerializable<T::AccountId, T::BlockNumber>> {
+        let mut spaces = Vec::new();
+        for space_id in space_ids.iter() {
+            if let Some(space) = Self::require_space(*space_id).ok() {
+                spaces.push(space.into());
+            }
+        }
+        spaces
     }
 
-    pub fn find_public_spaces(offset: u64, limit: u64) -> Vec<SpaceSerializable<T::AccountId, T::BlockNumber>> {
-        let mut last_space_id = Self::next_space_id();
-        last_space_id = last_space_id.saturating_sub(offset);
+    fn get_spaces_slice<F: FnMut(&Space<T>) -> bool>(
+        offset: u64,
+        limit: u64,
+        mut compare_fn: F,
+    ) -> Vec<SpaceSerializable<T::AccountId, T::BlockNumber>> {
+        let mut start_from = offset;
+        let mut iterate_until = offset;
+        let last_space_id = Self::next_space_id().saturating_sub(1);
 
-        let first_space_id: u64;
-        first_space_id = last_space_id.saturating_sub(limit);
+        let mut spaces = Vec::new();
 
-        let mut public_spaces = Vec::new();
-        for space_id in first_space_id..=last_space_id {
-            if let Some(space) = Self::require_space(space_id).ok() {
-                if space.is_public() {
-                    public_spaces.push(space.into());
+        loop {
+            iterate_until = iterate_until.saturating_add(limit);
+
+            if iterate_until > last_space_id { break; }
+
+            for space_id in start_from..=iterate_until {
+                if let Some(space) = Self::require_space(space_id).ok() {
+                    if compare_fn(&space) {
+                        spaces.push(space.into());
+                    }
                 }
+                start_from = iterate_until;
             }
         }
 
-        public_spaces
+        spaces
     }
 
-    pub fn find_unlisted_spaces(offset: u64, limit: u64) -> Vec<SpaceSerializable<T::AccountId, T::BlockNumber>> {
-        let mut last_space_id = Self::next_space_id();
+    pub fn get_spaces(offset: u64, limit: u64) -> Vec<SpaceSerializable<T::AccountId, T::BlockNumber>> {
+        Self::get_spaces_slice(offset, limit, |_| true)
+    }
 
-        last_space_id = last_space_id.saturating_sub(offset);
+    pub fn get_public_spaces(offset: u64, limit: u64) -> Vec<SpaceSerializable<T::AccountId, T::BlockNumber>> {
+        Self::get_spaces_slice(offset, limit, |space| space.is_public())
+    }
 
-        let first_space_id: u64;
-        first_space_id = last_space_id.saturating_sub(limit);
-
-        let mut unlisted_spaces = Vec::new();
-
-        for space_id in first_space_id..last_space_id {
-            if let Some(space) = Self::require_space(space_id).ok() {
-                if !space.is_public() {
-                    unlisted_spaces.push(space.into());
-                }
-            }
-        }
-
-        unlisted_spaces
+    pub fn get_unlisted_spaces(offset: u64, limit: u64) -> Vec<SpaceSerializable<T::AccountId, T::BlockNumber>> {
+        Self::get_spaces_slice(offset, limit, |space| !space.is_public())
     }
 }
