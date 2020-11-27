@@ -1,22 +1,22 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Encode, Decode};
-#[cfg(feature = "std")]
-use serde::{Serialize, Deserialize};
+use codec::{Decode, Encode};
 use frame_support::{
-    decl_error, decl_module, decl_storage, decl_event,
+    decl_error, decl_event, decl_module, decl_storage,
     dispatch::{DispatchError, DispatchResult}, ensure,
     traits::{
         Currency, Get,
         Imbalance, OnUnbalanced,
     },
 };
+use frame_system as system;
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
 use sp_runtime::RuntimeDebug;
 use sp_std::{
     collections::btree_set::BTreeSet,
     prelude::*,
 };
-use frame_system::{self as system};
 
 #[cfg(test)]
 mod mock;
@@ -54,6 +54,7 @@ pub enum User<AccountId> {
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "std", serde(tag = "contentType", content = "contentId"))]
 pub enum Content {
     None,
     Raw(Vec<u8>),
@@ -70,6 +71,14 @@ impl Default for Content {
 impl Content {
     pub fn is_none(&self) -> bool {
         self == &Self::None
+    }
+
+    pub fn is_ipfs(&self) -> bool {
+        return if let Self::IPFS(_) = self {
+            true
+        } else {
+            false
+        };
     }
 }
 

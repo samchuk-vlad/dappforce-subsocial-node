@@ -12,7 +12,7 @@ use sp_runtime::traits::Block as BlockT;
 
 use pallet_utils::SpaceId;
 use spaces_runtime_api::SpacesApi as SpacesRuntimeApi;
-use spaces_runtime_api::SpaceSerializable;
+use pallet_spaces::rpc::SpaceSerializable;
 
 #[rpc]
 pub trait SpacesApi<BlockHash, AccountId, BlockNumber> {

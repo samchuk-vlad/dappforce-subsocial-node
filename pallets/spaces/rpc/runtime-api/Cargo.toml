@@ -39,9 +39,9 @@ git = 'https://github.com/paritytech/substrate.git'
 tag = 'v2.0.0-rc4'
 version = '2.0.0-rc4'
 
-[dependencies.pallet-permissions]
+[dependencies.pallet-spaces]
 default-features = false
-path = '../../../permissions'
+path = '../..'
 version = '0.4.0'
 
 [dependencies.pallet-utils]
@@ -56,6 +56,6 @@ std = [
 	'sp-api/std',
 	'sp-std/std',
 	'sp-runtime/std',
-	'pallet-permissions/std',
+	'pallet-spaces/std',
 	'pallet-utils/std'
 ]

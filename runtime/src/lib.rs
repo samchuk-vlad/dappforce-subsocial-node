@@ -52,7 +52,7 @@ use pallet_permissions::{
 };
 use pallet_utils::{SpaceId, PostId};
 
-use spaces_runtime_api::SpaceSerializable;
+use pallet_spaces::rpc::SpaceSerializable;
 
 pub mod constants;
 use constants::{currency::*, time::*};
