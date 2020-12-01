@@ -717,6 +717,14 @@ impl_runtime_apis! {
 		fn get_unlisted_spaces(offset: u64, limit: u64) -> Vec<SpaceSerializable<AccountId, BlockNumber>> {
 			Spaces::get_unlisted_spaces(offset, limit)
 		}
+
+		fn get_space_id_by_handle(handle: Vec<u8>) -> Option<SpaceId> {
+			Spaces::get_space_id_by_handle(handle)
+		}
+
+        fn get_space_by_handle(handle: Vec<u8>) -> Option<SpaceSerializable<AccountId, BlockNumber>> {
+        	Spaces::get_space_by_handle(handle)
+        }
     }
 
     impl posts_runtime_api::PostsApi<Block> for Runtime

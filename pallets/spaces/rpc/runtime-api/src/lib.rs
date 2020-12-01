@@ -19,5 +19,9 @@ sp_api::decl_runtime_apis! {
         fn get_public_spaces(offset: u64, limit: u64) -> Vec<SpaceSerializable<AccountId, BlockNumber>>;
 
         fn get_unlisted_spaces(offset: u64, limit: u64) -> Vec<SpaceSerializable<AccountId, BlockNumber>>;
+
+        fn get_space_id_by_handle(handle: Vec<u8>) -> Option<SpaceId>;
+
+        fn get_space_by_handle(handle: Vec<u8>) -> Option<SpaceSerializable<AccountId, BlockNumber>>;
     }
 }

@@ -122,4 +122,14 @@ impl<T: Trait> Module<T> {
     pub fn get_unlisted_spaces(offset: u64, limit: u64) -> Vec<SpaceSerializable<T::AccountId, T::BlockNumber>> {
         Self::get_spaces_slice(offset, limit, |space| !space.is_public())
     }
+
+    pub fn get_space_id_by_handle(handle: Vec<u8>) -> Option<SpaceId> {
+        Self::space_id_by_handle(handle)
+    }
+
+    pub fn get_space_by_handle(handle: Vec<u8>) -> Option<SpaceSerializable<T::AccountId, T::BlockNumber>> {
+        Self::space_id_by_handle(handle)
+            .and_then(|space_id| Self::require_space(space_id).ok())
+            .map(|space| space.into())
+    }
 }

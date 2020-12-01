@@ -46,6 +46,20 @@ pub trait SpacesApi<BlockHash, AccountId, BlockNumber> {
         offset: u64,
         limit: u64,
     ) -> Result<Vec<SpaceSerializable<AccountId, BlockNumber>>>;
+
+    #[rpc(name = "spaces_getSpaceIdByHandle")]
+    fn get_space_id_by_handle(
+        &self,
+        at: Option<BlockHash>,
+        handle: Vec<u8>,
+    ) -> Result<Option<SpaceId>>;
+
+    #[rpc(name = "spaces_getSpaceByHandle")]
+    fn get_space_by_handle(
+        &self,
+        at: Option<BlockHash>,
+        handle: Vec<u8>,
+    ) -> Result<Option<SpaceSerializable<AccountId, BlockNumber>>>;
 }
 
 pub struct Spaces<C, M> {
@@ -121,6 +135,26 @@ for Spaces<C, Block>
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
         let runtime_api_result = api.get_unlisted_spaces(&at, offset, limit);
+        runtime_api_result.map_err(map_rpc_error)
+    }
+
+    fn get_space_id_by_handle(&self, at: Option<<Block as BlockT>::Hash>, handle: Vec<u8>) -> Result<Option<u64>> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
+
+        let runtime_api_result = api.get_space_id_by_handle(&at, handle);
+        runtime_api_result.map_err(map_rpc_error)
+    }
+
+    fn get_space_by_handle(
+        &self,
+        at: Option<<Block as BlockT>::Hash>,
+        handle: Vec<u8>,
+    ) -> Result<Option<SpaceSerializable<AccountId, BlockNumber>>> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
+
+        let runtime_api_result = api.get_space_by_handle(&at, handle);
         runtime_api_result.map_err(map_rpc_error)
     }
 }
