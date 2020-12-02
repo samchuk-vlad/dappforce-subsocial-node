@@ -39,24 +39,29 @@ impl<T: Trait> Post<T> {
         !self.is_comment()
     }
 
+    pub fn is_regular_post(&self) -> bool {
+        matches!(self.extension, PostExtension::RegularPost)
+    }
+
     pub fn is_comment(&self) -> bool {
-        match self.extension {
-            PostExtension::Comment(_) => true,
-            _ => false,
-        }
+        matches!(self.extension, PostExtension::Comment(_))
     }
 
     pub fn is_sharing_post(&self) -> bool {
-        match self.extension {
-            PostExtension::SharedPost(_) => true,
-            _ => false,
-        }
+        matches!(self.extension, PostExtension::SharedPost(_))
     }
 
     pub fn get_comment_ext(&self) -> Result<Comment, DispatchError> {
         match self.extension {
             PostExtension::Comment(comment_ext) => Ok(comment_ext),
             _ => Err(Error::<T>::NotComment.into())
+        }
+    }
+
+    pub fn get_shared_post_id(&self) -> Result<PostId, DispatchError> {
+        match self.extension {
+            PostExtension::SharedPost(post_id) => Ok(post_id),
+            _ => Err(Error::<T>::NotASharingPost.into())
         }
     }
 
@@ -136,6 +141,10 @@ impl<T: Trait> Post<T> {
         } else if diff < 0 {
             self.score = self.score.saturating_sub(diff.abs() as i32);
         }
+    }
+
+    pub fn is_public(&self) -> bool {
+        !self.hidden && !self.content.is_none()
     }
 }
 

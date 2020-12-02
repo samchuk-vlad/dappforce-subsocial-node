@@ -304,7 +304,7 @@ path = '../pallets/spaces/rpc/runtime-api'
 
 [dependencies.posts-runtime-api]
 default-features = false
-path = '../pallets/posts/runtime-api'
+path = '../pallets/posts/rpc/runtime-api'
 
 [package]
 name = 'subsocial-runtime'
