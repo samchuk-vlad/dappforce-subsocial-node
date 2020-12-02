@@ -53,6 +53,7 @@ use pallet_permissions::{
 use pallet_utils::{SpaceId, PostId};
 
 use pallet_spaces::rpc::SpaceSerializable;
+use pallet_posts::rpc::PostSerializable;
 
 pub mod constants;
 use constants::{currency::*, time::*};
@@ -725,20 +726,43 @@ impl_runtime_apis! {
         fn get_space_by_handle(handle: Vec<u8>) -> Option<SpaceSerializable<AccountId, BlockNumber>> {
         	Spaces::get_space_by_handle(handle)
         }
+
+        fn get_space_ids_by_owner(owner: AccountId) -> Vec<SpaceId> {
+        	Spaces::get_space_ids_by_owner(owner)
+        }
     }
 
-    impl posts_runtime_api::PostsApi<Block> for Runtime
+	// TODO: common RPCs
+	//  - getSocialAccountsByIds
+	// 	- getReactionsByIds
+	// 	- getSpaceIdsFollowedByAccount
+	// 	- getReactionIdsByPostId
+	// 	- getReactionIdsByCommentId
+
+    impl posts_runtime_api::PostsApi<Block, AccountId, BlockNumber> for Runtime
     {
-    	fn find_public_post_ids_in_space(space_id: SpaceId, offset: u64, limit: u64) -> Vec<PostId> {
-    		Posts::find_public_post_ids_in_space(space_id, offset, limit)
-    	}
+		fn get_posts_by_ids(post_ids: Vec<PostId>) -> Vec<PostSerializable<AccountId, BlockNumber>> {
+			Posts::get_posts_by_ids(post_ids)
+		}
 
-    	fn find_unlisted_post_ids_in_space(space_id: SpaceId, offset: u64, limit: u64) -> Vec<PostId> {
-    		Posts::find_unlisted_post_ids_in_space(space_id, offset, limit)
-    	}
+		fn get_public_posts(space_id: SpaceId, offset: u64, limit: u64) -> Vec<PostSerializable<AccountId, BlockNumber>> {
+			Posts::get_public_posts(space_id, offset, limit)
+		}
 
-    	fn find_reply_ids_in_post(post_id: PostId) -> Vec<PostId> {
-    		Posts::find_reply_ids_in_post(post_id)
-    	}
+		fn get_unlisted_posts(space_id: SpaceId, offset: u64, limit: u64) -> Vec<PostSerializable<AccountId, BlockNumber>> {
+			Posts::get_unlisted_posts(space_id, offset, limit)
+		}
+
+		fn get_reply_ids_by_post_id(post_id: PostId) -> Vec<PostId> {
+			Posts::get_reply_ids_by_post_id(post_id)
+		}
+
+		/*fn get_post_replies(post_id: PostId) -> Vec<PostSerializable<AccountId, BlockNumber>> {
+			Posts::get_post_replies(post_id)
+		}*/
+
+		fn get_post_ids_by_space_id(space_id: SpaceId) -> Vec<PostId> {
+			Posts::get_post_ids_by_space_id(space_id)
+		}
     }
 }
