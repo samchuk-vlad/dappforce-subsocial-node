@@ -132,4 +132,8 @@ impl<T: Trait> Module<T> {
             .and_then(|space_id| Self::require_space(space_id).ok())
             .map(|space| space.into())
     }
+
+    pub fn get_space_ids_by_owner(owner: T::AccountId) -> Vec<SpaceId> {
+        Self::space_ids_by_owner(owner)
+    }
 }

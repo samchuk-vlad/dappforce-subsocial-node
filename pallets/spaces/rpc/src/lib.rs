@@ -60,6 +60,13 @@ pub trait SpacesApi<BlockHash, AccountId, BlockNumber> {
         at: Option<BlockHash>,
         handle: Vec<u8>,
     ) -> Result<Option<SpaceSerializable<AccountId, BlockNumber>>>;
+
+    #[rpc(name = "spaces_getSpaceIdsByOwner")]
+    fn get_space_ids_by_owner(
+        &self,
+        at: Option<BlockHash>,
+        owner: AccountId
+    ) -> Result<Vec<SpaceId>>;
 }
 
 pub struct Spaces<C, M> {
@@ -155,6 +162,18 @@ for Spaces<C, Block>
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
         let runtime_api_result = api.get_space_by_handle(&at, handle);
+        runtime_api_result.map_err(map_rpc_error)
+    }
+
+    fn get_space_ids_by_owner(
+        &self,
+        at: Option<<Block as BlockT>::Hash>,
+        owner: AccountId,
+    ) -> Result<Vec<SpaceId>> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
+
+        let runtime_api_result = api.get_space_ids_by_owner(&at, owner);
         runtime_api_result.map_err(map_rpc_error)
     }
 }
