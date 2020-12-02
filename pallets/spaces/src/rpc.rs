@@ -1,12 +1,10 @@
-// use spaces_runtime_api::SpaceSerializable;
-
 use codec::{Decode, Encode};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::SaturatedConversion;
 use sp_std::vec::Vec;
 
-use pallet_utils::{Content, SpaceId};
+use pallet_utils::{Content, SpaceId, from_bool_to_option};
 
 use crate::{Module, Space, Trait};
 
@@ -30,7 +28,7 @@ pub struct SpaceSerializable<AccountId, BlockNumber> {
     pub content: Content,
 
     pub is_ipfs_content: Option<bool>,
-    pub hidden: bool,
+    pub hidden: Option<bool>,
 
     pub posts_count: u32,
     pub hidden_posts_count: u32,
@@ -47,8 +45,6 @@ impl<T: Trait> From<Space<T>> for SpaceSerializable<T::AccountId, T::BlockNumber
             hidden_posts_count, followers_count, score, ..
         } = from;
 
-        let is_ipfs_content = Some(content.is_ipfs()).filter(|value| *value == true);
-
         Self {
             id,
             created_by: created.account,
@@ -60,9 +56,9 @@ impl<T: Trait> From<Space<T>> for SpaceSerializable<T::AccountId, T::BlockNumber
             owner,
             parent_id,
             handle,
-            content,
-            is_ipfs_content,
-            hidden,
+            content: content.clone(),
+            is_ipfs_content: from_bool_to_option(content.is_ipfs()),
+            hidden: from_bool_to_option(hidden),
             posts_count,
             hidden_posts_count,
             followers_count,
@@ -93,19 +89,23 @@ impl<T: Trait> Module<T> {
 
         let mut spaces = Vec::new();
 
-        loop {
+        'outer: loop {
             iterate_until = iterate_until.saturating_add(limit);
 
-            if iterate_until > last_space_id { break; }
+            if start_from > last_space_id { break; }
+            if iterate_until > last_space_id {
+                iterate_until = last_space_id;
+            }
 
             for space_id in start_from..=iterate_until {
                 if let Some(space) = Self::require_space(space_id).ok() {
                     if compare_fn(&space) {
                         spaces.push(space.into());
+                        if spaces.len() >= limit as usize { break 'outer; }
                     }
                 }
-                start_from = iterate_until;
             }
+            start_from = iterate_until;
         }
 
         spaces

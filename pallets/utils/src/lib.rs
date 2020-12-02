@@ -24,8 +24,6 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-pub mod rpc;
-
 pub type SpaceId = u64;
 pub type PostId = u64;
 
@@ -74,11 +72,7 @@ impl Content {
     }
 
     pub fn is_ipfs(&self) -> bool {
-        return if let Self::IPFS(_) = self {
-            true
-        } else {
-            false
-        };
+        matches!(self, Self::IPFS(_))
     }
 }
 
@@ -180,6 +174,10 @@ pub fn vec_remove_on<F: PartialEq>(vector: &mut Vec<F>, element: F) {
         // TODO fix: swap_remove doesn't remove tha last element.
         vector.swap_remove(index);
     }
+}
+
+pub fn from_bool_to_option(value: bool) -> Option<bool> {
+    Some(value).filter(|v| *v == true)
 }
 
 impl<T: Trait> Module<T> {
