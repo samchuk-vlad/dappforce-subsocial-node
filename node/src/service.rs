@@ -102,6 +102,9 @@ macro_rules! new_full_start {
 				io.extend_with(profiles_rpc::ProfilesApi::to_delegate(
 					profiles_rpc::Profiles::new(builder.client().clone()),
 				));
+				io.extend_with(reactions_rpc::ReactionsApi::to_delegate(
+					reactions_rpc::Reactions::new(builder.client().clone()),
+				));
 
 				Ok(io)
 			})?;

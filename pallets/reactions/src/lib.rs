@@ -6,18 +6,23 @@ use frame_support::{
     dispatch::DispatchResult,
     traits::Get
 };
-use sp_runtime::RuntimeDebug;
-use sp_std::prelude::*;
 use frame_system::{self as system, ensure_signed};
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
+use sp_runtime::{RuntimeDebug, DispatchError};
+use sp_std::prelude::*;
 
 use pallet_permissions::SpacePermission;
 use pallet_posts::{Module as Posts, Post, PostById};
 use pallet_spaces::Module as Spaces;
 use pallet_utils::{vec_remove_on, WhoAndWhen, PostId};
 
+pub mod rpc;
+
 pub type ReactionId = u64;
 
 #[derive(Encode, Decode, Clone, Copy, Eq, PartialEq, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum ReactionKind {
     Upvote,
     Downvote,
@@ -168,7 +173,7 @@ decl_module! {
         Error::<T>::ReactionByAccountNotFound
       );
 
-      let mut reaction = Self::reaction_by_id(reaction_id).ok_or(Error::<T>::ReactionNotFound)?;
+      let mut reaction = Self::require_reaction(reaction_id)?;
       let post = &mut Posts::require_post(post_id)?;
 
       ensure!(owner == reaction.created.account, Error::<T>::NotReactionOwner);
@@ -209,7 +214,7 @@ decl_module! {
       );
 
       // TODO extract Self::require_reaction(reaction_id)?;
-      let reaction = Self::reaction_by_id(reaction_id).ok_or(Error::<T>::ReactionNotFound)?;
+      let reaction = Self::require_reaction(reaction_id)?;
       let post = &mut Posts::require_post(post_id)?;
 
       ensure!(owner == reaction.created.account, Error::<T>::NotReactionOwner);
@@ -233,7 +238,6 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-
     // FIXME: don't add reaction in storage before the checks in 'create_reaction' are done
     pub fn insert_new_reaction(account: T::AccountId, kind: ReactionKind) -> ReactionId {
         let id = Self::next_reaction_id();
@@ -241,13 +245,18 @@ impl<T: Trait> Module<T> {
             id,
             created: WhoAndWhen::<T>::new(account),
             updated: None,
-            kind
+            kind,
         };
 
         <ReactionById<T>>::insert(id, reaction);
         NextReactionId::mutate(|n| { *n += 1; });
 
         id
+    }
+
+    /// Get `Reaction` by id from the storage or return `ReactionNotFound` error.
+    pub fn require_reaction(reaction_id: ReactionId) -> Result<Reaction<T>, DispatchError> {
+        Ok(Self::reaction_by_id(reaction_id).ok_or(Error::<T>::ReactionNotFound)?)
     }
 }
 

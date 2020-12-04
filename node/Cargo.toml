@@ -58,6 +58,9 @@ path = '../pallets/posts/rpc'
 [dependencies.profiles-rpc]
 path = '../pallets/profiles/rpc'
 
+[dependencies.reactions-rpc]
+path = '../pallets/reactions/rpc'
+
 [dependencies.sc-consensus]
 git = 'https://github.com/paritytech/substrate.git'
 tag = 'v2.0.0-rc4'

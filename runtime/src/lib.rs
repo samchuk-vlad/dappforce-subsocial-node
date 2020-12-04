@@ -55,6 +55,10 @@ use pallet_utils::{SpaceId, PostId};
 
 use pallet_posts::rpc::FlatPost;
 use pallet_profiles::rpc::FlatSocialAccount;
+use pallet_reactions::{
+	ReactionId,
+	rpc::FlatReaction,
+};
 use pallet_spaces::rpc::FlatSpace;
 
 pub mod constants;
@@ -776,5 +780,27 @@ impl_runtime_apis! {
         ) -> Vec<FlatSocialAccount<AccountId, BlockNumber>> {
         	Profiles::get_social_accounts_by_ids(account_ids)
         }
+	}
+
+    impl reactions_runtime_api::ReactionsApi<Block, AccountId, BlockNumber> for Runtime
+    {
+		fn get_reactions_by_ids(reaction_ids: Vec<ReactionId>) -> Vec<FlatReaction<AccountId, BlockNumber>> {
+			Reactions::get_reactions_by_ids(reaction_ids)
+		}
+
+		fn get_reactions_by_post_id(
+			post_id: PostId,
+			limit: u64,
+			offset: u64
+		) -> Vec<FlatReaction<AccountId, BlockNumber>> {
+			Reactions::get_reactions_by_post_id(post_id, limit, offset)
+		}
+
+		fn get_reactions_by_account(
+			account: AccountId,
+			post_ids: Vec<PostId>,
+		) -> BTreeMap<PostId, FlatReaction<AccountId, BlockNumber>> {
+			Reactions::get_reactions_by_account(account, post_ids)
+		}
     }
 }
