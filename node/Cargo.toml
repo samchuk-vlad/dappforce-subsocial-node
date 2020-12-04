@@ -55,6 +55,9 @@ path = '../pallets/spaces/rpc'
 [dependencies.posts-rpc]
 path = '../pallets/posts/rpc'
 
+[dependencies.profile-follows-rpc]
+path = '../pallets/profile-follows/rpc'
+
 [dependencies.profiles-rpc]
 path = '../pallets/profiles/rpc'
 

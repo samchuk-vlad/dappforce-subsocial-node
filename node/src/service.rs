@@ -99,6 +99,9 @@ macro_rules! new_full_start {
 				io.extend_with(posts_rpc::PostsApi::to_delegate(
 					posts_rpc::Posts::new(builder.client().clone()),
 				));
+				io.extend_with(profile_follows_rpc::ProfileFollowsApi::to_delegate(
+					profile_follows_rpc::ProfileFollows::new(builder.client().clone()),
+				));
 				io.extend_with(profiles_rpc::ProfilesApi::to_delegate(
 					profiles_rpc::Profiles::new(builder.client().clone()),
 				));

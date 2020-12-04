@@ -773,6 +773,13 @@ impl_runtime_apis! {
 		}
     }
 
+	impl profile_follows_runtime_api::ProfileFollowsApi<Block, AccountId> for Runtime
+    {
+    	fn filter_followed_accounts(account: AccountId, other_accounts: Vec<AccountId>) -> Vec<AccountId> {
+    		ProfileFollows::filter_followed_accounts(account, other_accounts)
+    	}
+    }
+
 	impl profiles_runtime_api::ProfilesApi<Block, AccountId, BlockNumber> for Runtime
 	{
 		fn get_social_accounts_by_ids(
