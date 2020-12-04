@@ -42,6 +42,7 @@ std = [
     'pallet-space-ownership/std',
     'pallet-space-history/std',
     'pallet-utils/std',
+    'space-follows-runtime-api/std',
     'spaces-runtime-api/std',
     'posts-runtime-api/std',
     'reactions-runtime-api/std',
@@ -300,6 +301,10 @@ version = '0.4.0'
 # package = 'pallet-session-keys'
 # path = '../pallets/session-keys'
 # version = '0.4.0'
+
+[dependencies.space-follows-runtime-api]
+default-features = false
+path = '../pallets/space-follows/rpc/runtime-api'
 
 [dependencies.spaces-runtime-api]
 default-features = false

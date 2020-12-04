@@ -13,6 +13,8 @@ use pallet_profiles::{Module as Profiles, SocialAccountById};
 use pallet_spaces::{BeforeSpaceCreated, Module as Spaces, Space, SpaceById};
 use pallet_utils::{SpaceId, vec_remove_on};
 
+pub mod rpc;
+
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait
     + pallet_utils::Trait

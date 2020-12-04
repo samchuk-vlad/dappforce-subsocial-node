@@ -707,6 +707,17 @@ impl_runtime_apis! {
 		}
 	}
 
+	impl space_follows_runtime_api::SpaceFollowsApi<Block, AccountId> for Runtime
+    {
+    	fn get_space_ids_followed_by_account(account: AccountId) -> Vec<SpaceId> {
+    		SpaceFollows::get_space_ids_followed_by_account(account)
+    	}
+
+    	fn filter_followed_spaces(account: AccountId, space_ids: Vec<SpaceId>) -> Vec<SpaceId> {
+    		SpaceFollows::filter_followed_spaces(account, space_ids)
+    	}
+    }
+
 	impl spaces_runtime_api::SpacesApi<Block, AccountId, BlockNumber> for Runtime
 	{
 		fn get_spaces(offset: u64, limit: u64) -> Vec<FlatSpace<AccountId, BlockNumber>> {
