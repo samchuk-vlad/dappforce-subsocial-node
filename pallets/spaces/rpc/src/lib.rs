@@ -1,5 +1,3 @@
-//! RPC interface for the transaction payment module.
-
 use std::sync::Arc;
 
 use codec::Codec;
@@ -65,7 +63,7 @@ pub trait SpacesApi<BlockHash, AccountId, BlockNumber> {
     fn get_space_ids_by_owner(
         &self,
         at: Option<BlockHash>,
-        owner: AccountId
+        owner: AccountId,
     ) -> Result<Vec<SpaceId>>;
 
     #[rpc(name = "spaces_nextSpaceId")]

@@ -1,5 +1,3 @@
-//! RPC interface for the transaction payment module.
-
 use std::sync::Arc;
 
 use codec::Codec;

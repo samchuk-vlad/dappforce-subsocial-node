@@ -738,13 +738,6 @@ impl_runtime_apis! {
         }
     }
 
-	// TODO: common RPCs
-	//  - getSocialAccountsByIds
-	// 	- getReactionsByIds
-	// 	- getSpaceIdsFollowedByAccount
-	// 	- getReactionIdsByPostId
-	// 	- getReactionIdsByCommentId
-
     impl posts_runtime_api::PostsApi<Block, AccountId, BlockNumber> for Runtime
     {
 		fn get_posts_by_ids(post_ids: Vec<PostId>) -> Vec<FlatPost<AccountId, BlockNumber>> {
