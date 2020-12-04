@@ -44,6 +44,7 @@ std = [
     'pallet-utils/std',
     'spaces-runtime-api/std',
     'posts-runtime-api/std',
+    'profiles-runtime-api/std',
 ]
 
 [dependencies.aura]
@@ -305,6 +306,10 @@ path = '../pallets/spaces/rpc/runtime-api'
 [dependencies.posts-runtime-api]
 default-features = false
 path = '../pallets/posts/rpc/runtime-api'
+
+[dependencies.profiles-runtime-api]
+default-features = false
+path = '../pallets/profiles/rpc/runtime-api'
 
 [package]
 name = 'subsocial-runtime'

@@ -1,35 +1,19 @@
 [package]
-name = 'pallet-profiles'
-version = '0.4.0'
+name = 'profiles-rpc'
+version = '0.1.0'
 authors = ['DappForce <dappforce@pm.me>']
 edition = '2018'
 license = 'GPL-3.0-only'
 homepage = 'https://subsocial.network'
 repository = 'https://github.com/dappforce/dappforce-subsocial-node'
-description = 'Pallet to manage social accounts and profiles'
+description = 'Profiles pallet RPC to call a custom Runtime API'
 keywords = ['blockchain', 'cryptocurrency', 'social-network', 'news-feed', 'marketplace']
 categories = ['cryptography::cryptocurrencies']
 
-[features]
-default = ['std']
-std = [
-    'serde',
-    'codec/std',
-    'sp-runtime/std',
-    'frame-support/std',
-    'frame-system/std',
-    'sp-std/std',
-    'pallet-utils/std',
-    'pallet-permissions/std',
-]
-
-[dependencies.impl-trait-for-tuples]
-version = '0.1.3'
-
-[dependencies.serde]
-optional = true
-features = ["derive"]
-version = "1.0.101"
+[dependencies]
+jsonrpc-core = '14.0.3'
+jsonrpc-core-client = '14.0.3'
+jsonrpc-derive = '14.0.3'
 
 [dependencies.codec]
 default-features = false
@@ -37,36 +21,50 @@ features = ['derive']
 package = 'parity-scale-codec'
 version = '1.3.1'
 
+[dependencies.sp-rpc]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
+
+[dependencies.sp-blockchain]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
+
+[dependencies.serde]
+optional = true
+features = ['derive']
+version = '1.0.101'
+
 [dependencies.sp-runtime]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
 tag = 'v2.0.0-rc4'
 version = '2.0.0-rc4'
 
-[dependencies.frame-support]
+[dependencies.sp-api]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
 tag = 'v2.0.0-rc4'
 version = '2.0.0-rc4'
 
-[dependencies.frame-system]
+[dependencies.pallet-profiles]
 default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'v2.0.0-rc4'
-version = '2.0.0-rc4'
-
-[dependencies.sp-std]
-default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'v2.0.0-rc4'
-version = '2.0.0-rc4'
-
-[dependencies.pallet-utils]
-default-features = false
-path = '../utils'
+path = '..'
 version = '0.4.0'
 
-[dependencies.pallet-permissions]
+[dependencies.profiles-runtime-api]
 default-features = false
-path = '../permissions'
-version = '0.4.0'
+path = 'runtime-api'
+
+[features]
+default = ['std']
+std = [
+  'serde',
+  'sp-runtime/std',
+  'sp-api/std',
+  'profiles-runtime-api/std',
+  'pallet-profiles/std',
+]

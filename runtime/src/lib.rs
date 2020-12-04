@@ -11,6 +11,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 use sp_std::{
 	prelude::*,
 	iter::FromIterator,
+	collections::btree_map::BTreeMap,
 };
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
@@ -52,8 +53,9 @@ use pallet_permissions::{
 };
 use pallet_utils::{SpaceId, PostId};
 
-use pallet_spaces::rpc::SpaceSerializable;
-use pallet_posts::rpc::PostSerializable;
+use pallet_posts::rpc::FlatPost;
+use pallet_profiles::rpc::FlatSocialAccount;
+use pallet_spaces::rpc::FlatSpace;
 
 pub mod constants;
 use constants::{currency::*, time::*};
@@ -703,19 +705,19 @@ impl_runtime_apis! {
 
 	impl spaces_runtime_api::SpacesApi<Block, AccountId, BlockNumber> for Runtime
 	{
-		fn get_spaces(offset: u64, limit: u64) -> Vec<SpaceSerializable<AccountId, BlockNumber>> {
+		fn get_spaces(offset: u64, limit: u64) -> Vec<FlatSpace<AccountId, BlockNumber>> {
 			Spaces::get_spaces(offset, limit)
 		}
 
-		fn get_spaces_by_ids(space_ids: Vec<SpaceId>) -> Vec<SpaceSerializable<AccountId, BlockNumber>> {
+		fn get_spaces_by_ids(space_ids: Vec<SpaceId>) -> Vec<FlatSpace<AccountId, BlockNumber>> {
 			Spaces::get_spaces_by_ids(space_ids)
 		}
 
-		fn get_public_spaces(offset: u64, limit: u64) -> Vec<SpaceSerializable<AccountId, BlockNumber>> {
+		fn get_public_spaces(offset: u64, limit: u64) -> Vec<FlatSpace<AccountId, BlockNumber>> {
 			Spaces::get_public_spaces(offset, limit)
 		}
 
-		fn get_unlisted_spaces(offset: u64, limit: u64) -> Vec<SpaceSerializable<AccountId, BlockNumber>> {
+		fn get_unlisted_spaces(offset: u64, limit: u64) -> Vec<FlatSpace<AccountId, BlockNumber>> {
 			Spaces::get_unlisted_spaces(offset, limit)
 		}
 
@@ -723,12 +725,16 @@ impl_runtime_apis! {
 			Spaces::get_space_id_by_handle(handle)
 		}
 
-        fn get_space_by_handle(handle: Vec<u8>) -> Option<SpaceSerializable<AccountId, BlockNumber>> {
+        fn get_space_by_handle(handle: Vec<u8>) -> Option<FlatSpace<AccountId, BlockNumber>> {
         	Spaces::get_space_by_handle(handle)
         }
 
         fn get_space_ids_by_owner(owner: AccountId) -> Vec<SpaceId> {
         	Spaces::get_space_ids_by_owner(owner)
+        }
+
+        fn get_next_space_id() -> SpaceId {
+        	Spaces::get_next_space_id()
         }
     }
 
@@ -741,15 +747,15 @@ impl_runtime_apis! {
 
     impl posts_runtime_api::PostsApi<Block, AccountId, BlockNumber> for Runtime
     {
-		fn get_posts_by_ids(post_ids: Vec<PostId>) -> Vec<PostSerializable<AccountId, BlockNumber>> {
+		fn get_posts_by_ids(post_ids: Vec<PostId>) -> Vec<FlatPost<AccountId, BlockNumber>> {
 			Posts::get_posts_by_ids(post_ids)
 		}
 
-		fn get_public_posts(space_id: SpaceId, offset: u64, limit: u64) -> Vec<PostSerializable<AccountId, BlockNumber>> {
+		fn get_public_posts(space_id: SpaceId, offset: u64, limit: u64) -> Vec<FlatPost<AccountId, BlockNumber>> {
 			Posts::get_public_posts(space_id, offset, limit)
 		}
 
-		fn get_unlisted_posts(space_id: SpaceId, offset: u64, limit: u64) -> Vec<PostSerializable<AccountId, BlockNumber>> {
+		fn get_unlisted_posts(space_id: SpaceId, offset: u64, limit: u64) -> Vec<FlatPost<AccountId, BlockNumber>> {
 			Posts::get_unlisted_posts(space_id, offset, limit)
 		}
 
@@ -757,12 +763,25 @@ impl_runtime_apis! {
 			Posts::get_reply_ids_by_post_id(post_id)
 		}
 
-		/*fn get_post_replies(post_id: PostId) -> Vec<PostSerializable<AccountId, BlockNumber>> {
+		/*fn get_post_replies(post_id: PostId) -> Vec<FlatPost<AccountId, BlockNumber>> {
 			Posts::get_post_replies(post_id)
 		}*/
 
 		fn get_post_ids_by_space_id(space_id: SpaceId) -> Vec<PostId> {
 			Posts::get_post_ids_by_space_id(space_id)
 		}
+
+		fn get_next_post_id() -> PostId {
+			Posts::get_next_post_id()
+		}
+    }
+
+	impl profiles_runtime_api::ProfilesApi<Block, AccountId, BlockNumber> for Runtime
+	{
+		fn get_social_accounts_by_ids(
+            account_ids: Vec<AccountId>
+        ) -> Vec<FlatSocialAccount<AccountId, BlockNumber>> {
+        	Profiles::get_social_accounts_by_ids(account_ids)
+        }
     }
 }
