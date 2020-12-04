@@ -9,7 +9,7 @@ use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 
-use pallet_posts::rpc::PostSerializable;
+use pallet_posts::rpc::FlatPost;
 use pallet_utils::{PostId, SpaceId};
 use posts_runtime_api::PostsApi as PostsRuntimeApi;
 
@@ -20,7 +20,7 @@ pub trait PostsApi<BlockHash, AccountId, BlockNumber> {
         &self,
         at: Option<BlockHash>,
         post_ids: Vec<PostId>,
-    ) -> Result<Vec<PostSerializable<AccountId, BlockNumber>>>;
+    ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>>;
 
     #[rpc(name = "posts_getPublicPosts")]
     fn get_public_posts(
@@ -29,7 +29,7 @@ pub trait PostsApi<BlockHash, AccountId, BlockNumber> {
         space_id: SpaceId,
         offset: u64,
         limit: u64,
-    ) -> Result<Vec<PostSerializable<AccountId, BlockNumber>>>;
+    ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>>;
 
     #[rpc(name = "posts_getUnlistedPosts")]
     fn get_unlisted_posts(
@@ -38,7 +38,7 @@ pub trait PostsApi<BlockHash, AccountId, BlockNumber> {
         space_id: SpaceId,
         offset: u64,
         limit: u64,
-    ) -> Result<Vec<PostSerializable<AccountId, BlockNumber>>>;
+    ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>>;
 
     #[rpc(name = "posts_getReplyIdsByPostId")]
     fn get_reply_ids_by_post_id(
@@ -52,7 +52,7 @@ pub trait PostsApi<BlockHash, AccountId, BlockNumber> {
         &self,
         at: Option<BlockHash>,
         post_id: PostId,
-    ) -> Result<Vec<PostSerializable<AccountId, BlockNumber>>>;*/
+    ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>>;*/
 
     #[rpc(name = "posts_getPostIdsBySpaceId")]
     fn get_post_ids_by_space_id(
@@ -60,6 +60,9 @@ pub trait PostsApi<BlockHash, AccountId, BlockNumber> {
         at: Option<BlockHash>,
         space_id: SpaceId,
     ) -> Result<Vec<PostId>>;
+
+    #[rpc(name = "posts_nextPostId")]
+    fn get_next_post_id(&self, at: Option<BlockHash>) -> Result<PostId>;
 }
 
 pub struct Posts<C, M> {
@@ -91,7 +94,7 @@ for Posts<C, Block>
         &self,
         at: Option<<Block as BlockT>::Hash>,
         post_ids: Vec<u64>,
-    ) -> Result<Vec<PostSerializable<AccountId, BlockNumber>>> {
+    ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
@@ -105,7 +108,7 @@ for Posts<C, Block>
         space_id: u64,
         offset: u64,
         limit: u64,
-    ) -> Result<Vec<PostSerializable<AccountId, BlockNumber>>> {
+    ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
@@ -119,7 +122,7 @@ for Posts<C, Block>
         space_id: u64,
         offset: u64,
         limit: u64,
-    ) -> Result<Vec<PostSerializable<AccountId, BlockNumber>>> {
+    ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
@@ -139,7 +142,7 @@ for Posts<C, Block>
         &self,
         at: Option<<Block as BlockT>::Hash>,
         post_id: u64,
-    ) -> Result<Vec<PostSerializable<AccountId, BlockNumber>>> {
+    ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
@@ -152,6 +155,14 @@ for Posts<C, Block>
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
         let runtime_api_result = api.get_post_ids_by_space_id(&at, space_id);
+        runtime_api_result.map_err(map_rpc_error)
+    }
+
+    fn get_next_post_id(&self, at: Option<<Block as BlockT>::Hash>) -> Result<u64> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
+
+        let runtime_api_result = api.get_next_post_id(&at);
         runtime_api_result.map_err(map_rpc_error)
     }
 }
