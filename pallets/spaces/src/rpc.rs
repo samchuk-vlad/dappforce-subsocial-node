@@ -2,16 +2,16 @@ use codec::{Decode, Encode};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::SaturatedConversion;
-use sp_std::vec::Vec;
+use sp_std::prelude::*;
 
-use pallet_utils::{Content, SpaceId, from_bool_to_option};
+use pallet_utils::{Content, from_bool_to_option, SpaceId};
 
 use crate::{Module, Space, Trait};
 
 #[derive(Eq, PartialEq, Encode, Decode, Default)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
-pub struct SpaceSerializable<AccountId, BlockNumber> {
+pub struct FlatSpace<AccountId, BlockNumber> {
     pub id: SpaceId,
     pub created_by: AccountId,
     pub created_at_block: BlockNumber,
@@ -37,7 +37,7 @@ pub struct SpaceSerializable<AccountId, BlockNumber> {
     pub score: i32,
 }
 
-impl<T: Trait> From<Space<T>> for SpaceSerializable<T::AccountId, T::BlockNumber> {
+impl<T: Trait> From<Space<T>> for FlatSpace<T::AccountId, T::BlockNumber> {
     fn from(from: Space<T>) -> Self {
         let Space {
             id, created, updated, owner,
@@ -68,21 +68,18 @@ impl<T: Trait> From<Space<T>> for SpaceSerializable<T::AccountId, T::BlockNumber
 }
 
 impl<T: Trait> Module<T> {
-    pub fn get_spaces_by_ids(space_ids: Vec<SpaceId>) -> Vec<SpaceSerializable<T::AccountId, T::BlockNumber>> {
-        let mut spaces = Vec::new();
-        for space_id in space_ids.iter() {
-            if let Some(space) = Self::require_space(*space_id).ok() {
-                spaces.push(space.into());
-            }
-        }
-        spaces
+    pub fn get_spaces_by_ids(space_ids: Vec<SpaceId>) -> Vec<FlatSpace<T::AccountId, T::BlockNumber>> {
+        space_ids.iter()
+            .filter_map(|id| Self::require_space(*id).ok())
+            .map(|space| space.into())
+            .collect()
     }
 
     fn get_spaces_slice<F: FnMut(&Space<T>) -> bool>(
         offset: u64,
         limit: u64,
         mut compare_fn: F,
-    ) -> Vec<SpaceSerializable<T::AccountId, T::BlockNumber>> {
+    ) -> Vec<FlatSpace<T::AccountId, T::BlockNumber>> {
         let mut start_from = offset;
         let mut iterate_until = offset;
         let last_space_id = Self::next_space_id().saturating_sub(1);
@@ -111,15 +108,15 @@ impl<T: Trait> Module<T> {
         spaces
     }
 
-    pub fn get_spaces(offset: u64, limit: u64) -> Vec<SpaceSerializable<T::AccountId, T::BlockNumber>> {
+    pub fn get_spaces(offset: u64, limit: u64) -> Vec<FlatSpace<T::AccountId, T::BlockNumber>> {
         Self::get_spaces_slice(offset, limit, |_| true)
     }
 
-    pub fn get_public_spaces(offset: u64, limit: u64) -> Vec<SpaceSerializable<T::AccountId, T::BlockNumber>> {
+    pub fn get_public_spaces(offset: u64, limit: u64) -> Vec<FlatSpace<T::AccountId, T::BlockNumber>> {
         Self::get_spaces_slice(offset, limit, |space| space.is_public())
     }
 
-    pub fn get_unlisted_spaces(offset: u64, limit: u64) -> Vec<SpaceSerializable<T::AccountId, T::BlockNumber>> {
+    pub fn get_unlisted_spaces(offset: u64, limit: u64) -> Vec<FlatSpace<T::AccountId, T::BlockNumber>> {
         Self::get_spaces_slice(offset, limit, |space| !space.is_public())
     }
 
@@ -127,7 +124,7 @@ impl<T: Trait> Module<T> {
         Self::space_id_by_handle(handle)
     }
 
-    pub fn get_space_by_handle(handle: Vec<u8>) -> Option<SpaceSerializable<T::AccountId, T::BlockNumber>> {
+    pub fn get_space_by_handle(handle: Vec<u8>) -> Option<FlatSpace<T::AccountId, T::BlockNumber>> {
         Self::space_id_by_handle(handle)
             .and_then(|space_id| Self::require_space(space_id).ok())
             .map(|space| space.into())
@@ -135,5 +132,9 @@ impl<T: Trait> Module<T> {
 
     pub fn get_space_ids_by_owner(owner: T::AccountId) -> Vec<SpaceId> {
         Self::space_ids_by_owner(owner)
+    }
+
+    pub fn get_next_space_id() -> SpaceId {
+        Self::next_space_id()
     }
 }

@@ -10,7 +10,7 @@ use sp_blockchain::HeaderBackend;
 use sp_runtime::generic::BlockId;
 use sp_runtime::traits::Block as BlockT;
 
-use pallet_spaces::rpc::SpaceSerializable;
+use pallet_spaces::rpc::FlatSpace;
 use pallet_utils::SpaceId;
 use spaces_runtime_api::SpacesApi as SpacesRuntimeApi;
 
@@ -22,14 +22,14 @@ pub trait SpacesApi<BlockHash, AccountId, BlockNumber> {
         at: Option<BlockHash>,
         offset: u64,
         limit: u64,
-    ) -> Result<Vec<SpaceSerializable<AccountId, BlockNumber>>>;
+    ) -> Result<Vec<FlatSpace<AccountId, BlockNumber>>>;
 
     #[rpc(name = "spaces_getSpacesByIds")]
     fn get_spaces_by_ids(
         &self,
         at: Option<BlockHash>,
         space_ids: Vec<SpaceId>,
-    ) -> Result<Vec<SpaceSerializable<AccountId, BlockNumber>>>;
+    ) -> Result<Vec<FlatSpace<AccountId, BlockNumber>>>;
 
     #[rpc(name = "spaces_getPublicSpaces")]
     fn get_public_spaces(
@@ -37,7 +37,7 @@ pub trait SpacesApi<BlockHash, AccountId, BlockNumber> {
         at: Option<BlockHash>,
         offset: u64,
         limit: u64,
-    ) -> Result<Vec<SpaceSerializable<AccountId, BlockNumber>>>;
+    ) -> Result<Vec<FlatSpace<AccountId, BlockNumber>>>;
 
     #[rpc(name = "spaces_getUnlistedSpaces")]
     fn get_unlisted_spaces(
@@ -45,7 +45,7 @@ pub trait SpacesApi<BlockHash, AccountId, BlockNumber> {
         at: Option<BlockHash>,
         offset: u64,
         limit: u64,
-    ) -> Result<Vec<SpaceSerializable<AccountId, BlockNumber>>>;
+    ) -> Result<Vec<FlatSpace<AccountId, BlockNumber>>>;
 
     #[rpc(name = "spaces_getSpaceIdByHandle")]
     fn get_space_id_by_handle(
@@ -59,7 +59,7 @@ pub trait SpacesApi<BlockHash, AccountId, BlockNumber> {
         &self,
         at: Option<BlockHash>,
         handle: Vec<u8>,
-    ) -> Result<Option<SpaceSerializable<AccountId, BlockNumber>>>;
+    ) -> Result<Option<FlatSpace<AccountId, BlockNumber>>>;
 
     #[rpc(name = "spaces_getSpaceIdsByOwner")]
     fn get_space_ids_by_owner(
@@ -67,6 +67,9 @@ pub trait SpacesApi<BlockHash, AccountId, BlockNumber> {
         at: Option<BlockHash>,
         owner: AccountId
     ) -> Result<Vec<SpaceId>>;
+
+    #[rpc(name = "spaces_nextSpaceId")]
+    fn get_next_space_id(&self, at: Option<BlockHash>) -> Result<SpaceId>;
 }
 
 pub struct Spaces<C, M> {
@@ -99,7 +102,7 @@ for Spaces<C, Block>
         at: Option<<Block as BlockT>::Hash>,
         offset: u64,
         limit: u64,
-    ) -> Result<Vec<SpaceSerializable<AccountId, BlockNumber>>> {
+    ) -> Result<Vec<FlatSpace<AccountId, BlockNumber>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
@@ -111,7 +114,7 @@ for Spaces<C, Block>
         &self,
         at: Option<<Block as BlockT>::Hash>,
         space_ids: Vec<SpaceId>,
-    ) -> Result<Vec<SpaceSerializable<AccountId, BlockNumber>>> {
+    ) -> Result<Vec<FlatSpace<AccountId, BlockNumber>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
@@ -124,7 +127,7 @@ for Spaces<C, Block>
         at: Option<<Block as BlockT>::Hash>,
         offset: u64,
         limit: u64,
-    ) -> Result<Vec<SpaceSerializable<AccountId, BlockNumber>>> {
+    ) -> Result<Vec<FlatSpace<AccountId, BlockNumber>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
@@ -137,7 +140,7 @@ for Spaces<C, Block>
         at: Option<<Block as BlockT>::Hash>,
         offset: u64,
         limit: u64,
-    ) -> Result<Vec<SpaceSerializable<AccountId, BlockNumber>>> {
+    ) -> Result<Vec<FlatSpace<AccountId, BlockNumber>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
@@ -157,7 +160,7 @@ for Spaces<C, Block>
         &self,
         at: Option<<Block as BlockT>::Hash>,
         handle: Vec<u8>,
-    ) -> Result<Option<SpaceSerializable<AccountId, BlockNumber>>> {
+    ) -> Result<Option<FlatSpace<AccountId, BlockNumber>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
@@ -174,6 +177,14 @@ for Spaces<C, Block>
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
         let runtime_api_result = api.get_space_ids_by_owner(&at, owner);
+        runtime_api_result.map_err(map_rpc_error)
+    }
+
+    fn get_next_space_id(&self, at: Option<<Block as BlockT>::Hash>) -> Result<u64> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
+
+        let runtime_api_result = api.get_next_space_id(&at);
         runtime_api_result.map_err(map_rpc_error)
     }
 }
