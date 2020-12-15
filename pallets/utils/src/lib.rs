@@ -11,7 +11,7 @@ use frame_support::{
 };
 use frame_system as system;
 #[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use sp_runtime::RuntimeDebug;
 use sp_std::{
     collections::btree_set::BTreeSet,
@@ -23,6 +23,8 @@ mod mock;
 
 #[cfg(test)]
 mod tests;
+
+pub mod rpc;
 
 pub type SpaceId = u64;
 pub type PostId = u64;
@@ -51,13 +53,24 @@ pub enum User<AccountId> {
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "std", derive(Deserialize))]
 #[cfg_attr(feature = "std", serde(tag = "contentType", content = "contentId"))]
 pub enum Content {
     None,
     Raw(Vec<u8>),
     IPFS(Vec<u8>),
     Hyper(Vec<u8>),
+}
+
+impl Into<Vec<u8>> for Content {
+    fn into(self) -> Vec<u8> {
+        match self {
+            Content::None => b"None".to_vec(),
+            Content::Raw(vec_u8) => vec_u8,
+            Content::IPFS(vec_u8) => vec_u8,
+            Content::Hyper(vec_u8) => vec_u8,
+        }
+    }
 }
 
 impl Default for Content {
@@ -163,8 +176,8 @@ pub fn log_2(x: u32) -> Option<u32> {
     if x > 0 {
         Some(
             num_bits::<u32>() as u32
-            - x.leading_zeros()
-            - 1
+                - x.leading_zeros()
+                - 1
         )
     } else { None }
 }
@@ -181,7 +194,6 @@ pub fn from_bool_to_option(value: bool) -> Option<bool> {
 }
 
 impl<T: Trait> Module<T> {
-
     pub fn is_valid_content(content: Content) -> DispatchResult {
         match content {
             Content::None => Ok(()),
@@ -192,7 +204,7 @@ impl<T: Trait> Module<T> {
                 // IPFS CID v1 is 59 bytes.df-integration-tests/src/lib.rs:272:5
                 ensure!(len == 46 || len == 59, Error::<T>::InvalidIpfsCid);
                 Ok(())
-            },
+            }
             Content::Hyper(_) => Err(Error::<T>::HypercoreContentTypeNotSupported.into())
         }
     }

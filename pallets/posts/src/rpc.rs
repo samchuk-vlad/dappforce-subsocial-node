@@ -1,11 +1,10 @@
 use codec::{Decode, Encode};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_runtime::SaturatedConversion;
 use sp_std::prelude::*;
 
 use pallet_spaces::{Module as Spaces, Space};
-use pallet_utils::{Content, from_bool_to_option, PostId, SpaceId};
+use pallet_utils::{from_bool_to_option, PostId, rpc::{FlatContent, FlatWhoAndWhen}, SpaceId};
 
 use crate::{Module, Post, PostExtension, Trait};
 
@@ -14,20 +13,15 @@ use crate::{Module, Post, PostExtension, Trait};
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub struct FlatPost<AccountId, BlockNumber> {
     pub id: PostId,
-    pub created_by: AccountId,
-    pub created_at_block: BlockNumber,
-    pub created_at_time: u64,
-    pub updated_by: Option<AccountId>,
-    pub updated_at_block: Option<BlockNumber>,
-    pub updated_at_time: Option<u64>,
+    #[cfg_attr(feature = "std", serde(flatten))]
+    pub who_and_when: FlatWhoAndWhen<AccountId, BlockNumber>,
 
     pub owner: AccountId,
 
     pub space_id: Option<SpaceId>,
 
     #[cfg_attr(feature = "std", serde(flatten))]
-    pub content: Content,
-    pub is_ipfs_content: Option<bool>,
+    pub content: FlatContent,
 
     pub hidden: Option<bool>,
 
@@ -63,16 +57,10 @@ impl<T: Trait> From<Post<T>> for FlatPost<T::AccountId, T::BlockNumber> {
 
         Self {
             id,
-            created_by: created.account,
-            created_at_block: created.block,
-            created_at_time: created.time.saturated_into::<u64>(),
-            updated_by: updated.clone().map(|value| value.account),
-            updated_at_block: updated.clone().map(|value| value.block),
-            updated_at_time: updated.map(|value| value.time.saturated_into::<u64>()),
+            who_and_when: (created, updated).into(),
             owner,
             space_id,
-            content: content.clone(),
-            is_ipfs_content: from_bool_to_option(content.is_ipfs()),
+            content: content.into(),
             hidden: Some(hidden).filter(|value| *value == true),
             extension,
             is_regular_post: from_bool_to_option(from.is_regular_post()),

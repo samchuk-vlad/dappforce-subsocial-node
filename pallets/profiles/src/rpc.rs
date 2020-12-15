@@ -1,10 +1,9 @@
 use codec::{Decode, Encode};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_runtime::SaturatedConversion;
 use sp_std::prelude::*;
 
-use pallet_utils::{Content, from_bool_to_option};
+use pallet_utils::rpc::{FlatContent, FlatWhoAndWhen};
 
 use crate::{Module, Profile, SocialAccount, Trait};
 
@@ -12,15 +11,10 @@ use crate::{Module, Profile, SocialAccount, Trait};
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub struct FlatProfile<AccountId, BlockNumber> {
-    pub created_by: AccountId,
-    pub created_at_block: BlockNumber,
-    pub created_at_time: u64,
-    pub updated_by: Option<AccountId>,
-    pub updated_at_block: Option<BlockNumber>,
-    pub updated_at_time: Option<u64>,
     #[cfg_attr(feature = "std", serde(flatten))]
-    pub content: Content,
-    pub is_ipfs_content: Option<bool>,
+    pub who_and_when: FlatWhoAndWhen<AccountId, BlockNumber>,
+    #[cfg_attr(feature = "std", serde(flatten))]
+    pub content: FlatContent,
 }
 
 #[derive(Eq, PartialEq, Encode, Decode, Default)]
@@ -40,14 +34,8 @@ impl<T: Trait> From<Profile<T>> for FlatProfile<T::AccountId, T::BlockNumber> {
         let Profile { created, updated, content } = from;
 
         Self {
-            created_by: created.account,
-            created_at_block: created.block,
-            created_at_time: created.time.saturated_into::<u64>(),
-            updated_by: updated.clone().map(|value| value.account),
-            updated_at_block: updated.clone().map(|value| value.block),
-            updated_at_time: updated.map(|value| value.time.saturated_into::<u64>()),
-            content: content.clone(),
-            is_ipfs_content: from_bool_to_option(content.is_ipfs()),
+            who_and_when: (created, updated).into(),
+            content: content.into(),
         }
     }
 }

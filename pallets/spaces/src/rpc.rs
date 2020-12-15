@@ -1,10 +1,9 @@
 use codec::{Decode, Encode};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_runtime::SaturatedConversion;
 use sp_std::prelude::*;
 
-use pallet_utils::{Content, from_bool_to_option, SpaceId};
+use pallet_utils::{SpaceId, rpc::{FlatContent, FlatWhoAndWhen, ShouldSkip}};
 
 use crate::{Module, Space, Trait};
 
@@ -13,28 +12,37 @@ use crate::{Module, Space, Trait};
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub struct FlatSpace<AccountId, BlockNumber> {
     pub id: SpaceId,
-    pub created_by: AccountId,
-    pub created_at_block: BlockNumber,
-    pub created_at_time: u64,
-    pub updated_by: Option<AccountId>,
-    pub updated_at_block: Option<BlockNumber>,
-    pub updated_at_time: Option<u64>,
+    #[cfg_attr(feature = "std", serde(flatten))]
+    pub who_and_when: FlatWhoAndWhen<AccountId, BlockNumber>,
 
-    pub owner: AccountId,
+    pub owner_id: AccountId,
 
+    #[cfg_attr(feature = "std", serde(skip_serializing_if = "ShouldSkip::should_skip"))]
     pub parent_id: Option<SpaceId>,
+    #[cfg_attr(feature = "std", serde(skip_serializing_if = "ShouldSkip::should_skip"))]
+    #[cfg_attr(feature = "std", serde(serialize_with = "bytes_to_string"))]
     pub handle: Option<Vec<u8>>,
     #[cfg_attr(feature = "std", serde(flatten))]
-    pub content: Content,
+    pub content: FlatContent,
 
-    pub is_ipfs_content: Option<bool>,
-    pub hidden: Option<bool>,
+    // #[cfg_attr(feature = "std", serde(skip_serializing_if = "ShouldSkip::should_skip"))]
+    pub hidden: bool,
 
     pub posts_count: u32,
     pub hidden_posts_count: u32,
+    pub visible_posts_count: u32,
     pub followers_count: u32,
 
     pub score: i32,
+}
+
+#[cfg(feature = "std")]
+fn bytes_to_string<S>(field: &Option<Vec<u8>>, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer {
+    let field_unwrapped = field.clone().unwrap_or_default();
+    // If Bytes slice is invalid, then empty string will be returned
+    serializer.serialize_str(
+        std::str::from_utf8(&field_unwrapped).unwrap_or_default()
+    )
 }
 
 impl<T: Trait> From<Space<T>> for FlatSpace<T::AccountId, T::BlockNumber> {
@@ -47,20 +55,15 @@ impl<T: Trait> From<Space<T>> for FlatSpace<T::AccountId, T::BlockNumber> {
 
         Self {
             id,
-            created_by: created.account,
-            created_at_block: created.block,
-            created_at_time: created.time.saturated_into::<u64>(),
-            updated_by: updated.clone().map(|value| value.account),
-            updated_at_block: updated.clone().map(|value| value.block),
-            updated_at_time: updated.map(|value| value.time.saturated_into::<u64>()),
-            owner,
+            who_and_when: (created, updated).into(),
+            owner_id: owner,
             parent_id,
             handle,
-            content: content.clone(),
-            is_ipfs_content: from_bool_to_option(content.is_ipfs()),
-            hidden: from_bool_to_option(hidden),
+            content: content.into(),
+            hidden,
             posts_count,
             hidden_posts_count,
+            visible_posts_count: posts_count.saturating_sub(hidden_posts_count),
             followers_count,
             score,
         }
