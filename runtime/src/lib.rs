@@ -759,12 +759,12 @@ impl_runtime_apis! {
 			Posts::get_posts_by_ids(post_ids)
 		}
 
-		fn get_public_posts(space_id: SpaceId, offset: u64, limit: u64) -> Vec<FlatPost<AccountId, BlockNumber>> {
-			Posts::get_public_posts(space_id, offset, limit)
+		fn get_public_posts_by_space(space_id: SpaceId, offset: u64, limit: u64) -> Vec<FlatPost<AccountId, BlockNumber>> {
+			Posts::get_public_posts_by_space(space_id, offset, limit)
 		}
 
-		fn get_unlisted_posts(space_id: SpaceId, offset: u64, limit: u64) -> Vec<FlatPost<AccountId, BlockNumber>> {
-			Posts::get_unlisted_posts(space_id, offset, limit)
+		fn get_unlisted_posts_by_space(space_id: SpaceId, offset: u64, limit: u64) -> Vec<FlatPost<AccountId, BlockNumber>> {
+			Posts::get_unlisted_posts_by_space(space_id, offset, limit)
 		}
 
 		fn get_reply_ids_by_post_id(post_id: PostId) -> Vec<PostId> {

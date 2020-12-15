@@ -136,7 +136,7 @@ impl<T: Trait> Module<T> {
         posts
     }
 
-    pub fn get_public_posts(
+    pub fn get_public_posts_by_space(
         space_id: SpaceId,
         offset: u64,
         limit: u64,
@@ -149,7 +149,7 @@ impl<T: Trait> Module<T> {
         vec![]
     }
 
-    pub fn get_unlisted_posts(
+    pub fn get_unlisted_posts_by_space(
         space_id: SpaceId,
         offset: u64,
         limit: u64,
@@ -166,6 +166,8 @@ impl<T: Trait> Module<T> {
         Self::try_get_post_replies_ids(post_id)
     }
 
+    // TODO: replace with comment_tree
+    //  - Additionally check comments depth
     /*pub fn get_post_replies(post_id: PostId) -> Vec<FlatPost<T::AccountId, T::BlockNumber>> {
         let replies_ids = Self::try_get_post_replies_ids(post_id);
         Self::get_posts_by_ids(replies_ids)

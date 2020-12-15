@@ -20,8 +20,8 @@ pub trait PostsApi<BlockHash, AccountId, BlockNumber> {
         post_ids: Vec<PostId>,
     ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>>;
 
-    #[rpc(name = "posts_getPublicPosts")]
-    fn get_public_posts(
+    #[rpc(name = "posts_getPublicPostsBySpace")]
+    fn get_public_posts_by_space(
         &self,
         at: Option<BlockHash>,
         space_id: SpaceId,
@@ -29,8 +29,8 @@ pub trait PostsApi<BlockHash, AccountId, BlockNumber> {
         limit: u64,
     ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>>;
 
-    #[rpc(name = "posts_getUnlistedPosts")]
-    fn get_unlisted_posts(
+    #[rpc(name = "posts_getUnlistedPostsBySpace")]
+    fn get_unlisted_posts_by_space(
         &self,
         at: Option<BlockHash>,
         space_id: SpaceId,
@@ -100,7 +100,7 @@ for Posts<C, Block>
         runtime_api_result.map_err(map_rpc_error)
     }
 
-    fn get_public_posts(
+    fn get_public_posts_by_space(
         &self,
         at: Option<<Block as BlockT>::Hash>,
         space_id: u64,
@@ -110,11 +110,11 @@ for Posts<C, Block>
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
-        let runtime_api_result = api.get_public_posts(&at, space_id, offset, limit);
+        let runtime_api_result = api.get_public_posts_by_space(&at, space_id, offset, limit);
         runtime_api_result.map_err(map_rpc_error)
     }
 
-    fn get_unlisted_posts(
+    fn get_unlisted_posts_by_space(
         &self,
         at: Option<<Block as BlockT>::Hash>,
         space_id: u64,
@@ -124,7 +124,7 @@ for Posts<C, Block>
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
-        let runtime_api_result = api.get_unlisted_posts(&at, space_id, offset, limit);
+        let runtime_api_result = api.get_unlisted_posts_by_space(&at, space_id, offset, limit);
         runtime_api_result.map_err(map_rpc_error)
     }
 
