@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use codec::Codec;
@@ -45,12 +46,12 @@ pub trait PostsApi<BlockHash, AccountId, BlockNumber> {
         post_id: PostId,
     ) -> Result<Vec<PostId>>;
 
-    /*#[rpc(name = "posts_getPostReplies")]
-    fn get_post_replies(
+    #[rpc(name = "posts_getCommentIdsTree")]
+    fn get_comment_ids_tree(
         &self,
         at: Option<BlockHash>,
         post_id: PostId,
-    ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>>;*/
+    ) -> Result<BTreeMap<PostId, Vec<PostId>>>;
 
     #[rpc(name = "posts_getUnlistedPostIdsBySpace")]
     fn get_unlisted_post_ids_by_space(
@@ -143,6 +144,18 @@ for Posts<C, Block>
         runtime_api_result.map_err(map_rpc_error)
     }
 
+    fn get_comment_ids_tree(
+        &self,
+        at: Option<<Block as BlockT>::Hash>,
+        post_id: u64,
+    ) -> Result<BTreeMap<u64, Vec<u64>>> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
+
+        let runtime_api_result = api.get_comment_ids_tree(&at, post_id);
+        runtime_api_result.map_err(map_rpc_error)
+    }
+
     fn get_unlisted_post_ids_by_space(&self, at: Option<<Block as BlockT>::Hash>, space_id: u64) -> Result<Vec<u64>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
@@ -158,18 +171,6 @@ for Posts<C, Block>
         let runtime_api_result = api.get_public_post_ids_by_space(&at, space_id);
         runtime_api_result.map_err(map_rpc_error)
     }
-
-    /*fn get_post_replies(
-        &self,
-        at: Option<<Block as BlockT>::Hash>,
-        post_id: u64,
-    ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>> {
-        let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
-
-        let runtime_api_result = api.get_post_replies(&at, post_id);
-        runtime_api_result.map_err(map_rpc_error)
-    }*/
 
     fn get_next_post_id(&self, at: Option<<Block as BlockT>::Hash>) -> Result<u64> {
         let api = self.client.runtime_api();

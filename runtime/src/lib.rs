@@ -771,9 +771,9 @@ impl_runtime_apis! {
 			Posts::get_reply_ids_by_post_id(post_id)
 		}
 
-		/*fn get_post_replies(post_id: PostId) -> Vec<FlatPost<AccountId, BlockNumber>> {
-			Posts::get_post_replies(post_id)
-		}*/
+		fn get_comment_ids_tree(post_id: PostId) -> BTreeMap<PostId, Vec<PostId>> {
+			Posts::get_comment_ids_tree(post_id)
+		}
 
 		fn get_public_post_ids_by_space(space_id: SpaceId) -> Vec<PostId> {
 			Posts::get_public_post_ids_by_space(space_id)

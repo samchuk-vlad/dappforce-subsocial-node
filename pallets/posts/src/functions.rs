@@ -273,6 +273,20 @@ impl<T: Trait> Module<T> {
         replies
     }
 
+    pub fn get_post_reply_ids_tree(post_id: PostId) -> Vec<(PostId, Vec<PostId>)> {
+        let mut replies_tuple: Vec<(PostId, Vec<PostId>)> = Vec::new();
+        let post_replies: Vec<PostId> = Self::reply_ids_by_post_id(post_id);
+
+        if post_replies.first().is_some() {
+            replies_tuple.push((post_id, post_replies.clone()));
+            for reply_id in post_replies.iter() {
+                replies_tuple.extend(Self::get_post_reply_ids_tree(*reply_id));
+            }
+        }
+
+        replies_tuple
+    }
+
     /// Recursively et all nested post replies (reply_ids_by_post_id)
     pub fn get_post_replies(post_id: PostId) -> Result<Vec<Post<T>>, DispatchError> {
         let reply_ids = Self::reply_ids_by_post_id(post_id);

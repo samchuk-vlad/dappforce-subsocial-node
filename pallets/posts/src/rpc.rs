@@ -1,6 +1,8 @@
 use codec::{Decode, Encode};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+use sp_std::collections::btree_map::BTreeMap;
+use sp_std::iter::FromIterator;
 use sp_std::prelude::*;
 
 use pallet_spaces::Module as Spaces;
@@ -154,12 +156,16 @@ impl<T: Trait> Module<T> {
         Self::try_get_post_replies_ids(post_id)
     }
 
-    // TODO: replace with comment_tree
+    // TODO: replace with get_comment_tree
     //  - Additionally check comments depth
     /*pub fn get_post_replies(post_id: PostId) -> Vec<FlatPost<T::AccountId, T::BlockNumber>> {
         let replies_ids = Self::try_get_post_replies_ids(post_id);
         Self::get_posts_by_ids(replies_ids)
     }*/
+
+    pub fn get_comment_ids_tree(post_id: PostId) -> BTreeMap<PostId, Vec<PostId>> {
+        BTreeMap::from_iter(Self::get_post_reply_ids_tree(post_id))
+    }
 
     fn get_post_ids_by_space<F: FnMut(&Post<T>) -> bool>(space_id: SpaceId, mut compare_fn: F) -> Vec<PostId> {
         Self::post_ids_by_space_id(space_id)

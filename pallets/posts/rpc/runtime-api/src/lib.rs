@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::Codec;
+use sp_std::collections::btree_map::BTreeMap;
 use sp_std::vec::Vec;
 
 use pallet_posts::rpc::FlatPost;
@@ -19,7 +20,7 @@ sp_api::decl_runtime_apis! {
     
         fn get_reply_ids_by_post_id(post_id: PostId) -> Vec<PostId>;
     
-        // fn get_post_replies(post_id: PostId) -> Vec<FlatPost<AccountId, BlockNumber>>;
+        fn get_comment_ids_tree(post_id: PostId) -> BTreeMap<PostId, Vec<PostId>>;
     
         fn get_public_post_ids_by_space(space_id: SpaceId) -> Vec<PostId>;
 
