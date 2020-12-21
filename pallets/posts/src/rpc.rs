@@ -25,7 +25,7 @@ pub struct FlatPost<AccountId, BlockNumber> {
     #[cfg_attr(feature = "std", serde(flatten))]
     pub content: FlatContent,
 
-    pub hidden: Option<bool>,
+    pub is_hidden: Option<bool>,
 
     #[cfg_attr(features = "std", serde(flatten))]
     pub extension: PostExtension,
@@ -63,7 +63,7 @@ impl<T: Trait> From<Post<T>> for FlatPost<T::AccountId, T::BlockNumber> {
             owner,
             space_id,
             content: content.into(),
-            hidden: Some(hidden).filter(|value| *value == true),
+            is_hidden: Some(hidden).filter(|value| *value == true),
             extension,
             is_regular_post: from_bool_to_option(from.is_regular_post()),
             is_shared_post: from_bool_to_option(from.is_sharing_post()),

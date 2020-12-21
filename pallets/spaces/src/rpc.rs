@@ -26,7 +26,7 @@ pub struct FlatSpace<AccountId, BlockNumber> {
     pub content: FlatContent,
 
     // #[cfg_attr(feature = "std", serde(skip_serializing_if = "ShouldSkip::should_skip"))]
-    pub hidden: bool,
+    pub is_hidden: bool,
 
     pub posts_count: u32,
     pub hidden_posts_count: u32,
@@ -60,7 +60,7 @@ impl<T: Trait> From<Space<T>> for FlatSpace<T::AccountId, T::BlockNumber> {
             parent_id,
             handle,
             content: content.into(),
-            hidden,
+            is_hidden: hidden,
             posts_count,
             hidden_posts_count,
             visible_posts_count: posts_count.saturating_sub(hidden_posts_count),
