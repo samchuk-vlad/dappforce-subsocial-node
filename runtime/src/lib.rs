@@ -775,8 +775,12 @@ impl_runtime_apis! {
 			Posts::get_post_replies(post_id)
 		}*/
 
-		fn get_post_ids_by_space_id(space_id: SpaceId) -> Vec<PostId> {
-			Posts::get_post_ids_by_space_id(space_id)
+		fn get_public_post_ids_by_space(space_id: SpaceId) -> Vec<PostId> {
+			Posts::get_public_post_ids_by_space(space_id)
+		}
+
+		fn get_unlisted_post_ids_by_space(space_id: SpaceId) -> Vec<PostId> {
+			Posts::get_unlisted_post_ids_by_space(space_id)
 		}
 
 		fn get_next_post_id() -> PostId {

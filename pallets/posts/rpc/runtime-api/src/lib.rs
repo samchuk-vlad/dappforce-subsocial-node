@@ -21,7 +21,9 @@ sp_api::decl_runtime_apis! {
     
         // fn get_post_replies(post_id: PostId) -> Vec<FlatPost<AccountId, BlockNumber>>;
     
-        fn get_post_ids_by_space_id(space_id: SpaceId) -> Vec<PostId>;
+        fn get_public_post_ids_by_space(space_id: SpaceId) -> Vec<PostId>;
+
+        fn get_unlisted_post_ids_by_space(space_id: SpaceId) -> Vec<PostId>;
 
         fn get_next_post_id() -> PostId;
     }

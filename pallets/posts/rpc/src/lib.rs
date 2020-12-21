@@ -52,8 +52,15 @@ pub trait PostsApi<BlockHash, AccountId, BlockNumber> {
         post_id: PostId,
     ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>>;*/
 
-    #[rpc(name = "posts_getPostIdsBySpaceId")]
-    fn get_post_ids_by_space_id(
+    #[rpc(name = "posts_getUnlistedPostIdsBySpace")]
+    fn get_unlisted_post_ids_by_space(
+        &self,
+        at: Option<BlockHash>,
+        space_id: SpaceId,
+    ) -> Result<Vec<PostId>>;
+
+    #[rpc(name = "posts_getPublicPostIdsBySpace")]
+    fn get_public_post_ids_by_space(
         &self,
         at: Option<BlockHash>,
         space_id: SpaceId,
@@ -136,6 +143,22 @@ for Posts<C, Block>
         runtime_api_result.map_err(map_rpc_error)
     }
 
+    fn get_unlisted_post_ids_by_space(&self, at: Option<<Block as BlockT>::Hash>, space_id: u64) -> Result<Vec<u64>> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
+
+        let runtime_api_result = api.get_unlisted_post_ids_by_space(&at, space_id);
+        runtime_api_result.map_err(map_rpc_error)
+    }
+
+    fn get_public_post_ids_by_space(&self, at: Option<<Block as BlockT>::Hash>, space_id: u64) -> Result<Vec<u64>> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
+
+        let runtime_api_result = api.get_public_post_ids_by_space(&at, space_id);
+        runtime_api_result.map_err(map_rpc_error)
+    }
+
     /*fn get_post_replies(
         &self,
         at: Option<<Block as BlockT>::Hash>,
@@ -147,14 +170,6 @@ for Posts<C, Block>
         let runtime_api_result = api.get_post_replies(&at, post_id);
         runtime_api_result.map_err(map_rpc_error)
     }*/
-
-    fn get_post_ids_by_space_id(&self, at: Option<<Block as BlockT>::Hash>, space_id: u64) -> Result<Vec<u64>> {
-        let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
-
-        let runtime_api_result = api.get_post_ids_by_space_id(&at, space_id);
-        runtime_api_result.map_err(map_rpc_error)
-    }
 
     fn get_next_post_id(&self, at: Option<<Block as BlockT>::Hash>) -> Result<u64> {
         let api = self.client.runtime_api();
