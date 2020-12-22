@@ -133,9 +133,23 @@ impl<T: Trait> Module<T> {
             .map(|space| space.into())
     }
 
-    pub fn get_space_ids_by_owner(owner: T::AccountId) -> Vec<SpaceId> {
+    fn get_space_ids_by_owner<F: FnMut(&Space<T>) -> bool>(owner: T::AccountId, mut compare_fn: F) -> Vec<SpaceId> {
         Self::space_ids_by_owner(owner)
+            .iter()
+            .filter_map(|space_id| Self::require_space(*space_id).ok())
+            .filter(|space| compare_fn(space))
+            .map(|space| space.id)
+            .collect()
     }
+
+    pub fn get_public_space_ids_by_owner(owner: T::AccountId) -> Vec<SpaceId> {
+        Self::get_space_ids_by_owner(owner, |space| !space.hidden)
+    }
+
+    pub fn get_unlisted_space_ids_by_owner(owner: T::AccountId) -> Vec<SpaceId> {
+        Self::get_space_ids_by_owner(owner, |space| space.hidden)
+    }
+
 
     pub fn get_next_space_id() -> SpaceId {
         Self::next_space_id()

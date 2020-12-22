@@ -744,8 +744,12 @@ impl_runtime_apis! {
         	Spaces::get_space_by_handle(handle)
         }
 
-        fn get_space_ids_by_owner(owner: AccountId) -> Vec<SpaceId> {
-        	Spaces::get_space_ids_by_owner(owner)
+        fn get_public_space_ids_by_owner(owner: AccountId) -> Vec<SpaceId> {
+        	Spaces::get_public_space_ids_by_owner(owner)
+        }
+
+        fn get_unlisted_space_ids_by_owner(owner: AccountId) -> Vec<SpaceId> {
+        	Spaces::get_unlisted_space_ids_by_owner(owner)
         }
 
         fn get_next_space_id() -> SpaceId {

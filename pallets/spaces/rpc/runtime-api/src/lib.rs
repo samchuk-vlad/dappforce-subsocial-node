@@ -23,7 +23,9 @@ sp_api::decl_runtime_apis! {
 
         fn get_space_by_handle(handle: Vec<u8>) -> Option<FlatSpace<AccountId, BlockNumber>>;
 
-        fn get_space_ids_by_owner(owner: AccountId) -> Vec<SpaceId>;
+        fn get_public_space_ids_by_owner(owner: AccountId) -> Vec<SpaceId>;
+
+        fn get_unlisted_space_ids_by_owner(owner: AccountId) -> Vec<SpaceId>;
 
         fn get_next_space_id() -> SpaceId;
     }
