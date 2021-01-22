@@ -485,10 +485,10 @@ impl pallet_space_history::Trait for Runtime {}
 pub struct BaseFilter;
 impl Filter<Call> for BaseFilter {
 	fn filter(c: &Call) -> bool {
-		let is_set_balance = matches!(c, Call::Balances(balances::Call::set_balance(..)));
-		let is_force_transfer = matches!(c, Call::Balances(balances::Call::force_transfer(..)));
+		// let is_set_balance = matches!(c, Call::Balances(balances::Call::set_balance(..)));
+		// let is_force_transfer = matches!(c, Call::Balances(balances::Call::force_transfer(..)));
 		match *c {
-			Call::Balances(..) => is_set_balance || is_force_transfer,
+			// Call::Balances(..) => is_set_balance || is_force_transfer,
 			_ => true,
 		}
 	}
@@ -497,6 +497,7 @@ impl Filter<Call> for BaseFilter {
 /*
 parameter_types! {
 	pub const MaxSessionKeysPerAccount: u16 = 10;
+	pub const BaseSessionKeyBond: Balance = 1 * DOLLARS;
 }
 
 pub struct SessionKeysProxyFilter;
@@ -518,6 +519,7 @@ impl session_keys::Trait for Runtime {
 	type Call = Call;
 	type MaxSessionKeysPerAccount = MaxSessionKeysPerAccount;
 	type BaseFilter = SessionKeysProxyFilter;
+	type BaseSessionKeyBond = BaseSessionKeyBond;
 }
 
 impl pallet_donations::Trait for Runtime {
