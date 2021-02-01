@@ -465,6 +465,7 @@ parameter_types! {
 
 impl pallet_spaces::Trait for Runtime {
 	type Event = Event;
+	type Currency = Balances;
 	type Roles = Roles;
 	type SpaceFollows = SpaceFollows;
 	type BeforeSpaceCreated = SpaceFollows;

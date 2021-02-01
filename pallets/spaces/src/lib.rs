@@ -4,7 +4,7 @@ use codec::{Decode, Encode};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure,
     dispatch::{DispatchError, DispatchResult},
-    traits::{Get, Currency, ExistenceRequirement},
+    traits::{Get, Currency, ReservableCurrency},
 };
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
@@ -49,7 +49,8 @@ pub struct SpaceUpdate {
     pub permissions: Option<Option<SpacePermissions>>,
 }
 
-type BalanceOf<T> = <<T as pallet_utils::Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
+type BalanceOf<T> =
+  <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
 
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait
@@ -58,6 +59,8 @@ pub trait Trait: system::Trait
 {
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+
+    type Currency: ReservableCurrency<Self::AccountId>;
 
     type Roles: PermissionChecker<AccountId=Self::AccountId>;
 
@@ -76,6 +79,8 @@ decl_error! {
     SpaceNotFound,
     /// Space handle is not unique.
     SpaceHandleIsNotUnique,
+    /// Space handle was already reserved. Use `update_space` dispatch.
+    SpaceHandleAlreadyExist,
     /// Nothing to update in space.
     NoUpdatesForSpace,
     /// Only space owner can manage their space.
@@ -142,17 +147,11 @@ decl_module! {
     pub fn create_space(
       origin,
       parent_id_opt: Option<SpaceId>,
-      handle_opt: Option<Vec<u8>>,
       content: Content
     ) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 
       Utils::<T>::is_valid_content(content.clone())?;
-
-      let mut handle_in_lowercase: Vec<u8> = Vec::new();
-      if let Some(original_handle) = handle_opt.clone() {
-        handle_in_lowercase = Self::lowercase_and_validate_space_handle(original_handle)?;
-      }
 
       // TODO: add tests for this case
       if let Some(parent_id) = parent_id_opt {
@@ -166,25 +165,14 @@ decl_module! {
         )?;
       }
 
-      <T as pallet_utils::Trait>::Currency::transfer(
-        &owner,
-        &Utils::<T>::treasury_account(),
-        T::SpaceCreationFee::get(),
-        ExistenceRequirement::KeepAlive
-      )?;
-
       let space_id = Self::next_space_id();
-      let new_space = &mut Space::new(space_id, parent_id_opt, owner.clone(), content, handle_opt);
+      let new_space = &mut Space::new(space_id, parent_id_opt, owner.clone(), content, None);
 
       T::BeforeSpaceCreated::before_space_created(owner.clone(), new_space)?;
 
       <SpaceById<T>>::insert(space_id, new_space);
       <SpaceIdsByOwner<T>>::mutate(owner.clone(), |ids| ids.push(space_id));
       NextSpaceId::mutate(|n| { *n += 1; });
-
-      if !handle_in_lowercase.is_empty() {
-        SpaceIdByHandle::insert(handle_in_lowercase, space_id);
-      }
 
       Self::deposit_event(RawEvent::SpaceCreated(owner, space_id));
       Ok(())
@@ -276,17 +264,23 @@ decl_module! {
       }
 
       if let Some(handle_opt) = update.handle {
-        if handle_opt != space.handle {
+        if let Some(old_handle) = space.handle.clone() {
+
           if let Some(new_handle) = handle_opt.clone() {
-            let handle_in_lowercase = Self::lowercase_and_validate_space_handle(new_handle)?;
-            SpaceIdByHandle::insert(handle_in_lowercase, space_id);
-          }
-          if let Some(old_handle) = space.handle.clone() {
+            if new_handle != old_handle {
+              let handle_in_lowercase = Self::lowercase_and_validate_space_handle(new_handle)?;
+              SpaceIdByHandle::insert(handle_in_lowercase, space_id);
+              is_update_applied = true;
+            }
+          } else {
             SpaceIdByHandle::remove(old_handle);
+            is_update_applied = true;
           }
-          old_data.handle = Some(space.handle);
-          space.handle = handle_opt;
-          is_update_applied = true;
+
+          if is_update_applied {
+            old_data.handle = Some(space.handle);
+            space.handle = handle_opt;
+          }
         }
       }
 
@@ -298,6 +292,34 @@ decl_module! {
         T::AfterSpaceUpdated::after_space_updated(owner.clone(), &space, old_data);
 
         Self::deposit_event(RawEvent::SpaceUpdated(owner, space_id));
+      }
+      Ok(())
+    }
+
+    #[weight = 50_000 + T::DbWeight::get().reads_writes(2, 1)]
+    pub fn reserve_handle(
+      origin,
+      space_id: SpaceId,
+      handle: Vec<u8>
+    ) -> DispatchResult {
+      let who = ensure_signed(origin)?;
+
+      let space = Self::require_space(space_id)?;
+
+      ensure!(space.handle.is_none(), Error::<T>::SpaceHandleAlreadyExist);
+
+      Self::ensure_account_has_space_permission(
+        who.clone(),
+        &space,
+        SpacePermission::UpdateSpace,
+        Error::<T>::NoPermissionToUpdateSpace.into()
+      )?;
+
+      let handle_in_lowercase = Self::lowercase_and_validate_space_handle(handle)?;
+
+      if !handle_in_lowercase.is_empty() {
+        <T as Trait>::Currency::reserve(&who, T::SpaceCreationFee::get())?;
+        SpaceIdByHandle::insert(handle_in_lowercase, space_id);
       }
       Ok(())
     }
