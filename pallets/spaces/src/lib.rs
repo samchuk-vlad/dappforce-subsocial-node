@@ -79,8 +79,6 @@ decl_error! {
     SpaceNotFound,
     /// Space handle is not unique.
     SpaceHandleIsNotUnique,
-    /// Space handle was already reserved. Use `update_space` dispatch.
-    SpaceHandleAlreadyExist,
     /// Nothing to update in space.
     NoUpdatesForSpace,
     /// Only space owner can manage their space.
@@ -147,6 +145,7 @@ decl_module! {
     pub fn create_space(
       origin,
       parent_id_opt: Option<SpaceId>,
+      handle_opt: Option<Vec<u8>>,
       content: Content
     ) -> DispatchResult {
       let owner = ensure_signed(origin)?;
@@ -166,9 +165,13 @@ decl_module! {
       }
 
       let space_id = Self::next_space_id();
-      let new_space = &mut Space::new(space_id, parent_id_opt, owner.clone(), content, None);
+      let new_space = &mut Space::new(space_id, parent_id_opt, owner.clone(), content, handle_opt.clone());
 
       T::BeforeSpaceCreated::before_space_created(owner.clone(), new_space)?;
+
+      if let Some(handle) = handle_opt {
+        Self::reserve_handle(&owner, space_id, handle)?;
+      }
 
       <SpaceById<T>>::insert(space_id, new_space);
       <SpaceIdsByOwner<T>>::mutate(owner.clone(), |ids| ids.push(space_id));
@@ -265,21 +268,28 @@ decl_module! {
 
       if let Some(handle_opt) = update.handle {
         if let Some(old_handle) = space.handle.clone() {
+          let old_handle_in_lowercase = Self::lowercase_and_validate_space_handle(old_handle.clone())?;
 
           if let Some(new_handle) = handle_opt.clone() {
             if new_handle != old_handle {
               let handle_in_lowercase = Self::lowercase_and_validate_space_handle(new_handle)?;
+
+              SpaceIdByHandle::remove(old_handle_in_lowercase);
               SpaceIdByHandle::insert(handle_in_lowercase, space_id);
               is_update_applied = true;
             }
           } else {
-            SpaceIdByHandle::remove(old_handle);
+            Self::unreserve_handle(&owner, old_handle)?;
             is_update_applied = true;
           }
 
           if is_update_applied {
             old_data.handle = Some(space.handle);
             space.handle = handle_opt;
+          }
+        } else {
+          if let Some(handle) = handle_opt {
+            Self::reserve_handle(&owner, space_id, handle)?;
           }
         }
       }
@@ -292,34 +302,6 @@ decl_module! {
         T::AfterSpaceUpdated::after_space_updated(owner.clone(), &space, old_data);
 
         Self::deposit_event(RawEvent::SpaceUpdated(owner, space_id));
-      }
-      Ok(())
-    }
-
-    #[weight = 50_000 + T::DbWeight::get().reads_writes(2, 1)]
-    pub fn reserve_handle(
-      origin,
-      space_id: SpaceId,
-      handle: Vec<u8>
-    ) -> DispatchResult {
-      let who = ensure_signed(origin)?;
-
-      let space = Self::require_space(space_id)?;
-
-      ensure!(space.handle.is_none(), Error::<T>::SpaceHandleAlreadyExist);
-
-      Self::ensure_account_has_space_permission(
-        who.clone(),
-        &space,
-        SpacePermission::UpdateSpace,
-        Error::<T>::NoPermissionToUpdateSpace.into()
-      )?;
-
-      let handle_in_lowercase = Self::lowercase_and_validate_space_handle(handle)?;
-
-      if !handle_in_lowercase.is_empty() {
-        <T as Trait>::Currency::reserve(&who, T::SpaceCreationFee::get())?;
-        SpaceIdByHandle::insert(handle_in_lowercase, space_id);
       }
       Ok(())
     }
@@ -466,6 +448,29 @@ impl<T: Trait> Module<T> {
         space.parent_id = None;
 
         SpaceById::<T>::insert(space_id, space);
+        Ok(())
+    }
+
+    pub fn reserve_handle(
+        who: &T::AccountId,
+        space_id: SpaceId,
+        handle: Vec<u8>
+    ) -> DispatchResult {
+        let handle_in_lowercase = Self::lowercase_and_validate_space_handle(handle)?;
+
+        <T as Trait>::Currency::reserve(who, T::SpaceCreationFee::get())?;
+        SpaceIdByHandle::insert(handle_in_lowercase, space_id);
+        Ok(())
+    }
+
+    pub fn unreserve_handle(
+        who: &T::AccountId,
+        handle: Vec<u8>
+    ) -> DispatchResult {
+        let handle_in_lowercase = Self::lowercase_and_validate_space_handle(handle)?;
+
+        <T as Trait>::Currency::unreserve(who, T::SpaceCreationFee::get());
+        SpaceIdByHandle::remove(handle_in_lowercase);
         Ok(())
     }
 }
