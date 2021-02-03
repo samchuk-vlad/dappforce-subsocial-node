@@ -12,16 +12,16 @@ use codec::{Encode, Decode};
 use sp_runtime::RuntimeDebug;
 use sp_runtime::traits::{Saturating, Zero};
 use sp_std::{
-	prelude::*,
-	iter::FromIterator,
-	collections::btree_set::BTreeSet,
+    prelude::*,
+    iter::FromIterator,
+    collections::btree_set::BTreeSet,
 };
 
 use frame_support::{
-	decl_module, decl_storage, decl_event, decl_error, ensure,
-	dispatch::{DispatchResult, DispatchError},
-	traits::{Get, Currency, ExistenceRequirement},
-	weights::Pays,
+    decl_module, decl_storage, decl_event, decl_error, ensure,
+    dispatch::{DispatchResult, DispatchError},
+    traits::{Get, Currency, ExistenceRequirement},
+    weights::Pays,
 };
 use frame_system::{self as system, ensure_signed, ensure_root};
 use pallet_sudo::Module as SudoModule;
@@ -38,34 +38,34 @@ type FaucetAlias = Vec<u8>;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Drop<T: Trait> {
-	id: DropId,
-	last_drop_at: T::BlockNumber,
-	total_dropped: BalanceOf<T>
+    id: DropId,
+    last_drop_at: T::BlockNumber,
+    total_dropped: BalanceOf<T>
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct FaucetSettings<BlockNumber, Balance> {
-	period: Option<BlockNumber>, // TODO rename
-	period_limit: Balance
+    period: Option<BlockNumber>,
+    period_limit: Balance
 
-	// TODO add: min_amount: Balance
-	// TODO add: max_limit: Balance
+    // TODO add: min_amount: Balance
+    // TODO add: max_limit: Balance
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct FaucetSettingsUpdate<BlockNumber, Balance> {
-	period: Option<Option<BlockNumber>>,
-	period_limit: Option<Balance>
+    period: Option<Option<BlockNumber>>,
+    period_limit: Option<Balance>
 }
 
 type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
 
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait + pallet_sudo::Trait {
-	/// The overarching event type.
-	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+    /// The overarching event type.
+    type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
-	type Currency: Currency<Self::AccountId>;
+    type Currency: Currency<Self::AccountId>;
 }
 
 decl_storage! {
@@ -121,208 +121,208 @@ decl_error! {
 
 // The pallet's dispatchable functions.
 decl_module! {
-	/// The module declaration.
-	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-		// Initializing errors
-		type Error = Error<T>;
+    /// The module declaration.
+    pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+        // Initializing errors
+        type Error = Error<T>;
 
-		// Initializing events
-		fn deposit_event() = default;
+        // Initializing events
+        fn deposit_event() = default;
 
-		#[weight = T::DbWeight::get().reads_writes(1, 1) + 10_000]
-		pub fn add_faucet(
-			origin,
-			faucet: T::AccountId,
-			settings: FaucetSettings<T::BlockNumber, BalanceOf<T>>
-		) -> DispatchResult {
-			ensure_root(origin)?;
+        #[weight = T::DbWeight::get().reads_writes(1, 1) + 10_000]
+        pub fn add_faucet(
+            origin,
+            faucet: T::AccountId,
+            settings: FaucetSettings<T::BlockNumber, BalanceOf<T>>
+        ) -> DispatchResult {
+            ensure_root(origin)?;
 
-			ensure!(
-				Self::require_faucet_settings(&faucet).is_err(),
-				Error::<T>::FaucetAlreadyAdded
-			);
+            ensure!(
+                        Self::require_faucet_settings(&faucet).is_err(),
+                        Error::<T>::FaucetAlreadyAdded
+                    );
 
-			ensure!(
-				T::Currency::free_balance(&faucet) >= T::Currency::minimum_balance(),
-				Error::<T>::NoFreeBalanceOnAccount
-			);
+            ensure!(
+                        T::Currency::free_balance(&faucet) >= T::Currency::minimum_balance(),
+                        Error::<T>::NoFreeBalanceOnAccount
+                    );
 
-			SettingsByFaucet::<T>::insert(faucet.clone(), settings);
+            SettingsByFaucet::<T>::insert(faucet.clone(), settings);
 
-			Self::deposit_event(RawEvent::FaucetAdded(faucet));
-			Ok(())
-		}
+            Self::deposit_event(RawEvent::FaucetAdded(faucet));
+            Ok(())
+        }
 
-		#[weight = T::DbWeight::get().reads_writes(1, 1) + 20_000]
-		pub fn update_faucet(
-			origin,
-			faucet: T::AccountId,
-			update: FaucetSettingsUpdate<T::BlockNumber, BalanceOf<T>>
-		) -> DispatchResult {
-			ensure_root(origin)?;
+        #[weight = T::DbWeight::get().reads_writes(1, 1) + 20_000]
+        pub fn update_faucet(
+            origin,
+            faucet: T::AccountId,
+            update: FaucetSettingsUpdate<T::BlockNumber, BalanceOf<T>>
+        ) -> DispatchResult {
+            ensure_root(origin)?;
 
-			let has_updates =
-				update.period.is_some() ||
-				update.period_limit.is_some();
+            let has_updates =
+                update.period.is_some() ||
+                    update.period_limit.is_some();
 
-			ensure!(has_updates, Error::<T>::NothingToUpdate);
+            ensure!(has_updates, Error::<T>::NothingToUpdate);
 
-			let mut settings = Self::require_faucet_settings(&faucet)?;
+            let mut settings = Self::require_faucet_settings(&faucet)?;
 
-			// `true` if there is at least one updated field.
-			let mut should_update = false;
+            // `true` if there is at least one updated field.
+            let mut should_update = false;
 
-			if let Some(period) = update.period {
-				if period != settings.period {
-					settings.period = period;
-					should_update = true;
-				}
-			}
+            if let Some(period) = update.period {
+                if period != settings.period {
+                    settings.period = period;
+                    should_update = true;
+                }
+            }
 
-			if let Some(period_limit) = update.period_limit {
-				if period_limit != settings.period_limit {
-					settings.period_limit = period_limit;
-					should_update = true;
-				}
-			}
+            if let Some(period_limit) = update.period_limit {
+                if period_limit != settings.period_limit {
+                    settings.period_limit = period_limit;
+                    should_update = true;
+                }
+            }
 
-			if should_update {
-				SettingsByFaucet::<T>::insert(faucet.clone(), settings);
-				Self::deposit_event(RawEvent::FaucetUpdated(faucet));
-				return Ok(());
-			}
-			Err(Error::<T>::NothingToUpdate.into())
-		}
+            if should_update {
+                SettingsByFaucet::<T>::insert(faucet.clone(), settings);
+                Self::deposit_event(RawEvent::FaucetUpdated(faucet));
+                return Ok(());
+            }
+            Err(Error::<T>::NothingToUpdate.into())
+        }
 
-		#[weight = T::DbWeight::get().reads_writes(0, 1) + 10_000
-			+ 5_000 * faucets.len() as u64
-		]
-		pub fn remove_faucets(
-			origin,
-			faucets: Vec<T::AccountId>
-		) -> DispatchResult {
-			ensure_root(origin)?;
-			let root_key = SudoModule::<T>::key();
+        #[weight = T::DbWeight::get().reads_writes(0, 1) + 10_000
+        + 5_000 * faucets.len() as u64
+        ]
+        pub fn remove_faucets(
+            origin,
+            faucets: Vec<T::AccountId>
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            let root_key = SudoModule::<T>::key();
 
-			ensure!(faucets.len() != Zero::zero(), Error::<T>::NoFaucetsProvided);
+            ensure!(faucets.len() != Zero::zero(), Error::<T>::NoFaucetsProvided);
 
-			let unique_faucets = BTreeSet::from_iter(faucets.iter());
-			for faucet in unique_faucets.iter() {
-				if Self::require_faucet_settings(faucet).is_ok() {
-					T::Currency::transfer(
-						faucet,
-						&root_key,
-						T::Currency::free_balance(faucet),
-						ExistenceRequirement::AllowDeath
-					)?;
+            let unique_faucets = BTreeSet::from_iter(faucets.iter());
+            for faucet in unique_faucets.iter() {
+                if Self::require_faucet_settings(faucet).is_ok() {
+                    T::Currency::transfer(
+                        faucet,
+                        &root_key,
+                        T::Currency::free_balance(faucet),
+                        ExistenceRequirement::AllowDeath
+                    )?;
 
-					SettingsByFaucet::<T>::remove(faucet);
-				}
-			}
+                    SettingsByFaucet::<T>::remove(faucet);
+                }
+            }
 
-			Self::deposit_event(RawEvent::FaucetsRemoved(faucets));
-			Ok(())
-		}
+            Self::deposit_event(RawEvent::FaucetsRemoved(faucets));
+            Ok(())
+        }
 
-		#[weight = (
-			T::DbWeight::get().reads_writes(6, 4) + 50_000, // TODO why 50k ?
-			Pays::No
-		)]
-		pub fn drip(
-			origin, // faucet account
-			amount: BalanceOf<T>,
-			recipient: T::AccountId,
-			recipient_aliases: Vec<FaucetAlias>
-		) -> DispatchResult {
-			let faucet = ensure_signed(origin)?;
+        #[weight = (
+        T::DbWeight::get().reads_writes(6, 4) + 50_000, // TODO why 50k ?
+        Pays::No
+        )]
+        pub fn drip(
+            origin, // faucet account
+            amount: BalanceOf<T>,
+            recipient: T::AccountId,
+            recipient_aliases: Vec<FaucetAlias>
+        ) -> DispatchResult {
+            let faucet = ensure_signed(origin)?;
 
-			ensure!(amount > Zero::zero(), Error::<T>::ZeroAmount);
+            ensure!(amount > Zero::zero(), Error::<T>::ZeroAmount);
 
-			let settings = Self::require_faucet_settings(&faucet)?;
-			// TODO: add MaxAliases const
-			let aliases_set = BTreeSet::from_iter(recipient_aliases.iter().cloned());
+            let settings = Self::require_faucet_settings(&faucet)?;
+            // TODO: add MaxAliases const
+            let aliases_set = BTreeSet::from_iter(recipient_aliases.iter().cloned());
 
-			let maybe_drop = Self::drop_id_by_recipient(&recipient)
-				.or_else(|| Self::try_get_drop_id_by_alias(&aliases_set))
-				.and_then(Self::drop_by_id);
+            let maybe_drop = Self::drop_id_by_recipient(&recipient)
+                .or_else(|| Self::try_get_drop_id_by_alias(&aliases_set))
+                .and_then(Self::drop_by_id);
 
-			// TODO check amount against settings.min_amount
-			let mut is_new_drop = false;
-			let mut drop = maybe_drop.unwrap_or_else(|| {
-				is_new_drop = true;
-				let drop_id = Self::next_drop_id();
-				Drop::<T>::new(drop_id)
-			});
+            // TODO check amount against settings.min_amount
+            let mut is_new_drop = false;
+            let mut drop = maybe_drop.unwrap_or_else(|| {
+                is_new_drop = true;
+                let drop_id = Self::next_drop_id();
+                Drop::<T>::new(drop_id)
+            });
 
-			if !is_new_drop {
-				let now = <system::Module<T>>::block_number();
+            if !is_new_drop {
+                let now = <system::Module<T>>::block_number();
 
-				// TODO rename var 'past'
-				let past = now.saturating_sub(settings.period.unwrap_or_else(Zero::zero));
+                // TODO rename var 'past'
+                let past = now.saturating_sub(settings.period.unwrap_or_else(Zero::zero));
 
-				if past >= drop.last_drop_at {
-					drop.last_drop_at = now;
-					if settings.period.is_some() {
-						drop.total_dropped = Zero::zero();
-					}
-				}
-			}
+                if past >= drop.last_drop_at {
+                    drop.last_drop_at = now;
+                    if settings.period.is_some() {
+                        drop.total_dropped = Zero::zero();
+                    }
+                }
+            }
 
-			let amount_allowed = settings.period_limit.saturating_sub(drop.total_dropped);
-			ensure!(amount_allowed >= amount, Error::<T>::FaucetLimitReached);
+            let amount_allowed = settings.period_limit.saturating_sub(drop.total_dropped);
+            ensure!(amount_allowed >= amount, Error::<T>::FaucetLimitReached);
 
-			T::Currency::transfer(
-				&faucet,
-				&recipient,
-				amount,
-				ExistenceRequirement::KeepAlive
-			)?;
+            T::Currency::transfer(
+                &faucet,
+                &recipient,
+                amount,
+                ExistenceRequirement::KeepAlive
+            )?;
 
-			drop.total_dropped = drop.total_dropped.saturating_add(amount);
+            drop.total_dropped = drop.total_dropped.saturating_add(amount);
 
-			Self::filter_and_insert_new_aliases(aliases_set, drop.id);
-			DropIdByRecipient::<T>::insert(&recipient, drop.id);
-			DropById::<T>::insert(drop.id, drop);
-			if is_new_drop {
-				NextDropId::mutate(|x| *x += 1);
-			}
+            Self::filter_and_insert_new_aliases(aliases_set, drop.id);
+            DropIdByRecipient::<T>::insert(&recipient, drop.id);
+            DropById::<T>::insert(drop.id, drop);
+            if is_new_drop {
+                NextDropId::mutate(|x| *x += 1);
+            }
 
-			Self::deposit_event(RawEvent::Dropped(faucet, recipient, amount));
-			Ok(())
-		}
-	}
+            Self::deposit_event(RawEvent::Dropped(faucet, recipient, amount));
+            Ok(())
+        }
+    }
 }
 
 impl<T: Trait> Module<T> {
-	pub fn require_faucet_settings(
-		faucet: &T::AccountId
-	) -> Result<FaucetSettings<T::BlockNumber, BalanceOf<T>>, DispatchError> {
-		Ok(Self::settings_by_faucet(faucet).ok_or(Error::<T>::FaucetNotFound)?)
-	}
+    pub fn require_faucet_settings(
+        faucet: &T::AccountId
+    ) -> Result<FaucetSettings<T::BlockNumber, BalanceOf<T>>, DispatchError> {
+        Ok(Self::settings_by_faucet(faucet).ok_or(Error::<T>::FaucetNotFound)?)
+    }
 
-	fn try_get_drop_id_by_alias(aliases: &BTreeSet<FaucetAlias>) -> Option<DropId> {
-		aliases.iter().find_map(|alias| Self::drop_id_by_alias(alias))
-	}
+    fn try_get_drop_id_by_alias(aliases: &BTreeSet<FaucetAlias>) -> Option<DropId> {
+        aliases.iter().find_map(|alias| Self::drop_id_by_alias(alias))
+    }
 
-	fn filter_and_insert_new_aliases(aliases_set: BTreeSet<FaucetAlias>, drop_id: DropId) {
-		let new_aliases = aliases_set
-			.iter()
-			.filter(|alias| {
-				Self::drop_id_by_alias(alias.clone()).is_none()
-			});
+    fn filter_and_insert_new_aliases(aliases_set: BTreeSet<FaucetAlias>, drop_id: DropId) {
+        let new_aliases = aliases_set
+            .iter()
+            .filter(|alias| {
+                Self::drop_id_by_alias(alias.clone()).is_none()
+            });
 
-		for alias in new_aliases {
-			DropIdByAlias::insert(alias, drop_id);
-		}
-	}
+        for alias in new_aliases {
+            DropIdByAlias::insert(alias, drop_id);
+        }
+    }
 }
 
 impl<T: Trait> Drop<T> {
-	pub fn new(id: DropId) -> Self {
-		Self {
-			id,
-			last_drop_at: <system::Module<T>>::block_number(),
-			total_dropped: Zero::zero()
-		}
-	}
+    pub fn new(id: DropId) -> Self {
+        Self {
+            id,
+            last_drop_at: <system::Module<T>>::block_number(),
+            total_dropped: Zero::zero()
+        }
+    }
 }
