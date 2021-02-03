@@ -10,11 +10,13 @@
 
   "FaucetSettings": {
     "period": "Option<BlockNumber>",
-    "period_limit": "Balance"
+    "period_limit": "Balance",
+    "drop_limit": "Balance"
   },
 
   "FaucetSettingsUpdate": {
     "period": "Option<Option<BlockNumber>>",
-    "period_limit": "Option<Balance>"
+    "period_limit": "Option<Balance>",
+    "drop_limit": "Option<Balance>"
   }
 }

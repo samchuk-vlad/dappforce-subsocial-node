@@ -1,5 +1,5 @@
 // Creating mock runtime here
-use crate::{Module, Trait, FaucetSettings, FaucetSettingsUpdate, FaucetAlias};
+use crate::{Module, Trait, FaucetSettings, FaucetSettingsUpdate};
 
 use sp_core::H256;
 use sp_io::TestExternalities;
@@ -109,7 +109,7 @@ impl ExtBuilder {
 		}
 
 		let _ = pallet_balances::GenesisConfig::<Test> {
-			balances: faucet_accounts.iter().cloned().map(|k|(k, 10)).collect(),
+			balances: faucet_accounts.iter().cloned().map(|k|(k, 400)).collect(),
 		}.assimilate_storage(storage);
 
 		let _ = pallet_sudo::GenesisConfig::<Test> {
@@ -147,7 +147,7 @@ impl ExtBuilder {
 		ext
 	}
 
-	pub fn build_with_partial_drip() -> TestExternalities {
+	pub fn build_with_one_default_drop() -> TestExternalities {
 		let mut storage = system::GenesisConfig::default()
 			.build_storage::<Test>()
 			.unwrap();
@@ -158,18 +158,20 @@ impl ExtBuilder {
 		ext.execute_with(|| {
 			System::set_block_number(1);
 
-			let mut faucet_settings = default_faucet_settings();
-			faucet_settings.period_limit = 2;
 			assert_ok!(
 				_add_faucet(
 					None,
 					None,
-					Some(faucet_settings)
+					Some(default_faucet_settings())
 				)
 			);
 
 			System::set_block_number(INITIAL_BLOCK_NUMBER);
-			assert_ok!(_default_drip());
+			assert_ok!(_drip(
+				None,
+				Some(default_faucet_settings().drop_limit),
+				None
+			));
 		});
 
 		ext
@@ -183,7 +185,6 @@ pub(crate) const FAUCET9: AccountId = 9;
 
 const SUDO_ACCOUNT: AccountId = 10;
 pub(crate) const ACCOUNT1: AccountId = 11;
-pub(crate) const ACCOUNT2: AccountId = 12;
 
 pub(crate) const DROP1: DropId = 1;
 pub(crate) const DROP2: DropId = 2;
@@ -193,25 +194,17 @@ pub(crate) const INITIAL_BLOCK_NUMBER: BlockNumber = 20;
 pub(crate) const fn default_faucet_settings() -> FaucetSettings<BlockNumber, AccountId> {
 	FaucetSettings {
 		period: Some(14_400),
-		period_limit: 1
+		period_limit: 50,
+		drop_limit: 25
 	}
 }
 
 pub(crate) const fn default_faucet_settings_update() -> FaucetSettingsUpdate<BlockNumber, Balance> {
 	FaucetSettingsUpdate {
 		period: Some(Some(7_200)),
-		period_limit: Some(2)
+		period_limit: Some(100),
+		drop_limit: Some(50)
 	}
-}
-
-use multihash::Sha2_256;
-
-pub(crate) fn valid_sha_1() -> FaucetAlias {
-	Sha2_256::digest(b"valid_hash_1").to_vec()
-}
-
-pub(crate) fn valid_sha_2() -> FaucetAlias {
-	Sha2_256::digest(b"valid_hash_2").to_vec()
 }
 
 pub(crate) fn _add_default_faucet() -> DispatchResult {
@@ -261,19 +254,17 @@ pub(crate) fn _remove_faucets(
 }
 
 pub(crate) fn _default_drip() -> DispatchResult {
-	_drip(None, None, None, None)
+	_drip(None, None, None)
 }
 
 pub(crate) fn _drip(
 	origin: Option<Origin>,
 	amount: Option<Balance>,
-	recipient: Option<AccountId>,
-	recipient_aliases: Option<Vec<FaucetAlias>>
+	recipient: Option<AccountId>
 ) -> DispatchResult {
 	Faucet::drip(
 		origin.unwrap_or_else(|| Origin::signed(FAUCET1)),
-		amount.unwrap_or(default_faucet_settings().period_limit),
-		recipient.unwrap_or(ACCOUNT1),
-		recipient_aliases.unwrap_or(vec![valid_sha_1()])
+		amount.unwrap_or(default_faucet_settings().drop_limit),
+		recipient.unwrap_or(ACCOUNT1)
 	)
 }

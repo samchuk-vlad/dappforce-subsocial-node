@@ -4,28 +4,25 @@
 //! to drip free tokens to other accounts (recipients).
 
 // TODO refactor sudo to generic account + add 'created' to FaucetSettings so we can check owner
-// TODO possible improvement: add `remove_alias`
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Encode, Decode};
+use codec::{Decode, Encode};
+use frame_support::{
+    decl_error, decl_event, decl_module, decl_storage, dispatch::{DispatchError, DispatchResult},
+    ensure,
+    traits::{Currency, ExistenceRequirement, Get},
+    weights::Pays,
+};
+use frame_system::{self as system, ensure_root, ensure_signed};
+use pallet_sudo::Module as SudoModule;
 use sp_runtime::RuntimeDebug;
 use sp_runtime::traits::{Saturating, Zero};
 use sp_std::{
-    prelude::*,
-    iter::FromIterator,
     collections::btree_set::BTreeSet,
+    iter::FromIterator,
+    prelude::*,
 };
-
-use frame_support::{
-    decl_module, decl_storage, decl_event, decl_error, ensure,
-    dispatch::{DispatchResult, DispatchError},
-    traits::{Get, Currency, ExistenceRequirement},
-    weights::Pays,
-};
-use frame_system::{self as system, ensure_signed, ensure_root};
-use pallet_sudo::Module as SudoModule;
-// use multihash::{Code, MultihashGeneric}; // TODO: use multihash to validate aliases' hash
 
 #[cfg(test)]
 mod mock;
@@ -34,28 +31,26 @@ mod mock;
 mod tests;
 
 type DropId = u64;
-type FaucetAlias = Vec<u8>;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Drop<T: Trait> {
     id: DropId,
     last_drop_at: T::BlockNumber,
-    total_dropped: BalanceOf<T>
+    total_dropped: BalanceOf<T>,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct FaucetSettings<BlockNumber, Balance> {
     period: Option<BlockNumber>,
-    period_limit: Balance
-
-    // TODO add: min_amount: Balance
-    // TODO add: max_limit: Balance
+    period_limit: Balance,
+    drop_limit: Balance,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct FaucetSettingsUpdate<BlockNumber, Balance> {
     period: Option<Option<BlockNumber>>,
-    period_limit: Option<Balance>
+    period_limit: Option<Balance>,
+    drop_limit: Option<Balance>,
 }
 
 type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
@@ -80,13 +75,14 @@ decl_storage! {
 			map hasher(twox_64_concat) T::AccountId
 			=> Option<DropId>;
 
-		pub DropIdByAlias get(fn drop_id_by_alias):
-			map hasher(blake2_128_concat) FaucetAlias
-			=> Option<DropId>;
-
 		pub SettingsByFaucet get(fn settings_by_faucet):
 			map hasher(twox_64_concat) T::AccountId
 			=> Option<FaucetSettings<T::BlockNumber, BalanceOf<T>>>;
+
+	    pub TotalFaucetDropsByAccount get(fn total_faucet_drops_by_account): double_map
+	        hasher(twox_64_concat) T::AccountId,    // Faucet account
+	        hasher(twox_64_concat) T::AccountId     // User account
+	        => BalanceOf<T>;
 	}
 }
 
@@ -116,6 +112,7 @@ decl_error! {
 		NoFreeBalanceOnAccount,
 		NothingToUpdate,
 		ZeroAmount,
+		DropAmountLimit,
 	}
 }
 
@@ -129,7 +126,7 @@ decl_module! {
         // Initializing events
         fn deposit_event() = default;
 
-        #[weight = T::DbWeight::get().reads_writes(1, 1) + 10_000]
+        #[weight = T::DbWeight::get().reads_writes(1, 1) + 50_000]
         pub fn add_faucet(
             origin,
             faucet: T::AccountId,
@@ -138,14 +135,14 @@ decl_module! {
             ensure_root(origin)?;
 
             ensure!(
-                        Self::require_faucet_settings(&faucet).is_err(),
-                        Error::<T>::FaucetAlreadyAdded
-                    );
+                Self::require_faucet_settings(&faucet).is_err(),
+                Error::<T>::FaucetAlreadyAdded
+            );
 
             ensure!(
-                        T::Currency::free_balance(&faucet) >= T::Currency::minimum_balance(),
-                        Error::<T>::NoFreeBalanceOnAccount
-                    );
+                T::Currency::free_balance(&faucet) >= T::Currency::minimum_balance(),
+                Error::<T>::NoFreeBalanceOnAccount
+            );
 
             SettingsByFaucet::<T>::insert(faucet.clone(), settings);
 
@@ -163,7 +160,8 @@ decl_module! {
 
             let has_updates =
                 update.period.is_some() ||
-                    update.period_limit.is_some();
+                update.period_limit.is_some() ||
+                update.drop_limit.is_some();
 
             ensure!(has_updates, Error::<T>::NothingToUpdate);
 
@@ -186,6 +184,13 @@ decl_module! {
                 }
             }
 
+            if let Some(drop_limit) = update.drop_limit {
+                if drop_limit != settings.drop_limit {
+                    settings.drop_limit = drop_limit;
+                    should_update = true;
+                }
+            }
+
             if should_update {
                 SettingsByFaucet::<T>::insert(faucet.clone(), settings);
                 Self::deposit_event(RawEvent::FaucetUpdated(faucet));
@@ -194,9 +199,7 @@ decl_module! {
             Err(Error::<T>::NothingToUpdate.into())
         }
 
-        #[weight = T::DbWeight::get().reads_writes(0, 1) + 10_000
-        + 5_000 * faucets.len() as u64
-        ]
+        #[weight = T::DbWeight::get().reads_writes(0, 1) + 10_000 + 5_000 * faucets.len() as u64]
         pub fn remove_faucets(
             origin,
             faucets: Vec<T::AccountId>
@@ -225,28 +228,23 @@ decl_module! {
         }
 
         #[weight = (
-        T::DbWeight::get().reads_writes(6, 4) + 50_000, // TODO why 50k ?
-        Pays::No
+            T::DbWeight::get().reads_writes(6, 4) + 50_000,
+            Pays::No
         )]
         pub fn drip(
             origin, // faucet account
             amount: BalanceOf<T>,
-            recipient: T::AccountId,
-            recipient_aliases: Vec<FaucetAlias>
+            recipient: T::AccountId
         ) -> DispatchResult {
             let faucet = ensure_signed(origin)?;
 
             ensure!(amount > Zero::zero(), Error::<T>::ZeroAmount);
 
             let settings = Self::require_faucet_settings(&faucet)?;
-            // TODO: add MaxAliases const
-            let aliases_set = BTreeSet::from_iter(recipient_aliases.iter().cloned());
+            ensure!(amount <= settings.drop_limit, Error::<T>::DropAmountLimit);
 
-            let maybe_drop = Self::drop_id_by_recipient(&recipient)
-                .or_else(|| Self::try_get_drop_id_by_alias(&aliases_set))
-                .and_then(Self::drop_by_id);
+            let maybe_drop = Self::drop_id_by_recipient(&recipient).and_then(Self::drop_by_id);
 
-            // TODO check amount against settings.min_amount
             let mut is_new_drop = false;
             let mut drop = maybe_drop.unwrap_or_else(|| {
                 is_new_drop = true;
@@ -255,13 +253,11 @@ decl_module! {
             });
 
             if !is_new_drop {
-                let now = <system::Module<T>>::block_number();
+                let current_block = <system::Module<T>>::block_number();
+                let last_period_update = current_block.saturating_sub(settings.period.unwrap_or_else(Zero::zero));
 
-                // TODO rename var 'past'
-                let past = now.saturating_sub(settings.period.unwrap_or_else(Zero::zero));
-
-                if past >= drop.last_drop_at {
-                    drop.last_drop_at = now;
+                if last_period_update >= drop.last_drop_at {
+                    drop.last_drop_at = current_block;
                     if settings.period.is_some() {
                         drop.total_dropped = Zero::zero();
                     }
@@ -280,7 +276,7 @@ decl_module! {
 
             drop.total_dropped = drop.total_dropped.saturating_add(amount);
 
-            Self::filter_and_insert_new_aliases(aliases_set, drop.id);
+            TotalFaucetDropsByAccount::<T>::mutate(&recipient, &faucet, |total| *total = total.saturating_add(amount));
             DropIdByRecipient::<T>::insert(&recipient, drop.id);
             DropById::<T>::insert(drop.id, drop);
             if is_new_drop {
@@ -299,22 +295,6 @@ impl<T: Trait> Module<T> {
     ) -> Result<FaucetSettings<T::BlockNumber, BalanceOf<T>>, DispatchError> {
         Ok(Self::settings_by_faucet(faucet).ok_or(Error::<T>::FaucetNotFound)?)
     }
-
-    fn try_get_drop_id_by_alias(aliases: &BTreeSet<FaucetAlias>) -> Option<DropId> {
-        aliases.iter().find_map(|alias| Self::drop_id_by_alias(alias))
-    }
-
-    fn filter_and_insert_new_aliases(aliases_set: BTreeSet<FaucetAlias>, drop_id: DropId) {
-        let new_aliases = aliases_set
-            .iter()
-            .filter(|alias| {
-                Self::drop_id_by_alias(alias.clone()).is_none()
-            });
-
-        for alias in new_aliases {
-            DropIdByAlias::insert(alias, drop_id);
-        }
-    }
 }
 
 impl<T: Trait> Drop<T> {
@@ -322,7 +302,7 @@ impl<T: Trait> Drop<T> {
         Self {
             id,
             last_drop_at: <system::Module<T>>::block_number(),
-            total_dropped: Zero::zero()
+            total_dropped: Zero::zero(),
         }
     }
 }
