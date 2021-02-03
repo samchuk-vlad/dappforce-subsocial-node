@@ -33,7 +33,7 @@ mod tests {
     use pallet_spaces::{SpaceById, SpaceUpdate, Error as SpacesError};
     use pallet_space_follows::Error as SpaceFollowsError;
     use pallet_space_ownership::Error as SpaceOwnershipError;
-    use pallet_utils::{SpaceId, Error as UtilsError, User, Content};
+    use pallet_utils::{SpaceId, Error as UtilsError, User, Content, Module as Utils};
 
     impl_outer_origin! {
         pub enum Origin for TestRuntime {}
@@ -271,6 +271,7 @@ mod tests {
 
     impl pallet_spaces::Trait for TestRuntime {
         type Event = ();
+        type Currency = Balances;
         type Roles = Roles;
         type SpaceFollows = SpaceFollows;
         type BeforeSpaceCreated = SpaceFollows;
@@ -1122,6 +1123,10 @@ mod tests {
             assert_eq!(edit_history.old_data.handle, Some(Some(self::space_handle())));
             assert_eq!(edit_history.old_data.content, Some(self::space_content_ipfs()));
             assert_eq!(edit_history.old_data.hidden, Some(false));
+
+            let handle_in_lover_case =
+              Utils::<TestRuntime>::lowercase_and_validate_a_handle(self::space_handle()).ok().unwrap();
+            assert_eq!(Spaces::space_id_by_handle(handle_in_lover_case), None)
         });
     }
 

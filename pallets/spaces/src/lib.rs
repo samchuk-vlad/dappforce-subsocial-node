@@ -167,11 +167,11 @@ decl_module! {
       let space_id = Self::next_space_id();
       let new_space = &mut Space::new(space_id, parent_id_opt, owner.clone(), content, handle_opt.clone());
 
-      T::BeforeSpaceCreated::before_space_created(owner.clone(), new_space)?;
-
       if let Some(handle) = handle_opt {
         Self::reserve_handle(&owner, space_id, handle)?;
       }
+
+      T::BeforeSpaceCreated::before_space_created(owner.clone(), new_space)?;
 
       <SpaceById<T>>::insert(space_id, new_space);
       <SpaceIdsByOwner<T>>::mutate(owner.clone(), |ids| ids.push(space_id));
@@ -268,7 +268,7 @@ decl_module! {
 
       if let Some(handle_opt) = update.handle {
         if let Some(old_handle) = space.handle.clone() {
-          let old_handle_in_lowercase = Self::lowercase_and_validate_space_handle(old_handle.clone())?;
+          let old_handle_in_lowercase = Utils::<T>::lowercase_and_validate_a_handle(old_handle.clone())?;
 
           if let Some(new_handle) = handle_opt.clone() {
             if new_handle != old_handle {
