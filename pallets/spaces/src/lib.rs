@@ -266,36 +266,12 @@ decl_module! {
         }
       }
 
-      if let Some(handle_opt) = update.handle {
-        let mut is_handle_updated = false;
-
-        if let Some(old_handle) = space.handle.clone() {
-          let old_handle_in_lowercase = Utils::<T>::lowercase_and_validate_a_handle(old_handle.clone())?;
-
-          if let Some(new_handle) = handle_opt.clone() {
-            if new_handle != old_handle {
-              let handle_in_lowercase = Self::lowercase_and_validate_space_handle(new_handle)?;
-
-              SpaceIdByHandle::remove(old_handle_in_lowercase);
-              SpaceIdByHandle::insert(handle_in_lowercase, space_id);
-              is_handle_updated = true;
-            }
-          } else {
-            Self::unreserve_handle(&owner, old_handle)?;
-            is_handle_updated = true;
-          }
-        } else {
-          if let Some(handle) = handle_opt.clone() {
-            Self::reserve_handle(&owner, space_id, handle)?;
-            is_handle_updated = true;
-          }
-        }
-        if is_handle_updated {
+      let is_handle_updated = Self::update_handle(&owner, space_id, update.handle.clone(), space.handle.clone())?;
+      if is_handle_updated {
           old_data.handle = Some(space.handle);
-          space.handle = handle_opt;
+          space.handle = update.handle.unwrap();
           is_update_applied = true
         }
-      }
 
       // Update this space only if at least one field should be updated:
       if is_update_applied {
@@ -470,11 +446,43 @@ impl<T: Trait> Module<T> {
         who: &T::AccountId,
         handle: Vec<u8>
     ) -> DispatchResult {
-        let handle_in_lowercase = Self::lowercase_and_validate_space_handle(handle)?;
+        let handle_in_lowercase = Utils::<T>::lowercase_and_validate_a_handle(handle)?;
 
         <T as Trait>::Currency::unreserve(who, T::SpaceCreationFee::get());
         SpaceIdByHandle::remove(handle_in_lowercase);
         Ok(())
+    }
+
+    fn update_handle(
+        owner: &T::AccountId,
+        space_id: SpaceId,
+        update_handle: Option<Option<Vec<u8>>>,
+        space_handle: Option<Vec<u8>>
+    ) -> Result<bool, DispatchError> {
+        let mut is_handle_updated = false;
+        if let Some(handle_opt) = update_handle {
+            if let Some(old_handle) = space_handle {
+                if let Some(new_handle) = handle_opt {
+                    if new_handle != old_handle {
+                        let old_handle_in_lowercase = Utils::<T>::lowercase_and_validate_a_handle(old_handle.clone())?;
+                        let handle_in_lowercase = Self::lowercase_and_validate_space_handle(new_handle)?;
+
+                        SpaceIdByHandle::remove(old_handle_in_lowercase);
+                        SpaceIdByHandle::insert(handle_in_lowercase, space_id);
+                        is_handle_updated = true;
+                    }
+                } else {
+                    Self::unreserve_handle(owner, old_handle.clone())?;
+                    is_handle_updated = true;
+                }
+            } else {
+                if let Some(handle) = handle_opt {
+                    Self::reserve_handle(owner, space_id, handle.clone())?;
+                    is_handle_updated = true;
+                }
+            }
+        }
+        Ok(is_handle_updated)
     }
 }
 
