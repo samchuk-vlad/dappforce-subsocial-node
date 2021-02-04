@@ -280,7 +280,7 @@ mod tests {
         type AfterSpaceUpdated = SpaceHistory;
         type IsAccountBlocked = Moderation;
         type IsContentBlocked = Moderation;
-        type SpaceCreationFee = ();
+        type HandleDeposit = ();
     }
 
     parameter_types! {}

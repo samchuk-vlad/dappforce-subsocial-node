@@ -76,7 +76,7 @@ pub trait Trait: system::Trait
 
     type IsContentBlocked: IsContentBlocked;
 
-    type SpaceCreationFee: Get<BalanceOf<Self>>;
+    type HandleDeposit: Get<BalanceOf<Self>>;
 }
 
 decl_error! {
@@ -139,7 +139,7 @@ decl_event!(
 decl_module! {
   pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 
-    const SpaceCreationFee: BalanceOf<T> = T::SpaceCreationFee::get();
+    const HandleDeposit: BalanceOf<T> = T::HandleDeposit::get();
 
     // Initializing errors
     type Error = Error<T>;
@@ -469,7 +469,7 @@ impl<T: Trait> Module<T> {
     ) -> DispatchResult {
         let handle_in_lowercase = Self::lowercase_and_validate_space_handle(handle)?;
 
-        <T as Trait>::Currency::reserve(who, T::SpaceCreationFee::get())?;
+        <T as Trait>::Currency::reserve(who, T::HandleDeposit::get())?;
         SpaceIdByHandle::insert(handle_in_lowercase, space_id);
         Ok(())
     }
@@ -480,7 +480,7 @@ impl<T: Trait> Module<T> {
     ) -> DispatchResult {
         let handle_in_lowercase = Utils::<T>::lowercase_and_validate_a_handle(handle)?;
 
-        <T as Trait>::Currency::unreserve(who, T::SpaceCreationFee::get());
+        <T as Trait>::Currency::unreserve(who, T::HandleDeposit::get());
         SpaceIdByHandle::remove(handle_in_lowercase);
         Ok(())
     }
