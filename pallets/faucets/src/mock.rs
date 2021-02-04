@@ -23,7 +23,6 @@ impl_outer_dispatch! {
 	pub enum Call for Test where origin: Origin {
 		frame_system::System,
 		pallet_balances::Balances,
-		pallet_sudo::Sudo,
 	}
 }
 
@@ -76,13 +75,6 @@ impl pallet_balances::Trait for Test {
 	type AccountStore = System;
 }
 
-parameter_types! {}
-
-impl pallet_sudo::Trait for Test {
-	type Event = ();
-	type Call = Call;
-}
-
 impl Trait for Test {
 	type Event = ();
 	type Currency = Balances;
@@ -90,13 +82,11 @@ impl Trait for Test {
 
 pub(crate) type System = system::Module<Test>;
 type Balances = pallet_balances::Module<Test>;
-type Sudo = pallet_sudo::Module<Test>;
 pub(crate) type Faucet = Module<Test>;
 
 pub(crate) type AccountId = u64;
 pub(crate) type BlockNumber = u64;
 pub(crate) type Balance = u64;
-pub(crate) type DropId = u64;
 
 pub struct ExtBuilder;
 
@@ -110,10 +100,6 @@ impl ExtBuilder {
 
 		let _ = pallet_balances::GenesisConfig::<Test> {
 			balances: faucet_accounts.iter().cloned().map(|k|(k, 400)).collect(),
-		}.assimilate_storage(storage);
-
-		let _ = pallet_sudo::GenesisConfig::<Test> {
-			key: SUDO_ACCOUNT
 		}.assimilate_storage(storage);
 	}
 
@@ -158,20 +144,10 @@ impl ExtBuilder {
 		ext.execute_with(|| {
 			System::set_block_number(1);
 
-			assert_ok!(
-				_add_faucet(
-					None,
-					None,
-					Some(default_faucet_settings())
-				)
-			);
+			assert_ok!(_add_default_faucet());
 
 			System::set_block_number(INITIAL_BLOCK_NUMBER);
-			assert_ok!(_drip(
-				None,
-				Some(default_faucet_settings().drop_limit),
-				None
-			));
+			assert_ok!(_default_drip());
 		});
 
 		ext
@@ -183,17 +159,13 @@ pub(crate) const FAUCET2: AccountId = 2;
 pub(crate) const FAUCET8: AccountId = 8;
 pub(crate) const FAUCET9: AccountId = 9;
 
-const SUDO_ACCOUNT: AccountId = 10;
 pub(crate) const ACCOUNT1: AccountId = 11;
-
-pub(crate) const DROP1: DropId = 1;
-pub(crate) const DROP2: DropId = 2;
 
 pub(crate) const INITIAL_BLOCK_NUMBER: BlockNumber = 20;
 
 pub(crate) const fn default_faucet_settings() -> FaucetSettings<BlockNumber, AccountId> {
 	FaucetSettings {
-		period: Some(14_400),
+		period: Some(100),
 		period_limit: 50,
 		drop_limit: 25
 	}

@@ -51,7 +51,7 @@ fn add_faucet_should_fail_with_no_free_balance_on_account() {
                 Some(FAUCET9),
                 None
             ),
-            Error::<Test>::NoFreeBalanceOnAccount
+            Error::<Test>::NoFreeBalanceOnFaucet
         );
     });
 }
@@ -60,8 +60,7 @@ fn add_faucet_should_fail_with_no_free_balance_on_account() {
 fn update_faucet_should_work() {
     ExtBuilder::build_with_faucet().execute_with(|| {
         assert_ok!(_update_default_faucet());
-        const SETTINGS_UPDATE: FaucetSettingsUpdate<BlockNumber, Balance>
-            = default_faucet_settings_update();
+        const SETTINGS_UPDATE: FaucetSettingsUpdate<BlockNumber, Balance> = default_faucet_settings_update();
 
         let faucet_settings = Faucet::settings_by_faucet(FAUCET1).unwrap();
         let updated_faucet_settings = FaucetSettings {
@@ -214,14 +213,12 @@ fn drip_should_work() {
 
         assert_ok!(_default_drip()); // DropId 1
 
-        assert_eq!(Faucet::next_drop_id(), DROP2);
-        assert_eq!(Faucet::drop_id_by_recipient(ACCOUNT1), Some(DROP1));
-        // assert_eq!(Faucet::drop_id_by_alias(valid_sha_1()), Some(DROP1));
+        let faucet_drops_info = Faucet::faucet_drops_info(FAUCET1).unwrap();
+        let FaucetSettings { period, drop_limit, .. } = default_faucet_settings();
 
-        let drop = Faucet::drop_by_id(DROP1).unwrap();
-        assert_eq!(drop.id, DROP1);
-        assert_eq!(drop.last_drop_at, INITIAL_BLOCK_NUMBER);
-        assert_eq!(drop.total_dropped, default_faucet_settings().drop_limit);
+        assert_eq!(faucet_drops_info.next_period_at, INITIAL_BLOCK_NUMBER + period.unwrap());
+        assert_eq!(faucet_drops_info.total_dropped, drop_limit);
+        assert_eq!(Faucet::total_faucet_drops_by_account(FAUCET1, ACCOUNT1), drop_limit);
     });
 }
 
@@ -233,35 +230,33 @@ fn drip_should_work_twice_with_a_new_period() {
         assert_ok!(_default_drip()); // DropId 1
 
         // Default faucet must have a limit for testing purposes
-        let period = default_faucet_settings().period.unwrap();
-        System::set_block_number(INITIAL_BLOCK_NUMBER + period);
+        let FaucetSettings { period, drop_limit, .. } = default_faucet_settings();
+        System::set_block_number(INITIAL_BLOCK_NUMBER + period.unwrap());
 
         assert_ok!(_default_drip()); // Should reuse DropId 1
 
-        let drop = Faucet::drop_by_id(DROP1).unwrap();
-        assert_eq!(drop.id, DROP1);
-        assert_eq!(drop.last_drop_at, INITIAL_BLOCK_NUMBER + period);
-        assert_eq!(drop.total_dropped, default_faucet_settings().drop_limit);
+        let faucet_drops_info = Faucet::faucet_drops_info(FAUCET1).unwrap();
+        assert_eq!(faucet_drops_info.next_period_at, INITIAL_BLOCK_NUMBER + (period.unwrap() * 2));
+        assert_eq!(faucet_drops_info.total_dropped, drop_limit);
+        assert_eq!(Faucet::total_faucet_drops_by_account(FAUCET1, ACCOUNT1), drop_limit * 2);
     });
 }
 
 #[test]
 fn drip_should_work_with_two_drips() {
     ExtBuilder::build_with_one_default_drop().execute_with(|| {
-        let faucet_settings = default_faucet_settings();
+        let FaucetSettings { period, drop_limit, .. } = default_faucet_settings();
         assert_ok!(_drip(
             None,
-            Some(faucet_settings.period_limit / 2),
+            Some(drop_limit),
             None
         ));
 
-        assert_eq!(Faucet::next_drop_id(), DROP2);
-        assert_eq!(Faucet::drop_id_by_recipient(ACCOUNT1), Some(DROP1));
 
-        let drop = Faucet::drop_by_id(DROP1).unwrap();
-        assert_eq!(drop.id, DROP1);
-        assert_eq!(drop.last_drop_at, INITIAL_BLOCK_NUMBER);
-        assert_eq!(drop.total_dropped, faucet_settings.period_limit);
+        let faucet_drops_info = Faucet::faucet_drops_info(FAUCET1).unwrap();
+        assert_eq!(faucet_drops_info.next_period_at, INITIAL_BLOCK_NUMBER + period.unwrap());
+        assert_eq!(faucet_drops_info.total_dropped, drop_limit * 2);
+        assert_eq!(Faucet::total_faucet_drops_by_account(&FAUCET1, &ACCOUNT1), drop_limit * 2);
     });
 }
 
@@ -283,7 +278,7 @@ fn drip_should_fail_faucet_limit_reached_with_same_recipient() {
         assert_ok!(_default_drip());
         assert_noop!(
             _default_drip(),
-            Error::<Test>::FaucetLimitReached
+            Error::<Test>::FaucetPeriodLimitReached
         );
     });
 }

@@ -1,13 +1,4 @@
 {
-  "DropId": "u64",
-  "FaucetAlias": "Vec<u8>",
-
-  "Drop": {
-    "id": "DropId",
-    "last_drop_at": "BlockNumber",
-    "total_dropped": "Balance"
-  },
-
   "FaucetSettings": {
     "period": "Option<BlockNumber>",
     "period_limit": "Balance",
@@ -18,5 +9,10 @@
     "period": "Option<Option<BlockNumber>>",
     "period_limit": "Option<Balance>",
     "drop_limit": "Option<Balance>"
+  },
+
+  "FaucetDrops": {
+    "next_period_at": "BlockNumber",
+    "total_dropped": "Balance"
   }
 }
