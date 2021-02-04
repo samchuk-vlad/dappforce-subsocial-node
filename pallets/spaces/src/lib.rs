@@ -267,6 +267,8 @@ decl_module! {
       }
 
       if let Some(handle_opt) = update.handle {
+        let mut is_handle_updated = false;
+
         if let Some(old_handle) = space.handle.clone() {
           let old_handle_in_lowercase = Utils::<T>::lowercase_and_validate_a_handle(old_handle.clone())?;
 
@@ -276,21 +278,22 @@ decl_module! {
 
               SpaceIdByHandle::remove(old_handle_in_lowercase);
               SpaceIdByHandle::insert(handle_in_lowercase, space_id);
-              is_update_applied = true;
+              is_handle_updated = true;
             }
           } else {
             Self::unreserve_handle(&owner, old_handle)?;
-            is_update_applied = true;
-          }
-
-          if is_update_applied {
-            old_data.handle = Some(space.handle);
-            space.handle = handle_opt;
+            is_handle_updated = true;
           }
         } else {
-          if let Some(handle) = handle_opt {
+          if let Some(handle) = handle_opt.clone() {
             Self::reserve_handle(&owner, space_id, handle)?;
+            is_handle_updated = true;
           }
+        }
+        if is_handle_updated {
+          old_data.handle = Some(space.handle);
+          space.handle = handle_opt;
+          is_update_applied = true
         }
       }
 
