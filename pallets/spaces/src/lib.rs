@@ -10,10 +10,12 @@ use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 use frame_system::{self as system, ensure_signed};
 
-use df_traits::{SpaceForRoles, SpaceForRolesProvider};
-use df_traits::{PermissionChecker, SpaceFollowsProvider};
+use df_traits::{
+    SpaceForRoles, SpaceForRolesProvider, PermissionChecker, SpaceFollowsProvider,
+    moderation::{IsAccountBlocked, IsContentBlocked},
+};
 use pallet_permissions::{SpacePermission, SpacePermissions, SpacePermissionsContext};
-use pallet_utils::{Module as Utils, SpaceId, WhoAndWhen, Content};
+use pallet_utils::{Module as Utils, Error as UtilsError, SpaceId, WhoAndWhen, Content};
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Space<T: Trait> {
@@ -69,6 +71,10 @@ pub trait Trait: system::Trait
     type BeforeSpaceCreated: BeforeSpaceCreated<Self>;
 
     type AfterSpaceUpdated: AfterSpaceUpdated<Self>;
+
+    type IsAccountBlocked: IsAccountBlocked<AccountId=Self::AccountId>;
+
+    type IsContentBlocked: IsContentBlocked;
 
     type SpaceCreationFee: Get<BalanceOf<Self>>;
 }
@@ -156,6 +162,9 @@ decl_module! {
       if let Some(parent_id) = parent_id_opt {
         let parent_space = Self::require_space(parent_id)?;
 
+        ensure!(!T::IsAccountBlocked::is_account_blocked(owner.clone(), parent_id), UtilsError::<T>::AccountIsBlocked);
+        ensure!(!T::IsContentBlocked::is_content_blocked(content.clone(), parent_id), UtilsError::<T>::ContentIsBlocked);
+
         Self::ensure_account_has_space_permission(
           owner.clone(),
           &parent_space,
@@ -196,6 +205,8 @@ decl_module! {
 
       let mut space = Self::require_space(space_id)?;
 
+      ensure!(!T::IsAccountBlocked::is_account_blocked(owner.clone(), space.id), UtilsError::<T>::AccountIsBlocked);
+
       Self::ensure_account_has_space_permission(
         owner.clone(),
         &space,
@@ -230,6 +241,11 @@ decl_module! {
       if let Some(content) = update.content {
         if content != space.content {
           Utils::<T>::is_valid_content(content.clone())?;
+
+          ensure!(!T::IsContentBlocked::is_content_blocked(content.clone(), space.id), UtilsError::<T>::ContentIsBlocked);
+          if let Some(parent_id) = space.parent_id {
+            ensure!(!T::IsContentBlocked::is_content_blocked(content.clone(), parent_id), UtilsError::<T>::ContentIsBlocked);
+          }
 
           old_data.content = Some(space.content);
           space.content = content;
@@ -428,6 +444,22 @@ impl<T: Trait> Module<T> {
 
         SpaceById::<T>::insert(space_id, space);
         Ok(())
+    }
+
+    pub fn mutate_space_by_id<F: FnOnce(&mut Space<T>)> (
+        space_id: SpaceId,
+        f: F
+    ) -> Result<Space<T>, DispatchError> {
+        <SpaceById<T>>::mutate(space_id, |space_opt| {
+            if let Some(ref mut space) = space_opt.clone() {
+                f(space);
+                *space_opt = Some(space.clone());
+
+                return Ok(space.clone());
+            }
+
+            Err(Error::<T>::SpaceNotFound.into())
+        })
     }
 
     pub fn reserve_handle(
