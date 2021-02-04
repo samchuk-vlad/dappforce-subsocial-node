@@ -12,11 +12,7 @@ mod tests {
     use sp_core::H256;
     use sp_io::TestExternalities;
     use sp_std::iter::FromIterator;
-    use sp_runtime::{
-        traits::{BlakeTwo256, IdentityLookup},
-        testing::Header,
-        Perbill,
-    };
+    use sp_runtime::{traits::{BlakeTwo256, IdentityLookup}, testing::Header, Perbill, Storage};
     use frame_system::{self as system};
 
     use pallet_permissions::{
@@ -34,6 +30,7 @@ mod tests {
     use pallet_space_follows::Error as SpaceFollowsError;
     use pallet_space_ownership::Error as SpaceOwnershipError;
     use pallet_utils::{SpaceId, Error as UtilsError, User, Content, Module as Utils};
+    use sp_runtime::traits::Zero;
 
     impl_outer_origin! {
         pub enum Origin for TestRuntime {}
@@ -269,7 +266,10 @@ mod tests {
         type Event = ();
     }
 
-    parameter_types! {}
+    const HANDLE_DEPOSIT: u64 = 5;
+    parameter_types! {
+        pub const HandleDeposit: u64 = HANDLE_DEPOSIT;
+    }
 
     impl pallet_spaces::Trait for TestRuntime {
         type Event = ();
@@ -280,7 +280,7 @@ mod tests {
         type AfterSpaceUpdated = SpaceHistory;
         type IsAccountBlocked = Moderation;
         type IsContentBlocked = Moderation;
-        type HandleDeposit = ();
+        type HandleDeposit = HandleDeposit;
     }
 
     parameter_types! {}
@@ -321,11 +321,24 @@ mod tests {
 
     // TODO: make created space/post/comment configurable or by default
     impl ExtBuilder {
+        fn configure_storages(storage: &mut Storage) {
+            let mut accounts = Vec::new();
+            for account in ACCOUNT1..=ACCOUNT3 {
+                accounts.push(account);
+            }
+
+            let _ = pallet_balances::GenesisConfig::<TestRuntime> {
+                balances: accounts.iter().cloned().map(|k|(k, 100)).collect()
+            }.assimilate_storage(storage);
+        }
+
         /// Default ext configuration with BlockNumber 1
         pub fn build() -> TestExternalities {
-            let storage = system::GenesisConfig::default()
+            let mut storage = system::GenesisConfig::default()
                 .build_storage::<TestRuntime>()
                 .unwrap();
+
+            Self::configure_storages(&mut storage);
 
             let mut ext = TestExternalities::from(storage);
             ext.execute_with(|| System::set_block_number(1));
@@ -335,9 +348,11 @@ mod tests {
 
         /// Custom ext configuration with SpaceId 1 and BlockNumber 1
         pub fn build_with_space() -> TestExternalities {
-            let storage = system::GenesisConfig::default()
+            let mut storage = system::GenesisConfig::default()
                 .build_storage::<TestRuntime>()
                 .unwrap();
+
+            Self::configure_storages(&mut storage);
 
             let mut ext = TestExternalities::from(storage);
             ext.execute_with(|| {
@@ -350,9 +365,11 @@ mod tests {
 
         /// Custom ext configuration with SpaceId 1, PostId 1 and BlockNumber 1
         pub fn build_with_post() -> TestExternalities {
-            let storage = system::GenesisConfig::default()
+            let mut storage = system::GenesisConfig::default()
                 .build_storage::<TestRuntime>()
                 .unwrap();
+
+            Self::configure_storages(&mut storage);
 
             let mut ext = TestExternalities::from(storage);
             ext.execute_with(|| {
@@ -366,9 +383,11 @@ mod tests {
 
         /// Custom ext configuration with SpaceId 1, PostId 1, PostId 2 (as comment) and BlockNumber 1
         pub fn build_with_comment() -> TestExternalities {
-            let storage = system::GenesisConfig::default()
+            let mut storage = system::GenesisConfig::default()
                 .build_storage::<TestRuntime>()
                 .unwrap();
+
+            Self::configure_storages(&mut storage);
 
             let mut ext = TestExternalities::from(storage);
             ext.execute_with(|| {
@@ -383,9 +402,11 @@ mod tests {
 
         /// Custom ext configuration with pending ownership transfer without Space
         pub fn build_with_pending_ownership_transfer_no_space() -> TestExternalities {
-            let storage = system::GenesisConfig::default()
+            let mut storage = system::GenesisConfig::default()
                 .build_storage::<TestRuntime>()
                 .unwrap();
+
+            Self::configure_storages(&mut storage);
 
             let mut ext = TestExternalities::from(storage);
             ext.execute_with(|| {
@@ -402,9 +423,11 @@ mod tests {
 
         /// Custom ext configuration with specified permissions granted (includes SpaceId 1)
         pub fn build_with_a_few_roles_granted_to_account2(perms: Vec<SP>) -> TestExternalities {
-            let storage = system::GenesisConfig::default()
+            let mut storage = system::GenesisConfig::default()
                 .build_storage::<TestRuntime>()
                 .unwrap();
+
+            Self::configure_storages(&mut storage);
 
             let mut ext = TestExternalities::from(storage);
             ext.execute_with(|| {
@@ -432,9 +455,11 @@ mod tests {
 
         /// Custom ext configuration with space follow without Space
         pub fn build_with_space_follow_no_space() -> TestExternalities {
-            let storage = system::GenesisConfig::default()
+            let mut storage = system::GenesisConfig::default()
                 .build_storage::<TestRuntime>()
                 .unwrap();
+
+            Self::configure_storages(&mut storage);
 
             let mut ext = TestExternalities::from(storage);
             ext.execute_with(|| {
@@ -972,6 +997,9 @@ mod tests {
             assert_eq!(space.followers_count, 1);
             assert!(SpaceHistory::edit_history(space.id).is_empty());
             assert_eq!(space.score, 0);
+
+            let reserved_balance = Balances::reserved_balance(ACCOUNT1);
+            assert_eq!(reserved_balance, HANDLE_DEPOSIT);
         });
     }
 
@@ -1128,7 +1156,7 @@ mod tests {
 
             // Check whether space updates correctly
             let space = Spaces::space_by_id(SPACE1).unwrap();
-            assert_eq!(space.handle, Some(handle));
+            assert_eq!(space.handle, Some(handle.clone()));
             assert_eq!(space.content, content_ipfs);
             assert_eq!(space.hidden, true);
 
@@ -1138,9 +1166,15 @@ mod tests {
             assert_eq!(edit_history.old_data.content, Some(self::space_content_ipfs()));
             assert_eq!(edit_history.old_data.hidden, Some(false));
 
-            let handle_in_lover_case =
-              Utils::<TestRuntime>::lowercase_and_validate_a_handle(self::space_handle()).ok().unwrap();
-            assert_eq!(Spaces::space_id_by_handle(handle_in_lover_case), None)
+            let old_handle_lowercase = Utils::<TestRuntime>::lowercase_and_validate_a_handle(self::space_handle())
+              .ok().unwrap();
+            assert_eq!(Spaces::space_id_by_handle(old_handle_lowercase), None);
+            let new_handle_lowercase = Utils::<TestRuntime>::lowercase_and_validate_a_handle(handle)
+              .ok().unwrap();
+            assert_eq!(Spaces::space_id_by_handle(new_handle_lowercase), Some(SPACE1));
+
+            let reserved_balance = Balances::reserved_balance(ACCOUNT1);
+            assert_eq!(reserved_balance, HANDLE_DEPOSIT);
         });
     }
 
@@ -1162,6 +1196,29 @@ mod tests {
                 Some(SPACE1),
                 Some(space_update)
             ));
+        });
+    }
+
+    #[test]
+    fn update_space_should_work_with_unreserve_handle() {
+        ExtBuilder::build_with_space().execute_with(|| {
+            assert_ok!(_update_space(None, None, Some(self::space_update(None, Some(None), None, None, None))));
+
+            // Check whether space updates correctly
+            let space = Spaces::space_by_id(SPACE1).unwrap();
+            assert_eq!(space.handle, None);
+
+            // Check whether history recorded correctly
+            let edit_history = &SpaceHistory::edit_history(space.id)[0];
+            assert_eq!(edit_history.old_data.handle, Some(Some(self::space_handle())));
+
+            let handle_in_lower_case = Utils::<TestRuntime>::lowercase_and_validate_a_handle(self::space_handle())
+              .ok()
+              .unwrap();
+            assert_eq!(Spaces::space_id_by_handle(handle_in_lower_case), None);
+
+            let reserved_balance = Balances::reserved_balance(ACCOUNT1);
+            assert_eq!(reserved_balance, Zero::zero());
         });
     }
 
