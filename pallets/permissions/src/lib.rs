@@ -187,4 +187,36 @@ impl<T: Trait> Module<T> {
 
     None
   }
+
+  pub fn override_permissions(mut overrides: SpacePermissions) -> SpacePermissions {
+    overrides.none = overrides.none.map(
+      |mut none_permissions_set| {
+        none_permissions_set.extend(T::DefaultSpacePermissions::get().none.unwrap_or_default());
+        none_permissions_set
+      }
+    );
+
+    overrides.everyone = overrides.everyone.map(
+      |mut everyone_permissions_set| {
+        everyone_permissions_set.extend(T::DefaultSpacePermissions::get().everyone.unwrap_or_default());
+        everyone_permissions_set
+      }
+    );
+
+    overrides.follower = overrides.follower.map(
+      |mut follower_permissions_set| {
+        follower_permissions_set.extend(T::DefaultSpacePermissions::get().follower.unwrap_or_default());
+        follower_permissions_set
+      }
+    );
+
+    overrides.space_owner = overrides.space_owner.map(
+      |mut space_owner_permissions_set| {
+        space_owner_permissions_set.extend(T::DefaultSpacePermissions::get().space_owner.unwrap_or_default());
+        space_owner_permissions_set
+      }
+    );
+
+    overrides
+  }
 }

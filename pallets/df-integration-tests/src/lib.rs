@@ -620,20 +620,22 @@ mod tests {
     }
 
     fn _create_default_space() -> DispatchResult {
-        _create_space(None, None, None, None)
+        _create_space(None, None, None, None, None)
     }
 
     fn _create_space(
         origin: Option<Origin>,
         parent_id_opt: Option<Option<SpaceId>>,
         handle: Option<Option<Vec<u8>>>,
-        content: Option<Content>
+        content: Option<Content>,
+        permissions: Option<Option<SpacePermissions>>
     ) -> DispatchResult {
         Spaces::create_space(
             origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
             parent_id_opt.unwrap_or(None),
             handle.unwrap_or_else(|| Some(self::space_handle())),
             content.unwrap_or_else(self::space_content_ipfs),
+            permissions.unwrap_or(None)
         )
     }
 
@@ -1025,7 +1027,7 @@ mod tests {
         ExtBuilder::build().execute_with(|| {
             let new_handle: Vec<u8> = b"sPaCe_hAnDlE".to_vec();
 
-            assert_ok!(_create_space(None, None, Some(Some(new_handle.clone())), None)); // SpaceId 1
+            assert_ok!(_create_space(None, None, Some(Some(new_handle.clone())), None, None)); // SpaceId 1
 
             // Handle should be lowercase in storage and original in struct
             let space = Spaces::space_by_id(SPACE1).unwrap();
@@ -1044,6 +1046,7 @@ mod tests {
                 None,
                 None,
                 Some(Some(short_handle)),
+                None,
                 None
             ), UtilsError::<TestRuntime>::HandleIsTooShort);
         });
@@ -1059,6 +1062,7 @@ mod tests {
                 None,
                 None,
                 Some(Some(long_handle)),
+                None,
                 None
             ), UtilsError::<TestRuntime>::HandleIsTooLong);
         });
@@ -1083,6 +1087,7 @@ mod tests {
                 None,
                 None,
                 Some(Some(invalid_handle)),
+                None,
                 None
             ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
@@ -1097,6 +1102,7 @@ mod tests {
                 None,
                 None,
                 Some(Some(invalid_handle)),
+                None,
                 None
             ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
@@ -1111,6 +1117,7 @@ mod tests {
                 None,
                 None,
                 Some(Some(invalid_handle)),
+                None,
                 None
             ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
@@ -1125,6 +1132,7 @@ mod tests {
                 None,
                 None,
                 Some(Some(invalid_handle)),
+                None,
                 None
             ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
@@ -1140,7 +1148,8 @@ mod tests {
                 None,
                 None,
                 None,
-                Some(content_ipfs)
+                Some(content_ipfs),
+                None
             ), UtilsError::<TestRuntime>::InvalidIpfsCid);
         });
     }
@@ -1339,6 +1348,7 @@ mod tests {
                 None,
                 None,
                 Some(Some(handle.clone())),
+                None,
                 None
             )); // SpaceId 2 with a custom handle
 
@@ -1693,7 +1703,7 @@ mod tests {
     #[test]
     fn update_post_should_fail_with_post_not_found() {
         ExtBuilder::build_with_post().execute_with(|| {
-            assert_ok!(_create_space(None, None, Some(Some(b"space2_handle".to_vec())), None)); // SpaceId 2
+            assert_ok!(_create_space(None, None, Some(Some(b"space2_handle".to_vec())), None, None)); // SpaceId 2
 
             // Try to catch an error updating a post with wrong post ID
             assert_noop!(_update_post(
@@ -1714,7 +1724,7 @@ mod tests {
     #[test]
     fn update_post_should_fail_with_no_permission_to_update_any_post() {
         ExtBuilder::build_with_post().execute_with(|| {
-            assert_ok!(_create_space(None, None, Some(Some(b"space2_handle".to_vec())), None)); // SpaceId 2
+            assert_ok!(_create_space(None, None, Some(Some(b"space2_handle".to_vec())), None, None)); // SpaceId 2
 
             // Try to catch an error updating a post with different account
             assert_noop!(_update_post(
@@ -2565,6 +2575,7 @@ mod tests {
                 Some(Origin::signed(ACCOUNT2)),
                 None,
                 Some(Some(b"space2_handle".to_vec())),
+                None,
                 None
             )); // SpaceId 2 by ACCOUNT2
 
@@ -2600,7 +2611,8 @@ mod tests {
                 None, // From ACCOUNT1
                 None, // With no parent_id provided
                 Some(None), // Provided without any handle
-                None // With default space content,
+                None, // With default space content,
+                None
             ));
             // SpaceId 2
             assert_ok!(_create_post(
@@ -2652,6 +2664,7 @@ mod tests {
                 Some(Origin::signed(ACCOUNT2)),
                 None,
                 Some(Some(b"space2_handle".to_vec())),
+                None,
                 None
             )); // SpaceId 2 by ACCOUNT2
 
@@ -2691,6 +2704,7 @@ mod tests {
                 Some(Origin::signed(ACCOUNT2)),
                 None,
                 Some(Some(b"space2_handle".to_vec())),
+                None,
                 None
             )); // SpaceId 2 by ACCOUNT2
 
@@ -2711,6 +2725,7 @@ mod tests {
                 Some(Origin::signed(ACCOUNT2)),
                 None,
                 Some(Some(b"space2_handle".to_vec())),
+                None,
                 None
             )); // SpaceId 2 by ACCOUNT2
 
@@ -2738,7 +2753,8 @@ mod tests {
                 Some(Origin::signed(ACCOUNT1)),
                 None, // With no parent_id provided
                 Some(None), // No space_handle provided (ok)
-                None // Default space content,
+                None, // Default space content,
+                None
             )); // SpaceId 2 by ACCOUNT1
 
             // Try to share post with extension SharedPost
@@ -2758,7 +2774,8 @@ mod tests {
                 None, // From ACCOUNT1
                 None, // With no parent_id provided
                 Some(None), // Provided without any handle
-                None // With default space content
+                None, // With default space content
+                None
             ));
             // SpaceId 2
             assert_ok!(_create_post(
