@@ -1015,6 +1015,7 @@ mod tests {
             assert!(SpaceHistory::edit_history(space.id).is_empty());
             assert_eq!(space.score, 0);
 
+            // Check that the handle deposit has been reserved:
             let reserved_balance = Balances::reserved_balance(ACCOUNT1);
             assert_eq!(reserved_balance, HANDLE_DEPOSIT);
         });
@@ -1186,6 +1187,7 @@ mod tests {
             assert_eq!(self::find_space_id_by_handle(self::space_handle()), None);
             assert_eq!(self::find_space_id_by_handle(new_handle), Some(SPACE1));
 
+            // Check that the handle deposit has been reserved:
             let reserved_balance = Balances::reserved_balance(ACCOUNT1);
             assert_eq!(reserved_balance, HANDLE_DEPOSIT);
         });

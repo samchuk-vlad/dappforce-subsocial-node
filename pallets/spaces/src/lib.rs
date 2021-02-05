@@ -177,7 +177,7 @@ decl_module! {
       let new_space = &mut Space::new(space_id, parent_id_opt, owner.clone(), content, handle_opt.clone());
 
       if let Some(handle) = handle_opt {
-        Self::reserve_handle(&owner, space_id, handle)?;
+        Self::reserve_handle(&new_space, handle)?;
       }
 
       T::BeforeSpaceCreated::before_space_created(owner.clone(), new_space)?;
@@ -282,7 +282,7 @@ decl_module! {
         }
       }
 
-      let is_handle_updated = Self::update_handle(&owner, space_id, update.handle.clone(), space.handle.clone())?;
+      let is_handle_updated = Self::update_handle(&space, update.handle.clone())?;
       if is_handle_updated {
           old_data.handle = Some(space.handle);
           space.handle = update.handle.unwrap();
@@ -405,15 +405,6 @@ impl<T: Trait> Module<T> {
         Ok(Self::space_by_id(space_id).ok_or(Error::<T>::SpaceNotFound)?)
     }
 
-    pub fn lowercase_and_validate_space_handle(handle: Vec<u8>) -> Result<Vec<u8>, DispatchError> {
-        let handle_in_lowercase = Utils::<T>::lowercase_and_validate_a_handle(handle)?;
-
-        // Check if a handle is unique across all spaces' handles:
-        ensure!(Self::space_id_by_handle(handle_in_lowercase.clone()).is_none(), Error::<T>::SpaceHandleIsNotUnique);
-
-        Ok(handle_in_lowercase)
-    }
-
     pub fn ensure_account_has_space_permission(
         account: T::AccountId,
         space: &Space<T>,
@@ -462,56 +453,67 @@ impl<T: Trait> Module<T> {
         })
     }
 
-    pub fn reserve_handle(
-        who: &T::AccountId,
-        space_id: SpaceId,
+    /// Lowercase a handle and ensure that it's unique, i.e. no space reserved this handle yet.
+    fn lowercase_and_ensure_unique_handle(handle: Vec<u8>) -> Result<Vec<u8>, DispatchError> {
+        let handle_in_lowercase = Utils::<T>::lowercase_and_validate_a_handle(handle)?;
+
+        // Check if a handle is unique across all spaces' handles:
+        ensure!(Self::space_id_by_handle(handle_in_lowercase.clone()).is_none(), Error::<T>::SpaceHandleIsNotUnique);
+
+        Ok(handle_in_lowercase)
+    }
+
+    fn reserve_handle(
+        space: &Space<T>,
         handle: Vec<u8>
     ) -> DispatchResult {
-        let handle_in_lowercase = Self::lowercase_and_validate_space_handle(handle)?;
-
-        <T as Trait>::Currency::reserve(who, T::HandleDeposit::get())?;
-        SpaceIdByHandle::insert(handle_in_lowercase, space_id);
+        let handle_in_lowercase = Self::lowercase_and_ensure_unique_handle(handle)?;
+        <T as Trait>::Currency::reserve(&space.owner, T::HandleDeposit::get())?;
+        SpaceIdByHandle::insert(handle_in_lowercase, space.id);
         Ok(())
     }
 
-    pub fn unreserve_handle(
-        who: &T::AccountId,
+    fn unreserve_handle(
+        space: &Space<T>,
         handle: Vec<u8>
     ) -> DispatchResult {
-        let handle_in_lowercase = Utils::<T>::lowercase_and_validate_a_handle(handle)?;
-
-        <T as Trait>::Currency::unreserve(who, T::HandleDeposit::get());
+        let handle_in_lowercase = Utils::<T>::lowercase_handle(handle);
+        <T as Trait>::Currency::unreserve(&space.owner, T::HandleDeposit::get());
         SpaceIdByHandle::remove(handle_in_lowercase);
         Ok(())
     }
 
     fn update_handle(
-        owner: &T::AccountId,
-        space_id: SpaceId,
-        update_handle: Option<Option<Vec<u8>>>,
-        space_handle: Option<Vec<u8>>
+        space: &Space<T>,
+        maybe_new_handle: Option<Option<Vec<u8>>>,
     ) -> Result<bool, DispatchError> {
         let mut is_handle_updated = false;
-        if let Some(handle_opt) = update_handle {
-            if let Some(old_handle) = space_handle {
-                if let Some(new_handle) = handle_opt {
-                    if new_handle != old_handle {
-                        let old_handle_in_lowercase = Utils::<T>::lowercase_and_validate_a_handle(old_handle.clone())?;
-                        let handle_in_lowercase = Self::lowercase_and_validate_space_handle(new_handle)?;
+        if let Some(new_handle_opt) = maybe_new_handle {
+            if let Some(old_handle) = space.handle.clone() {
+                // If the space has a handle
 
-                        SpaceIdByHandle::remove(old_handle_in_lowercase);
-                        SpaceIdByHandle::insert(handle_in_lowercase, space_id);
+                if let Some(new_handle) = new_handle_opt {
+                    if new_handle != old_handle {
+                        // Change the current handle to a new one
+
+                        // Validate data first
+                        let old_handle_lc = Utils::<T>::lowercase_handle(old_handle.clone());
+                        let new_handle_lc = Self::lowercase_and_ensure_unique_handle(new_handle)?;
+
+                        // Update storage once data is valid
+                        SpaceIdByHandle::remove(old_handle_lc);
+                        SpaceIdByHandle::insert(new_handle_lc, space.id);
                         is_handle_updated = true;
                     }
                 } else {
-                    Self::unreserve_handle(owner, old_handle.clone())?;
+                    // Unreserve the current handle
+                    Self::unreserve_handle(space, old_handle.clone())?;
                     is_handle_updated = true;
                 }
-            } else {
-                if let Some(handle) = handle_opt {
-                    Self::reserve_handle(owner, space_id, handle.clone())?;
-                    is_handle_updated = true;
-                }
+            } else if let Some(new_handle) = new_handle_opt {
+                // Reserve a handle for the space that has no handle yet
+                Self::reserve_handle(space, new_handle.clone())?;
+                is_handle_updated = true;
             }
         }
         Ok(is_handle_updated)
