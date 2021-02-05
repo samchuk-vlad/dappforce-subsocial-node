@@ -173,10 +173,10 @@ decl_module! {
           Error::<T>::NoPermissionToCreateSubspaces.into()
         )?;
       }
-      let mut permissions: Option<SpacePermissions> = None;
-      if let Some(overrides) = permissions_opt {
-        permissions = Some(Permissions::<T>::override_permissions(overrides));
-      }
+
+      let permissions = permissions_opt.map(|perms| {
+        Permissions::<T>::override_permissions(perms)
+      });
 
       let space_id = Self::next_space_id();
       let new_space = &mut Space::new(space_id, parent_id_opt, owner.clone(), content, handle_opt.clone(), permissions);
