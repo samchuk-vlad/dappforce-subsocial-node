@@ -196,27 +196,6 @@ impl<T: Trait> Module<T> {
       }
     );
 
-    overrides.everyone = overrides.everyone.map(
-      |mut everyone_permissions_set| {
-        everyone_permissions_set.extend(T::DefaultSpacePermissions::get().everyone.unwrap_or_default());
-        everyone_permissions_set
-      }
-    );
-
-    overrides.follower = overrides.follower.map(
-      |mut follower_permissions_set| {
-        follower_permissions_set.extend(T::DefaultSpacePermissions::get().follower.unwrap_or_default());
-        follower_permissions_set
-      }
-    );
-
-    overrides.space_owner = overrides.space_owner.map(
-      |mut space_owner_permissions_set| {
-        space_owner_permissions_set.extend(T::DefaultSpacePermissions::get().space_owner.unwrap_or_default());
-        space_owner_permissions_set
-      }
-    );
-
     overrides
   }
 }
