@@ -94,6 +94,8 @@ decl_module! {
       // Here we know that the origin is eligible to become a new owner of this space.
       <PendingSpaceOwner<T>>::remove(space_id);
 
+      Spaces::maybe_transfer_handle_deposit_to_new_space_owner(&space, &new_owner)?;
+
       let old_owner = space.owner;
       space.owner = new_owner.clone();
       <SpaceById<T>>::insert(space_id, space);

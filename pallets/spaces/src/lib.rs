@@ -4,7 +4,7 @@ use codec::{Decode, Encode};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure,
     dispatch::{DispatchError, DispatchResult},
-    traits::{Get, Currency, ReservableCurrency},
+    traits::{Get, Currency, ExistenceRequirement, ReservableCurrency},
 };
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
@@ -463,12 +463,39 @@ impl<T: Trait> Module<T> {
         Ok(handle_in_lowercase)
     }
 
+    pub fn reserve_handle_deposit(space_owner: &T::AccountId) -> DispatchResult {
+        <T as Trait>::Currency::reserve(space_owner, T::HandleDeposit::get())
+    }
+
+    pub fn unreserve_handle_deposit(space_owner: &T::AccountId) -> BalanceOf<T> {
+        <T as Trait>::Currency::unreserve(space_owner, T::HandleDeposit::get())
+    }
+
+    /// This function will be performed only if a space has a handle.
+    /// Unreserve a handle deposit from the current space owner,
+    /// then transfer deposit amount to a new owner
+    /// and reserve this amount from a new owner.
+    pub fn maybe_transfer_handle_deposit_to_new_space_owner(space: &Space<T>, new_owner: &T::AccountId) -> DispatchResult {
+        if space.handle.is_some() {
+            let old_owner = &space.owner;
+            Self::unreserve_handle_deposit(old_owner);
+            <T as Trait>::Currency::transfer(
+                old_owner,
+                new_owner,
+                T::HandleDeposit::get(),
+                ExistenceRequirement::KeepAlive
+            )?;
+            Self::reserve_handle_deposit(new_owner)?;
+        }
+        Ok(())
+    }
+
     fn reserve_handle(
         space: &Space<T>,
         handle: Vec<u8>
     ) -> DispatchResult {
         let handle_in_lowercase = Self::lowercase_and_ensure_unique_handle(handle)?;
-        <T as Trait>::Currency::reserve(&space.owner, T::HandleDeposit::get())?;
+        Self::reserve_handle_deposit(&space.owner)?;
         SpaceIdByHandle::insert(handle_in_lowercase, space.id);
         Ok(())
     }
@@ -478,7 +505,7 @@ impl<T: Trait> Module<T> {
         handle: Vec<u8>
     ) -> DispatchResult {
         let handle_in_lowercase = Utils::<T>::lowercase_handle(handle);
-        <T as Trait>::Currency::unreserve(&space.owner, T::HandleDeposit::get());
+        Self::unreserve_handle_deposit(&space.owner);
         SpaceIdByHandle::remove(handle_in_lowercase);
         Ok(())
     }
