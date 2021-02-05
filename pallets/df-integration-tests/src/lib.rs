@@ -3089,6 +3089,12 @@ mod tests {
 
             // Check whether storage state is correct
             assert!(SpaceOwnership::pending_space_owner(SPACE1).is_none());
+
+            let owner_reserved_balance = Balances::reserved_balance(ACCOUNT1);
+            assert_eq!(owner_reserved_balance, Zero::zero());
+
+            let recipient_reserved_balance = Balances::reserved_balance(ACCOUNT2);
+            assert_eq!(recipient_reserved_balance, HANDLE_DEPOSIT);
         });
     }
 
