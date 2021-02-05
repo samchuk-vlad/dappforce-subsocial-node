@@ -14,7 +14,7 @@ use df_traits::{
     SpaceForRoles, SpaceForRolesProvider, PermissionChecker, SpaceFollowsProvider,
     moderation::{IsAccountBlocked, IsContentBlocked},
 };
-use pallet_permissions::{SpacePermission, SpacePermissions, SpacePermissionsContext};
+use pallet_permissions::{Module as Permissions, SpacePermission, SpacePermissions, SpacePermissionsContext};
 use pallet_utils::{Module as Utils, Error as UtilsError, SpaceId, WhoAndWhen, Content};
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -108,7 +108,7 @@ decl_storage! {
           let mut spaces: Vec<(SpaceId, Space<T>)> = Vec::new();
           let endowed_account = config.endowed_account.clone();
           for id in 1..=1000 {
-            spaces.push((id, Space::<T>::new(id, None, endowed_account.clone(), Content::None, None)));
+            spaces.push((id, Space::<T>::new(id, None, endowed_account.clone(), Content::None, None, None)));
           }
           spaces
         }):
@@ -152,7 +152,8 @@ decl_module! {
       origin,
       parent_id_opt: Option<SpaceId>,
       handle_opt: Option<Vec<u8>>,
-      content: Content
+      content: Content,
+      permissions_opt: Option<SpacePermissions>
     ) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 
@@ -173,8 +174,12 @@ decl_module! {
         )?;
       }
 
+      let permissions = permissions_opt.map(|perms| {
+        Permissions::<T>::override_permissions(perms)
+      });
+
       let space_id = Self::next_space_id();
-      let new_space = &mut Space::new(space_id, parent_id_opt, owner.clone(), content, handle_opt.clone());
+      let new_space = &mut Space::new(space_id, parent_id_opt, owner.clone(), content, handle_opt.clone(), permissions);
 
       if let Some(handle) = handle_opt {
         Self::reserve_handle(&new_space, handle)?;
@@ -265,15 +270,8 @@ decl_module! {
         if space.permissions != overrides_opt {
           old_data.permissions = Some(space.permissions);
 
-          if let Some(mut overrides) = overrides_opt.clone() {
-            overrides.none = overrides.none.map(
-              |mut none_permissions_set| {
-                none_permissions_set.extend(T::DefaultSpacePermissions::get().none.unwrap_or_default());
-                none_permissions_set
-              }
-            );
-
-            space.permissions = Some(overrides);
+          if let Some(overrides) = overrides_opt.clone() {
+            space.permissions = Some(Permissions::<T>::override_permissions(overrides));
           } else {
             space.permissions = overrides_opt;
           }
@@ -310,6 +308,7 @@ impl<T: Trait> Space<T> {
         created_by: T::AccountId,
         content: Content,
         handle: Option<Vec<u8>>,
+        permissions: Option<SpacePermissions>,
     ) -> Self {
         Space {
             id,
@@ -324,7 +323,7 @@ impl<T: Trait> Space<T> {
             hidden_posts_count: 0,
             followers_count: 0,
             score: 0,
-            permissions: None,
+            permissions,
         }
     }
 
