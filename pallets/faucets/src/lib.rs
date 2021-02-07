@@ -1,15 +1,18 @@
-//! # Faucet Module
+//! # Faucets Module
 //!
-//! The Faucet module allows a root key (sudo) to add accounts (faucets) that are eligible
+//! The Faucets module allows a root key (sudo) to add accounts (faucets) that are eligible
 //! to drip free tokens to other accounts (recipients).
-
-// TODO refactor sudo to generic account + add 'created' to FaucetSettings so we can check owner
+//! 
+//! Currently, only sudo account can add, update and remove faucets.
+//! But this can be changed in the future to allow anyone else
+//! to set up new faucets for their needs.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
 use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage, dispatch::{DispatchError, DispatchResult},
+    decl_error, decl_event, decl_module, decl_storage,
+    dispatch::{DispatchError, DispatchResult},
     ensure,
     traits::{Currency, ExistenceRequirement, Get},
     weights::Pays,
@@ -29,30 +32,37 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+// TODO maybe merge FaucetSettings + FaucetState => Faucet? this will reduce storage reads.
+
+// TODO allow anyone account to add, update, remove faucets, not only sudo.
+
+// TODO add 'created' to FaucetSettings so we can check owner?
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+pub struct FaucetState<BlockNumber, Balance> {
+    next_period_at: BlockNumber,
+    dripped_in_current_period: Balance,
+}
+
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct FaucetSettings<BlockNumber, Balance> {
     period: Option<BlockNumber>,
     period_limit: Balance,
-    drop_limit: Balance,
-}
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct FaucetDrops<BlockNumber, Balance> {
-    next_period_at: BlockNumber,
-    total_dropped: Balance,
+    drip_limit: Balance,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct FaucetSettingsUpdate<BlockNumber, Balance> {
     period: Option<Option<BlockNumber>>,
     period_limit: Option<Balance>,
-    drop_limit: Option<Balance>,
+    drip_limit: Option<Balance>,
 }
 
 type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
 
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait {
+
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
@@ -61,17 +71,18 @@ pub trait Trait: system::Trait {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as FaucetModule {
+
 		pub SettingsByFaucet get(fn settings_by_faucet):
 			map hasher(twox_64_concat) T::AccountId
 			=> Option<FaucetSettings<T::BlockNumber, BalanceOf<T>>>;
 
         pub FaucetDropsInfo get(fn faucet_drops_info):
             map hasher(twox_64_concat) T::AccountId
-            => Option<FaucetDrops<T::BlockNumber, BalanceOf<T>>>;
+            => Option<FaucetState<T::BlockNumber, BalanceOf<T>>>;
 
 	    pub TotalFaucetDropsByAccount get(fn total_faucet_drops_by_account): double_map
-	        hasher(twox_64_concat) T::AccountId,    // Faucet account
-	        hasher(twox_64_concat) T::AccountId     // User account
+	        hasher(twox_64_concat) T::AccountId, // Faucet account
+	        hasher(twox_64_concat) T::AccountId  // User account
 	        => BalanceOf<T>;
 	}
 }
@@ -85,9 +96,9 @@ decl_event!(
 		FaucetUpdated(AccountId),
 		FaucetsRemoved(Vec<AccountId>),
 		TokensDropped(
-			AccountId, // faucet
-			AccountId, // recipient
-			Balance // amount dropped
+			AccountId, // Faucet
+			AccountId, // Recipient
+			Balance    // Amount dripped
 		),
 	}
 );
@@ -97,15 +108,18 @@ decl_error! {
 	pub enum Error for Module<T: Trait> {
 		FaucetNotFound,
 		FaucetAlreadyAdded,
-		FaucetPeriodLimitReached,
-		NoFaucetsProvided,
 		NoFreeBalanceOnFaucet,
-		NothingToUpdate,
-		DropAmountLimit,
-		ZeroAmount,
-		ZeroPeriod,
-		ZeroPeriodLimit,
-		ZeroDropLimit,
+        
+        NoUpdatesProvided,
+        NoFaucetsProvided,
+
+		ZeroPeriodProvided,
+		ZeroPeriodLimitProvided,
+		ZeroDripLimitProvided,
+        ZeroDripAmountProvided,
+        
+        PeriodLimitReached,
+        DripLimitReached,
 	}
 }
 
@@ -127,16 +141,18 @@ decl_module! {
         ) -> DispatchResult {
             ensure_root(origin)?;
 
-            ensure!(Self::require_faucet_settings(&faucet).is_err(), Error::<T>::FaucetAlreadyAdded);
+            ensure!(
+                Self::require_faucet_settings(&faucet).is_err(),
+                Error::<T>::FaucetAlreadyAdded
+            );
+
             ensure!(
                 T::Currency::free_balance(&faucet) >= T::Currency::minimum_balance(),
                 Error::<T>::NoFreeBalanceOnFaucet
             );
 
-            Self::ensure_faucet_settings_not_zero(&settings)?;
-
+            Self::ensure_provided_valid_settings(&settings)?;
             SettingsByFaucet::<T>::insert(faucet.clone(), settings);
-
             Self::deposit_event(RawEvent::FaucetAdded(faucet));
             Ok(())
         }
@@ -152,9 +168,9 @@ decl_module! {
             let has_updates =
                 update.period.is_some() ||
                 update.period_limit.is_some() ||
-                update.drop_limit.is_some();
+                update.drip_limit.is_some();
 
-            ensure!(has_updates, Error::<T>::NothingToUpdate);
+            ensure!(has_updates, Error::<T>::NoUpdatesProvided);
 
             let mut settings = Self::require_faucet_settings(&faucet)?;
 
@@ -174,17 +190,17 @@ decl_module! {
                 Self::ensure_period_limit_not_zero(period_limit)?;
 
                 if period_limit != settings.period_limit {
-                    ensure!(period_limit > Zero::zero(), Error::<T>::ZeroPeriodLimit);
+                    ensure!(period_limit > Zero::zero(), Error::<T>::ZeroPeriodLimitProvided);
                     settings.period_limit = period_limit;
                     should_update = true;
                 }
             }
 
-            if let Some(drop_limit) = update.drop_limit {
-                Self::ensure_drop_limit_not_zero(drop_limit)?;
+            if let Some(drip_limit) = update.drip_limit {
+                Self::ensure_drip_limit_not_zero(drip_limit)?;
 
-                if drop_limit != settings.drop_limit {
-                    settings.drop_limit = drop_limit;
+                if drip_limit != settings.drip_limit {
+                    settings.drip_limit = drip_limit;
                     should_update = true;
                 }
             }
@@ -194,7 +210,7 @@ decl_module! {
                 Self::deposit_event(RawEvent::FaucetUpdated(faucet));
                 Ok(())
             } else {
-                Err(Error::<T>::NothingToUpdate.into())
+                Err(Error::<T>::NoUpdatesProvided.into())
             }
         }
 
@@ -218,7 +234,7 @@ decl_module! {
 
         #[weight = (
             T::DbWeight::get().reads_writes(6, 4) + 50_000,
-            Pays::No
+            Pays::No // TODO hm....
         )]
         pub fn drip(
             origin, // faucet account
@@ -227,10 +243,10 @@ decl_module! {
         ) -> DispatchResult {
             let faucet = ensure_signed(origin)?;
 
-            ensure!(amount > Zero::zero(), Error::<T>::ZeroAmount);
+            ensure!(amount > Zero::zero(), Error::<T>::ZeroDripAmountProvided);
 
             let settings = Self::require_faucet_settings(&faucet)?;
-            ensure!(amount <= settings.drop_limit, Error::<T>::DropAmountLimit);
+            ensure!(amount <= settings.drip_limit, Error::<T>::DripLimitReached);
 
             let mut faucet_drops_info = Self::faucet_drops_info(&faucet).unwrap_or_default();
             let current_block = <system::Module<T>>::block_number();
@@ -238,12 +254,12 @@ decl_module! {
             if faucet_drops_info.next_period_at <= current_block {
                 if let Some(period) = settings.period {
                     faucet_drops_info.next_period_at = current_block.saturating_add(period);
-                    faucet_drops_info.total_dropped = Zero::zero();
+                    faucet_drops_info.dripped_in_current_period = Zero::zero();
                 }
             }
 
-            let amount_allowed = settings.period_limit.saturating_sub(faucet_drops_info.total_dropped);
-            ensure!(amount_allowed >= amount, Error::<T>::FaucetPeriodLimitReached);
+            let amount_allowed = settings.period_limit.saturating_sub(faucet_drops_info.dripped_in_current_period);
+            ensure!(amount <= amount_allowed, Error::<T>::PeriodLimitReached);
 
             T::Currency::transfer(
                 &faucet,
@@ -252,7 +268,7 @@ decl_module! {
                 ExistenceRequirement::KeepAlive
             )?;
 
-            faucet_drops_info.total_dropped = faucet_drops_info.total_dropped.saturating_add(amount);
+            faucet_drops_info.dripped_in_current_period = faucet_drops_info.dripped_in_current_period.saturating_add(amount);
 
             TotalFaucetDropsByAccount::<T>::mutate(&faucet, &recipient, |total| *total = total.saturating_add(amount));
             FaucetDropsInfo::<T>::insert(&faucet, faucet_drops_info);
@@ -264,6 +280,7 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
+
     pub fn require_faucet_settings(
         faucet: &T::AccountId
     ) -> Result<FaucetSettings<T::BlockNumber, BalanceOf<T>>, DispatchError> {
@@ -272,33 +289,33 @@ impl<T: Trait> Module<T> {
 
     fn ensure_period_not_zero(period_opt: Option<T::BlockNumber>) -> DispatchResult {
         if let Some(period) = period_opt {
-            ensure!(period > Zero::zero(), Error::<T>::ZeroPeriod);
+            ensure!(period > Zero::zero(), Error::<T>::ZeroPeriodProvided);
         }
         Ok(())
     }
 
     fn ensure_period_limit_not_zero(period_limit: BalanceOf<T>) -> DispatchResult {
-        ensure!(period_limit > Zero::zero(), Error::<T>::ZeroPeriodLimit);
+        ensure!(period_limit > Zero::zero(), Error::<T>::ZeroPeriodLimitProvided);
         Ok(())
     }
 
-    fn ensure_drop_limit_not_zero(drop_limit: BalanceOf<T>) -> DispatchResult {
-        ensure!(drop_limit > Zero::zero(), Error::<T>::ZeroDropLimit);
+    fn ensure_drip_limit_not_zero(drip_limit: BalanceOf<T>) -> DispatchResult {
+        ensure!(drip_limit > Zero::zero(), Error::<T>::ZeroDripLimitProvided);
         Ok(())
     }
 
-    fn ensure_faucet_settings_not_zero(settings: &FaucetSettings<T::BlockNumber, BalanceOf<T>>) -> DispatchResult {
+    fn ensure_provided_valid_settings(settings: &FaucetSettings<T::BlockNumber, BalanceOf<T>>) -> DispatchResult {
         Self::ensure_period_not_zero(settings.period)?;
         Self::ensure_period_limit_not_zero(settings.period_limit)?;
-        Self::ensure_drop_limit_not_zero(settings.drop_limit)
+        Self::ensure_drip_limit_not_zero(settings.drip_limit)
     }
 }
 
-impl<BlockNumber: Zero, Balance: Zero> Default for FaucetDrops<BlockNumber, Balance> {
+impl<BlockNumber: Zero, Balance: Zero> Default for FaucetState<BlockNumber, Balance> {
     fn default() -> Self {
         Self {
             next_period_at: Zero::zero(),
-            total_dropped: Zero::zero(),
+            dripped_in_current_period: Zero::zero(),
         }
     }
 }

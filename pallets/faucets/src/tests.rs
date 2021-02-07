@@ -70,12 +70,12 @@ fn update_faucet_should_work() {
         let updated_faucet_settings = FaucetSettings {
             period: SETTINGS_UPDATE.period.unwrap_or(faucet_settings.period),
             period_limit: SETTINGS_UPDATE.period_limit.unwrap_or(faucet_settings.period_limit),
-            drop_limit: SETTINGS_UPDATE.drop_limit.unwrap_or(faucet_settings.drop_limit)
+            drip_limit: SETTINGS_UPDATE.drip_limit.unwrap_or(faucet_settings.drip_limit)
         };
 
         assert_eq!(faucet_settings.period, updated_faucet_settings.period);
         assert_eq!(faucet_settings.period_limit, updated_faucet_settings.period_limit);
-        assert_eq!(faucet_settings.drop_limit, updated_faucet_settings.drop_limit);
+        assert_eq!(faucet_settings.drip_limit, updated_faucet_settings.drip_limit);
     });
 }
 
@@ -89,10 +89,10 @@ fn update_faucet_should_fail_when_no_updates_provided() {
                 Some(FaucetSettingsUpdate {
                     period: None,
                     period_limit: None,
-                    drop_limit: None
+                    drip_limit: None
                 })
             ),
-            Error::<Test>::NothingToUpdate
+            Error::<Test>::NoUpdatesProvided
         );
     });
 }
@@ -117,10 +117,10 @@ fn update_faucet_should_fail_when_same_period_provided() {
                 Some(FaucetSettingsUpdate {
                     period: Some(default_faucet_settings().period),
                     period_limit: None,
-                    drop_limit: None
+                    drip_limit: None
                 })
             ),
-            Error::<Test>::NothingToUpdate
+            Error::<Test>::NoUpdatesProvided
         );
     });
 }
@@ -135,12 +135,20 @@ fn update_faucet_should_fail_when_same_period_limit_provided() {
                 Some(FaucetSettingsUpdate {
                     period: None,
                     period_limit: Some(default_faucet_settings().period_limit),
-                    drop_limit: None
+                    drip_limit: None
                 })
             ),
-            Error::<Test>::NothingToUpdate
+            Error::<Test>::NoUpdatesProvided
         );
     });
+}
+
+#[test]
+fn update_faucet_should_fail_when_same_drop_limit_provided() {
+
+    // TODO impl
+    ()
+
 }
 
 // Remove faucets
@@ -224,11 +232,11 @@ fn drip_should_work() {
         assert_ok!(_do_default_drip());
 
         let faucet_drops_info = Faucet::faucet_drops_info(FAUCET1).unwrap();
-        let FaucetSettings { period, drop_limit, .. } = default_faucet_settings();
+        let FaucetSettings { period, drip_limit, .. } = default_faucet_settings();
 
         assert_eq!(faucet_drops_info.next_period_at, INITIAL_BLOCK_NUMBER + period.unwrap());
-        assert_eq!(faucet_drops_info.total_dropped, drop_limit);
-        assert_eq!(Faucet::total_faucet_drops_by_account(FAUCET1, ACCOUNT1), drop_limit);
+        assert_eq!(faucet_drops_info.dripped_in_current_period, drip_limit);
+        assert_eq!(Faucet::total_faucet_drops_by_account(FAUCET1, ACCOUNT1), drip_limit);
     });
 }
 
@@ -240,7 +248,7 @@ fn drip_should_work_for_same_recipient_in_next_period() {
         assert_ok!(_do_default_drip());
 
         // Move to the next period
-        let FaucetSettings { period, drop_limit, .. } = default_faucet_settings();
+        let FaucetSettings { period, drip_limit, .. } = default_faucet_settings();
         System::set_block_number(INITIAL_BLOCK_NUMBER + period.unwrap());
 
         // Repeat the same drip as we did a few line above
@@ -248,23 +256,23 @@ fn drip_should_work_for_same_recipient_in_next_period() {
 
         let faucet_drops_info = Faucet::faucet_drops_info(FAUCET1).unwrap();
         assert_eq!(faucet_drops_info.next_period_at, INITIAL_BLOCK_NUMBER + (period.unwrap() * 2));
-        assert_eq!(faucet_drops_info.total_dropped, drop_limit);
-        assert_eq!(Faucet::total_faucet_drops_by_account(FAUCET1, ACCOUNT1), drop_limit * 2);
+        assert_eq!(faucet_drops_info.dripped_in_current_period, drip_limit);
+        assert_eq!(Faucet::total_faucet_drops_by_account(FAUCET1, ACCOUNT1), drip_limit * 2);
     });
 }
 
 #[test]
 fn drip_should_work_multiple_times_in_same_period() {
     ExtBuilder::build_with_one_default_drip().execute_with(|| {
-        let FaucetSettings { period, drop_limit, .. } = default_faucet_settings();
+        let FaucetSettings { period, drip_limit, .. } = default_faucet_settings();
         
         // Do the second drip
-        assert_ok!(_drip(None, Some(drop_limit), None));
+        assert_ok!(_drip(None, Some(drip_limit), None));
 
         let faucet_drops_info = Faucet::faucet_drops_info(FAUCET1).unwrap();
         assert_eq!(faucet_drops_info.next_period_at, INITIAL_BLOCK_NUMBER + period.unwrap());
-        assert_eq!(faucet_drops_info.total_dropped, drop_limit * 2);
-        assert_eq!(Faucet::total_faucet_drops_by_account(&FAUCET1, &ACCOUNT1), drop_limit * 2);
+        assert_eq!(faucet_drops_info.dripped_in_current_period, drip_limit * 2);
+        assert_eq!(Faucet::total_faucet_drops_by_account(&FAUCET1, &ACCOUNT1), drip_limit * 2);
     });
 }
 
@@ -279,7 +287,7 @@ fn drip_should_fail_when_period_limit_reached() {
         // The third drip should fail, b/c it exceeds the period limit of this faucet
         assert_noop!(
             _do_default_drip(),
-            Error::<Test>::FaucetPeriodLimitReached
+            Error::<Test>::PeriodLimitReached
         );
     });
 }
@@ -289,7 +297,7 @@ fn drip_should_fail_when_zero_amount_provided() {
     ExtBuilder::build_with_faucet().execute_with(|| {
         assert_noop!(
             _drip(None, Some(0), None),
-            Error::<Test>::ZeroAmount
+            Error::<Test>::ZeroDripAmountProvided
         );
     });
 }
@@ -297,10 +305,10 @@ fn drip_should_fail_when_zero_amount_provided() {
 #[test]
 fn drip_should_fail_when_too_big_amount_provided() {
     ExtBuilder::build_with_faucet().execute_with(|| {
-        let too_big_amount = default_faucet_settings().drop_limit + 1;
+        let too_big_amount = default_faucet_settings().drip_limit + 1;
         assert_noop!(
             _drip(None, Some(too_big_amount), None),
-            Error::<Test>::DropAmountLimit
+            Error::<Test>::DripLimitReached
         );
     });
 }

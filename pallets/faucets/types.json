@@ -2,17 +2,17 @@
   "FaucetSettings": {
     "period": "Option<BlockNumber>",
     "period_limit": "Balance",
-    "drop_limit": "Balance"
+    "drip_limit": "Balance"
   },
 
   "FaucetSettingsUpdate": {
     "period": "Option<Option<BlockNumber>>",
     "period_limit": "Option<Balance>",
-    "drop_limit": "Option<Balance>"
+    "drip_limit": "Option<Balance>"
   },
 
-  "FaucetDrops": {
+  "FaucetState": {
     "next_period_at": "BlockNumber",
-    "total_dropped": "Balance"
+    "dripped_in_current_period": "Balance"
   }
 }

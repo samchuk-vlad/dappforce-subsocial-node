@@ -133,6 +133,7 @@ impl ExtBuilder {
 		ext
 	}
 
+	// TODO do we really need this func? it's much clearer to call _do_default_drip() in a few tests directly.
 	pub fn build_with_one_default_drip() -> TestExternalities {
 		let mut storage = system::GenesisConfig::default()
 			.build_storage::<Test>()
@@ -167,7 +168,7 @@ pub(crate) const fn default_faucet_settings() -> FaucetSettings<BlockNumber, Acc
 	FaucetSettings {
 		period: Some(100),
 		period_limit: 50,
-		drop_limit: 25
+		drip_limit: 25
 	}
 }
 
@@ -175,7 +176,7 @@ pub(crate) const fn default_faucet_settings_update() -> FaucetSettingsUpdate<Blo
 	FaucetSettingsUpdate {
 		period: Some(Some(7_200)),
 		period_limit: Some(100),
-		drop_limit: Some(50)
+		drip_limit: Some(50)
 	}
 }
 
@@ -236,7 +237,7 @@ pub(crate) fn _drip(
 ) -> DispatchResult {
 	Faucet::drip(
 		origin.unwrap_or_else(|| Origin::signed(FAUCET1)),
-		amount.unwrap_or(default_faucet_settings().drop_limit),
+		amount.unwrap_or(default_faucet_settings().drip_limit),
 		recipient.unwrap_or(ACCOUNT1)
 	)
 }
