@@ -1,18 +1,20 @@
 {
-  "FaucetSettings": {
-    "period": "Option<BlockNumber>",
+  "Faucet": {
+    "created": "WhoAndWhen",
+    "updated": "Option<WhoAndWhen>",
+
+    "is_active": "bool",
+    "period": "BlockNumber",
     "period_limit": "Balance",
-    "drip_limit": "Balance"
-  },
+    "drip_limit": "Balance",
 
-  "FaucetSettingsUpdate": {
-    "period": "Option<Option<BlockNumber>>",
-    "period_limit": "Option<Balance>",
-    "drip_limit": "Option<Balance>"
-  },
-
-  "FaucetState": {
     "next_period_at": "BlockNumber",
     "dripped_in_current_period": "Balance"
+  },
+
+  "FaucetUpdate": {
+    "period": "Option<BlockNumber>",
+    "period_limit": "Option<Balance>",
+    "drip_limit": "Option<Balance>"
   }
 }

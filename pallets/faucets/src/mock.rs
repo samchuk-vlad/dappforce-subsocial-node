@@ -4,7 +4,7 @@ use crate::{Module, Trait, FaucetSettings, FaucetSettingsUpdate};
 use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
-	traits::{BlakeTwo256, IdentityLookup}, testing::Header, Perbill, Storage
+	traits::{BlakeTwo256, IdentityLookup}, testing::Header, RuntimeDebug, Perbill, Storage
 };
 
 use frame_support::{
@@ -14,6 +14,7 @@ use frame_support::{
 	dispatch::DispatchResult,
 };
 use frame_system as system;
+use pallet_utils::WhoAndWhen;
 
 impl_outer_origin! {
 	pub enum Origin for Test {}
@@ -26,7 +27,7 @@ impl_outer_dispatch! {
 	}
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Test;
 
 parameter_types! {
@@ -64,6 +65,16 @@ impl system::Trait for Test {
 }
 
 parameter_types! {
+	pub const MinimumPeriod: u64 = 5;
+}
+
+impl pallet_timestamp::Trait for Test {
+	type Moment = u64;
+	type OnTimestampSet = ();
+	type MinimumPeriod = MinimumPeriod;
+}
+
+parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
 }
 
@@ -75,14 +86,25 @@ impl pallet_balances::Trait for Test {
 	type AccountStore = System;
 }
 
-impl Trait for Test {
+parameter_types! {
+	pub const MinHandleLen: u32 = 5;
+	pub const MaxHandleLen: u32 = 50;
+}
+
+impl pallet_utils::Trait for Test {
 	type Event = ();
 	type Currency = Balances;
+	type MinHandleLen = MinHandleLen;
+	type MaxHandleLen = MaxHandleLen;
+}
+
+impl Trait for Test {
+	type Event = ();
 }
 
 pub(crate) type System = system::Module<Test>;
 type Balances = pallet_balances::Module<Test>;
-pub(crate) type Faucet = Module<Test>;
+pub(crate) type Faucets = Module<Test>;
 
 pub(crate) type AccountId = u64;
 pub(crate) type BlockNumber = u64;
@@ -164,35 +186,51 @@ pub(crate) const ACCOUNT1: AccountId = 11;
 
 pub(crate) const INITIAL_BLOCK_NUMBER: BlockNumber = 20;
 
-pub(crate) const fn default_faucet_settings() -> FaucetSettings<BlockNumber, AccountId> {
+pub(crate) const fn default_faucet_settings() -> FaucetSettings<Test> {
+	let created = WhoAndWhen {
+		account: ACCOUNT1, // TODO it should be root
+		block: 0,
+		time: 0,
+	};
+
 	FaucetSettings {
-		period: Some(100),
+		created,
+		updated: None,
+
+		is_active: true,
+		period: 100,
 		period_limit: 50,
-		drip_limit: 25
+		drip_limit: 25,
+
+		next_period_at: 0,
+		dripped_in_current_period: 0,
 	}
 }
 
-pub(crate) const fn default_faucet_settings_update() -> FaucetSettingsUpdate<BlockNumber, Balance> {
+pub(crate) const fn default_faucet_settings_update() -> FaucetSettingsUpdate<Test> {
 	FaucetSettingsUpdate {
-		period: Some(Some(7_200)),
+		is_active: None,
+		period: Some(7_200),
 		period_limit: Some(100),
 		drip_limit: Some(50)
 	}
 }
 
 pub(crate) fn _add_default_faucet() -> DispatchResult {
-	_add_faucet(None, None, None)
+	_add_faucet(None, None)
 }
 
 pub(crate) fn _add_faucet(
 	origin: Option<Origin>,
 	faucet_account: Option<AccountId>,
-	settings: Option<FaucetSettings<BlockNumber, AccountId>>
 ) -> DispatchResult {
-	Faucet::add_faucet(
+	let settings =  default_faucet_settings();
+	Faucets::add_faucet(
 		origin.unwrap_or_else(Origin::root),
 		faucet_account.unwrap_or(FAUCET1),
-		settings.unwrap_or_else(default_faucet_settings),
+		settings.period,
+		settings.period_limit,
+		settings.drip_limit
 	)
 }
 
@@ -203,9 +241,9 @@ pub(crate) fn _update_default_faucet() -> DispatchResult {
 pub(crate) fn _update_faucet(
 	origin: Option<Origin>,
 	faucet_account: Option<AccountId>,
-	settings: Option<FaucetSettingsUpdate<BlockNumber, Balance>>
+	settings: Option<FaucetSettingsUpdate<Test>>
 ) -> DispatchResult {
-	Faucet::update_faucet(
+	Faucets::update_faucet(
 		origin.unwrap_or_else(Origin::root),
 		faucet_account.unwrap_or(FAUCET1),
 		settings.unwrap_or_else(default_faucet_settings_update),
@@ -220,7 +258,7 @@ pub(crate) fn _remove_faucets(
 	origin: Option<Origin>,
 	faucet_accounts: Option<Vec<AccountId>>,
 ) -> DispatchResult {
-	Faucet::remove_faucets(
+	Faucets::remove_faucets(
 		origin.unwrap_or_else(Origin::root),
 		faucet_accounts.unwrap_or_else(|| vec![FAUCET1])
 	)
@@ -232,12 +270,12 @@ pub(crate) fn _do_default_drip() -> DispatchResult {
 
 pub(crate) fn _drip(
 	origin: Option<Origin>,
-	amount: Option<Balance>,
-	recipient: Option<AccountId>
+	recipient: Option<AccountId>,
+	amount: Option<Balance>
 ) -> DispatchResult {
-	Faucet::drip(
+	Faucets::drip(
 		origin.unwrap_or_else(|| Origin::signed(FAUCET1)),
-		amount.unwrap_or(default_faucet_settings().drip_limit),
-		recipient.unwrap_or(ACCOUNT1)
+		recipient.unwrap_or(ACCOUNT1),
+		amount.unwrap_or(default_faucet_settings().drip_limit)
 	)
 }

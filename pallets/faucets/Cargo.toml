@@ -21,7 +21,9 @@ std = [
     'sp-std/std',
     'frame-support/std',
     'frame-system/std',
+    'pallet-timestamp/std',
     'pallet-balances/std',
+    'pallet-utils/std',
 ]
 
 [dependencies.codec]
@@ -54,11 +56,22 @@ git = 'https://github.com/paritytech/substrate.git'
 tag = 'v2.0.0-rc4'
 version = '2.0.0-rc4'
 
+[dependencies.pallet-timestamp]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
+
 [dependencies.pallet-balances]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
 tag = 'v2.0.0-rc4'
 version = '2.0.0-rc4'
+
+[dependencies.pallet-utils]
+default-features = false
+path = '../utils'
+version = '0.4.0'
 
 [dev-dependencies.sp-core]
 default-features = false
