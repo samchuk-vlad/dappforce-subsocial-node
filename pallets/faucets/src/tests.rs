@@ -61,7 +61,6 @@ fn update_faucet_should_work() {
 
         let faucet_settings = Faucets::settings_by_faucet(FAUCET1).unwrap();
         let updated_faucet_settings = FaucetSettings::<Test>::new(
-            ACCOUNT1,
             SETTINGS_UPDATE.period.unwrap_or(faucet_settings.period),
             SETTINGS_UPDATE.period_limit.unwrap_or(faucet_settings.period_limit),
             SETTINGS_UPDATE.drip_limit.unwrap_or(faucet_settings.drip_limit)

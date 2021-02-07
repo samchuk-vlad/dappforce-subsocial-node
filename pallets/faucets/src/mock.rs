@@ -14,7 +14,6 @@ use frame_support::{
 	dispatch::DispatchResult,
 };
 use frame_system as system;
-use pallet_utils::WhoAndWhen;
 
 impl_outer_origin! {
 	pub enum Origin for Test {}
@@ -187,16 +186,7 @@ pub(crate) const ACCOUNT1: AccountId = 11;
 pub(crate) const INITIAL_BLOCK_NUMBER: BlockNumber = 20;
 
 pub(crate) const fn default_faucet_settings() -> FaucetSettings<Test> {
-	let created = WhoAndWhen {
-		account: ACCOUNT1, // TODO it should be root
-		block: 0,
-		time: 0,
-	};
-
 	FaucetSettings {
-		created,
-		updated: None,
-
 		is_active: true,
 		period: 100,
 		period_limit: 50,

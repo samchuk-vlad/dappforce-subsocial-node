@@ -18,7 +18,7 @@ use frame_support::{
     weights::Pays,
 };
 use frame_system::{self as system, ensure_root, ensure_signed};
-use pallet_utils::{Trait as UtilsTrait, WhoAndWhen};
+use pallet_utils::{Trait as UtilsTrait};
 use sp_runtime::RuntimeDebug;
 use sp_runtime::traits::{Saturating, Zero};
 use sp_std::{
@@ -36,9 +36,6 @@ mod tests;
 // TODO rename
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct FaucetSettings<T: Trait> {
-    pub created: WhoAndWhen<T>,
-    pub updated: Option<WhoAndWhen<T>>,
-
     // Settings
     pub is_active: bool,
     pub period: T::BlockNumber,
@@ -134,7 +131,6 @@ decl_module! {
         ) -> DispatchResult {
 
             ensure_root(origin.clone())?;
-            let who = ensure_signed(origin)?;
 
             Self::ensure_period_not_zero(period)?;
             Self::ensure_period_limit_not_zero(period_limit)?;
@@ -152,7 +148,6 @@ decl_module! {
             );
 
             let new_faucet = FaucetSettings::<T>::new(
-                who,
                 period,
                 period_limit,
                 drip_limit
@@ -263,8 +258,7 @@ decl_module! {
             ensure!(amount > Zero::zero(), Error::<T>::ZeroDripAmountProvided);
 
             let mut settings = Self::require_faucet(&faucet)?;
-            settings.ensure_active()?;
-            settings.ensure_owner(&faucet)?;
+            ensure!(settings.is_active, Error::<T>::FaucetNotActive);
             ensure!(amount <= settings.drip_limit, Error::<T>::DripLimitReached);
 
             let current_block = <system::Module<T>>::block_number();
@@ -322,15 +316,11 @@ impl<T: Trait> Module<T> {
 impl<T: Trait> FaucetSettings<T> {
 
     pub fn new(
-        created_by: T::AccountId,
         period: T::BlockNumber,
         period_limit: BalanceOf<T>,
         drip_limit: BalanceOf<T>,
     ) -> Self {
         Self {
-            created: WhoAndWhen::<T>::new(created_by),
-            updated: None,
-
             is_active: true,
             period,
             period_limit,
@@ -339,19 +329,5 @@ impl<T: Trait> FaucetSettings<T> {
             next_period_at: Zero::zero(),
             dripped_in_current_period: Zero::zero(),
         }
-    }
-
-    pub fn is_owner(&self, account: &T::AccountId) -> bool {
-        self.created.account == *account
-    }
-
-    pub fn ensure_owner(&self, account: &T::AccountId) -> DispatchResult {
-        ensure!(self.is_owner(account), Error::<T>::NotFaucetOwner);
-        Ok(())
-    }
-
-    pub fn ensure_active(&self) -> DispatchResult {
-        ensure!(self.is_active, Error::<T>::FaucetNotActive);
-        Ok(())
     }
 }
