@@ -133,7 +133,7 @@ impl ExtBuilder {
 		ext
 	}
 
-	pub fn build_with_one_default_drop() -> TestExternalities {
+	pub fn build_with_one_default_drip() -> TestExternalities {
 		let mut storage = system::GenesisConfig::default()
 			.build_storage::<Test>()
 			.unwrap();
@@ -147,7 +147,7 @@ impl ExtBuilder {
 			assert_ok!(_add_default_faucet());
 
 			System::set_block_number(INITIAL_BLOCK_NUMBER);
-			assert_ok!(_default_drip());
+			assert_ok!(_do_default_drip());
 		});
 
 		ext
@@ -225,7 +225,7 @@ pub(crate) fn _remove_faucets(
 	)
 }
 
-pub(crate) fn _default_drip() -> DispatchResult {
+pub(crate) fn _do_default_drip() -> DispatchResult {
 	_drip(None, None, None)
 }
 

@@ -1,8 +1,9 @@
-// Tests to be written here
-
 use crate::{Error, mock::*, FaucetSettings, FaucetSettingsUpdate};
 use frame_support::{assert_ok, assert_noop};
 use sp_runtime::DispatchError::BadOrigin;
+
+// Add faucet
+// ----------------------------------------------------------------------------
 
 #[test]
 fn add_faucet_should_work() {
@@ -15,7 +16,7 @@ fn add_faucet_should_work() {
 }
 
 #[test]
-fn add_faucet_should_fail_bad_origin() {
+fn add_faucet_should_fail_when_origin_is_not_root() {
     ExtBuilder::build().execute_with(|| {
         assert_noop!(
             _add_faucet(
@@ -29,7 +30,7 @@ fn add_faucet_should_fail_bad_origin() {
 }
 
 #[test]
-fn add_faucet_should_fail_with_faucet_already_exists() {
+fn add_faucet_should_fail_when_faucet_already_added() {
     ExtBuilder::build().execute_with(|| {
         assert_ok!(_add_default_faucet());
 
@@ -41,7 +42,7 @@ fn add_faucet_should_fail_with_faucet_already_exists() {
 }
 
 #[test]
-fn add_faucet_should_fail_with_no_free_balance_on_account() {
+fn add_faucet_should_fail_when_no_free_balance_on_account() {
     ExtBuilder::build().execute_with(|| {
         assert_ok!(_add_default_faucet());
 
@@ -55,6 +56,9 @@ fn add_faucet_should_fail_with_no_free_balance_on_account() {
         );
     });
 }
+
+// Update faucet
+// ----------------------------------------------------------------------------
 
 #[test]
 fn update_faucet_should_work() {
@@ -76,7 +80,7 @@ fn update_faucet_should_work() {
 }
 
 #[test]
-fn update_faucet_should_fail_with_nothing_to_update() {
+fn update_faucet_should_fail_when_no_updates_provided() {
     ExtBuilder::build_with_faucet().execute_with(|| {
         assert_noop!(
             _update_faucet(
@@ -94,7 +98,7 @@ fn update_faucet_should_fail_with_nothing_to_update() {
 }
 
 #[test]
-fn update_faucet_should_fail_with_faucet_not_found() {
+fn update_faucet_should_fail_when_faucet_address_in_unknown() {
     ExtBuilder::build().execute_with(|| {
         assert_noop!(
             _update_default_faucet(),
@@ -104,7 +108,7 @@ fn update_faucet_should_fail_with_faucet_not_found() {
 }
 
 #[test]
-fn update_faucet_should_fail_with_period_not_differ() {
+fn update_faucet_should_fail_when_same_period_provided() {
     ExtBuilder::build_with_faucet().execute_with(|| {
         assert_noop!(
             _update_faucet(
@@ -122,7 +126,7 @@ fn update_faucet_should_fail_with_period_not_differ() {
 }
 
 #[test]
-fn update_faucet_should_fail_with_period_limit_not_differ() {
+fn update_faucet_should_fail_when_same_period_limit_provided() {
     ExtBuilder::build_with_faucet().execute_with(|| {
         assert_noop!(
             _update_faucet(
@@ -138,6 +142,9 @@ fn update_faucet_should_fail_with_period_limit_not_differ() {
         );
     });
 }
+
+// Remove faucets
+// ----------------------------------------------------------------------------
 
 #[test]
 fn remove_faucets_should_work() {
@@ -166,7 +173,7 @@ fn remove_faucets_should_work() {
 }
 
 #[test]
-fn remove_faucets_should_work_with_duplicates() {
+fn remove_faucets_should_handle_duplicate_addresses() {
     ExtBuilder::build().execute_with(|| {
         // This will add faucets with accounts ids [1; 8]
         let mut faucets = Vec::new();
@@ -194,7 +201,7 @@ fn remove_faucets_should_work_with_duplicates() {
 }
 
 #[test]
-fn remove_faucets_should_fail_no_faucets_specified() {
+fn remove_faucets_should_fail_when_no_faucet_addresses_provided() {
     ExtBuilder::build_with_faucet().execute_with(|| {
         assert_noop!(
             _remove_faucets(
@@ -206,12 +213,15 @@ fn remove_faucets_should_fail_no_faucets_specified() {
     });
 }
 
+// Drip
+// ----------------------------------------------------------------------------
+
 #[test]
 fn drip_should_work() {
     ExtBuilder::build_with_faucet().execute_with(|| {
         System::set_block_number(INITIAL_BLOCK_NUMBER);
 
-        assert_ok!(_default_drip()); // DropId 1
+        assert_ok!(_do_default_drip());
 
         let faucet_drops_info = Faucet::faucet_drops_info(FAUCET1).unwrap();
         let FaucetSettings { period, drop_limit, .. } = default_faucet_settings();
@@ -223,17 +233,18 @@ fn drip_should_work() {
 }
 
 #[test]
-fn drip_should_work_twice_with_a_new_period() {
+fn drip_should_work_for_same_recipient_in_next_period() {
     ExtBuilder::build_with_faucet().execute_with(|| {
         System::set_block_number(INITIAL_BLOCK_NUMBER);
 
-        assert_ok!(_default_drip()); // DropId 1
+        assert_ok!(_do_default_drip());
 
-        // Default faucet must have a limit for testing purposes
+        // Move to the next period
         let FaucetSettings { period, drop_limit, .. } = default_faucet_settings();
         System::set_block_number(INITIAL_BLOCK_NUMBER + period.unwrap());
 
-        assert_ok!(_default_drip()); // Should reuse DropId 1
+        // Repeat the same drip as we did a few line above
+        assert_ok!(_do_default_drip());
 
         let faucet_drops_info = Faucet::faucet_drops_info(FAUCET1).unwrap();
         assert_eq!(faucet_drops_info.next_period_at, INITIAL_BLOCK_NUMBER + (period.unwrap() * 2));
@@ -243,15 +254,12 @@ fn drip_should_work_twice_with_a_new_period() {
 }
 
 #[test]
-fn drip_should_work_with_two_drips() {
-    ExtBuilder::build_with_one_default_drop().execute_with(|| {
+fn drip_should_work_multiple_times_in_same_period() {
+    ExtBuilder::build_with_one_default_drip().execute_with(|| {
         let FaucetSettings { period, drop_limit, .. } = default_faucet_settings();
-        assert_ok!(_drip(
-            None,
-            Some(drop_limit),
-            None
-        ));
-
+        
+        // Do the second drip
+        assert_ok!(_drip(None, Some(drop_limit), None));
 
         let faucet_drops_info = Faucet::faucet_drops_info(FAUCET1).unwrap();
         assert_eq!(faucet_drops_info.next_period_at, INITIAL_BLOCK_NUMBER + period.unwrap());
@@ -261,7 +269,23 @@ fn drip_should_work_with_two_drips() {
 }
 
 #[test]
-fn drip_should_fail_zero_amount() {
+fn drip_should_fail_when_period_limit_reached() {
+    ExtBuilder::build_with_one_default_drip().execute_with(|| {
+        System::set_block_number(INITIAL_BLOCK_NUMBER);
+
+        // Do the second drip
+        assert_ok!(_do_default_drip());
+
+        // The third drip should fail, b/c it exceeds the period limit of this faucet
+        assert_noop!(
+            _do_default_drip(),
+            Error::<Test>::FaucetPeriodLimitReached
+        );
+    });
+}
+
+#[test]
+fn drip_should_fail_when_zero_amount_provided() {
     ExtBuilder::build_with_faucet().execute_with(|| {
         assert_noop!(
             _drip(None, Some(0), None),
@@ -271,23 +295,11 @@ fn drip_should_fail_zero_amount() {
 }
 
 #[test]
-fn drip_should_fail_faucet_limit_reached_with_same_recipient() {
-    ExtBuilder::build_with_one_default_drop().execute_with(|| {
-        System::set_block_number(INITIAL_BLOCK_NUMBER);
-
-        assert_ok!(_default_drip());
-        assert_noop!(
-            _default_drip(),
-            Error::<Test>::FaucetPeriodLimitReached
-        );
-    });
-}
-
-#[test]
-fn drip_should_fail_with_drop_amount_limit() {
+fn drip_should_fail_when_too_big_amount_provided() {
     ExtBuilder::build_with_faucet().execute_with(|| {
+        let too_big_amount = default_faucet_settings().drop_limit + 1;
         assert_noop!(
-            _drip(None, Some(default_faucet_settings().drop_limit + 1), None),
+            _drip(None, Some(too_big_amount), None),
             Error::<Test>::DropAmountLimit
         );
     });
