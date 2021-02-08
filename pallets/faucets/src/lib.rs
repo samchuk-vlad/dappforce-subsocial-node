@@ -33,9 +33,8 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-// TODO rename
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct FaucetSettings<T: Trait> {
+pub struct Faucet<T: Trait> {
     // Settings
     pub is_active: bool,
     pub period: T::BlockNumber,
@@ -47,9 +46,8 @@ pub struct FaucetSettings<T: Trait> {
     pub dripped_in_current_period: BalanceOf<T>,
 }
 
-// TODO rename
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct FaucetSettingsUpdate<T: Trait> {
+pub struct FaucetUpdate<T: Trait> {
     pub is_active: Option<bool>,
     pub period: Option<T::BlockNumber>,
     pub period_limit: Option<BalanceOf<T>>,
@@ -71,7 +69,7 @@ decl_storage! {
         /// Get a faucet data by its account id.
         pub FaucetByAccount get(fn faucet_by_account):
             map hasher(twox_64_concat) T::AccountId // Faucet account
-            => Option<FaucetSettings<T>>;
+            => Option<Faucet<T>>;
     }
 }
 
@@ -148,7 +146,7 @@ decl_module! {
                 Error::<T>::NoFreeBalanceOnFaucet
             );
 
-            let new_faucet = FaucetSettings::<T>::new(
+            let new_faucet = Faucet::<T>::new(
                 period,
                 period_limit,
                 drip_limit
@@ -163,7 +161,7 @@ decl_module! {
         pub fn update_faucet(
             origin,
             faucet: T::AccountId,
-            update: FaucetSettingsUpdate<T>
+            update: FaucetUpdate<T>
         ) -> DispatchResult {
 
             ensure_root(origin)?;
@@ -243,10 +241,13 @@ decl_module! {
 
         #[weight = (
             50_000 + T::DbWeight::get().reads_writes(2, 2),
+            
+            // TODO Replace with Ok(Pays::No.into())
+            // See https://github.com/substrate-developer-hub/substrate-node-template/commit/6546b15634bf088e8faee806b5cf266621412889#diff-657cb55f3d39058f730b46f7c84f90698ad43b3ab5c1aa8789a435a230c77f19R106
             Pays::No
         )]
         pub fn drip(
-            origin, // faucet account
+            origin, // Should be a faucet account
             recipient: T::AccountId,
             amount: BalanceOf<T>,
         ) -> DispatchResult {
@@ -256,12 +257,12 @@ decl_module! {
             ensure!(faucet != recipient, Error::<T>::RecipientEqualsFaucet);
             ensure!(amount > Zero::zero(), Error::<T>::ZeroDripAmountProvided);
 
-            let faucet_balance = <T as UtilsTrait>::Currency::free_balance(&faucet);
-            ensure!(amount <= faucet_balance, Error::<T>::NotEnoughFreeBalanceOnFaucet);
-
             let mut settings = Self::require_faucet(&faucet)?;
             ensure!(settings.is_active, Error::<T>::FaucetDisabled);
             ensure!(amount <= settings.drip_limit, Error::<T>::DripLimitReached);
+
+            let faucet_balance = <T as UtilsTrait>::Currency::free_balance(&faucet);
+            ensure!(amount <= faucet_balance, Error::<T>::NotEnoughFreeBalanceOnFaucet);
 
             let current_block = <system::Module<T>>::block_number();
 
@@ -297,7 +298,7 @@ decl_module! {
 
 impl<T: Trait> Module<T> {
 
-    pub fn require_faucet(faucet: &T::AccountId) -> Result<FaucetSettings<T>, DispatchError> {
+    pub fn require_faucet(faucet: &T::AccountId) -> Result<Faucet<T>, DispatchError> {
         Ok(Self::faucet_by_account(faucet).ok_or(Error::<T>::FaucetNotFound)?)
     }
 
@@ -317,7 +318,7 @@ impl<T: Trait> Module<T> {
     }
 }
 
-impl<T: Trait> FaucetSettings<T> {
+impl<T: Trait> Faucet<T> {
 
     pub fn new(
         period: T::BlockNumber,

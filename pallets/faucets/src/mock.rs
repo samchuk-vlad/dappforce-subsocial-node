@@ -1,5 +1,5 @@
 // Creating mock runtime here
-use crate::{Module, Trait, FaucetSettings, FaucetSettingsUpdate};
+use crate::{Module, Trait, Faucet, FaucetUpdate};
 
 use sp_core::H256;
 use sp_io::TestExternalities;
@@ -187,8 +187,8 @@ pub(crate) const ACCOUNT1: AccountId = 11;
 
 pub(crate) const INITIAL_BLOCK_NUMBER: BlockNumber = 20;
 
-pub(crate) const fn default_faucet_settings() -> FaucetSettings<Test> {
-    FaucetSettings {
+pub(crate) const fn default_faucet() -> Faucet<Test> {
+    Faucet {
         is_active: true,
         period: 100,
         period_limit: 50,
@@ -199,8 +199,8 @@ pub(crate) const fn default_faucet_settings() -> FaucetSettings<Test> {
     }
 }
 
-pub(crate) const fn default_faucet_settings_update() -> FaucetSettingsUpdate<Test> {
-    FaucetSettingsUpdate {
+pub(crate) const fn default_faucet_update() -> FaucetUpdate<Test> {
+    FaucetUpdate {
         is_active: None,
         period: Some(7_200),
         period_limit: Some(100),
@@ -216,7 +216,7 @@ pub(crate) fn _add_faucet(
     origin: Option<Origin>,
     faucet_account: Option<AccountId>,
 ) -> DispatchResult {
-    let settings =  default_faucet_settings();
+    let settings =  default_faucet();
     Faucets::add_faucet(
         origin.unwrap_or_else(Origin::root),
         faucet_account.unwrap_or(FAUCET1),
@@ -230,19 +230,19 @@ pub(crate) fn _update_default_faucet() -> DispatchResult {
     _update_faucet(None, None, None)
 }
 
-pub(crate) fn _update_faucet_settings(settings: FaucetSettingsUpdate<Test>) -> DispatchResult {
+pub(crate) fn _update_faucet_settings(settings: FaucetUpdate<Test>) -> DispatchResult {
     _update_faucet(None, None, Some(settings))
 }
 
 pub(crate) fn _update_faucet(
     origin: Option<Origin>,
     faucet_account: Option<AccountId>,
-    settings: Option<FaucetSettingsUpdate<Test>>
+    update: Option<FaucetUpdate<Test>>
 ) -> DispatchResult {
     Faucets::update_faucet(
         origin.unwrap_or_else(Origin::root),
         faucet_account.unwrap_or(FAUCET1),
-        settings.unwrap_or_else(default_faucet_settings_update),
+        update.unwrap_or_else(default_faucet_update),
     )
 }
 
@@ -272,6 +272,6 @@ pub(crate) fn _drip(
     Faucets::drip(
         origin.unwrap_or_else(|| Origin::signed(FAUCET1)),
         recipient.unwrap_or(ACCOUNT1),
-        amount.unwrap_or(default_faucet_settings().drip_limit)
+        amount.unwrap_or(default_faucet().drip_limit)
     )
 }

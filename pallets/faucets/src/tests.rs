@@ -1,4 +1,4 @@
-use crate::{Error, mock::*, FaucetSettings, FaucetSettingsUpdate};
+use crate::{Error, mock::*, Faucet, FaucetUpdate};
 use frame_support::{assert_ok, assert_noop};
 use sp_runtime::DispatchError::BadOrigin;
 
@@ -11,7 +11,7 @@ fn add_faucet_should_work() {
         assert_ok!(_add_default_faucet());
 
         let faucet_settings = Faucets::faucet_by_account(FAUCET1).unwrap();
-        assert_eq!(faucet_settings, default_faucet_settings());
+        assert_eq!(faucet_settings, default_faucet());
     });
 }
 
@@ -57,10 +57,10 @@ fn add_faucet_should_fail_when_no_free_balance_on_account() {
 fn update_faucet_should_work() {
     ExtBuilder::build_with_faucet().execute_with(|| {
         assert_ok!(_update_default_faucet());
-        const SETTINGS_UPDATE: FaucetSettingsUpdate<Test> = default_faucet_settings_update();
+        const SETTINGS_UPDATE: FaucetUpdate<Test> = default_faucet_update();
 
         let faucet_settings = Faucets::faucet_by_account(FAUCET1).unwrap();
-        let updated_faucet_settings = FaucetSettings::<Test>::new(
+        let updated_faucet_settings = Faucet::<Test>::new(
             SETTINGS_UPDATE.period.unwrap_or(faucet_settings.period),
             SETTINGS_UPDATE.period_limit.unwrap_or(faucet_settings.period_limit),
             SETTINGS_UPDATE.drip_limit.unwrap_or(faucet_settings.drip_limit)
@@ -77,7 +77,7 @@ fn update_faucet_should_fail_when_no_updates_provided() {
     ExtBuilder::build_with_faucet().execute_with(|| {
         assert_noop!(
             _update_faucet_settings(
-                FaucetSettingsUpdate {
+                FaucetUpdate {
                     is_active: None,
                     period: None,
                     period_limit: None,
@@ -104,8 +104,8 @@ fn update_faucet_should_fail_when_same_active_flag_provided() {
     ExtBuilder::build_with_faucet().execute_with(|| {
         assert_noop!(
             _update_faucet_settings(
-                FaucetSettingsUpdate {
-                    is_active: Some(default_faucet_settings().is_active),
+                FaucetUpdate {
+                    is_active: Some(default_faucet().is_active),
                     period: None,
                     period_limit: None,
                     drip_limit: None
@@ -121,9 +121,9 @@ fn update_faucet_should_fail_when_same_period_provided() {
     ExtBuilder::build_with_faucet().execute_with(|| {
         assert_noop!(
             _update_faucet_settings(
-                FaucetSettingsUpdate {
+                FaucetUpdate {
                     is_active: None,
-                    period: Some(default_faucet_settings().period),
+                    period: Some(default_faucet().period),
                     period_limit: None,
                     drip_limit: None
                 }
@@ -138,10 +138,10 @@ fn update_faucet_should_fail_when_same_period_limit_provided() {
     ExtBuilder::build_with_faucet().execute_with(|| {
         assert_noop!(
             _update_faucet_settings(
-                FaucetSettingsUpdate {
+                FaucetUpdate {
                     is_active: None,
                     period: None,
-                    period_limit: Some(default_faucet_settings().period_limit),
+                    period_limit: Some(default_faucet().period_limit),
                     drip_limit: None
                 }
             ),
@@ -155,11 +155,11 @@ fn update_faucet_should_fail_when_same_drip_limit_provided() {
     ExtBuilder::build_with_faucet().execute_with(|| {
         assert_noop!(
             _update_faucet_settings(
-                FaucetSettingsUpdate {
+                FaucetUpdate {
                     is_active: None,
                     period: None,
                     period_limit: None,
-                    drip_limit: Some(default_faucet_settings().drip_limit)
+                    drip_limit: Some(default_faucet().drip_limit)
                 }
             ),
             Error::<Test>::NothingToUpdate
@@ -245,7 +245,7 @@ fn drip_should_work() {
     ExtBuilder::build_with_faucet().execute_with(|| {
         System::set_block_number(INITIAL_BLOCK_NUMBER);
 
-        let FaucetSettings { period, drip_limit, .. } = default_faucet_settings();
+        let Faucet { period, drip_limit, .. } = default_faucet();
         assert_eq!(Balances::free_balance(ACCOUNT1), 0);
 
         assert_ok!(_do_default_drip());
@@ -261,7 +261,7 @@ fn drip_should_work() {
 #[test]
 fn drip_should_work_multiple_times_in_same_period() {
     ExtBuilder::build_with_one_default_drip().execute_with(|| {
-        let FaucetSettings { period, drip_limit, .. } = default_faucet_settings();
+        let Faucet { period, drip_limit, .. } = default_faucet();
         
         // Do the second drip
         assert_ok!(_drip(None, None, Some(drip_limit)));
@@ -278,7 +278,7 @@ fn drip_should_work_for_same_recipient_in_next_period() {
     ExtBuilder::build_with_faucet().execute_with(|| {
         System::set_block_number(INITIAL_BLOCK_NUMBER);
 
-        let FaucetSettings { period, drip_limit, .. } = default_faucet_settings();
+        let Faucet { period, drip_limit, .. } = default_faucet();
 
         // Drip to the same recipient twice in the same period to reach perdiod limit
         assert_ok!(_do_default_drip());
@@ -312,7 +312,7 @@ fn drip_should_fail_when_period_limit_reached() {
             Error::<Test>::PeriodLimitReached
         );
 
-        let drip_limit = default_faucet_settings().drip_limit;
+        let drip_limit = default_faucet().drip_limit;
 
         // Balance should be unchanged and equal to two drip
         assert_eq!(Balances::free_balance(ACCOUNT1), drip_limit * 2);
@@ -335,8 +335,16 @@ fn drip_should_fail_when_recipient_equals_faucet() {
 #[test]
 fn drip_should_fail_when_amount_is_bigger_than_free_balance_on_faucet() {
     ExtBuilder::build_with_faucet().execute_with(|| {
+
+        // Let's transfer most of tokens from the default faucet to another one
+        assert_ok!(Balances::transfer(
+            Origin::signed(FAUCET1),
+            FAUCET2,
+            FAUCET_INITIAL_BALANCE - 1 // Leave one token on the Faucet number 1.
+        ));
+
         assert_noop!(
-            _drip(None, None, Some(FAUCET_INITIAL_BALANCE + 1)),
+            _do_default_drip(),
             Error::<Test>::NotEnoughFreeBalanceOnFaucet
         );
         
@@ -361,7 +369,7 @@ fn drip_should_fail_when_zero_amount_provided() {
 #[test]
 fn drip_should_fail_when_too_big_amount_provided() {
     ExtBuilder::build_with_faucet().execute_with(|| {
-        let too_big_amount = default_faucet_settings().drip_limit + 1;
+        let too_big_amount = default_faucet().drip_limit + 1;
         assert_noop!(
             _drip(None, None, Some(too_big_amount)),
             Error::<Test>::DripLimitReached
@@ -381,7 +389,7 @@ fn drip_should_fail_when_faucet_is_disabled_and_work_again_after_faucet_enabled(
 
         // Disable the faucet, so it will be not possible to drip
         assert_ok!(_update_faucet_settings(
-            FaucetSettingsUpdate {
+            FaucetUpdate {
                 is_active: Some(false),
                 period: None,
                 period_limit: None,
@@ -400,7 +408,7 @@ fn drip_should_fail_when_faucet_is_disabled_and_work_again_after_faucet_enabled(
 
         // Make the faucet enabled again
         assert_ok!(_update_faucet_settings(
-            FaucetSettingsUpdate {
+            FaucetUpdate {
                 is_active: Some(true),
                 period: None,
                 period_limit: None,
@@ -412,6 +420,6 @@ fn drip_should_fail_when_faucet_is_disabled_and_work_again_after_faucet_enabled(
         assert_ok!(_do_default_drip());
 
         // Account should receive the tokens
-        assert_eq!(Balances::free_balance(ACCOUNT1), default_faucet_settings().drip_limit);
+        assert_eq!(Balances::free_balance(ACCOUNT1), default_faucet().drip_limit);
     });
 }
