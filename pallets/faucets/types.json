@@ -1,8 +1,5 @@
 {
   "Faucet": {
-    "created": "WhoAndWhen",
-    "updated": "Option<WhoAndWhen>",
-
     "is_active": "bool",
     "period": "BlockNumber",
     "period_limit": "Balance",
@@ -13,6 +10,7 @@
   },
 
   "FaucetUpdate": {
+    "is_active": "Option<bool>",
     "period": "Option<BlockNumber>",
     "period_limit": "Option<Balance>",
     "drip_limit": "Option<Balance>"
