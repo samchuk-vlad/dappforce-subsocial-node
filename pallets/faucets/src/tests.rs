@@ -76,15 +76,13 @@ fn update_faucet_should_work() {
 fn update_faucet_should_fail_when_no_updates_provided() {
     ExtBuilder::build_with_faucet().execute_with(|| {
         assert_noop!(
-            _update_faucet(
-                None,
-                None,
-                Some(FaucetSettingsUpdate {
+            _update_faucet_settings(
+                FaucetSettingsUpdate {
                     is_active: None,
                     period: None,
                     period_limit: None,
                     drip_limit: None
-                })
+                }
             ),
             Error::<Test>::NoUpdatesProvided
         );
@@ -105,15 +103,13 @@ fn update_faucet_should_fail_when_faucet_address_in_unknown() {
 fn update_faucet_should_fail_when_same_active_flag_provided() {
     ExtBuilder::build_with_faucet().execute_with(|| {
         assert_noop!(
-            _update_faucet(
-                None,
-                None,
-                Some(FaucetSettingsUpdate {
+            _update_faucet_settings(
+                FaucetSettingsUpdate {
                     is_active: Some(default_faucet_settings().is_active),
                     period: None,
                     period_limit: None,
                     drip_limit: None
-                })
+                }
             ),
             Error::<Test>::NoUpdatesProvided
         );
@@ -124,15 +120,13 @@ fn update_faucet_should_fail_when_same_active_flag_provided() {
 fn update_faucet_should_fail_when_same_period_provided() {
     ExtBuilder::build_with_faucet().execute_with(|| {
         assert_noop!(
-            _update_faucet(
-                None,
-                None,
-                Some(FaucetSettingsUpdate {
+            _update_faucet_settings(
+                FaucetSettingsUpdate {
                     is_active: None,
                     period: Some(default_faucet_settings().period),
                     period_limit: None,
                     drip_limit: None
-                })
+                }
             ),
             Error::<Test>::NoUpdatesProvided
         );
@@ -143,15 +137,13 @@ fn update_faucet_should_fail_when_same_period_provided() {
 fn update_faucet_should_fail_when_same_period_limit_provided() {
     ExtBuilder::build_with_faucet().execute_with(|| {
         assert_noop!(
-            _update_faucet(
-                None,
-                None,
-                Some(FaucetSettingsUpdate {
+            _update_faucet_settings(
+                FaucetSettingsUpdate {
                     is_active: None,
                     period: None,
                     period_limit: Some(default_faucet_settings().period_limit),
                     drip_limit: None
-                })
+                }
             ),
             Error::<Test>::NoUpdatesProvided
         );
@@ -162,15 +154,13 @@ fn update_faucet_should_fail_when_same_period_limit_provided() {
 fn update_faucet_should_fail_when_same_drip_limit_provided() {
     ExtBuilder::build_with_faucet().execute_with(|| {
         assert_noop!(
-            _update_faucet(
-                None,
-                None,
-                Some(FaucetSettingsUpdate {
+            _update_faucet_settings(
+                FaucetSettingsUpdate {
                     is_active: None,
                     period: None,
                     period_limit: None,
                     drip_limit: Some(default_faucet_settings().drip_limit)
-                })
+                }
             ),
             Error::<Test>::NoUpdatesProvided
         );

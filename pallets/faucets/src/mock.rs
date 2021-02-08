@@ -228,6 +228,10 @@ pub(crate) fn _update_default_faucet() -> DispatchResult {
 	_update_faucet(None, None, None)
 }
 
+pub(crate) fn _update_faucet_settings(settings: FaucetSettingsUpdate<Test>) -> DispatchResult {
+	_update_faucet(None, None, Some(settings))
+}
+
 pub(crate) fn _update_faucet(
 	origin: Option<Origin>,
 	faucet_account: Option<AccountId>,
