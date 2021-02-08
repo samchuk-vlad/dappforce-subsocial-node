@@ -346,6 +346,46 @@ fn drip_should_fail_when_too_big_amount_provided() {
     });
 }
 
-// TODO test drip works when is_active == true after it was false !
+#[test]
+fn drip_should_fail_when_faucet_is_disabled_and_work_again_after_faucet_enabled() {
+    ExtBuilder::build_with_faucet().execute_with(|| {
+        
+        // Account should have no tokens by default
+        assert_eq!(Balances::free_balance(ACCOUNT1), 0);
 
-// TODO test drip fails when is_active == false !
+        // Disable the faucet, so it will be not possible to drip
+        assert_ok!(_update_faucet_settings(
+            FaucetSettingsUpdate {
+                is_active: Some(false),
+                period: None,
+                period_limit: None,
+                drip_limit: None
+            }
+        ));
+
+        // Faucet should not drip tokens if it is inactive
+        assert_noop!(
+            _do_default_drip(),
+            Error::<Test>::FaucetNotActive
+        );
+
+        // Account should not receive any tokens
+        assert_eq!(Balances::free_balance(ACCOUNT1), 0);
+
+        // Make the faucet active again
+        assert_ok!(_update_faucet_settings(
+            FaucetSettingsUpdate {
+                is_active: Some(true),
+                period: None,
+                period_limit: None,
+                drip_limit: None
+            }
+        ));
+
+        // Should be able to drip again
+        assert_ok!(_do_default_drip());
+
+        // Account should receive the tokens
+        assert_eq!(Balances::free_balance(ACCOUNT1), default_faucet_settings().drip_limit);
+    });
+}
