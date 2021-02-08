@@ -269,6 +269,21 @@ fn drip_should_work() {
 }
 
 #[test]
+fn drip_should_work_multiple_times_in_same_period() {
+    ExtBuilder::build_with_one_default_drip().execute_with(|| {
+        let FaucetSettings { period, drip_limit, .. } = default_faucet_settings();
+        
+        // Do the second drip
+        assert_ok!(_drip(None, None, Some(drip_limit)));
+        assert_eq!(Balances::free_balance(ACCOUNT1), drip_limit * 2);
+
+        let faucet_state = Faucets::settings_by_faucet(FAUCET1).unwrap();
+        assert_eq!(faucet_state.next_period_at, INITIAL_BLOCK_NUMBER + period);
+        assert_eq!(faucet_state.dripped_in_current_period, drip_limit * 2);
+    });
+}
+
+#[test]
 fn drip_should_work_for_same_recipient_in_next_period() {
     ExtBuilder::build_with_faucet().execute_with(|| {
         System::set_block_number(INITIAL_BLOCK_NUMBER);
@@ -290,21 +305,6 @@ fn drip_should_work_for_same_recipient_in_next_period() {
         let faucet_state = Faucets::settings_by_faucet(FAUCET1).unwrap();
         assert_eq!(faucet_state.next_period_at, INITIAL_BLOCK_NUMBER + period * 2);
         assert_eq!(faucet_state.dripped_in_current_period, drip_limit);
-    });
-}
-
-#[test]
-fn drip_should_work_multiple_times_in_same_period() {
-    ExtBuilder::build_with_one_default_drip().execute_with(|| {
-        let FaucetSettings { period, drip_limit, .. } = default_faucet_settings();
-        
-        // Do the second drip
-        assert_ok!(_drip(None, None, Some(drip_limit)));
-        assert_eq!(Balances::free_balance(ACCOUNT1), drip_limit * 2);
-
-        let faucet_state = Faucets::settings_by_faucet(FAUCET1).unwrap();
-        assert_eq!(faucet_state.next_period_at, INITIAL_BLOCK_NUMBER + period);
-        assert_eq!(faucet_state.dripped_in_current_period, drip_limit * 2);
     });
 }
 
