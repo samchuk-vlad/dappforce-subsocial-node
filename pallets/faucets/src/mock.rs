@@ -99,6 +99,7 @@ impl pallet_utils::Trait for Test {
 
 impl Trait for Test {
     type Event = ();
+    type Currency = Balances;
 }
 
 pub(crate) type System = system::Module<Test>;
@@ -199,7 +200,7 @@ pub(crate) const fn default_faucet() -> Faucet<Test> {
     }
 }
 
-pub(crate) const fn default_faucet_update() -> FaucetUpdate<Test> {
+pub(crate) const fn default_faucet_update() -> FaucetUpdate<BlockNumber, Balance> {
     FaucetUpdate {
         enabled: None,
         period: Some(7_200),
@@ -230,14 +231,14 @@ pub(crate) fn _update_default_faucet() -> DispatchResult {
     _update_faucet(None, None, None)
 }
 
-pub(crate) fn _update_faucet_settings(settings: FaucetUpdate<Test>) -> DispatchResult {
+pub(crate) fn _update_faucet_settings(settings: FaucetUpdate<BlockNumber, Balance>) -> DispatchResult {
     _update_faucet(None, None, Some(settings))
 }
 
 pub(crate) fn _update_faucet(
     origin: Option<Origin>,
     faucet_account: Option<AccountId>,
-    update: Option<FaucetUpdate<Test>>
+    update: Option<FaucetUpdate<BlockNumber, Balance>>
 ) -> DispatchResult {
     Faucets::update_faucet(
         origin.unwrap_or_else(Origin::root),

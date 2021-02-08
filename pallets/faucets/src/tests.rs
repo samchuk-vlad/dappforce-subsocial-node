@@ -10,8 +10,8 @@ fn add_faucet_should_work() {
     ExtBuilder::build().execute_with(|| {
         assert_ok!(_add_default_faucet());
 
-        let faucet_settings = Faucets::faucet_by_account(FAUCET1).unwrap();
-        assert_eq!(faucet_settings, default_faucet());
+        let faucet = Faucets::faucet_by_account(FAUCET1).unwrap();
+        assert_eq!(faucet, default_faucet());
     });
 }
 
@@ -57,18 +57,18 @@ fn add_faucet_should_fail_when_no_free_balance_on_account() {
 fn update_faucet_should_work() {
     ExtBuilder::build_with_faucet().execute_with(|| {
         assert_ok!(_update_default_faucet());
-        const SETTINGS_UPDATE: FaucetUpdate<Test> = default_faucet_update();
+        let update = default_faucet_update();
 
-        let faucet_settings = Faucets::faucet_by_account(FAUCET1).unwrap();
-        let updated_faucet_settings = Faucet::<Test>::new(
-            SETTINGS_UPDATE.period.unwrap_or(faucet_settings.period),
-            SETTINGS_UPDATE.period_limit.unwrap_or(faucet_settings.period_limit),
-            SETTINGS_UPDATE.drip_limit.unwrap_or(faucet_settings.drip_limit)
+        let faucet = Faucets::faucet_by_account(FAUCET1).unwrap();
+        let updated_faucet = Faucet::<Test>::new(
+            update.period.unwrap_or(faucet.period),
+            update.period_limit.unwrap_or(faucet.period_limit),
+            update.drip_limit.unwrap_or(faucet.drip_limit)
         );
 
-        assert_eq!(faucet_settings.period, updated_faucet_settings.period);
-        assert_eq!(faucet_settings.period_limit, updated_faucet_settings.period_limit);
-        assert_eq!(faucet_settings.drip_limit, updated_faucet_settings.drip_limit);
+        assert_eq!(faucet.period, updated_faucet.period);
+        assert_eq!(faucet.period_limit, updated_faucet.period_limit);
+        assert_eq!(faucet.drip_limit, updated_faucet.drip_limit);
     });
 }
 

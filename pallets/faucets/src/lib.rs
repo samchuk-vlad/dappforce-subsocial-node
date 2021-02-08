@@ -18,7 +18,6 @@ use frame_support::{
     weights::Pays,
 };
 use frame_system::{self as system, ensure_root, ensure_signed};
-use pallet_utils::{Trait as UtilsTrait};
 use sp_runtime::RuntimeDebug;
 use sp_runtime::traits::{Saturating, Zero};
 use sp_std::{
@@ -48,20 +47,22 @@ pub struct Faucet<T: Trait> {
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
-pub struct FaucetUpdate<T: Trait> {
+pub struct FaucetUpdate<BlockNumber, Balance> {
     pub enabled: Option<bool>,
-    pub period: Option<T::BlockNumber>,
-    pub period_limit: Option<BalanceOf<T>>,
-    pub drip_limit: Option<BalanceOf<T>>,
+    pub period: Option<BlockNumber>,
+    pub period_limit: Option<Balance>,
+    pub drip_limit: Option<Balance>,
 }
 
-type BalanceOf<T> = <<T as UtilsTrait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
+type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
 
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait + pallet_utils::Trait + sp_std::fmt::Debug {
+pub trait Trait: system::Trait {
 
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+
+    type Currency: Currency<Self::AccountId>;
 }
 
 decl_storage! {
@@ -142,8 +143,8 @@ decl_module! {
             );
 
             ensure!(
-                <T as UtilsTrait>::Currency::free_balance(&faucet) >=
-                <T as UtilsTrait>::Currency::minimum_balance(),
+                T::Currency::free_balance(&faucet) >=
+                T::Currency::minimum_balance(),
                 Error::<T>::NoFreeBalanceOnFaucet
             );
 
@@ -162,7 +163,7 @@ decl_module! {
         pub fn update_faucet(
             origin,
             faucet: T::AccountId,
-            update: FaucetUpdate<T>
+            update: FaucetUpdate<T::BlockNumber, BalanceOf<T>>
         ) -> DispatchResult {
 
             ensure_root(origin)?;
@@ -262,7 +263,7 @@ decl_module! {
             ensure!(settings.enabled, Error::<T>::FaucetDisabled);
             ensure!(amount <= settings.drip_limit, Error::<T>::DripLimitReached);
 
-            let faucet_balance = <T as UtilsTrait>::Currency::free_balance(&faucet);
+            let faucet_balance = T::Currency::free_balance(&faucet);
             ensure!(amount <= faucet_balance, Error::<T>::NotEnoughFreeBalanceOnFaucet);
 
             let current_block = <system::Module<T>>::block_number();
@@ -279,7 +280,7 @@ decl_module! {
 
             ensure!(amount <= tokens_left_in_current_period, Error::<T>::PeriodLimitReached);
 
-            <T as UtilsTrait>::Currency::transfer(
+            T::Currency::transfer(
                 &faucet,
                 &recipient,
                 amount,
