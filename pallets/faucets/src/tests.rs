@@ -255,14 +255,16 @@ fn drip_should_work() {
     ExtBuilder::build_with_faucet().execute_with(|| {
         System::set_block_number(INITIAL_BLOCK_NUMBER);
 
+        let FaucetSettings { period, drip_limit, .. } = default_faucet_settings();
+        assert_eq!(Balances::free_balance(ACCOUNT1), 0);
+
         assert_ok!(_do_default_drip());
 
-        let faucet_state = Faucets::settings_by_faucet(FAUCET1).unwrap();
-        let FaucetSettings { period, drip_limit, .. } = default_faucet_settings();
+        assert_eq!(Balances::free_balance(ACCOUNT1), drip_limit);
 
+        let faucet_state = Faucets::settings_by_faucet(FAUCET1).unwrap();
         assert_eq!(faucet_state.next_period_at, INITIAL_BLOCK_NUMBER + period);
         assert_eq!(faucet_state.dripped_in_current_period, drip_limit);
-        // TODO assert that ACCOUNT1 balance == drip_limit
     });
 }
 
@@ -271,19 +273,23 @@ fn drip_should_work_for_same_recipient_in_next_period() {
     ExtBuilder::build_with_faucet().execute_with(|| {
         System::set_block_number(INITIAL_BLOCK_NUMBER);
 
+        let FaucetSettings { period, drip_limit, .. } = default_faucet_settings();
+
+        // Drip to the same recipient twice in the same period to reach perdiod limit
         assert_ok!(_do_default_drip());
+        assert_ok!(_do_default_drip());
+        assert_eq!(Balances::free_balance(ACCOUNT1), drip_limit * 2);
 
         // Move to the next period
-        let FaucetSettings { period, drip_limit, .. } = default_faucet_settings();
         System::set_block_number(INITIAL_BLOCK_NUMBER + period);
 
-        // Repeat the same drip as we did a few line above
+        // Repeat the same drip as we did a few line above but now it will be in the next period
         assert_ok!(_do_default_drip());
+        assert_eq!(Balances::free_balance(ACCOUNT1), drip_limit * 3);
 
         let faucet_state = Faucets::settings_by_faucet(FAUCET1).unwrap();
         assert_eq!(faucet_state.next_period_at, INITIAL_BLOCK_NUMBER + period * 2);
         assert_eq!(faucet_state.dripped_in_current_period, drip_limit);
-        // TODO assert that ACCOUNT1 balance == drip_limit * 2
     });
 }
 
@@ -294,11 +300,11 @@ fn drip_should_work_multiple_times_in_same_period() {
         
         // Do the second drip
         assert_ok!(_drip(None, None, Some(drip_limit)));
+        assert_eq!(Balances::free_balance(ACCOUNT1), drip_limit * 2);
 
         let faucet_state = Faucets::settings_by_faucet(FAUCET1).unwrap();
         assert_eq!(faucet_state.next_period_at, INITIAL_BLOCK_NUMBER + period);
         assert_eq!(faucet_state.dripped_in_current_period, drip_limit * 2);
-        // TODO assert that ACCOUNT1 balance == drip_limit * 2
     });
 }
 
@@ -315,6 +321,11 @@ fn drip_should_fail_when_period_limit_reached() {
             _do_default_drip(),
             Error::<Test>::PeriodLimitReached
         );
+
+        let drip_limit = default_faucet_settings().drip_limit;
+
+        // Balance should be unchanged and equal to two drip
+        assert_eq!(Balances::free_balance(ACCOUNT1), drip_limit * 2);
     });
 }
 
@@ -325,6 +336,9 @@ fn drip_should_fail_when_zero_amount_provided() {
             _drip(None, None, Some(0)),
             Error::<Test>::ZeroDripAmountProvided
         );
+        
+        // Account should have no tokens if drip failed
+        assert_eq!(Balances::free_balance(ACCOUNT1), 0);
     });
 }
 
@@ -336,9 +350,12 @@ fn drip_should_fail_when_too_big_amount_provided() {
             _drip(None, None, Some(too_big_amount)),
             Error::<Test>::DripLimitReached
         );
+
+        // Account should have no tokens if drip failed
+        assert_eq!(Balances::free_balance(ACCOUNT1), 0);
     });
 }
 
-// TODO test drip works when is_active == true after it was false
+// TODO test drip works when is_active == true after it was false !
 
-// TODO test drip fails when is_active == false
+// TODO test drip fails when is_active == false !

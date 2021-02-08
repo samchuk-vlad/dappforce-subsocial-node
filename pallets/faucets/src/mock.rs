@@ -102,7 +102,7 @@ impl Trait for Test {
 }
 
 pub(crate) type System = system::Module<Test>;
-type Balances = pallet_balances::Module<Test>;
+pub(crate) type Balances = pallet_balances::Module<Test>;
 pub(crate) type Faucets = Module<Test>;
 
 pub(crate) type AccountId = u64;

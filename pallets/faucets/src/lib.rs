@@ -246,7 +246,7 @@ decl_module! {
         // TODO review read/writes
         #[weight = (
             T::DbWeight::get().reads_writes(6, 4) + 50_000,
-            Pays::No // TODO hm....
+            Pays::No
         )]
         pub fn drip(
             origin, // faucet account
