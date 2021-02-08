@@ -120,7 +120,7 @@ impl ExtBuilder {
 		}
 
 		let _ = pallet_balances::GenesisConfig::<Test> {
-			balances: faucet_accounts.iter().cloned().map(|k|(k, 400)).collect(),
+			balances: faucet_accounts.iter().cloned().map(|k|(k, FAUCET_INITIAL_BALANCE)).collect(),
 		}.assimilate_storage(storage);
 	}
 
@@ -175,6 +175,8 @@ impl ExtBuilder {
 		ext
 	}
 }
+
+pub(crate) const FAUCET_INITIAL_BALANCE: Balance = 400;
 
 pub(crate) const FAUCET1: AccountId = 1;
 pub(crate) const FAUCET2: AccountId = 2;

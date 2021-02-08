@@ -96,11 +96,13 @@ decl_error! {
 		FaucetNotFound,
 		FaucetAlreadyAdded,
         NoFreeBalanceOnFaucet,
+        NotEnoughFreeBalanceOnFaucet,
         NoFaucetsProvided,
         NoUpdatesProvided,
         NothingToUpdate,
         FaucetDisabled,
         NotFaucetOwner,
+        RecipientEqualsFaucet,
 
 		ZeroPeriodProvided,
 		ZeroPeriodLimitProvided,
@@ -120,8 +122,7 @@ decl_module! {
         // Initializing events
         fn deposit_event() = default;
 
-        // TODO review read/writes
-        #[weight = T::DbWeight::get().reads_writes(1, 1) + 50_000]
+        #[weight = 50_000 + T::DbWeight::get().reads_writes(2, 1)]
         pub fn add_faucet(
             origin,
             faucet: T::AccountId,
@@ -158,13 +159,13 @@ decl_module! {
             Ok(())
         }
 
-        // TODO review read/writes
-        #[weight = T::DbWeight::get().reads_writes(1, 1) + 20_000]
+        #[weight = 50_000 + T::DbWeight::get().reads_writes(1, 1)]
         pub fn update_faucet(
             origin,
             faucet: T::AccountId,
             update: FaucetSettingsUpdate<T>
         ) -> DispatchResult {
+
             ensure_root(origin)?;
 
             let has_updates =
@@ -221,12 +222,12 @@ decl_module! {
             Ok(())
         }
 
-        // TODO review read/writes
-        #[weight = T::DbWeight::get().reads_writes(0, 1) + 10_000 + 5_000 * faucets.len() as u64]
+        #[weight = 20_000 + T::DbWeight::get().reads_writes(0, 0) + 20_000 * faucets.len() as u64]
         pub fn remove_faucets(
             origin,
             faucets: Vec<T::AccountId>
         ) -> DispatchResult {
+
             ensure_root(origin)?;
 
             ensure!(faucets.len() != Zero::zero(), Error::<T>::NoFaucetsProvided);
@@ -240,9 +241,8 @@ decl_module! {
             Ok(())
         }
 
-        // TODO review read/writes
         #[weight = (
-            T::DbWeight::get().reads_writes(6, 4) + 50_000,
+            50_000 + T::DbWeight::get().reads_writes(2, 2),
             Pays::No
         )]
         pub fn drip(
@@ -252,7 +252,12 @@ decl_module! {
         ) -> DispatchResult {
             let faucet = ensure_signed(origin)?;
 
+            // Validate input values
+            ensure!(faucet != recipient, Error::<T>::RecipientEqualsFaucet);
             ensure!(amount > Zero::zero(), Error::<T>::ZeroDripAmountProvided);
+
+            let faucet_balance = <T as UtilsTrait>::Currency::free_balance(&faucet);
+            ensure!(amount <= faucet_balance, Error::<T>::NotEnoughFreeBalanceOnFaucet);
 
             let mut settings = Self::require_faucet(&faucet)?;
             ensure!(settings.is_active, Error::<T>::FaucetDisabled);
@@ -261,14 +266,16 @@ decl_module! {
             let current_block = <system::Module<T>>::block_number();
 
             if settings.next_period_at <= current_block {
+                // Move to the next period and reset the period stats
                 settings.next_period_at = current_block.saturating_add(settings.period);
                 settings.dripped_in_current_period = Zero::zero();
             }
 
-            let amount_allowed = settings.period_limit
+            // Calculate have many tokens still can be dripped in the current period
+            let tokens_left_in_current_period = settings.period_limit
                 .saturating_sub(settings.dripped_in_current_period);
 
-            ensure!(amount <= amount_allowed, Error::<T>::PeriodLimitReached);
+            ensure!(amount <= tokens_left_in_current_period, Error::<T>::PeriodLimitReached);
 
             <T as UtilsTrait>::Currency::transfer(
                 &faucet,

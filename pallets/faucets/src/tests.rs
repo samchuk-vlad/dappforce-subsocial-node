@@ -320,6 +320,32 @@ fn drip_should_fail_when_period_limit_reached() {
 }
 
 #[test]
+fn drip_should_fail_when_recipient_equals_faucet() {
+    ExtBuilder::build_with_faucet().execute_with(|| {
+        assert_noop!(
+            _drip(None, Some(FAUCET1), None),
+            Error::<Test>::RecipientEqualsFaucet
+        );
+        
+        // Account should have no tokens if drip failed
+        assert_eq!(Balances::free_balance(ACCOUNT1), 0);
+    });
+}
+
+#[test]
+fn drip_should_fail_when_amount_is_bigger_than_free_balance_on_faucet() {
+    ExtBuilder::build_with_faucet().execute_with(|| {
+        assert_noop!(
+            _drip(None, None, Some(FAUCET_INITIAL_BALANCE + 1)),
+            Error::<Test>::NotEnoughFreeBalanceOnFaucet
+        );
+        
+        // Account should have no tokens if drip failed
+        assert_eq!(Balances::free_balance(ACCOUNT1), 0);
+    });
+}
+
+#[test]
 fn drip_should_fail_when_zero_amount_provided() {
     ExtBuilder::build_with_faucet().execute_with(|| {
         assert_noop!(
