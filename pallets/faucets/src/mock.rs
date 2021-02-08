@@ -189,7 +189,7 @@ pub(crate) const INITIAL_BLOCK_NUMBER: BlockNumber = 20;
 
 pub(crate) const fn default_faucet() -> Faucet<Test> {
     Faucet {
-        is_active: true,
+        enabled: true,
         period: 100,
         period_limit: 50,
         drip_limit: 25,
@@ -201,7 +201,7 @@ pub(crate) const fn default_faucet() -> Faucet<Test> {
 
 pub(crate) const fn default_faucet_update() -> FaucetUpdate<Test> {
     FaucetUpdate {
-        is_active: None,
+        enabled: None,
         period: Some(7_200),
         period_limit: Some(100),
         drip_limit: Some(50)

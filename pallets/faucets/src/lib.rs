@@ -35,8 +35,9 @@ mod tests;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Faucet<T: Trait> {
+
     // Settings
-    pub is_active: bool,
+    pub enabled: bool,
     pub period: T::BlockNumber,
     pub period_limit: BalanceOf<T>,
     pub drip_limit: BalanceOf<T>,
@@ -48,7 +49,7 @@ pub struct Faucet<T: Trait> {
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct FaucetUpdate<T: Trait> {
-    pub is_active: Option<bool>,
+    pub enabled: Option<bool>,
     pub period: Option<T::BlockNumber>,
     pub period_limit: Option<BalanceOf<T>>,
     pub drip_limit: Option<BalanceOf<T>>,
@@ -167,7 +168,7 @@ decl_module! {
             ensure_root(origin)?;
 
             let has_updates =
-                update.is_active.is_some() ||
+                update.enabled.is_some() ||
                 update.period.is_some() ||
                 update.period_limit.is_some() ||
                 update.drip_limit.is_some();
@@ -179,9 +180,9 @@ decl_module! {
             // `true` if there is at least one updated field.
             let mut should_update = false;
 
-            if let Some(is_active) = update.is_active {
-                if is_active != settings.is_active {
-                    settings.is_active = is_active;
+            if let Some(enabled) = update.enabled {
+                if enabled != settings.enabled {
+                    settings.enabled = enabled;
                     should_update = true;
                 }
             }
@@ -258,7 +259,7 @@ decl_module! {
             ensure!(amount > Zero::zero(), Error::<T>::ZeroDripAmountProvided);
 
             let mut settings = Self::require_faucet(&faucet)?;
-            ensure!(settings.is_active, Error::<T>::FaucetDisabled);
+            ensure!(settings.enabled, Error::<T>::FaucetDisabled);
             ensure!(amount <= settings.drip_limit, Error::<T>::DripLimitReached);
 
             let faucet_balance = <T as UtilsTrait>::Currency::free_balance(&faucet);
@@ -326,7 +327,7 @@ impl<T: Trait> Faucet<T> {
         drip_limit: BalanceOf<T>,
     ) -> Self {
         Self {
-            is_active: true,
+            enabled: true,
             period,
             period_limit,
             drip_limit,

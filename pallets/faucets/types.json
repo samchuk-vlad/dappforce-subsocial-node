@@ -1,6 +1,6 @@
 {
   "Faucet": {
-    "is_active": "bool",
+    "enabled": "bool",
     "period": "BlockNumber",
     "period_limit": "Balance",
     "drip_limit": "Balance",
@@ -10,7 +10,7 @@
   },
 
   "FaucetUpdate": {
-    "is_active": "Option<bool>",
+    "enabled": "Option<bool>",
     "period": "Option<BlockNumber>",
     "period_limit": "Option<Balance>",
     "drip_limit": "Option<Balance>"

@@ -78,7 +78,7 @@ fn update_faucet_should_fail_when_no_updates_provided() {
         assert_noop!(
             _update_faucet_settings(
                 FaucetUpdate {
-                    is_active: None,
+                    enabled: None,
                     period: None,
                     period_limit: None,
                     drip_limit: None
@@ -105,7 +105,7 @@ fn update_faucet_should_fail_when_same_active_flag_provided() {
         assert_noop!(
             _update_faucet_settings(
                 FaucetUpdate {
-                    is_active: Some(default_faucet().is_active),
+                    enabled: Some(default_faucet().enabled),
                     period: None,
                     period_limit: None,
                     drip_limit: None
@@ -122,7 +122,7 @@ fn update_faucet_should_fail_when_same_period_provided() {
         assert_noop!(
             _update_faucet_settings(
                 FaucetUpdate {
-                    is_active: None,
+                    enabled: None,
                     period: Some(default_faucet().period),
                     period_limit: None,
                     drip_limit: None
@@ -139,7 +139,7 @@ fn update_faucet_should_fail_when_same_period_limit_provided() {
         assert_noop!(
             _update_faucet_settings(
                 FaucetUpdate {
-                    is_active: None,
+                    enabled: None,
                     period: None,
                     period_limit: Some(default_faucet().period_limit),
                     drip_limit: None
@@ -156,7 +156,7 @@ fn update_faucet_should_fail_when_same_drip_limit_provided() {
         assert_noop!(
             _update_faucet_settings(
                 FaucetUpdate {
-                    is_active: None,
+                    enabled: None,
                     period: None,
                     period_limit: None,
                     drip_limit: Some(default_faucet().drip_limit)
@@ -390,7 +390,7 @@ fn drip_should_fail_when_faucet_is_disabled_and_work_again_after_faucet_enabled(
         // Disable the faucet, so it will be not possible to drip
         assert_ok!(_update_faucet_settings(
             FaucetUpdate {
-                is_active: Some(false),
+                enabled: Some(false),
                 period: None,
                 period_limit: None,
                 drip_limit: None
@@ -409,7 +409,7 @@ fn drip_should_fail_when_faucet_is_disabled_and_work_again_after_faucet_enabled(
         // Make the faucet enabled again
         assert_ok!(_update_faucet_settings(
             FaucetUpdate {
-                is_active: Some(true),
+                enabled: Some(true),
                 period: None,
                 period_limit: None,
                 drip_limit: None
