@@ -68,8 +68,8 @@ pub trait Trait: system::Trait + pallet_utils::Trait + sp_std::fmt::Debug {
 decl_storage! {
 	trait Store for Module<T: Trait> as FaucetsModule {
 
-        // TODO rename
-		pub SettingsByFaucet get(fn settings_by_faucet):
+        /// Get a faucet data by its account id.
+		pub FaucetByAccount get(fn faucet_by_account):
 			map hasher(twox_64_concat) T::AccountId // Faucet account
 			=> Option<FaucetSettings<T>>;
 	}
@@ -137,7 +137,7 @@ decl_module! {
             Self::ensure_drip_limit_not_zero(drip_limit)?;
 
             ensure!(
-                Self::settings_by_faucet(&faucet).is_none(),
+                Self::faucet_by_account(&faucet).is_none(),
                 Error::<T>::FaucetAlreadyAdded
             );
 
@@ -153,7 +153,7 @@ decl_module! {
                 drip_limit
             );
 
-            SettingsByFaucet::<T>::insert(faucet.clone(), new_faucet);
+            FaucetByAccount::<T>::insert(faucet.clone(), new_faucet);
             Self::deposit_event(RawEvent::FaucetAdded(faucet));
             Ok(())
         }
@@ -216,7 +216,7 @@ decl_module! {
 
             ensure!(should_update, Error::<T>::NothingToUpdate);
 
-            SettingsByFaucet::<T>::insert(faucet.clone(), settings);
+            FaucetByAccount::<T>::insert(faucet.clone(), settings);
             Self::deposit_event(RawEvent::FaucetUpdated(faucet));
             Ok(())
         }
@@ -233,7 +233,7 @@ decl_module! {
 
             let unique_faucets = BTreeSet::from_iter(faucets.iter());
             for faucet in unique_faucets.iter() {
-                SettingsByFaucet::<T>::remove(faucet);
+                FaucetByAccount::<T>::remove(faucet);
             }
 
             Self::deposit_event(RawEvent::FaucetsRemoved(faucets));
@@ -280,7 +280,7 @@ decl_module! {
             settings.dripped_in_current_period = amount
                 .saturating_add(settings.dripped_in_current_period);
 
-            SettingsByFaucet::<T>::insert(&faucet, settings);
+            FaucetByAccount::<T>::insert(&faucet, settings);
 
             Self::deposit_event(RawEvent::Dripped(faucet, recipient, amount));
             Ok(())
@@ -291,7 +291,7 @@ decl_module! {
 impl<T: Trait> Module<T> {
 
     pub fn require_faucet(faucet: &T::AccountId) -> Result<FaucetSettings<T>, DispatchError> {
-        Ok(Self::settings_by_faucet(faucet).ok_or(Error::<T>::FaucetNotFound)?)
+        Ok(Self::faucet_by_account(faucet).ok_or(Error::<T>::FaucetNotFound)?)
     }
 
     fn ensure_period_not_zero(period: T::BlockNumber) -> DispatchResult {

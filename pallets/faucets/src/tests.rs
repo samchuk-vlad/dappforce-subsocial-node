@@ -10,7 +10,7 @@ fn add_faucet_should_work() {
     ExtBuilder::build().execute_with(|| {
         assert_ok!(_add_default_faucet());
 
-        let faucet_settings = Faucets::settings_by_faucet(FAUCET1).unwrap();
+        let faucet_settings = Faucets::faucet_by_account(FAUCET1).unwrap();
         assert_eq!(faucet_settings, default_faucet_settings());
     });
 }
@@ -59,7 +59,7 @@ fn update_faucet_should_work() {
         assert_ok!(_update_default_faucet());
         const SETTINGS_UPDATE: FaucetSettingsUpdate<Test> = default_faucet_settings_update();
 
-        let faucet_settings = Faucets::settings_by_faucet(FAUCET1).unwrap();
+        let faucet_settings = Faucets::faucet_by_account(FAUCET1).unwrap();
         let updated_faucet_settings = FaucetSettings::<Test>::new(
             SETTINGS_UPDATE.period.unwrap_or(faucet_settings.period),
             SETTINGS_UPDATE.period_limit.unwrap_or(faucet_settings.period_limit),
@@ -111,7 +111,7 @@ fn update_faucet_should_fail_when_same_active_flag_provided() {
                     drip_limit: None
                 }
             ),
-            Error::<Test>::NoUpdatesProvided
+            Error::<Test>::NothingToUpdate
         );
     });
 }
@@ -128,7 +128,7 @@ fn update_faucet_should_fail_when_same_period_provided() {
                     drip_limit: None
                 }
             ),
-            Error::<Test>::NoUpdatesProvided
+            Error::<Test>::NothingToUpdate
         );
     });
 }
@@ -145,7 +145,7 @@ fn update_faucet_should_fail_when_same_period_limit_provided() {
                     drip_limit: None
                 }
             ),
-            Error::<Test>::NoUpdatesProvided
+            Error::<Test>::NothingToUpdate
         );
     });
 }
@@ -162,7 +162,7 @@ fn update_faucet_should_fail_when_same_drip_limit_provided() {
                     drip_limit: Some(default_faucet_settings().drip_limit)
                 }
             ),
-            Error::<Test>::NoUpdatesProvided
+            Error::<Test>::NothingToUpdate
         );
     });
 }
@@ -190,9 +190,9 @@ fn remove_faucets_should_work() {
         );
 
         for account in FAUCET1..FAUCET8 {
-            assert!(Faucets::settings_by_faucet(account).is_none());
+            assert!(Faucets::faucet_by_account(account).is_none());
         }
-        assert!(Faucets::settings_by_faucet(FAUCET8).is_some());
+        assert!(Faucets::faucet_by_account(FAUCET8).is_some());
     });
 }
 
@@ -218,9 +218,9 @@ fn remove_faucets_should_handle_duplicate_addresses() {
         );
 
         for account in FAUCET1..FAUCET8 {
-            assert!(Faucets::settings_by_faucet(account).is_none());
+            assert!(Faucets::faucet_by_account(account).is_none());
         }
-        assert!(Faucets::settings_by_faucet(FAUCET8).is_some());
+        assert!(Faucets::faucet_by_account(FAUCET8).is_some());
     });
 }
 
@@ -252,7 +252,7 @@ fn drip_should_work() {
 
         assert_eq!(Balances::free_balance(ACCOUNT1), drip_limit);
 
-        let faucet_state = Faucets::settings_by_faucet(FAUCET1).unwrap();
+        let faucet_state = Faucets::faucet_by_account(FAUCET1).unwrap();
         assert_eq!(faucet_state.next_period_at, INITIAL_BLOCK_NUMBER + period);
         assert_eq!(faucet_state.dripped_in_current_period, drip_limit);
     });
@@ -267,7 +267,7 @@ fn drip_should_work_multiple_times_in_same_period() {
         assert_ok!(_drip(None, None, Some(drip_limit)));
         assert_eq!(Balances::free_balance(ACCOUNT1), drip_limit * 2);
 
-        let faucet_state = Faucets::settings_by_faucet(FAUCET1).unwrap();
+        let faucet_state = Faucets::faucet_by_account(FAUCET1).unwrap();
         assert_eq!(faucet_state.next_period_at, INITIAL_BLOCK_NUMBER + period);
         assert_eq!(faucet_state.dripped_in_current_period, drip_limit * 2);
     });
@@ -292,7 +292,7 @@ fn drip_should_work_for_same_recipient_in_next_period() {
         assert_ok!(_do_default_drip());
         assert_eq!(Balances::free_balance(ACCOUNT1), drip_limit * 3);
 
-        let faucet_state = Faucets::settings_by_faucet(FAUCET1).unwrap();
+        let faucet_state = Faucets::faucet_by_account(FAUCET1).unwrap();
         assert_eq!(faucet_state.next_period_at, INITIAL_BLOCK_NUMBER + period * 2);
         assert_eq!(faucet_state.dripped_in_current_period, drip_limit);
     });
