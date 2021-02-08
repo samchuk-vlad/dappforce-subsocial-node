@@ -363,16 +363,16 @@ fn drip_should_fail_when_faucet_is_disabled_and_work_again_after_faucet_enabled(
             }
         ));
 
-        // Faucet should not drip tokens if it is inactive
+        // Faucet should not drip tokens if it is disabled
         assert_noop!(
             _do_default_drip(),
-            Error::<Test>::FaucetNotActive
+            Error::<Test>::FaucetDisabled
         );
 
         // Account should not receive any tokens
         assert_eq!(Balances::free_balance(ACCOUNT1), 0);
 
-        // Make the faucet active again
+        // Make the faucet enabled again
         assert_ok!(_update_faucet_settings(
             FaucetSettingsUpdate {
                 is_active: Some(true),

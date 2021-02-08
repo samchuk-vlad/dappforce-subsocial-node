@@ -84,8 +84,8 @@ decl_event!(
 		FaucetUpdated(AccountId),
 		FaucetsRemoved(Vec<AccountId>),
 		Dripped(
-			AccountId, // Faucet
-			AccountId, // Recipient
+			AccountId, // Faucet account
+			AccountId, // Recipient account
 			Balance    // Amount dripped
 		),
 	}
@@ -96,11 +96,11 @@ decl_error! {
 		FaucetNotFound,
 		FaucetAlreadyAdded,
         NoFreeBalanceOnFaucet,
-        FaucetNotActive,
-        NotFaucetOwner,
-        
-        NoUpdatesProvided,
         NoFaucetsProvided,
+        NoUpdatesProvided,
+        NothingToUpdate,
+        FaucetDisabled,
+        NotFaucetOwner,
 
 		ZeroPeriodProvided,
 		ZeroPeriodLimitProvided,
@@ -214,14 +214,11 @@ decl_module! {
                 }
             }
 
-            if should_update {
-                SettingsByFaucet::<T>::insert(faucet.clone(), settings);
-                Self::deposit_event(RawEvent::FaucetUpdated(faucet));
-                return Ok(());
-            }
+            ensure!(should_update, Error::<T>::NothingToUpdate);
 
-            // TODO Maybe rename to NothingToUpdate
-            Err(Error::<T>::NoUpdatesProvided.into())
+            SettingsByFaucet::<T>::insert(faucet.clone(), settings);
+            Self::deposit_event(RawEvent::FaucetUpdated(faucet));
+            Ok(())
         }
 
         // TODO review read/writes
@@ -258,7 +255,7 @@ decl_module! {
             ensure!(amount > Zero::zero(), Error::<T>::ZeroDripAmountProvided);
 
             let mut settings = Self::require_faucet(&faucet)?;
-            ensure!(settings.is_active, Error::<T>::FaucetNotActive);
+            ensure!(settings.is_active, Error::<T>::FaucetDisabled);
             ensure!(amount <= settings.drip_limit, Error::<T>::DripLimitReached);
 
             let current_block = <system::Module<T>>::block_number();
