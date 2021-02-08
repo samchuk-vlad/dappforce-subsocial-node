@@ -66,35 +66,35 @@ pub trait Trait: system::Trait + pallet_utils::Trait + sp_std::fmt::Debug {
 }
 
 decl_storage! {
-	trait Store for Module<T: Trait> as FaucetsModule {
+    trait Store for Module<T: Trait> as FaucetsModule {
 
         /// Get a faucet data by its account id.
-		pub FaucetByAccount get(fn faucet_by_account):
-			map hasher(twox_64_concat) T::AccountId // Faucet account
-			=> Option<FaucetSettings<T>>;
-	}
+        pub FaucetByAccount get(fn faucet_by_account):
+            map hasher(twox_64_concat) T::AccountId // Faucet account
+            => Option<FaucetSettings<T>>;
+    }
 }
 
 decl_event!(
-	pub enum Event<T> where
-		AccountId = <T as system::Trait>::AccountId,
-		Balance = BalanceOf<T>
-	{
-		FaucetAdded(AccountId),
-		FaucetUpdated(AccountId),
-		FaucetsRemoved(Vec<AccountId>),
-		Dripped(
-			AccountId, // Faucet account
-			AccountId, // Recipient account
-			Balance    // Amount dripped
-		),
-	}
+    pub enum Event<T> where
+        AccountId = <T as system::Trait>::AccountId,
+        Balance = BalanceOf<T>
+    {
+        FaucetAdded(AccountId),
+        FaucetUpdated(AccountId),
+        FaucetsRemoved(Vec<AccountId>),
+        Dripped(
+            AccountId, // Faucet account
+            AccountId, // Recipient account
+            Balance    // Amount dripped
+        ),
+    }
 );
 
 decl_error! {
-	pub enum Error for Module<T: Trait> {
-		FaucetNotFound,
-		FaucetAlreadyAdded,
+    pub enum Error for Module<T: Trait> {
+        FaucetNotFound,
+        FaucetAlreadyAdded,
         NoFreeBalanceOnFaucet,
         NotEnoughFreeBalanceOnFaucet,
         NoFaucetsProvided,
@@ -104,14 +104,14 @@ decl_error! {
         NotFaucetOwner,
         RecipientEqualsFaucet,
 
-		ZeroPeriodProvided,
-		ZeroPeriodLimitProvided,
-		ZeroDripLimitProvided,
+        ZeroPeriodProvided,
+        ZeroPeriodLimitProvided,
+        ZeroDripLimitProvided,
         ZeroDripAmountProvided,
         
         PeriodLimitReached,
         DripLimitReached,
-	}
+    }
 }
 
 decl_module! {
