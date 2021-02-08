@@ -187,4 +187,15 @@ impl<T: Trait> Module<T> {
 
     None
   }
+
+  pub fn override_permissions(mut overrides: SpacePermissions) -> SpacePermissions {
+    overrides.none = overrides.none.map(
+      |mut none_permissions_set| {
+        none_permissions_set.extend(T::DefaultSpacePermissions::get().none.unwrap_or_default());
+        none_permissions_set
+      }
+    );
+
+    overrides
+  }
 }

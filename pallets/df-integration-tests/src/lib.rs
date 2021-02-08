@@ -12,11 +12,7 @@ mod tests {
     use sp_core::H256;
     use sp_io::TestExternalities;
     use sp_std::iter::FromIterator;
-    use sp_runtime::{
-        traits::{BlakeTwo256, IdentityLookup},
-        testing::Header,
-        Perbill,
-    };
+    use sp_runtime::{traits::{BlakeTwo256, IdentityLookup}, testing::Header, Perbill, Storage};
     use frame_system::{self as system};
 
     use pallet_permissions::{
@@ -33,7 +29,8 @@ mod tests {
     use pallet_spaces::{SpaceById, SpaceUpdate, Error as SpacesError};
     use pallet_space_follows::Error as SpaceFollowsError;
     use pallet_space_ownership::Error as SpaceOwnershipError;
-    use pallet_utils::{SpaceId, Error as UtilsError, User, Content};
+    use pallet_utils::{SpaceId, Error as UtilsError, User, Content, Module as Utils};
+    use sp_runtime::traits::Zero;
 
     impl_outer_origin! {
         pub enum Origin for TestRuntime {}
@@ -269,17 +266,21 @@ mod tests {
         type Event = ();
     }
 
-    parameter_types! {}
+    const HANDLE_DEPOSIT: u64 = 5;
+    parameter_types! {
+        pub const HandleDeposit: u64 = HANDLE_DEPOSIT;
+    }
 
     impl pallet_spaces::Trait for TestRuntime {
         type Event = ();
+        type Currency = Balances;
         type Roles = Roles;
         type SpaceFollows = SpaceFollows;
         type BeforeSpaceCreated = SpaceFollows;
         type AfterSpaceUpdated = SpaceHistory;
         type IsAccountBlocked = Moderation;
         type IsContentBlocked = Moderation;
-        type SpaceCreationFee = ();
+        type HandleDeposit = HandleDeposit;
     }
 
     parameter_types! {}
@@ -320,11 +321,24 @@ mod tests {
 
     // TODO: make created space/post/comment configurable or by default
     impl ExtBuilder {
+        fn configure_storages(storage: &mut Storage) {
+            let mut accounts = Vec::new();
+            for account in ACCOUNT1..=ACCOUNT3 {
+                accounts.push(account);
+            }
+
+            let _ = pallet_balances::GenesisConfig::<TestRuntime> {
+                balances: accounts.iter().cloned().map(|k|(k, 100)).collect()
+            }.assimilate_storage(storage);
+        }
+
         /// Default ext configuration with BlockNumber 1
         pub fn build() -> TestExternalities {
-            let storage = system::GenesisConfig::default()
+            let mut storage = system::GenesisConfig::default()
                 .build_storage::<TestRuntime>()
                 .unwrap();
+
+            Self::configure_storages(&mut storage);
 
             let mut ext = TestExternalities::from(storage);
             ext.execute_with(|| System::set_block_number(1));
@@ -334,9 +348,11 @@ mod tests {
 
         /// Custom ext configuration with SpaceId 1 and BlockNumber 1
         pub fn build_with_space() -> TestExternalities {
-            let storage = system::GenesisConfig::default()
+            let mut storage = system::GenesisConfig::default()
                 .build_storage::<TestRuntime>()
                 .unwrap();
+
+            Self::configure_storages(&mut storage);
 
             let mut ext = TestExternalities::from(storage);
             ext.execute_with(|| {
@@ -349,9 +365,11 @@ mod tests {
 
         /// Custom ext configuration with SpaceId 1, PostId 1 and BlockNumber 1
         pub fn build_with_post() -> TestExternalities {
-            let storage = system::GenesisConfig::default()
+            let mut storage = system::GenesisConfig::default()
                 .build_storage::<TestRuntime>()
                 .unwrap();
+
+            Self::configure_storages(&mut storage);
 
             let mut ext = TestExternalities::from(storage);
             ext.execute_with(|| {
@@ -365,9 +383,11 @@ mod tests {
 
         /// Custom ext configuration with SpaceId 1, PostId 1, PostId 2 (as comment) and BlockNumber 1
         pub fn build_with_comment() -> TestExternalities {
-            let storage = system::GenesisConfig::default()
+            let mut storage = system::GenesisConfig::default()
                 .build_storage::<TestRuntime>()
                 .unwrap();
+
+            Self::configure_storages(&mut storage);
 
             let mut ext = TestExternalities::from(storage);
             ext.execute_with(|| {
@@ -382,9 +402,11 @@ mod tests {
 
         /// Custom ext configuration with pending ownership transfer without Space
         pub fn build_with_pending_ownership_transfer_no_space() -> TestExternalities {
-            let storage = system::GenesisConfig::default()
+            let mut storage = system::GenesisConfig::default()
                 .build_storage::<TestRuntime>()
                 .unwrap();
+
+            Self::configure_storages(&mut storage);
 
             let mut ext = TestExternalities::from(storage);
             ext.execute_with(|| {
@@ -401,9 +423,11 @@ mod tests {
 
         /// Custom ext configuration with specified permissions granted (includes SpaceId 1)
         pub fn build_with_a_few_roles_granted_to_account2(perms: Vec<SP>) -> TestExternalities {
-            let storage = system::GenesisConfig::default()
+            let mut storage = system::GenesisConfig::default()
                 .build_storage::<TestRuntime>()
                 .unwrap();
+
+            Self::configure_storages(&mut storage);
 
             let mut ext = TestExternalities::from(storage);
             ext.execute_with(|| {
@@ -431,9 +455,11 @@ mod tests {
 
         /// Custom ext configuration with space follow without Space
         pub fn build_with_space_follow_no_space() -> TestExternalities {
-            let storage = system::GenesisConfig::default()
+            let mut storage = system::GenesisConfig::default()
                 .build_storage::<TestRuntime>()
                 .unwrap();
+
+            Self::configure_storages(&mut storage);
 
             let mut ext = TestExternalities::from(storage);
             ext.execute_with(|| {
@@ -458,7 +484,6 @@ mod tests {
 
     const SPACE1: SpaceId = 1001;
     const SPACE2: SpaceId = 1002;
-    const _SPACE3: SpaceId = 1003;
 
     const POST1: PostId = 1;
     const POST2: PostId = 2;
@@ -466,14 +491,28 @@ mod tests {
 
     const REACTION1: ReactionId = 1;
     const REACTION2: ReactionId = 2;
-    const _REACTION3: ReactionId = 3;
+
+    /// Lowercase a handle and then try to find a space id by it.
+    fn find_space_id_by_handle(handle: Vec<u8>) -> Option<SpaceId> {
+        let lc_handle = Utils::<TestRuntime>::lowercase_handle(handle);
+        Spaces::space_id_by_handle(lc_handle)
+    }
 
     fn space_handle() -> Vec<u8> {
-        b"space_handle".to_vec()
+        b"Space_Handle".to_vec()
+    }
+
+    /// Returns an invalid cropped IPFS CID.
+    fn invalid_ipfs_content() -> Content {
+        Content::IPFS(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec())
     }
 
     fn space_content_ipfs() -> Content {
-        Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
+        Content::IPFS(b"bafyreib3mgbou4xln42qqcgj6qlt3cif35x4ribisxgq7unhpun525l54e".to_vec())
+    }
+
+    fn updated_space_content() -> Content {
+        Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec())
     }
 
     fn space_update(
@@ -493,7 +532,11 @@ mod tests {
     }
 
     fn post_content_ipfs() -> Content {
-        Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec())
+        Content::IPFS(b"bafyreidzue2dtxpj6n4x5mktrt7las5wz5diqma47zr25uau743dhe76we".to_vec())
+    }
+
+    fn updated_post_content() -> Content {
+        Content::IPFS(b"bafyreifw4omlqpr3nqm32bueugbodkrdne7owlkxgg7ul2qkvgrnkt3g3u".to_vec())
     }
 
     fn post_update(
@@ -509,7 +552,7 @@ mod tests {
     }
 
     fn comment_content_ipfs() -> Content {
-        Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
+        Content::IPFS(b"bafyreib6ceowavccze22h2x4yuwagsnym2c66gs55mzbupfn73kd6we7eu".to_vec())
     }
 
     fn reply_content_ipfs() -> Content {
@@ -577,20 +620,22 @@ mod tests {
     }
 
     fn _create_default_space() -> DispatchResult {
-        _create_space(None, None, None, None)
+        _create_space(None, None, None, None, None)
     }
 
     fn _create_space(
         origin: Option<Origin>,
         parent_id_opt: Option<Option<SpaceId>>,
         handle: Option<Option<Vec<u8>>>,
-        content: Option<Content>
+        content: Option<Content>,
+        permissions: Option<Option<SpacePermissions>>
     ) -> DispatchResult {
         Spaces::create_space(
             origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
             parent_id_opt.unwrap_or(None),
             handle.unwrap_or_else(|| Some(self::space_handle())),
             content.unwrap_or_else(self::space_content_ipfs),
+            permissions.unwrap_or(None)
         )
     }
 
@@ -953,7 +998,7 @@ mod tests {
 
             // Check storages
             assert_eq!(Spaces::space_ids_by_owner(ACCOUNT1), vec![SPACE1]);
-            assert_eq!(Spaces::space_id_by_handle(self::space_handle()), Some(SPACE1));
+            assert_eq!(self::find_space_id_by_handle(self::space_handle()), Some(SPACE1));
             assert_eq!(Spaces::next_space_id(), SPACE2);
 
             // Check whether data stored correctly
@@ -971,33 +1016,38 @@ mod tests {
             assert_eq!(space.followers_count, 1);
             assert!(SpaceHistory::edit_history(space.id).is_empty());
             assert_eq!(space.score, 0);
+
+            // Check that the handle deposit has been reserved:
+            let reserved_balance = Balances::reserved_balance(ACCOUNT1);
+            assert_eq!(reserved_balance, HANDLE_DEPOSIT);
         });
     }
 
     #[test]
     fn create_space_should_store_handle_lowercase() {
         ExtBuilder::build().execute_with(|| {
-            let handle: Vec<u8> = b"sPaCe_hAnDlE".to_vec();
+            let new_handle: Vec<u8> = b"sPaCe_hAnDlE".to_vec();
 
-            assert_ok!(_create_space(None, None, Some(Some(handle.clone())), None)); // SpaceId 1
+            assert_ok!(_create_space(None, None, Some(Some(new_handle.clone())), None, None)); // SpaceId 1
 
             // Handle should be lowercase in storage and original in struct
             let space = Spaces::space_by_id(SPACE1).unwrap();
-            assert_eq!(space.handle, Some(handle.clone()));
-            assert_eq!(Spaces::space_id_by_handle(handle.to_ascii_lowercase()), Some(SPACE1));
+            assert_eq!(space.handle, Some(new_handle.clone()));
+            assert_eq!(self::find_space_id_by_handle(new_handle), Some(SPACE1));
         });
     }
 
     #[test]
     fn create_space_should_fail_with_handle_too_short() {
         ExtBuilder::build().execute_with(|| {
-            let handle: Vec<u8> = vec![65; (MinHandleLen::get() - 1) as usize];
+            let short_handle: Vec<u8> = vec![65; (MinHandleLen::get() - 1) as usize];
 
             // Try to catch an error creating a space with too short handle
             assert_noop!(_create_space(
                 None,
                 None,
-                Some(Some(handle)),
+                Some(Some(short_handle)),
+                None,
                 None
             ), UtilsError::<TestRuntime>::HandleIsTooShort);
         });
@@ -1006,13 +1056,14 @@ mod tests {
     #[test]
     fn create_space_should_fail_with_handle_too_long() {
         ExtBuilder::build().execute_with(|| {
-            let handle: Vec<u8> = vec![65; (MaxHandleLen::get() + 1) as usize];
+            let long_handle: Vec<u8> = vec![65; (MaxHandleLen::get() + 1) as usize];
 
             // Try to catch an error creating a space with too long handle
             assert_noop!(_create_space(
                 None,
                 None,
-                Some(Some(handle)),
+                Some(Some(long_handle)),
+                None,
                 None
             ), UtilsError::<TestRuntime>::HandleIsTooLong);
         });
@@ -1031,12 +1082,13 @@ mod tests {
     #[test]
     fn create_space_should_fail_with_handle_contains_invalid_char_at() {
         ExtBuilder::build().execute_with(|| {
-            let handle: Vec<u8> = b"@space_handle".to_vec();
+            let invalid_handle: Vec<u8> = b"@space_handle".to_vec();
 
             assert_noop!(_create_space(
                 None,
                 None,
-                Some(Some(handle)),
+                Some(Some(invalid_handle)),
+                None,
                 None
             ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
@@ -1045,12 +1097,13 @@ mod tests {
     #[test]
     fn create_space_should_fail_with_handle_contains_invalid_char_minus() {
         ExtBuilder::build().execute_with(|| {
-            let handle: Vec<u8> = b"space-handle".to_vec();
+            let invalid_handle: Vec<u8> = b"space-handle".to_vec();
 
             assert_noop!(_create_space(
                 None,
                 None,
-                Some(Some(handle)),
+                Some(Some(invalid_handle)),
+                None,
                 None
             ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
@@ -1059,12 +1112,13 @@ mod tests {
     #[test]
     fn create_space_should_fail_with_handle_contains_invalid_char_space() {
         ExtBuilder::build().execute_with(|| {
-            let handle: Vec<u8> = b"space handle".to_vec();
+            let invalid_handle: Vec<u8> = b"space handle".to_vec();
 
             assert_noop!(_create_space(
                 None,
                 None,
-                Some(Some(handle)),
+                Some(Some(invalid_handle)),
+                None,
                 None
             ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
@@ -1073,12 +1127,13 @@ mod tests {
     #[test]
     fn create_space_should_fail_with_handle_contains_invalid_chars_unicode() {
         ExtBuilder::build().execute_with(|| {
-            let handle: Vec<u8> = String::from("блог_хендл").into_bytes().to_vec();
+            let invalid_handle: Vec<u8> = String::from("блог_хендл").into_bytes().to_vec();
 
             assert_noop!(_create_space(
                 None,
                 None,
-                Some(Some(handle)),
+                Some(Some(invalid_handle)),
+                None,
                 None
             ), UtilsError::<TestRuntime>::HandleContainsInvalidChars);
         });
@@ -1087,14 +1142,15 @@ mod tests {
     #[test]
     fn create_space_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build().execute_with(|| {
-            let content_ipfs = Content::IPFS(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
+            let content_ipfs = self::invalid_ipfs_content();
 
             // Try to catch an error creating a space with invalid content
             assert_noop!(_create_space(
                 None,
                 None,
                 None,
-                Some(content_ipfs)
+                Some(content_ipfs),
+                None
             ), UtilsError::<TestRuntime>::InvalidIpfsCid);
         });
     }
@@ -1102,8 +1158,8 @@ mod tests {
     #[test]
     fn update_space_should_work() {
         ExtBuilder::build_with_space().execute_with(|| {
-            let handle: Vec<u8> = b"new_handle".to_vec();
-            let content_ipfs = Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec());
+            let new_handle: Vec<u8> = b"new_handle".to_vec();
+            let content_ipfs = self::updated_space_content();
             // Space update with ID 1 should be fine
 
             assert_ok!(_update_space(
@@ -1112,7 +1168,7 @@ mod tests {
                 Some(
                     self::space_update(
                         None,
-                        Some(Some(handle.clone())),
+                        Some(Some(new_handle.clone())),
                         Some(content_ipfs.clone()),
                         Some(true),
                         Some(Some(SpacePermissions {
@@ -1127,7 +1183,7 @@ mod tests {
 
             // Check whether space updates correctly
             let space = Spaces::space_by_id(SPACE1).unwrap();
-            assert_eq!(space.handle, Some(handle));
+            assert_eq!(space.handle, Some(new_handle.clone()));
             assert_eq!(space.content, content_ipfs);
             assert_eq!(space.hidden, true);
 
@@ -1136,6 +1192,13 @@ mod tests {
             assert_eq!(edit_history.old_data.handle, Some(Some(self::space_handle())));
             assert_eq!(edit_history.old_data.content, Some(self::space_content_ipfs()));
             assert_eq!(edit_history.old_data.hidden, Some(false));
+
+            assert_eq!(self::find_space_id_by_handle(self::space_handle()), None);
+            assert_eq!(self::find_space_id_by_handle(new_handle), Some(SPACE1));
+
+            // Check that the handle deposit has been reserved:
+            let reserved_balance = Balances::reserved_balance(ACCOUNT1);
+            assert_eq!(reserved_balance, HANDLE_DEPOSIT);
         });
     }
 
@@ -1145,9 +1208,7 @@ mod tests {
             let space_update = self::space_update(
                 None,
                 Some(Some(b"new_handle".to_vec())),
-                Some(Content::IPFS(
-                    b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec()
-                )),
+                Some(self::updated_space_content()),
                 Some(true),
                 None,
             );
@@ -1157,6 +1218,30 @@ mod tests {
                 Some(SPACE1),
                 Some(space_update)
             ));
+        });
+    }
+
+    #[test]
+    fn update_space_should_work_with_unreserve_handle() {
+        ExtBuilder::build_with_space().execute_with(|| {
+            let no_handle = Some(None);
+            let space_update = self::space_update(None, no_handle, None, None, None);
+            assert_ok!(_update_space(None, None, Some(space_update)));
+
+            // Check that the space handle is unreserved after this update:
+            let space = Spaces::space_by_id(SPACE1).unwrap();
+            assert_eq!(space.handle, None);
+
+            // Check that the previous space handle has been added to the space history:
+            let edit_history = &SpaceHistory::edit_history(space.id)[0];
+            assert_eq!(edit_history.old_data.handle, Some(Some(self::space_handle())));
+            
+            // Check that the previous space handle is not reserved in storage anymore: 
+            assert_eq!(self::find_space_id_by_handle(self::space_handle()), None);
+
+            // Check that the handle deposit has been unreserved:
+            let reserved_balance = Balances::reserved_balance(ACCOUNT1);
+            assert_eq!(reserved_balance, Zero::zero());
         });
     }
 
@@ -1171,7 +1256,7 @@ mod tests {
     #[test]
     fn update_space_should_fail_with_space_not_found() {
         ExtBuilder::build_with_space().execute_with(|| {
-            let handle: Vec<u8> = b"new_handle".to_vec();
+            let new_handle: Vec<u8> = b"new_handle".to_vec();
 
             // Try to catch an error updating a space with wrong space ID
             assert_noop!(_update_space(
@@ -1180,7 +1265,7 @@ mod tests {
                 Some(
                     self::space_update(
                         None,
-                        Some(Some(handle)),
+                        Some(Some(new_handle)),
                         None,
                         None,
                         None,
@@ -1193,7 +1278,7 @@ mod tests {
     #[test]
     fn update_space_should_fail_with_no_permission() {
         ExtBuilder::build_with_space().execute_with(|| {
-            let handle: Vec<u8> = b"new_handle".to_vec();
+            let new_handle: Vec<u8> = b"new_handle".to_vec();
 
             // Try to catch an error updating a space with an account that it not permitted
             assert_noop!(_update_space(
@@ -1202,7 +1287,7 @@ mod tests {
                 Some(
                     self::space_update(
                         None,
-                        Some(Some(handle)),
+                        Some(Some(new_handle)),
                         None,
                         None,
                         None,
@@ -1215,7 +1300,7 @@ mod tests {
     #[test]
     fn update_space_should_fail_with_handle_too_short() {
         ExtBuilder::build_with_space().execute_with(|| {
-            let handle: Vec<u8> = vec![65; (MinHandleLen::get() - 1) as usize];
+            let short_handle: Vec<u8> = vec![65; (MinHandleLen::get() - 1) as usize];
 
             // Try to catch an error updating a space with too short handle
             assert_noop!(_update_space(
@@ -1224,7 +1309,7 @@ mod tests {
                 Some(
                     self::space_update(
                         None,
-                        Some(Some(handle)),
+                        Some(Some(short_handle)),
                         None,
                         None,
                         None,
@@ -1237,7 +1322,7 @@ mod tests {
     #[test]
     fn update_space_should_fail_with_handle_too_long() {
         ExtBuilder::build_with_space().execute_with(|| {
-            let handle: Vec<u8> = vec![65; (MaxHandleLen::get() + 1) as usize];
+            let long_handle: Vec<u8> = vec![65; (MaxHandleLen::get() + 1) as usize];
 
             // Try to catch an error updating a space with too long handle
             assert_noop!(_update_space(
@@ -1246,7 +1331,7 @@ mod tests {
                 Some(
                     self::space_update(
                         None,
-                        Some(Some(handle)),
+                        Some(Some(long_handle)),
                         None,
                         None,
                         None,
@@ -1265,11 +1350,12 @@ mod tests {
                 None,
                 None,
                 Some(Some(handle.clone())),
+                None,
                 None
             )); // SpaceId 2 with a custom handle
 
-                // Try to catch an error updating a space on ID 1 with a handle of space on ID 2
-                assert_noop!(_update_space(
+            // Should fail when updating a space 1 with a handle of a space 2:
+            assert_noop!(_update_space(
                 None,
                 Some(SPACE1),
                 Some(
@@ -1288,7 +1374,7 @@ mod tests {
     #[test]
     fn update_space_should_fail_with_handle_contains_invalid_char_at() {
         ExtBuilder::build_with_space().execute_with(|| {
-            let handle: Vec<u8> = b"@space_handle".to_vec();
+            let invalid_handle: Vec<u8> = b"@space_handle".to_vec();
 
             assert_noop!(_update_space(
                 None,
@@ -1296,7 +1382,7 @@ mod tests {
                 Some(
                     self::space_update(
                         None,
-                        Some(Some(handle)),
+                        Some(Some(invalid_handle)),
                         None,
                         None,
                         None,
@@ -1309,7 +1395,7 @@ mod tests {
     #[test]
     fn update_space_should_fail_with_handle_contains_invalid_char_minus() {
         ExtBuilder::build_with_space().execute_with(|| {
-            let handle: Vec<u8> = b"space-handle".to_vec();
+            let invalid_handle: Vec<u8> = b"space-handle".to_vec();
 
             assert_noop!(_update_space(
                 None,
@@ -1317,7 +1403,7 @@ mod tests {
                 Some(
                     self::space_update(
                         None,
-                        Some(Some(handle)),
+                        Some(Some(invalid_handle)),
                         None,
                         None,
                         None,
@@ -1330,7 +1416,7 @@ mod tests {
     #[test]
     fn update_space_should_fail_with_handle_contains_invalid_space() {
         ExtBuilder::build_with_space().execute_with(|| {
-            let handle: Vec<u8> = b"space handle".to_vec();
+            let invalid_handle: Vec<u8> = b"space handle".to_vec();
 
             assert_noop!(_update_space(
                 None,
@@ -1338,7 +1424,7 @@ mod tests {
                 Some(
                     self::space_update(
                         None,
-                        Some(Some(handle)),
+                        Some(Some(invalid_handle)),
                         None,
                         None,
                         None,
@@ -1351,7 +1437,7 @@ mod tests {
     #[test]
     fn update_space_should_fail_with_handle_contains_invalid_chars_unicode() {
         ExtBuilder::build_with_space().execute_with(|| {
-            let handle: Vec<u8> = String::from("блог_хендл").into_bytes().to_vec();
+            let invalid_handle: Vec<u8> = String::from("блог_хендл").into_bytes().to_vec();
 
             assert_noop!(_update_space(
                 None,
@@ -1359,7 +1445,7 @@ mod tests {
                 Some(
                     self::space_update(
                         None,
-                        Some(Some(handle)),
+                        Some(Some(invalid_handle)),
                         None,
                         None,
                         None,
@@ -1372,7 +1458,6 @@ mod tests {
     #[test]
     fn update_space_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build_with_space().execute_with(|| {
-            let content_ipfs = Content::IPFS(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
 
             // Try to catch an error updating a space with invalid content
             assert_noop!(_update_space(
@@ -1382,7 +1467,7 @@ mod tests {
                     self::space_update(
                         None,
                         None,
-                        Some(content_ipfs),
+                        Some(self::invalid_ipfs_content()),
                         None,
                         None,
                     )
@@ -1397,9 +1482,7 @@ mod tests {
             let space_update = self::space_update(
                 None,
                 Some(Some(b"new_handle".to_vec())),
-                Some(Content::IPFS(
-                    b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW2CuDgwxkD4".to_vec()
-                )),
+                Some(self::updated_space_content()),
                 Some(true),
                 None,
             );
@@ -1482,7 +1565,7 @@ mod tests {
     #[test]
     fn create_post_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build_with_space().execute_with(|| {
-            let content_ipfs = Content::IPFS(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
+            let content_ipfs = self::invalid_ipfs_content();
 
             // Try to catch an error creating a regular post with invalid content
             assert_noop!(_create_post(
@@ -1523,7 +1606,7 @@ mod tests {
     #[test]
     fn update_post_should_work() {
         ExtBuilder::build_with_post().execute_with(|| {
-            let content_ipfs = Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec());
+            let content_ipfs = self::updated_post_content();
 
             // Post update with ID 1 should be fine
             assert_ok!(_update_post(
@@ -1557,9 +1640,7 @@ mod tests {
         ExtBuilder::build_with_post().execute_with(|| {
             let post_update = self::post_update(
                 None,
-                Some(Content::IPFS(
-                    b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()
-                )),
+                Some(self::updated_post_content()),
                 Some(true),
             );
 
@@ -1575,9 +1656,7 @@ mod tests {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::CreatePosts]).execute_with(|| {
             let post_update = self::post_update(
                 None,
-                Some(Content::IPFS(
-                    b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()
-                )),
+                Some(self::updated_post_content()),
                 Some(true),
             );
             assert_ok!(_create_post(
@@ -1601,9 +1680,7 @@ mod tests {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::UpdateAnyPost]).execute_with(|| {
             let post_update = self::post_update(
                 None,
-                Some(Content::IPFS(
-                    b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()
-                )),
+                Some(self::updated_post_content()),
                 Some(true),
             );
             assert_ok!(_create_default_post()); // PostId 1
@@ -1628,7 +1705,7 @@ mod tests {
     #[test]
     fn update_post_should_fail_with_post_not_found() {
         ExtBuilder::build_with_post().execute_with(|| {
-            assert_ok!(_create_space(None, None, Some(Some(b"space2_handle".to_vec())), None)); // SpaceId 2
+            assert_ok!(_create_space(None, None, Some(Some(b"space2_handle".to_vec())), None, None)); // SpaceId 2
 
             // Try to catch an error updating a post with wrong post ID
             assert_noop!(_update_post(
@@ -1649,7 +1726,7 @@ mod tests {
     #[test]
     fn update_post_should_fail_with_no_permission_to_update_any_post() {
         ExtBuilder::build_with_post().execute_with(|| {
-            assert_ok!(_create_space(None, None, Some(Some(b"space2_handle".to_vec())), None)); // SpaceId 2
+            assert_ok!(_create_space(None, None, Some(Some(b"space2_handle".to_vec())), None, None)); // SpaceId 2
 
             // Try to catch an error updating a post with different account
             assert_noop!(_update_post(
@@ -1670,7 +1747,7 @@ mod tests {
     #[test]
     fn update_post_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build_with_post().execute_with(|| {
-            let content_ipfs = Content::IPFS(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
+            let content_ipfs = self::invalid_ipfs_content();
 
             // Try to catch an error updating a post with invalid content
             assert_noop!(_update_post(
@@ -1692,9 +1769,7 @@ mod tests {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::UpdateAnyPost]).execute_with(|| {
             let post_update = self::post_update(
                 None,
-                Some(Content::IPFS(
-                    b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec()
-                )),
+                Some(self::updated_post_content()),
                 Some(true),
             );
             assert_ok!(_create_default_post());
@@ -1795,7 +1870,7 @@ mod tests {
     #[test]
     fn create_comment_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build_with_post().execute_with(|| {
-            let content_ipfs = Content::IPFS(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
+            let content_ipfs = self::invalid_ipfs_content();
 
             // Try to catch an error creating a comment with wrong parent
             assert_noop!(_create_comment(
@@ -1922,7 +1997,7 @@ mod tests {
     #[test]
     fn update_comment_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build_with_comment().execute_with(|| {
-            let content_ipfs = Content::IPFS(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
+            let content_ipfs = self::invalid_ipfs_content();
 
             // Try to catch an error updating a comment with invalid content
             assert_noop!(_update_comment(
@@ -2502,6 +2577,7 @@ mod tests {
                 Some(Origin::signed(ACCOUNT2)),
                 None,
                 Some(Some(b"space2_handle".to_vec())),
+                None,
                 None
             )); // SpaceId 2 by ACCOUNT2
 
@@ -2537,7 +2613,8 @@ mod tests {
                 None, // From ACCOUNT1
                 None, // With no parent_id provided
                 Some(None), // Provided without any handle
-                None // With default space content,
+                None, // With default space content,
+                None
             ));
             // SpaceId 2
             assert_ok!(_create_post(
@@ -2589,6 +2666,7 @@ mod tests {
                 Some(Origin::signed(ACCOUNT2)),
                 None,
                 Some(Some(b"space2_handle".to_vec())),
+                None,
                 None
             )); // SpaceId 2 by ACCOUNT2
 
@@ -2628,6 +2706,7 @@ mod tests {
                 Some(Origin::signed(ACCOUNT2)),
                 None,
                 Some(Some(b"space2_handle".to_vec())),
+                None,
                 None
             )); // SpaceId 2 by ACCOUNT2
 
@@ -2648,6 +2727,7 @@ mod tests {
                 Some(Origin::signed(ACCOUNT2)),
                 None,
                 Some(Some(b"space2_handle".to_vec())),
+                None,
                 None
             )); // SpaceId 2 by ACCOUNT2
 
@@ -2675,7 +2755,8 @@ mod tests {
                 Some(Origin::signed(ACCOUNT1)),
                 None, // With no parent_id provided
                 Some(None), // No space_handle provided (ok)
-                None // Default space content,
+                None, // Default space content,
+                None
             )); // SpaceId 2 by ACCOUNT1
 
             // Try to share post with extension SharedPost
@@ -2695,7 +2776,8 @@ mod tests {
                 None, // From ACCOUNT1
                 None, // With no parent_id provided
                 Some(None), // Provided without any handle
-                None // With default space content
+                None, // With default space content
+                None
             ));
             // SpaceId 2
             assert_ok!(_create_post(
@@ -2744,7 +2826,7 @@ mod tests {
     #[test]
     fn create_profile_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build().execute_with(|| {
-            let content_ipfs = Content::IPFS(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
+            let content_ipfs = self::invalid_ipfs_content();
 
             assert_noop!(_create_profile(
                 None,
@@ -2810,7 +2892,7 @@ mod tests {
     #[test]
     fn update_profile_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build().execute_with(|| {
-            let content_ipfs = Content::IPFS(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec());
+            let content_ipfs = self::invalid_ipfs_content();
 
             assert_ok!(_create_default_profile());
             assert_noop!(_update_profile(

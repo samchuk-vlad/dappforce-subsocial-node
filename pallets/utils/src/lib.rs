@@ -206,16 +206,22 @@ impl<T: Trait> Module<T> {
         matches!(c, b'0'..=b'9' | b'a'..=b'z' | b'_')
     }
 
-    /// Check if a handle length fits into min/max length requirements.
     /// Lowercase a handle.
-    /// Check if a handle contains only valid chars: 0-9, a-z, _.
-    /// Check if a handle is unique across all spaces' handles (requires one storage read).
+    pub fn lowercase_handle(handle: Vec<u8>) -> Vec<u8> {
+        handle.to_ascii_lowercase()
+    }
+
+    /// This function does the next:
+    /// - Check if a handle length fits into min/max length constraints.
+    /// - Lowercase a handle.
+    /// - Check if a handle contains only valid chars: 0-9, a-z, _.
     pub fn lowercase_and_validate_a_handle(handle: Vec<u8>) -> Result<Vec<u8>, DispatchError> {
-        // Check min and max lengths of a handle:
+        
+        // Check if a handle length fits into min/max length constraints:
         ensure!(handle.len() >= T::MinHandleLen::get() as usize, Error::<T>::HandleIsTooShort);
         ensure!(handle.len() <= T::MaxHandleLen::get() as usize, Error::<T>::HandleIsTooLong);
 
-        let handle_in_lowercase = handle.to_ascii_lowercase();
+        let handle_in_lowercase = Self::lowercase_handle(handle);
 
         // Check if a handle contains only valid chars: 0-9, a-z, _.
         let is_only_valid_chars = handle_in_lowercase.iter().all(|&x| Self::is_valid_handle_char(x));

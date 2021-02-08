@@ -462,18 +462,19 @@ impl pallet_space_ownership::Trait for Runtime {
 }
 
 parameter_types! {
-	pub SpaceCreationFee: Balance = 50 * CENTS;
+	pub HandleDeposit: Balance = 50 * CENTS;
 }
 
 impl pallet_spaces::Trait for Runtime {
 	type Event = Event;
+	type Currency = Balances;
 	type Roles = Roles;
 	type SpaceFollows = SpaceFollows;
 	type BeforeSpaceCreated = SpaceFollows;
 	type AfterSpaceUpdated = SpaceHistory;
 	type IsAccountBlocked = ()/*Moderation*/;
 	type IsContentBlocked = ()/*Moderation*/;
-	type SpaceCreationFee = SpaceCreationFee;
+	type HandleDeposit = HandleDeposit;
 }
 
 parameter_types! {}
