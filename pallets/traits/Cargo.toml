@@ -1,6 +1,6 @@
 [package]
 name = 'df-traits'
-version = '0.4.0'
+version = '0.5.0'
 authors = ['DappForce <dappforce@pm.me>']
 edition = '2018'
 license = 'GPL-3.0-only'
@@ -13,10 +13,17 @@ categories = ['cryptography::cryptocurrencies']
 [features]
 default = ['std']
 std = [
+    'sp-runtime/std',
     'frame-support/std',
     'pallet-permissions/std',
     'pallet-utils/std'
 ]
+
+[dependencies.sp-runtime]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
 
 [dependencies.frame-support]
 default-features = false
@@ -27,9 +34,9 @@ version = '2.0.0-rc4'
 [dependencies.pallet-permissions]
 default-features = false
 path = '../permissions'
-version = '0.4.0'
+version = '0.5.0'
 
 [dependencies.pallet-utils]
 default-features = false
 path = '../utils'
-version = '0.4.0'
+version = '0.5.0'

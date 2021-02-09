@@ -69,14 +69,16 @@ pub enum SpacePermission {
   /// Override permissions per post in this space.
   OverridePostPermissions,
 
-  // Related to moderation pallet
+  // Related to the moderation pallet:
+
   /// Suggest new entity status in space (whether it's blocked or allowed)
   SuggestEntityStatus,
   /// Update entity status in space
   UpdateEntityStatus,
 
-  // Related to Space settings
-  /// Update collection of space settings in different pallets
+  // Related to space settings:
+
+  /// Allows to update space settings across different pallets.
   UpdateSpaceSettings,
 }
 
@@ -184,5 +186,16 @@ impl<T: Trait> Module<T> {
     }
 
     None
+  }
+
+  pub fn override_permissions(mut overrides: SpacePermissions) -> SpacePermissions {
+    overrides.none = overrides.none.map(
+      |mut none_permissions_set| {
+        none_permissions_set.extend(T::DefaultSpacePermissions::get().none.unwrap_or_default());
+        none_permissions_set
+      }
+    );
+
+    overrides
   }
 }

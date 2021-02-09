@@ -9,8 +9,9 @@ use frame_support::{
 use sp_std::prelude::*;
 use frame_system::{self as system, ensure_signed};
 
+use df_traits::moderation::IsAccountBlocked;
 use pallet_spaces::{Module as Spaces, SpaceById, SpaceIdsByOwner};
-use pallet_utils::{SpaceId, vec_remove_on};
+use pallet_utils::{Error as UtilsError, SpaceId, vec_remove_on};
 
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait
@@ -72,7 +73,7 @@ decl_module! {
       space.ensure_space_owner(who.clone())?;
 
       ensure!(who != transfer_to, Error::<T>::CannotTranferToCurrentOwner);
-      Spaces::<T>::ensure_space_exists(space_id)?;
+      ensure!(!T::IsAccountBlocked::is_account_blocked(transfer_to.clone(), space_id), UtilsError::<T>::AccountIsBlocked);
 
       <PendingSpaceOwner<T>>::insert(space_id, transfer_to.clone());
 
@@ -92,6 +93,8 @@ decl_module! {
 
       // Here we know that the origin is eligible to become a new owner of this space.
       <PendingSpaceOwner<T>>::remove(space_id);
+
+      Spaces::maybe_transfer_handle_deposit_to_new_space_owner(&space, &new_owner)?;
 
       let old_owner = space.owner;
       space.owner = new_owner.clone();
