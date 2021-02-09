@@ -1,6 +1,6 @@
 [package]
 name = 'pallet-session-keys'
-version = '0.4.0'
+version = '0.5.0'
 authors = ['DappForce <dappforce@pm.me>']
 edition = '2018'
 license = 'GPL-3.0-only'
@@ -64,9 +64,9 @@ version = '2.0.0-rc4'
 [dependencies.pallet-utils]
 default-features = false
 path = '../utils'
-version = '0.4.0'
+version = '0.5.0'
 
 [dependencies.pallet-permissions]
 default-features = false
 path = '../permissions'
-version = '0.4.0'
+version = '0.5.0'
