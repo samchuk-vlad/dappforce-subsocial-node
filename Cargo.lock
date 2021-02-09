@@ -872,7 +872,7 @@ dependencies = [
 
 [[package]]
 name = "df-integration-tests"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -901,7 +901,7 @@ dependencies = [
 
 [[package]]
 name = "df-traits"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "frame-support",
  "pallet-permissions",
@@ -3147,7 +3147,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-faucets"
-version = "0.2.0"
+version = "0.5.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3199,7 +3199,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-moderation"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "df-traits",
  "frame-support",
@@ -3219,7 +3219,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-permissions"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3231,7 +3231,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-post-history"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3245,7 +3245,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-posts"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "df-traits",
  "frame-support",
@@ -3261,7 +3261,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-profile-follows"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3273,7 +3273,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-profile-history"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3286,7 +3286,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-profiles"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3313,7 +3313,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-reactions"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "df-traits",
  "frame-support",
@@ -3329,7 +3329,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-roles"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "df-traits",
  "frame-support",
@@ -3362,7 +3362,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-scores"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3401,7 +3401,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-space-follows"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "df-traits",
  "frame-support",
@@ -3415,7 +3415,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-space-history"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3428,7 +3428,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-space-ownership"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "df-traits",
  "frame-support",
@@ -3441,7 +3441,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-spaces"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "df-traits",
  "frame-support",
@@ -3531,7 +3531,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-utils"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -6257,7 +6257,7 @@ dependencies = [
 
 [[package]]
 name = "subsocial-node"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "futures 0.3.5",
  "hex-literal",
@@ -6288,7 +6288,7 @@ dependencies = [
 
 [[package]]
 name = "subsocial-runtime"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "frame-executive",
  "frame-support",
