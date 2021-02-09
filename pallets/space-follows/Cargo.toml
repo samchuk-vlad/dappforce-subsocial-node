@@ -50,19 +50,15 @@ version = '2.0.0-rc4'
 [dependencies.pallet-utils]
 default-features = false
 path = '../utils'
-version = '0.5.0'
 
 [dependencies.df-traits]
 default-features = false
 path = '../traits'
-version = '0.5.0'
 
 [dependencies.pallet-profiles]
 default-features = false
 path = '../profiles'
-version = '0.5.0'
 
 [dependencies.pallet-spaces]
 default-features = false
 path = '../spaces'
-version = '0.5.0'
