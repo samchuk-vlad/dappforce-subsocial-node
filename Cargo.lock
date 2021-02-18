@@ -6298,6 +6298,7 @@ dependencies = [
  "pallet-balances",
  "pallet-faucets",
  "pallet-grandpa",
+ "pallet-moderation",
  "pallet-permissions",
  "pallet-post-history",
  "pallet-posts",
