@@ -1,4 +1,4 @@
-//! The Substrate Node Template runtime. This can be compiled with `#[no_std]`, ready for Wasm.
+//! The Subsocial Node runtime.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
@@ -372,7 +372,7 @@ impl pallet_posts::Trait for Runtime {
 	type MaxCommentDepth = MaxCommentDepth;
 	type PostScores = Scores;
 	type AfterPostUpdated = PostHistory;
-	type IsPostBlocked = Moderation;
+	type IsPostBlocked = ()/*Moderation*/;
 }
 
 parameter_types! {}
@@ -523,7 +523,6 @@ impl session_keys::Trait for Runtime {
 impl pallet_donations::Trait for Runtime {
 	type Event = Event;
 }
-*/
 
 parameter_types! {
 	pub const DefaultAutoblockThreshold: u16 = 20;
@@ -534,7 +533,6 @@ impl pallet_moderation::Trait for Runtime {
 	type DefaultAutoblockThreshold = DefaultAutoblockThreshold;
 }
 
-/*
 parameter_types! {
 	pub const DailyPeriodInBlocks: BlockNumber = DAYS;
 	pub const WeeklyPeriodInBlocks: BlockNumber = DAYS * 7;
@@ -598,7 +596,7 @@ construct_runtime!(
 
 		Faucets: pallet_faucets::{Module, Call, Storage, Event<T>},
 		// SessionKeys: session_keys::{Module, Call, Storage, Event<T>},
-		Moderation: pallet_moderation::{Module, Call, Storage, Event<T>},
+		// Moderation: pallet_moderation::{Module, Call, Storage, Event<T>},
 		// Donations: pallet_donations::{Module, Call, Storage, Event<T>},
 		// Subscriptions: pallet_subscriptions::{Module, Call, Storage, Event<T>},
 	}
