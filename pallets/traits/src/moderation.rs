@@ -29,7 +29,7 @@ pub trait IsPostBlocked {
 impl IsPostBlocked for () {
     type PostId = u64;
 
-    fn is_post_blocked(_post_id: Self::PostId, _scope: u64) -> bool {
+    fn is_post_blocked(_post_id: Self::PostId, _scope: SpaceId) -> bool {
         false
     }
 }

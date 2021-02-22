@@ -44,7 +44,7 @@ std = [
     'pallet-space-follows/std',
     'pallet-space-ownership/std',
     'pallet-space-history/std',
-    'session-keys/std',
+#    'session-keys/std',
 #    'pallet-subscriptions/std',
     'pallet-utils/std',
 ]

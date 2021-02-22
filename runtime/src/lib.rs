@@ -513,7 +513,7 @@ impl Filter<Call> for SessionKeysProxyFilter {
 	}
 }
 
-impl session_keys::Trait for Runtime {
+/*impl session_keys::Trait for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type MaxSessionKeysPerAccount = MaxSessionKeysPerAccount;
@@ -528,6 +528,7 @@ parameter_types! {
 	pub const DefaultAutoblockThreshold: u16 = 20;
 }
 
+/*
 impl pallet_moderation::Trait for Runtime {
 	type Event = Event;
 	type DefaultAutoblockThreshold = DefaultAutoblockThreshold;
