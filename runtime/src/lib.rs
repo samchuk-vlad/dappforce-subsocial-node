@@ -485,10 +485,10 @@ impl pallet_space_history::Trait for Runtime {}
 pub struct BaseFilter;
 impl Filter<Call> for BaseFilter {
 	fn filter(c: &Call) -> bool {
-		// let is_set_balance = matches!(c, Call::Balances(balances::Call::set_balance(..)));
-		// let is_force_transfer = matches!(c, Call::Balances(balances::Call::force_transfer(..)));
+		let is_set_balance = matches!(c, Call::Balances(balances::Call::set_balance(..)));
+		let is_force_transfer = matches!(c, Call::Balances(balances::Call::force_transfer(..)));
 		match *c {
-			// Call::Balances(..) => is_set_balance || is_force_transfer,
+			Call::Balances(..) => is_set_balance || is_force_transfer,
 			_ => true,
 		}
 	}
@@ -514,7 +514,7 @@ impl Filter<Call> for SessionKeysProxyFilter {
 	}
 }
 
-impl session_keys::Trait for Runtime {
+impl pallet_session_keys::Trait for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type MaxSessionKeysPerAccount = MaxSessionKeysPerAccount;
@@ -597,7 +597,7 @@ construct_runtime!(
 		// New experimental pallets. Not recommended to use in production yet.
 
 		Faucets: pallet_faucets::{Module, Call, Storage, Event<T>},
-		// SessionKeys: session_keys::{Module, Call, Storage, Event<T>},
+		// SessionKeys: pallet_session_keys::{Module, Call, Storage, Event<T>},
 		// Moderation: pallet_moderation::{Module, Call, Storage, Event<T>},
 		// Donations: pallet_donations::{Module, Call, Storage, Event<T>},
 		// Subscriptions: pallet_subscriptions::{Module, Call, Storage, Event<T>},
