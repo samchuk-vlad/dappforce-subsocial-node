@@ -78,12 +78,10 @@ path = '../utils'
 [dependencies.pallet-spaces]
 default-features = false
 path = '../spaces'
-version = '0.4.0'
 
 [dependencies.pallet-space-follows]
 default-features = false
 path = '../space-follows'
-version = '0.4.0'
 
 [dependencies.pallet-permissions]
 default-features = false
@@ -114,7 +112,6 @@ path = "../roles"
 [dev-dependencies.df-traits]
 default-features = false
 path = '../traits'
-version = '0.4.0'
 
 [dev-dependencies.pallet-balances]
 default-features = false

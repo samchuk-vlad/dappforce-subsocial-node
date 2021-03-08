@@ -341,6 +341,11 @@ impl<T: Trait> Module<T> {
         let old_space_id = post.get_space_id()?;
         let new_space = Spaces::<T>::require_space(new_space_id)?;
 
+        ensure!(
+            T::IsAccountBlocked::is_account_blocked(editor.clone(), new_space_id),
+            UtilsError::<T>::AccountIsBlocked
+        );
+
         Spaces::ensure_account_has_space_permission(
             editor,
             &new_space,
@@ -348,7 +353,11 @@ impl<T: Trait> Module<T> {
             Error::<T>::NoPermissionToCreatePosts.into()
         )?;
 
-        // TODO check whether post and its content are not blocked within a new space
+        ensure!(T::IsPostBlocked::is_post_blocked(post.id, new_space_id), UtilsError::<T>::PostIsBlocked);
+        ensure!(
+            T::IsContentBlocked::is_content_blocked(post.content.clone(), new_space_id),
+            UtilsError::<T>::ContentIsBlocked
+        );
 
         match post.extension {
             PostExtension::RegularPost | PostExtension::SharedPost(_) => {

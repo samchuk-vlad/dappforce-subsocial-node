@@ -1,8 +1,5 @@
 use crate::{SpacePermission as SP, SpacePermissions, SpacePermissionSet};
 
-#[allow(unused_imports)]
-use sp_std::prelude::*;
-
 use sp_std::iter::FromIterator;
 use frame_support::parameter_types;
 

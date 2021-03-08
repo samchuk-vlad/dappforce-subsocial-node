@@ -17,17 +17,17 @@ use pallet_spaces::{Space, SpaceById};
 use pallet_posts::{Post, PostId, PostById, PostExtension};
 
 impl_outer_origin! {
-	pub enum Origin for Test {}
+    pub enum Origin for Test {}
 }
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct Test;
 
 parameter_types! {
-	pub const BlockHashCount: u64 = 250;
-	pub const MaximumBlockWeight: Weight = 1024;
-	pub const MaximumBlockLength: u32 = 2 * 1024;
-	pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+    pub const BlockHashCount: u64 = 250;
+    pub const MaximumBlockWeight: Weight = 1024;
+    pub const MaximumBlockLength: u32 = 2 * 1024;
+    pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
 }
 
 impl system::Trait for Test {
@@ -58,7 +58,7 @@ impl system::Trait for Test {
 }
 
 parameter_types! {
-  pub const MinimumPeriod: u64 = 5;
+    pub const MinimumPeriod: u64 = 5;
 }
 
 impl pallet_timestamp::Trait for Test {
@@ -68,8 +68,8 @@ impl pallet_timestamp::Trait for Test {
 }
 
 parameter_types! {
-  pub const MinHandleLen: u32 = 5;
-  pub const MaxHandleLen: u32 = 50;
+    pub const MinHandleLen: u32 = 5;
+    pub const MaxHandleLen: u32 = 50;
 }
 
 impl pallet_utils::Trait for Test {
@@ -80,8 +80,8 @@ impl pallet_utils::Trait for Test {
 }
 
 parameter_types! {
-        pub const ExistentialDeposit: u64 = 1;
-    }
+    pub const ExistentialDeposit: u64 = 1;
+}
 
 impl pallet_balances::Trait for Test {
     type Balance = u64;
@@ -97,8 +97,6 @@ impl pallet_permissions::Trait for Test {
     type DefaultSpacePermissions = DefaultSpacePermissions;
 }
 
-parameter_types! {}
-
 impl pallet_spaces::Trait for Test {
     type Event = ();
     type Currency = Balances;
@@ -111,8 +109,6 @@ impl pallet_spaces::Trait for Test {
     type HandleDeposit = ();
 }
 
-parameter_types! {}
-
 impl pallet_space_follows::Trait for Test {
     type Event = ();
     type BeforeSpaceFollowed = ();
@@ -120,8 +116,8 @@ impl pallet_space_follows::Trait for Test {
 }
 
 parameter_types! {
-        pub const MaxCommentDepth: u32 = 10;
-    }
+    pub const MaxCommentDepth: u32 = 10;
+}
 
 impl pallet_posts::Trait for Test {
     type Event = ();
@@ -132,8 +128,8 @@ impl pallet_posts::Trait for Test {
 }
 
 parameter_types! {
-        pub const MaxUsersToProcessPerDeleteRole: u16 = 40;
-    }
+    pub const MaxUsersToProcessPerDeleteRole: u16 = 40;
+}
 
 impl pallet_roles::Trait for Test {
     type Event = ();
@@ -144,15 +140,13 @@ impl pallet_roles::Trait for Test {
     type IsContentBlocked = Moderation;
 }
 
-parameter_types! {}
-
 impl pallet_profiles::Trait for Test {
     type Event = ();
     type AfterProfileUpdated = ();
 }
 
 parameter_types! {
-	pub const DefaultAutoblockThreshold: u16 = 20;
+    pub const DefaultAutoblockThreshold: u16 = 20;
 }
 
 impl Trait for Test {
