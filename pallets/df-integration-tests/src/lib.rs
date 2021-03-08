@@ -1,5 +1,3 @@
-#![cfg_attr(not(feature = "std"), no_std)]
-
 #[cfg(test)]
 mod tests {
     use frame_support::{
@@ -11,7 +9,6 @@ mod tests {
     };
     use sp_core::H256;
     use sp_io::TestExternalities;
-    use sp_std::iter::FromIterator;
     use sp_runtime::{
         traits::{BlakeTwo256, IdentityLookup},
         testing::Header,
@@ -960,7 +957,7 @@ mod tests {
     }
     /* ---------------------------------------------------------------------------------------------- */
     // Moderation pallet mocks
-    pub(crate) const REPORT1: ReportId = 1;
+    const REPORT1: ReportId = 1;
 
     pub(crate) fn valid_content_ipfs_1() -> Content {
         Content::IPFS(b"QmRAQB6YaCaidP37UdDnjFY5aQuiBrbqdyoW1CaDgwxkD4".to_vec())
@@ -1044,7 +1041,8 @@ mod tests {
                     None,
                     Some(Some(SPACE1)),
                     Some(Some(space_handle1())),
-                    Some(space_content_ipfs())
+                    Some(space_content_ipfs()),
+                    None,
                 ), UtilsError::<TestRuntime>::ContentIsBlocked
             );
         });
@@ -1066,7 +1064,8 @@ mod tests {
                     None,
                     Some(Some(SPACE1)),
                     Some(Some(space_handle1())),
-                    None
+                    None,
+                    None,
                 ), UtilsError::<TestRuntime>::AccountIsBlocked
             );
         });
@@ -1915,7 +1914,7 @@ mod tests {
     #[test]
     fn move_post_should_work() {
         ExtBuilder::build_with_post().execute_with(|| {
-            assert_ok!(_create_space(None, None, Some(None), None));
+            assert_ok!(_create_space(None, None, Some(None), None, None));
             assert_ok!(_create_default_post_reaction());
             assert_ok!(_move_default_post());
 
@@ -1942,7 +1941,7 @@ mod tests {
     #[test]
     fn move_hidden_post_should_work() {
         ExtBuilder::build_with_post().execute_with(|| {
-            assert_ok!(_create_space(None, None, Some(None), None));
+            assert_ok!(_create_space(None, None, Some(None), None, None));
             assert_ok!(_create_default_post_reaction());
             assert_ok!(_update_post(
                 None,
@@ -1995,7 +1994,7 @@ mod tests {
     #[test]
     fn move_hidden_post_should_fail_no_permission_to_create_post() {
         ExtBuilder::build_with_post().execute_with(|| {
-            assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), None, Some(None), None));
+            assert_ok!(_create_space(Some(Origin::signed(ACCOUNT2)), None, Some(None), None, None));
             assert_noop!(
                 _move_default_post(),
                 PostsError::<TestRuntime>::NoPermissionToCreatePosts
@@ -2006,7 +2005,7 @@ mod tests {
     #[test]
     fn move_hidden_post_should_fail_cannot_move_comment() {
         ExtBuilder::build_with_comment().execute_with(|| {
-            assert_ok!(_create_space(None, None, Some(None), None));
+            assert_ok!(_create_space(None, None, Some(None), None, None));
 
             assert_noop!(
                 _move_post(None, Some(POST2), None),

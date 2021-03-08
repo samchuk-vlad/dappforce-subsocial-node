@@ -21,8 +21,6 @@ use frame_system as system;
 use pallet_permissions::{
     SpacePermission,
     SpacePermission as SP,
-    SpacePermissions,
-    SpacePermissionSet
 };
 use df_traits::{SpaceForRoles, SpaceFollowsProvider, SpaceForRolesProvider};
 use pallet_utils::{SpaceId, User, Content};

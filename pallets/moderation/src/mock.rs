@@ -101,13 +101,14 @@ parameter_types! {}
 
 impl pallet_spaces::Trait for Test {
     type Event = ();
+    type Currency = Balances;
     type Roles = Roles;
     type SpaceFollows = SpaceFollows;
     type BeforeSpaceCreated = SpaceFollows;
     type AfterSpaceUpdated = ();
     type IsAccountBlocked = Moderation;
     type IsContentBlocked = Moderation;
-    type SpaceCreationFee = ();
+    type HandleDeposit = ();
 }
 
 parameter_types! {}
@@ -192,7 +193,7 @@ impl ExtBuilder {
         ext.execute_with(|| {
             System::set_block_number(1);
 
-            let space = Space::<Test>::new(SPACE1, None, ACCOUNT1, Content::None, None);
+            let space = Space::<Test>::new(SPACE1, None, ACCOUNT1, Content::None, None, None);
             SpaceById::insert(space.id, space);
             let post = Post::<Test>::new(
                 POST1, ACCOUNT1, Some(SPACE1), PostExtension::SharedPost(POST1), valid_content_ipfs_1());
@@ -211,7 +212,7 @@ impl ExtBuilder {
         ext.execute_with(|| {
             System::set_block_number(1);
 
-            let space = Space::<Test>::new(SPACE1, None, ACCOUNT1, Content::None, None);
+            let space = Space::<Test>::new(SPACE1, None, ACCOUNT1, Content::None, None, None);
             SpaceById::insert(space.id, space);
             let post = Post::<Test>::new(
                 POST1,
