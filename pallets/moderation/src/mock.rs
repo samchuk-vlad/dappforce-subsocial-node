@@ -190,7 +190,8 @@ impl ExtBuilder {
             let space = Space::<Test>::new(SPACE1, None, ACCOUNT1, Content::None, None, None);
             SpaceById::insert(space.id, space);
             let post = Post::<Test>::new(
-                POST1, ACCOUNT1, Some(SPACE1), PostExtension::SharedPost(POST1), valid_content_ipfs_1());
+                POST1, ACCOUNT1, Some(SPACE1), PostExtension::SharedPost(POST1), valid_content_ipfs_1()
+            );
             PostById::insert(post.id, post);
         });
 
