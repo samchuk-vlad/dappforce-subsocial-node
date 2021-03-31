@@ -144,4 +144,34 @@ std = [
 #    'session-keys/std',
 #    'pallet-subscriptions/std',
     'pallet-utils/std',
+    'space-follows-runtime-api/std',
+    'spaces-runtime-api/std',
+    'posts-runtime-api/std',
+    'reactions-runtime-api/std',
+    'profile-follows-runtime-api/std',
+    'profiles-runtime-api/std',
 ]
+
+[dependencies.space-follows-runtime-api]
+default-features = false
+path = '../pallets/space-follows/rpc/runtime-api'
+
+[dependencies.spaces-runtime-api]
+default-features = false
+path = '../pallets/spaces/rpc/runtime-api'
+
+[dependencies.posts-runtime-api]
+default-features = false
+path = '../pallets/posts/rpc/runtime-api'
+
+[dependencies.profile-follows-runtime-api]
+default-features = false
+path = '../pallets/profile-follows/rpc/runtime-api'
+
+[dependencies.profiles-runtime-api]
+default-features = false
+path = '../pallets/profiles/rpc/runtime-api'
+
+[dependencies.reactions-runtime-api]
+default-features = false
+path = '../pallets/reactions/rpc/runtime-api'
