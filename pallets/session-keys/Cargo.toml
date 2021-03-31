@@ -32,7 +32,7 @@ std = [
 [dependencies.serde]
 optional = true
 features = ["derive"]
-version = "1.0.101"
+version = "1.0.119"
 
 [dependencies.codec]
 default-features = false
