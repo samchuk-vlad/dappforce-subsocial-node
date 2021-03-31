@@ -183,7 +183,7 @@ decl_error! {
         /// Entity status is already as suggested one.
         SuggestedSameEntityStatus,
         /// Provided entity scope does not exist.
-        InvalidScope,
+        ScopeNotFound,
         /// Account does not have a permission to suggest a new entity status.
         NoPermissionToSuggestEntityStatus,
         /// Account does not have a permission to update an entity status.
@@ -233,7 +233,7 @@ decl_module! {
             
             Utils::<T>::is_valid_content(reason.clone())?;
 
-            ensure!(Spaces::<T>::require_space(scope).is_ok(), Error::<T>::InvalidScope);
+            ensure!(Spaces::<T>::require_space(scope).is_ok(), Error::<T>::ScopeNotFound);
             Self::ensure_entity_in_scope(&entity, scope)?;
 
             let not_reported_yet = Self::report_id_by_account((&entity, &who)).is_none();
@@ -258,7 +258,7 @@ decl_module! {
         pub fn suggest_entity_status(
             origin,
             entity: EntityId<T::AccountId>,
-            scope: SpaceId,
+            scope: SpaceId, // TODO make scope as Option, but either scope or report_id_opt should be Some
             status: Option<EntityStatus>,
             report_id_opt: Option<ReportId>
         ) -> DispatchResult {
@@ -272,7 +272,7 @@ decl_module! {
             let entity_status = StatusByEntityInSpace::<T>::get(&entity, scope);
             ensure!(!(entity_status.is_some() && status == entity_status), Error::<T>::SuggestedSameEntityStatus);
 
-            let space = Spaces::<T>::require_space(scope).map_err(|_| Error::<T>::InvalidScope)?;
+            let space = Spaces::<T>::require_space(scope).map_err(|_| Error::<T>::ScopeNotFound)?;
             Spaces::<T>::ensure_account_has_space_permission(
                 who.clone(),
                 &space,
@@ -318,7 +318,7 @@ decl_module! {
             // TODO: add `forbid_content` parameter and track entity Content blocking via OCW
             //  - `forbid_content` - whether to block `Content` provided with entity.
 
-            let space = Spaces::<T>::require_space(scope).map_err(|_| Error::<T>::InvalidScope)?;
+            let space = Spaces::<T>::require_space(scope).map_err(|_| Error::<T>::ScopeNotFound)?;
             Self::ensure_account_status_manager(who.clone(), &space)?;
 
             if let Some(status) = &status_opt {
@@ -349,7 +349,7 @@ decl_module! {
             let status = Self::status_by_entity_in_space(&entity, scope);
             ensure!(status.is_some(), Error::<T>::EntityHasNoStatusInScope);
 
-            let space = Spaces::<T>::require_space(scope).map_err(|_| Error::<T>::InvalidScope)?;
+            let space = Spaces::<T>::require_space(scope).map_err(|_| Error::<T>::ScopeNotFound)?;
             Self::ensure_account_status_manager(who.clone(), &space)?;
 
             StatusByEntityInSpace::<T>::remove(&entity, scope);

@@ -98,6 +98,8 @@ decl_error! {
   }
 }
 
+pub const RESERVED_SPACE_COUNT: u64 = 1000;
+
 // This pallet's storage items.
 decl_storage! {
     trait Store for Module<T: Trait> as SpacesModule {
@@ -107,7 +109,7 @@ decl_storage! {
         pub SpaceById get(fn space_by_id) build(|config: &GenesisConfig<T>| {
           let mut spaces: Vec<(SpaceId, Space<T>)> = Vec::new();
           let endowed_account = config.endowed_account.clone();
-          for id in 1..=1000 {
+          for id in 1..=RESERVED_SPACE_COUNT {
             spaces.push((id, Space::<T>::new(id, None, endowed_account.clone(), Content::None, None, None)));
           }
           spaces
