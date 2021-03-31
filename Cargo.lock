@@ -1176,6 +1176,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "df-integration-tests"
+version = "0.6.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "pallet-moderation",
+ "pallet-permissions",
+ "pallet-post-history",
+ "pallet-posts",
+ "pallet-profile-follows",
+ "pallet-profile-history",
+ "pallet-profiles",
+ "pallet-reactions",
+ "pallet-roles",
+ "pallet-scores",
+ "pallet-space-follows",
+ "pallet-space-history",
+ "pallet-space-ownership",
+ "pallet-spaces",
+ "pallet-timestamp",
+ "pallet-utils",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "df-traits"
 version = "0.6.0"
 dependencies = [
@@ -3802,6 +3832,29 @@ dependencies = [
  "sp-runtime",
  "sp-session",
  "sp-staking",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-moderation"
+version = "0.6.0"
+dependencies = [
+ "df-traits",
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "pallet-permissions",
+ "pallet-posts",
+ "pallet-profiles",
+ "pallet-roles",
+ "pallet-space-follows",
+ "pallet-spaces",
+ "pallet-timestamp",
+ "pallet-utils",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
  "sp-std",
 ]
 
