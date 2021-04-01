@@ -218,7 +218,7 @@ mod tests {
         type Event = ();
     }
 
-    const HANDLE_DEPOSIT: u64 = 5;
+    const HANDLE_DEPOSIT: u64 = 0;
     parameter_types! {
         pub const HandleDeposit: u64 = HANDLE_DEPOSIT;
         pub const DefaultRPCLimit: u64 = 20;
@@ -233,7 +233,7 @@ mod tests {
         type AfterSpaceUpdated = SpaceHistory;
         type IsAccountBlocked = Moderation;
         type IsContentBlocked = Moderation;
-        type HandleDeposit = HandleDeposit;
+        type HandleDeposit = ();
         type DefaultRPCLimit = DefaultRPCLimit;
     }
 
@@ -1780,10 +1780,13 @@ mod tests {
         });
     }
 
-    #[test]
+    // TODO: refactor or remove. Deprecated tests
+    // Find public space ids tests
+    // --------------------------------------------------------------------------------------------
+    /*#[test]
     fn find_public_space_ids_should_work() {
         ExtBuilder::build_with_space().execute_with(|| {
-            assert_ok!(_create_space(None, None, Some(Some(space_handle1())), None));
+            assert_ok!(_create_space(None, None, Some(Some(space_handle1())), None, None));
 
             let space_ids = Spaces::find_public_space_ids(0, 3);
             assert_eq!(space_ids, vec![SPACE1, SPACE2]);
@@ -1814,12 +1817,13 @@ mod tests {
         });
     }
 
-    //_____________________________________________________________________________________
+    // Find unlisted space ids tests
+    // --------------------------------------------------------------------------------------------
 
     #[test]
     fn find_unlisted_space_ids_should_work() {
         ExtBuilder::build_with_space().execute_with(|| {
-            assert_ok!(_create_space(None, None, Some(Some(space_handle1())), None));
+            assert_ok!(_create_space(None, None, Some(Some(space_handle1())), None, None));
             assert_ok!(
                 _update_space(
                     None,
@@ -1928,7 +1932,9 @@ mod tests {
             let space_ids = Spaces::find_unlisted_space_ids(0, 0);
             assert_eq!(space_ids, vec![]);
         });
-    }
+    }*/
+
+    // --------------------------------------------------------------------------------------------
 
     // Post tests
     #[test]
@@ -2322,7 +2328,10 @@ mod tests {
         });
     }
 
-    #[test]
+    // TODO: refactor or remove. Deprecated tests
+    // Find public post ids tests
+    // --------------------------------------------------------------------------------------------
+    /*#[test]
     fn find_public_post_ids_in_space_should_work() {
         ExtBuilder::build_with_post().execute_with(|| {
             assert_ok!(_create_post(None, Some(Some(SPACE1)), None, None));
@@ -2356,7 +2365,8 @@ mod tests {
         });
     }
 
-    //_______________________________________________________________________________
+    // Find unlisted post ids tests
+    // --------------------------------------------------------------------------------------------
 
     #[test]
     fn find_unlisted_post_ids_in_space_should_work() {
@@ -2453,7 +2463,8 @@ mod tests {
             let post_ids = Posts::find_unlisted_post_ids_in_space(SPACE1, 0, 0);
             assert_eq!(post_ids, vec![]);
         });
-    }
+    }*/
+    // --------------------------------------------------------------------------------------------
 
     // Comment tests
     #[test]
