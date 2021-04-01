@@ -14,9 +14,9 @@ sp_api::decl_runtime_apis! {
     {
         fn get_posts_by_ids(post_ids: Vec<PostId>) -> Vec<FlatPost<AccountId, BlockNumber>>;
     
-        fn get_public_posts_by_space(space_id: SpaceId, offset: u64, limit: u64) -> Vec<FlatPost<AccountId, BlockNumber>>;
+        fn get_public_posts_by_space(space_id: SpaceId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>>;
     
-        fn get_unlisted_posts_by_space(space_id: SpaceId, offset: u64, limit: u64) -> Vec<FlatPost<AccountId, BlockNumber>>;
+        fn get_unlisted_posts_by_space(space_id: SpaceId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>>;
     
         fn get_reply_ids_by_post_id(post_id: PostId) -> Vec<PostId>;
     

@@ -27,7 +27,7 @@ pub trait PostsApi<BlockHash, AccountId, BlockNumber> {
         at: Option<BlockHash>,
         space_id: SpaceId,
         offset: u64,
-        limit: u64,
+        limit: u16,
     ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>>;
 
     #[rpc(name = "posts_getUnlistedPostsBySpace")]
@@ -36,7 +36,7 @@ pub trait PostsApi<BlockHash, AccountId, BlockNumber> {
         at: Option<BlockHash>,
         space_id: SpaceId,
         offset: u64,
-        limit: u64,
+        limit: u16,
     ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>>;
 
     #[rpc(name = "posts_getReplyIdsByPostId")]
@@ -113,7 +113,7 @@ for Posts<C, Block>
         at: Option<<Block as BlockT>::Hash>,
         space_id: u64,
         offset: u64,
-        limit: u64,
+        limit: u16,
     ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
@@ -127,7 +127,7 @@ for Posts<C, Block>
         at: Option<<Block as BlockT>::Hash>,
         space_id: u64,
         offset: u64,
-        limit: u64,
+        limit: u16,
     ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));

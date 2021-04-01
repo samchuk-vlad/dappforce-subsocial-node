@@ -718,8 +718,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
-		for Runtime {
+	impl pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance> for Runtime {
 		fn query_info(
 			uxt: <Block as BlockT>::Extrinsic,
 			len: u32,
@@ -824,11 +823,11 @@ impl_runtime_apis! {
 			Posts::get_posts_by_ids(post_ids)
 		}
 
-		fn get_public_posts_by_space(space_id: SpaceId, offset: u64, limit: u64) -> Vec<FlatPost<AccountId, BlockNumber>> {
+		fn get_public_posts_by_space(space_id: SpaceId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>> {
 			Posts::get_public_posts_by_space(space_id, offset, limit)
 		}
 
-		fn get_unlisted_posts_by_space(space_id: SpaceId, offset: u64, limit: u64) -> Vec<FlatPost<AccountId, BlockNumber>> {
+		fn get_unlisted_posts_by_space(space_id: SpaceId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>> {
 			Posts::get_unlisted_posts_by_space(space_id, offset, limit)
 		}
 
