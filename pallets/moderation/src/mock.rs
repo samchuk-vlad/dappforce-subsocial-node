@@ -12,9 +12,9 @@ use sp_runtime::{
 use frame_system as system;
 use sp_io::TestExternalities;
 
-use pallet_utils::{Content, SpaceId};
+use pallet_utils::{Content, SpaceId, PostId};
 use pallet_spaces::{Space, SpaceById};
-use pallet_posts::{Post, PostId, PostById, PostExtension};
+use pallet_posts::{Post, PostById, PostExtension};
 
 impl_outer_origin! {
     pub enum Origin for Test {}

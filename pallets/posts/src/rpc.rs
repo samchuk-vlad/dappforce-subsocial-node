@@ -3,7 +3,7 @@ use codec::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::iter::FromIterator;
-use sp_std::prelude::*;
+use sp_std::{vec, prelude::*};
 
 use pallet_spaces::Module as Spaces;
 use pallet_utils::{from_bool_to_option, PostId, rpc::{FlatContent, FlatWhoAndWhen}, SpaceId};

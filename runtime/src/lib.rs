@@ -8,7 +8,10 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-use sp_std::prelude::*;
+use sp_std::{
+	prelude::*,
+	collections::btree_map::BTreeMap,
+};
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
     ApplyExtrinsicResult, generic, create_runtime_str, impl_opaque_keys, MultiSignature,
