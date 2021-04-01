@@ -102,6 +102,10 @@ impl pallet_permissions::Trait for Test {
     type DefaultSpacePermissions = DefaultSpacePermissions;
 }
 
+parameter_types! {
+    pub const DefaultRPCLimit: u64 = 20;
+}
+
 impl pallet_spaces::Trait for Test {
     type Event = ();
     type Currency = Balances;
@@ -112,6 +116,7 @@ impl pallet_spaces::Trait for Test {
     type IsAccountBlocked = Moderation;
     type IsContentBlocked = Moderation;
     type HandleDeposit = ();
+    type DefaultRPCLimit = DefaultRPCLimit;
 }
 
 impl pallet_space_follows::Trait for Test {
@@ -152,10 +157,6 @@ impl pallet_profiles::Trait for Test {
 
 parameter_types! {
     pub const DefaultAutoblockThreshold: u16 = 20;
-}
-
-parameter_types! {
-	pub const DefaultAutoblockThreshold: u16 = 20;
 }
 
 impl Trait for Test {
