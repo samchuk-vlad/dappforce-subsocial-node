@@ -170,6 +170,8 @@ decl_module! {
 
         const MaxSessionKeysPerAccount: u16 = T::MaxSessionKeysPerAccount::get();
 
+        // TODO Alex: think about this approach. I think it's not right. 
+        //      What if a person will spend more than their had before the extrinsic?
         const BaseSessionKeyBond: BalanceOf<T> = T::BaseSessionKeyBond::get();
 
         // Initializing errors
