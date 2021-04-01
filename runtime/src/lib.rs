@@ -850,6 +850,10 @@ impl_runtime_apis! {
 		fn get_next_post_id() -> PostId {
 			Posts::get_next_post_id()
 		}
+
+		fn get_feed(account: AccountId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>> {
+			Posts::get_feed(account, offset, limit)
+		}
     }
 
 	impl profile_follows_runtime_api::ProfileFollowsApi<Block, AccountId> for Runtime

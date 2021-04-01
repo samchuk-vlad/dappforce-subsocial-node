@@ -79,6 +79,7 @@ impl Default for PostExtension {
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait
     + pallet_utils::Trait
+    + pallet_space_follows::Trait
     + pallet_spaces::Trait
 {
     /// The overarching event type.

@@ -5,6 +5,7 @@ use sp_std::collections::btree_map::BTreeMap;
 use sp_std::iter::FromIterator;
 use sp_std::{vec, prelude::*};
 
+use pallet_space_follows::Module as SpaceFollows;
 use pallet_spaces::Module as Spaces;
 use pallet_utils::{from_bool_to_option, PostId, rpc::{FlatContent, FlatWhoAndWhen}, SpaceId};
 
@@ -206,5 +207,16 @@ impl<T: Trait> Module<T> {
 
     pub fn get_next_post_id() -> PostId {
         Self::next_post_id()
+    }
+
+    pub fn get_feed(account: T::AccountId, offset: u64, limit: u16) -> Vec<FlatPost<T::AccountId, T::BlockNumber>> {
+        let mut post_ids: Vec<PostId> = SpaceFollows::<T>::spaces_followed_by_account(account)
+            .iter()
+            .flat_map(|space_id| Self::post_ids_by_space_id(space_id))
+            .collect();
+
+        post_ids.sort_by(|a, b| b.cmp(a));
+
+        Self::get_posts_slice(post_ids, offset, limit, |post| post.is_public() && !post.is_comment())
     }
 }

@@ -67,6 +67,15 @@ pub trait PostsApi<BlockHash, AccountId, BlockNumber> {
 
     #[rpc(name = "posts_nextPostId")]
     fn get_next_post_id(&self, at: Option<BlockHash>) -> Result<PostId>;
+
+    #[rpc(name = "posts_getFeed")]
+    fn get_feed(
+        &self,
+        at: Option<BlockHash>,
+        account: AccountId,
+        offset: u64,
+        limit: u16,
+    ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>>;
 }
 
 pub struct Posts<C, M> {
@@ -173,6 +182,20 @@ where
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
         let runtime_api_result = api.get_next_post_id(&at);
+        runtime_api_result.map_err(map_rpc_error)
+    }
+
+    fn get_feed(
+        &self,
+        at: Option<<Block as BlockT>::Hash>,
+        account: AccountId,
+        offset: u64,
+        limit: u16
+    ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
+
+        let runtime_api_result = api.get_feed(&at, account, offset, limit);
         runtime_api_result.map_err(map_rpc_error)
     }
 }

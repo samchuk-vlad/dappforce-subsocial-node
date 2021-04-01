@@ -21,6 +21,7 @@ std = [
     'sp-std/std',
     'df-traits/std',
     'pallet-permissions/std',
+    'pallet-space-follows/std',
     'pallet-spaces/std',
     'pallet-utils/std',
 ]
@@ -42,6 +43,7 @@ impl-trait-for-tuples = '0.1.3'
 # Local dependencies
 df-traits = { default-features = false, path = '../traits' }
 pallet-permissions = { default-features = false, path = '../permissions' }
+pallet-space-follows = { default-features = false, path = '../space-follows' }
 pallet-spaces = { default-features = false, path = '../spaces' }
 pallet-utils = { default-features = false, path = '../utils' }
 

@@ -27,5 +27,7 @@ sp_api::decl_runtime_apis! {
         fn get_unlisted_post_ids_by_space(space_id: SpaceId) -> Vec<PostId>;
 
         fn get_next_post_id() -> PostId;
+
+        fn get_feed(account: AccountId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>>;
     }
 }
