@@ -1,16 +1,14 @@
 use std::sync::Arc;
-
 use codec::Codec;
+use sp_blockchain::HeaderBackend;
+use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
 use jsonrpc_derive::rpc;
 use sp_api::ProvideRuntimeApi;
-use sp_blockchain::HeaderBackend;
-use sp_runtime::generic::BlockId;
-use sp_runtime::traits::Block as BlockT;
 
 use pallet_spaces::rpc::FlatSpace;
 use pallet_utils::SpaceId;
-use spaces_runtime_api::SpacesApi as SpacesRuntimeApi;
+pub use spaces_runtime_api::SpacesApi as SpacesRuntimeApi;
 
 #[rpc]
 pub trait SpacesApi<BlockHash, AccountId, BlockNumber> {
@@ -92,15 +90,13 @@ impl<C, M> Spaces<C, M> {
 }
 
 impl<C, Block, AccountId, BlockNumber> SpacesApi<<Block as BlockT>::Hash, AccountId, BlockNumber>
-for Spaces<C, Block>
-    where
-        Block: BlockT,
-        AccountId: Codec,
-        BlockNumber: Codec,
-        C: Send + Sync + 'static,
-        C: ProvideRuntimeApi<Block>,
-        C: HeaderBackend<Block>,
-        C::Api: SpacesRuntimeApi<Block, AccountId, BlockNumber>,
+    for Spaces<C, Block>
+where
+    Block: BlockT,
+    AccountId: Codec,
+    BlockNumber: Codec,
+    C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
+    C::Api: SpacesRuntimeApi<Block, AccountId, BlockNumber>,
 {
     fn get_spaces(
         &self,
@@ -198,6 +194,7 @@ for Spaces<C, Block>
     }
 }
 
+// TODO: move this copy-paste code to a common file
 fn map_rpc_error(err: impl std::fmt::Debug) -> RpcError {
     RpcError {
         code: ErrorCode::ServerError(1),

@@ -1,19 +1,17 @@
-use std::collections::BTreeMap;
-use std::sync::Arc;
-
+use std::{sync::Arc, collections::BTreeMap};
 use codec::Codec;
+use sp_blockchain::HeaderBackend;
+use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
 use jsonrpc_derive::rpc;
 use sp_api::ProvideRuntimeApi;
-use sp_blockchain::HeaderBackend;
-use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 
 use pallet_reactions::{
     ReactionId,
     rpc::FlatReaction,
 };
 use pallet_utils::PostId;
-use reactions_runtime_api::ReactionsApi as ReactionsRuntimeApi;
+pub use reactions_runtime_api::ReactionsApi as ReactionsRuntimeApi;
 
 #[rpc]
 pub trait ReactionsApi<BlockHash, AccountId, BlockNumber> {
@@ -57,15 +55,13 @@ impl<C, M> Reactions<C, M> {
 }
 
 impl<C, Block, AccountId, BlockNumber> ReactionsApi<<Block as BlockT>::Hash, AccountId, BlockNumber>
-for Reactions<C, Block>
-    where
-        Block: BlockT,
-        AccountId: Codec,
-        BlockNumber: Codec,
-        C: Send + Sync + 'static,
-        C: ProvideRuntimeApi<Block>,
-        C: HeaderBackend<Block>,
-        C::Api: ReactionsRuntimeApi<Block, AccountId, BlockNumber>,
+    for Reactions<C, Block>
+where
+    Block: BlockT,
+    AccountId: Codec,
+    BlockNumber: Codec,
+    C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
+    C::Api: ReactionsRuntimeApi<Block, AccountId, BlockNumber>,
 {
     fn get_reactions_by_ids(
         &self,
@@ -107,6 +103,7 @@ for Reactions<C, Block>
     }
 }
 
+// TODO: move this copy-paste code to a common file
 fn map_rpc_error(err: impl std::fmt::Debug) -> RpcError {
     RpcError {
         code: ErrorCode::ServerError(1),

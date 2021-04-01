@@ -1,14 +1,13 @@
 use std::sync::Arc;
-
 use codec::Codec;
+use sp_blockchain::HeaderBackend;
+use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
 use jsonrpc_derive::rpc;
 use sp_api::ProvideRuntimeApi;
-use sp_blockchain::HeaderBackend;
-use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 
 use pallet_utils::SpaceId;
-use space_follows_runtime_api::SpaceFollowsApi as SpaceFollowsRuntimeApi;
+pub use space_follows_runtime_api::SpaceFollowsApi as SpaceFollowsRuntimeApi;
 
 #[rpc]
 pub trait SpaceFollowsApi<BlockHash, AccountId> {
@@ -43,14 +42,12 @@ impl<C, M> SpaceFollows<C, M> {
 }
 
 impl<C, Block, AccountId> SpaceFollowsApi<<Block as BlockT>::Hash, AccountId>
-for SpaceFollows<C, Block>
-    where
-        Block: BlockT,
-        AccountId: Codec,
-        C: Send + Sync + 'static,
-        C: ProvideRuntimeApi<Block>,
-        C: HeaderBackend<Block>,
-        C::Api: SpaceFollowsRuntimeApi<Block, AccountId>,
+    for SpaceFollows<C, Block>
+where
+    Block: BlockT,
+    AccountId: Codec,
+    C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
+    C::Api: SpaceFollowsRuntimeApi<Block, AccountId>,
 {
     fn get_space_ids_followed_by_account(
         &self,
@@ -78,6 +75,7 @@ for SpaceFollows<C, Block>
     }
 }
 
+// TODO: move this copy-paste code to a common file
 fn map_rpc_error(err: impl std::fmt::Debug) -> RpcError {
     RpcError {
         code: ErrorCode::ServerError(1),

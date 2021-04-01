@@ -1,14 +1,13 @@
 use std::sync::Arc;
-
 use codec::Codec;
+use sp_blockchain::HeaderBackend;
+use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
 use jsonrpc_derive::rpc;
 use sp_api::ProvideRuntimeApi;
-use sp_blockchain::HeaderBackend;
-use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 
 use pallet_profiles::rpc::FlatSocialAccount;
-use profiles_runtime_api::ProfilesApi as ProfilesRuntimeApi;
+pub use profiles_runtime_api::ProfilesApi as ProfilesRuntimeApi;
 
 #[rpc]
 pub trait ProfilesApi<BlockHash, AccountId, BlockNumber> {
@@ -35,15 +34,13 @@ impl<C, M> Profiles<C, M> {
 }
 
 impl<C, Block, AccountId, BlockNumber> ProfilesApi<<Block as BlockT>::Hash, AccountId, BlockNumber>
-for Profiles<C, Block>
-    where
-        Block: BlockT,
-        AccountId: Codec,
-        BlockNumber: Codec,
-        C: Send + Sync + 'static,
-        C: ProvideRuntimeApi<Block>,
-        C: HeaderBackend<Block>,
-        C::Api: ProfilesRuntimeApi<Block, AccountId, BlockNumber>,
+    for Profiles<C, Block>
+where
+    Block: BlockT,
+    AccountId: Codec,
+    BlockNumber: Codec,
+    C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
+    C::Api: ProfilesRuntimeApi<Block, AccountId, BlockNumber>,
 {
     fn get_social_accounts_by_ids(&self, at: Option<<Block as BlockT>::Hash>, account_ids: Vec<AccountId>) -> Result<Vec<FlatSocialAccount<AccountId, BlockNumber>>> {
         let api = self.client.runtime_api();
@@ -54,6 +51,7 @@ for Profiles<C, Block>
     }
 }
 
+// TODO: move this copy-paste code to a common file
 fn map_rpc_error(err: impl std::fmt::Debug) -> RpcError {
     RpcError {
         code: ErrorCode::ServerError(1),

@@ -1,13 +1,12 @@
 use std::sync::Arc;
-
 use codec::Codec;
+use sp_blockchain::HeaderBackend;
+use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
 use jsonrpc_derive::rpc;
 use sp_api::ProvideRuntimeApi;
-use sp_blockchain::HeaderBackend;
-use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 
-use profile_follows_runtime_api::ProfileFollowsApi as ProfileFollowsRuntimeApi;
+pub use profile_follows_runtime_api::ProfileFollowsApi as ProfileFollowsRuntimeApi;
 
 #[rpc]
 pub trait ProfileFollowsApi<BlockHash, AccountId> {
@@ -35,14 +34,12 @@ impl<C, M> ProfileFollows<C, M> {
 }
 
 impl<C, Block, AccountId> ProfileFollowsApi<<Block as BlockT>::Hash, AccountId>
-for ProfileFollows<C, Block>
-    where
-        Block: BlockT,
-        AccountId: Codec,
-        C: Send + Sync + 'static,
-        C: ProvideRuntimeApi<Block>,
-        C: HeaderBackend<Block>,
-        C::Api: ProfileFollowsRuntimeApi<Block, AccountId>,
+    for ProfileFollows<C, Block>
+where
+    Block: BlockT,
+    AccountId: Codec,
+    C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
+    C::Api: ProfileFollowsRuntimeApi<Block, AccountId>,
 {
     fn filter_followed_accounts(
         &self, at:
@@ -58,6 +55,7 @@ for ProfileFollows<C, Block>
     }
 }
 
+// TODO: move this copy-paste code to a common file
 fn map_rpc_error(err: impl std::fmt::Debug) -> RpcError {
     RpcError {
         code: ErrorCode::ServerError(1),

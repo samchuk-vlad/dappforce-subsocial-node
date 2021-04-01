@@ -1,16 +1,14 @@
-use std::collections::BTreeMap;
-use std::sync::Arc;
-
+use std::{sync::Arc, collections::BTreeMap};
 use codec::Codec;
+use sp_blockchain::HeaderBackend;
+use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
 use jsonrpc_derive::rpc;
 use sp_api::ProvideRuntimeApi;
-use sp_blockchain::HeaderBackend;
-use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 
 use pallet_posts::rpc::FlatPost;
 use pallet_utils::{PostId, SpaceId};
-use posts_runtime_api::PostsApi as PostsRuntimeApi;
+pub use posts_runtime_api::PostsApi as PostsRuntimeApi;
 
 #[rpc]
 pub trait PostsApi<BlockHash, AccountId, BlockNumber> {
@@ -86,15 +84,13 @@ impl<C, M> Posts<C, M> {
 }
 
 impl<C, Block, AccountId, BlockNumber> PostsApi<<Block as BlockT>::Hash, AccountId, BlockNumber>
-for Posts<C, Block>
-    where
-        Block: BlockT,
-        AccountId: Codec,
-        BlockNumber: Codec,
-        C: Send + Sync + 'static,
-        C: ProvideRuntimeApi<Block>,
-        C: HeaderBackend<Block>,
-        C::Api: PostsRuntimeApi<Block, AccountId, BlockNumber>,
+    for Posts<C, Block>
+where
+    Block: BlockT,
+    AccountId: Codec,
+    BlockNumber: Codec,
+    C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
+    C::Api: PostsRuntimeApi<Block, AccountId, BlockNumber>,
 {
     fn get_posts_by_ids(
         &self,
@@ -181,6 +177,7 @@ for Posts<C, Block>
     }
 }
 
+// TODO: move this copy-paste code to a common file
 fn map_rpc_error(err: impl std::fmt::Debug) -> RpcError {
     RpcError {
         code: ErrorCode::ServerError(1),
