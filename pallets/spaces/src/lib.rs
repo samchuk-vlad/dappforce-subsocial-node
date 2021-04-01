@@ -386,6 +386,8 @@ impl<T: Trait> Space<T> {
     pub fn is_public(&self) -> bool {
         !self.clone().hidden && !self.content.is_none()
     }
+
+    // TODO: make not_public function
 }
 
 impl Default for SpaceUpdate {

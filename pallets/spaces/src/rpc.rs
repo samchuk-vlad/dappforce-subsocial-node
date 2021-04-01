@@ -81,7 +81,7 @@ impl<T: Trait> Module<T> {
     fn get_spaces_slice<F: FnMut(&Space<T>) -> bool>(
         offset: u64,
         limit: u64,
-        mut compare_fn: F,
+        mut filter: F,
     ) -> Vec<FlatSpace<T::AccountId, T::BlockNumber>> {
         let mut start_from = offset;
         let mut iterate_until = offset;
@@ -92,14 +92,17 @@ impl<T: Trait> Module<T> {
         'outer: loop {
             iterate_until = iterate_until.saturating_add(limit);
 
-            if start_from > last_space_id { break; }
+            if start_from > last_space_id {
+                break;
+            }
+
             if iterate_until > last_space_id {
                 iterate_until = last_space_id;
             }
 
             for space_id in start_from..=iterate_until {
                 if let Some(space) = Self::require_space(space_id).ok() {
-                    if compare_fn(&space) {
+                    if filter(&space) {
                         spaces.push(space.into());
                         if spaces.len() >= limit as usize { break 'outer; }
                     }
