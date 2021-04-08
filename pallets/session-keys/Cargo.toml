@@ -24,9 +24,7 @@ std = [
     'sp-std/std',
     'transaction-payment/std',
     'pallet-utils/std',
-    'pallet-spaces/std',
-    'pallet-space-follows/std',
-    'pallet-permissions/std',
+    'pallet-profile-follows/std',
 ]
 
 [dependencies.serde]
@@ -75,17 +73,9 @@ version = '2.0.1'
 default-features = false
 path = '../utils'
 
-[dependencies.pallet-spaces]
+[dependencies.pallet-profile-follows]
 default-features = false
-path = '../spaces'
-
-[dependencies.pallet-space-follows]
-default-features = false
-path = '../space-follows'
-
-[dependencies.pallet-permissions]
-default-features = false
-path = '../permissions'
+path = '../profile-follows'
 
 [dev-dependencies.sp-core]
 default-features = false
@@ -104,14 +94,6 @@ default-features = false
 git = 'https://github.com/paritytech/substrate.git'
 tag = 'v2.0.1'
 version = '2.0.1'
-
-[dev-dependencies.pallet-roles]
-default-features = false
-path = "../roles"
-
-[dev-dependencies.df-traits]
-default-features = false
-path = '../traits'
 
 [dev-dependencies.pallet-balances]
 default-features = false

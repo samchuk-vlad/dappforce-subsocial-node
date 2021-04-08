@@ -13,8 +13,8 @@ use frame_system as system;
 use sp_io::TestExternalities;
 
 use pallet_utils::{Content, SpaceId};
-use pallet_spaces::{Space, SpaceById};
-use pallet_posts::{Post, PostId, PostById, PostExtension};
+use pallet_spaces::{RESERVED_SPACE_COUNT, SpaceById};
+use pallet_posts::{PostId, PostExtension};
 
 impl_outer_origin! {
     pub enum Origin for Test {}
@@ -164,10 +164,10 @@ pub(crate) type Moderation = Module<Test>;
 type SpaceFollows = pallet_space_follows::Module<Test>;
 type Balances = pallet_balances::Module<Test>;
 type Spaces = pallet_spaces::Module<Test>;
+type Posts = pallet_posts::Module<Test>;
 type Roles = pallet_roles::Module<Test>;
 
 pub type AccountId = u64;
-pub type AutoblockThreshold = u16;
 
 pub struct ExtBuilder;
 
@@ -191,19 +191,13 @@ impl ExtBuilder {
         let mut ext = TestExternalities::from(storage);
         ext.execute_with(|| {
             System::set_block_number(1);
-
-            let space = Space::<Test>::new(SPACE1, None, ACCOUNT1, Content::None, None, None);
-            SpaceById::insert(space.id, space);
-            let post = Post::<Test>::new(
-                POST1, ACCOUNT1, Some(SPACE1), PostExtension::SharedPost(POST1), valid_content_ipfs_1()
-            );
-            PostById::insert(post.id, post);
+            create_space_and_post();
         });
 
         ext
     }
 
-    pub fn build_with_report_no_space() -> TestExternalities {
+    pub fn build_with_space_and_post_then_report() -> TestExternalities {
         let storage = system::GenesisConfig::default()
             .build_storage::<Test>()
             .unwrap();
@@ -212,18 +206,24 @@ impl ExtBuilder {
         ext.execute_with(|| {
             System::set_block_number(1);
 
-            let space = Space::<Test>::new(SPACE1, None, ACCOUNT1, Content::None, None, None);
-            SpaceById::insert(space.id, space);
-            let post = Post::<Test>::new(
-                POST1,
-                ACCOUNT1,
-                Some(SPACE1),
-                PostExtension::SharedPost(POST1),
-                valid_content_ipfs_1(),
-            );
-            PostById::insert(post.id, post);
+            create_space_and_post();
+            assert_ok!(_report_default_post());
+        });
 
-            assert_ok!(_report_default_entity());
+        ext
+    }
+
+    pub fn build_with_report_then_remove_scope() -> TestExternalities {
+        let storage = system::GenesisConfig::default()
+            .build_storage::<Test>()
+            .unwrap();
+
+        let mut ext = TestExternalities::from(storage);
+        ext.execute_with(|| {
+            System::set_block_number(1);
+
+            create_space_and_post();
+            assert_ok!(_report_default_post());
 
             SpaceById::<Test>::remove(SPACE1);
         });
@@ -232,16 +232,20 @@ impl ExtBuilder {
     }
 }
 
-pub(crate) const ACCOUNT1: AccountId = 1;
-pub(crate) const ACCOUNT2: AccountId = 2;
+pub(crate) const ACCOUNT_SCOPE_OWNER: AccountId = 1;
+pub(crate) const ACCOUNT_NOT_MODERATOR: AccountId = 2;
+
+pub(crate) const SPACE1: SpaceId = RESERVED_SPACE_COUNT + 1;
+pub(crate) const SPACE2: SpaceId = SPACE1 + 1;
+
 pub(crate) const POST1: PostId = 1;
-pub(crate) const SPACE1: SpaceId = 1;
-pub(crate) const SPACE2: SpaceId = 2;
+
 pub(crate) const REPORT1: ReportId = 1;
 pub(crate) const REPORT2: ReportId = 2;
-pub(crate) const AUTOBLOCK_THRESHOLD: AutoblockThreshold = 5;
 
+pub(crate) const AUTOBLOCK_THRESHOLD: u16 = 5;
 
+// TODO export to pallet utils
 pub(crate) fn valid_content_ipfs_1() -> Content {
     Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
 }
@@ -250,7 +254,7 @@ pub(crate) fn invalid_content_ipfs() -> Content {
     Content::IPFS(b"QmRAQB6DaazhR8".to_vec())
 }
 
-pub(crate) const fn default_moderation_settings_update() -> SpaceModerationSettingsUpdate {
+pub(crate) const fn new_autoblock_threshold() -> SpaceModerationSettingsUpdate {
     SpaceModerationSettingsUpdate {
         autoblock_threshold: Some(Some(AUTOBLOCK_THRESHOLD))
     }
@@ -262,7 +266,24 @@ pub(crate) const fn empty_moderation_settings_update() -> SpaceModerationSetting
     }
 }
 
-pub(crate) fn _report_default_entity() -> DispatchResult {
+pub(crate) fn create_space_and_post() {
+    assert_ok!(Spaces::create_space(
+        Origin::signed(ACCOUNT_SCOPE_OWNER),
+        None,
+        None,
+        Content::None,
+        None
+    ));
+
+    assert_ok!(Posts::create_post(
+        Origin::signed(ACCOUNT_SCOPE_OWNER),
+        Some(SPACE1),
+        PostExtension::RegularPost,
+        valid_content_ipfs_1(),
+    ));
+}
+
+pub(crate) fn _report_default_post() -> DispatchResult {
     _report_entity(None, None, None, None)
 }
 
@@ -273,14 +294,14 @@ pub(crate) fn _report_entity(
     reason: Option<Content>,
 ) -> DispatchResult {
     Moderation::report_entity(
-        origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
+        origin.unwrap_or_else(|| Origin::signed(ACCOUNT_SCOPE_OWNER)),
         entity.unwrap_or(EntityId::Post(POST1)),
         scope.unwrap_or(SPACE1),
         reason.unwrap_or_else(|| self::valid_content_ipfs_1()),
     )
 }
 
-pub(crate) fn _suggest_default_entity_status() -> DispatchResult {
+pub(crate) fn _suggest_blocked_status_for_post() -> DispatchResult {
     _suggest_entity_status(None, None, None, None, None)
 }
 
@@ -292,7 +313,7 @@ pub(crate) fn _suggest_entity_status(
     report_id_opt: Option<Option<ReportId>>,
 ) -> DispatchResult {
     Moderation::suggest_entity_status(
-        origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
+        origin.unwrap_or_else(|| Origin::signed(ACCOUNT_SCOPE_OWNER)),
         entity.unwrap_or(EntityId::Post(POST1)),
         scope.unwrap_or(SPACE1),
         status.unwrap_or(Some(EntityStatus::Blocked)),
@@ -300,7 +321,7 @@ pub(crate) fn _suggest_entity_status(
     )
 }
 
-pub(crate) fn _update_default_entity_status() -> DispatchResult {
+pub(crate) fn _update_post_status_to_allowed() -> DispatchResult {
     _update_entity_status(None, None, None, None)
 }
 
@@ -311,14 +332,14 @@ pub(crate) fn _update_entity_status(
     status_opt: Option<Option<EntityStatus>>,
 ) -> DispatchResult {
     Moderation::update_entity_status(
-        origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
+        origin.unwrap_or_else(|| Origin::signed(ACCOUNT_SCOPE_OWNER)),
         entity.unwrap_or(EntityId::Post(POST1)),
         scope.unwrap_or(SPACE1),
         status_opt.unwrap_or(Some(EntityStatus::Allowed)),
     )
 }
 
-pub(crate) fn _delete_default_entity_status() -> DispatchResult {
+pub(crate) fn _delete_post_status() -> DispatchResult {
     _delete_entity_status(None, None, None)
 }
 
@@ -328,13 +349,13 @@ pub(crate) fn _delete_entity_status(
     scope: Option<SpaceId>,
 ) -> DispatchResult {
     Moderation::delete_entity_status(
-        origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
+        origin.unwrap_or_else(|| Origin::signed(ACCOUNT_SCOPE_OWNER)),
         entity.unwrap_or(EntityId::Post(POST1)),
         scope.unwrap_or(SPACE1),
     )
 }
 
-pub(crate) fn _update_default_moderation_settings() -> DispatchResult {
+pub(crate) fn _update_autoblock_threshold_in_moderation_settings() -> DispatchResult {
     _update_moderation_settings(None, None, None)
 }
 
@@ -344,9 +365,9 @@ pub(crate) fn _update_moderation_settings(
     settings_update: Option<SpaceModerationSettingsUpdate>,
 ) -> DispatchResult {
     Moderation::update_moderation_settings(
-        origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
+        origin.unwrap_or_else(|| Origin::signed(ACCOUNT_SCOPE_OWNER)),
         space_id.unwrap_or(SPACE1),
-        settings_update.unwrap_or_else(|| default_moderation_settings_update()),
+        settings_update.unwrap_or_else(|| new_autoblock_threshold()),
     )
 }
 

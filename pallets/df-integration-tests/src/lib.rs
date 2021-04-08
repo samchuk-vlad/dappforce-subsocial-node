@@ -965,11 +965,12 @@ mod tests {
     #[allow(dead_code)]
     const REPORT1: ReportId = 1;
 
+    // TODO export to pallet utils
     pub(crate) fn valid_content_ipfs_1() -> Content {
         Content::IPFS(b"QmRAQB6YaCaidP37UdDnjFY5aQuiBrbqdyoW1CaDgwxkD4".to_vec())
     }
 
-    pub(crate) fn _report_default_entity() -> DispatchResult {
+    pub(crate) fn _report_default_post() -> DispatchResult {
         _report_entity(None, None, None, None)
     }
 

@@ -6,17 +6,17 @@ use pallet_balances::Error as BalancesError;
 #[test]
 fn add_key_should_work() {
     ExtBuilder::build_with_balance().execute_with(|| {
-        let initial_account_balance = Balances::free_balance(ACCOUNT1);
+        let initial_account_balance = Balances::free_balance(ACCOUNT_MAIN);
 
         assert_ok!(_add_default_key());
 
-        let keys = SessionKeys::key_details(ACCOUNT2).unwrap();
-        assert_eq!(keys.created.account, ACCOUNT1);
-        assert_eq!(keys.expires_at, BLOCK_NUMBER + 1);
+        let keys = SessionKeys::key_details(ACCOUNT_PROXY).unwrap();
+        assert_eq!(keys.created.account, ACCOUNT_MAIN);
+        assert_eq!(keys.expires_at, BLOCKS_TO_LIVE + 1);
         assert_eq!(keys.limit, Some(DEFAULT_SESSION_KEY_BALANCE));
 
-        let account_balance_after_key_created = Balances::free_balance(ACCOUNT1);
-        let session_key_balance = Balances::free_balance(ACCOUNT2);
+        let account_balance_after_key_created = Balances::free_balance(ACCOUNT_MAIN);
+        let session_key_balance = Balances::free_balance(ACCOUNT_PROXY);
         assert_eq!(session_key_balance, DEFAULT_SESSION_KEY_BALANCE);
         assert_eq!(account_balance_after_key_created, initial_account_balance - session_key_balance);
     });
@@ -93,15 +93,15 @@ fn add_key_should_fail_with_insufficient_balance() {
 #[test]
 fn remove_key_should_work() {
     ExtBuilder::build_with_balance().execute_with(|| {
-        let initial_balance = Balances::free_balance(ACCOUNT1);
+        let initial_balance = Balances::free_balance(ACCOUNT_MAIN);
 
         assert_ok!(_add_default_key());
         assert_ok!(_remove_default_key());
 
-        let returned_balance = Balances::free_balance(ACCOUNT1);
+        let returned_balance = Balances::free_balance(ACCOUNT_MAIN);
 
-        assert!(SessionKeys::keys_by_owner(ACCOUNT1).is_empty());
-        assert!(SessionKeys::key_details(ACCOUNT2).is_none());
+        assert!(SessionKeys::keys_by_owner(ACCOUNT_MAIN).is_empty());
+        assert!(SessionKeys::key_details(ACCOUNT_PROXY).is_none());
         assert_eq!(initial_balance, returned_balance);
     });
 }
@@ -119,7 +119,7 @@ fn remove_key_should_fail_with_not_session_key_owner() {
         assert_ok!(_add_default_key());
         assert_noop!(
             _remove_key(
-                Some(Origin::signed(ACCOUNT2)),
+                Some(Origin::signed(ACCOUNT_PROXY)),
                 None
             ), Error::<Test>::NotASessionKeyOwner
         );
@@ -131,15 +131,15 @@ fn remove_key_should_fail_with_not_session_key_owner() {
 #[test]
 fn remove_keys_should_work() {
     ExtBuilder::build_with_balance().execute_with(|| {
-        let initial_balance = Balances::free_balance(ACCOUNT1);
+        let initial_balance = Balances::free_balance(ACCOUNT_MAIN);
 
         assert_ok!(_add_default_key());
         assert_ok!(_remove_default_keys());
 
-        let returned_balance = Balances::free_balance(ACCOUNT1);
+        let returned_balance = Balances::free_balance(ACCOUNT_MAIN);
 
-        assert!(SessionKeys::keys_by_owner(ACCOUNT1).is_empty());
-        assert!(SessionKeys::key_details(ACCOUNT2).is_none());
+        assert!(SessionKeys::keys_by_owner(ACCOUNT_MAIN).is_empty());
+        assert!(SessionKeys::key_details(ACCOUNT_PROXY).is_none());
         assert_eq!(initial_balance, returned_balance);
     });
 }
@@ -150,16 +150,16 @@ fn remove_keys_should_work() {
 fn proxy_should_work() {
     ExtBuilder::build_with_balance().execute_with(|| {
         assert_ok!(_add_default_key());
-        let account_balance_after_key_created = Balances::free_balance(ACCOUNT1);
+        let account_balance_after_key_created = Balances::free_balance(ACCOUNT_MAIN);
 
         assert_ok!(_default_proxy());
-        let account_balance_after_call = Balances::free_balance(ACCOUNT1);
+        let account_balance_after_call = Balances::free_balance(ACCOUNT_MAIN);
 
-        let call_fees = SessionKeys::get_extrinsic_fees(Box::new(create_space_proxy_call()));
+        let call_fees = SessionKeys::get_extrinsic_fees(Box::new(follow_account_proxy_call()));
         let balance_should_be = account_balance_after_key_created - call_fees;
         assert_eq!(account_balance_after_call, balance_should_be);
 
-        let details = SessionKeys::key_details(ACCOUNT2).unwrap();
+        let details = SessionKeys::key_details(ACCOUNT_PROXY).unwrap();
         assert_eq!(details.spent, call_fees);
     });
 }
