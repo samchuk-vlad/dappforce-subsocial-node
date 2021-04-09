@@ -303,7 +303,7 @@ path = '../pallets/utils'
 
 [package]
 name = 'subsocial-runtime'
-version = '0.5.0'
+version = '0.5.1'
 authors = ['DappForce <dappforce@pm.me>']
 edition = '2018'
 license = 'GPL-3.0-only'
