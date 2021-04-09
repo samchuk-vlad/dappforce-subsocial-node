@@ -13,6 +13,7 @@ categories = ['cryptography::cryptocurrencies']
 [features]
 default = ['std']
 std = [
+    'serde',
     'codec/std',
     'frame-support/std',
     'frame-system/std',
@@ -30,6 +31,8 @@ package = 'parity-scale-codec'
 version = '2.0.0'
 
 [dependencies]
+serde = { features = ['derive'], optional = true, version = '1.0.119' }
+
 # Local dependencies
 df-traits = { default-features = false, path = '../traits' }
 pallet-permissions = { default-features = false, path = '../permissions' }
