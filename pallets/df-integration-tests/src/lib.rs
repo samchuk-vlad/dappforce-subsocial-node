@@ -32,7 +32,6 @@ mod tests {
     use pallet_space_ownership::Error as SpaceOwnershipError;
     use pallet_moderation::{EntityId, EntityStatus, ReportId};
     use pallet_utils::{SpaceId, Error as UtilsError, User, Content, Module as Utils};
-    use sp_runtime::traits::Zero;
 
     impl_outer_origin! {
         pub enum Origin for TestRuntime {}
@@ -69,10 +68,11 @@ mod tests {
         type MaximumBlockLength = MaximumBlockLength;
         type AvailableBlockRatio = AvailableBlockRatio;
         type Version = ();
-        type ModuleToIndex = ();
+        type PalletInfo = ();
         type AccountData = pallet_balances::AccountData<u64>;
         type OnNewAccount = ();
         type OnKilledAccount = ();
+        type SystemWeightInfo = ();
     }
 
     parameter_types! {
@@ -83,10 +83,12 @@ mod tests {
         type Moment = u64;
         type OnTimestampSet = ();
         type MinimumPeriod = MinimumPeriod;
+        type WeightInfo = ();
     }
 
     parameter_types! {
         pub const ExistentialDeposit: u64 = 1;
+        pub const MaxLocks: u32 = 50;
     }
 
     impl pallet_balances::Trait for TestRuntime {
@@ -95,6 +97,8 @@ mod tests {
         type Event = ();
         type ExistentialDeposit = ExistentialDeposit;
         type AccountStore = System;
+        type WeightInfo = ();
+        type MaxLocks = MaxLocks;
     }
 
     parameter_types! {
@@ -957,13 +961,16 @@ mod tests {
     }
     /* ---------------------------------------------------------------------------------------------- */
     // Moderation pallet mocks
+    // FIXME: remove until linter error is fixed
+    #[allow(dead_code)]
     const REPORT1: ReportId = 1;
 
+    // TODO export to pallet utils
     pub(crate) fn valid_content_ipfs_1() -> Content {
         Content::IPFS(b"QmRAQB6YaCaidP37UdDnjFY5aQuiBrbqdyoW1CaDgwxkD4".to_vec())
     }
 
-    pub(crate) fn _report_default_entity() -> DispatchResult {
+    pub(crate) fn _report_default_post() -> DispatchResult {
         _report_entity(None, None, None, None)
     }
 
@@ -1516,7 +1523,7 @@ mod tests {
 
             // Check that the handle deposit has been unreserved:
             let reserved_balance = Balances::reserved_balance(ACCOUNT1);
-            assert_eq!(reserved_balance, Zero::zero());
+            assert_eq!(reserved_balance, 0u64);
         });
     }
 

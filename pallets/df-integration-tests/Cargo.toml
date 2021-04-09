@@ -13,29 +13,21 @@ categories = ['cryptography::cryptocurrencies']
 [features]
 default = ['std']
 std = [
-    'sp-runtime/std',
+    'codec/std',
     'frame-support/std',
     'frame-system/std',
     'pallet-balances/std',
-    'sp-io/std',
-    'sp-std/std',
-#    'pallet-moderation/std',
     'pallet-timestamp/std',
-    'pallet-permissions/std',
-    'pallet-posts/std',
-    'pallet-post-history/std',
-    'pallet-profiles/std',
-    'pallet-profile-history/std',
-    'pallet-profile-follows/std',
-    'pallet-reactions/std',
-    'pallet-roles/std',
-    'pallet-scores/std',
-    'pallet-spaces/std',
-    'pallet-space-follows/std',
-    'pallet-space-history/std',
-    'pallet-space-ownership/std',
-    'pallet-utils/std'
+    'sp-runtime/std',
+    'sp-std/std',
+    'sp-io/std',
 ]
+
+[dependencies.codec]
+default-features = false
+features = ['derive']
+package = 'parity-scale-codec'
+version = '2.0.0'
 
 [dependencies]
 frame-support = { default-features = false, version = '3.0.0' }

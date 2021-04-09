@@ -342,7 +342,7 @@ impl<T: Config> Module<T> {
         let new_space = Spaces::<T>::require_space(new_space_id)?;
 
         ensure!(
-            T::IsAccountBlocked::is_account_blocked(editor.clone(), new_space_id),
+            !T::IsAccountBlocked::is_account_blocked(editor.clone(), new_space_id),
             UtilsError::<T>::AccountIsBlocked
         );
 
@@ -353,9 +353,9 @@ impl<T: Config> Module<T> {
             Error::<T>::NoPermissionToCreatePosts.into()
         )?;
 
-        ensure!(T::IsPostBlocked::is_post_blocked(post.id, new_space_id), UtilsError::<T>::PostIsBlocked);
+        ensure!(!T::IsPostBlocked::is_post_blocked(post.id, new_space_id), UtilsError::<T>::PostIsBlocked);
         ensure!(
-            T::IsContentBlocked::is_content_blocked(post.content.clone(), new_space_id),
+            !T::IsContentBlocked::is_content_blocked(post.content.clone(), new_space_id),
             UtilsError::<T>::ContentIsBlocked
         );
 
