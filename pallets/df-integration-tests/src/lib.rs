@@ -31,7 +31,11 @@ mod tests {
     use pallet_space_follows::Error as SpaceFollowsError;
     use pallet_space_ownership::Error as SpaceOwnershipError;
     use pallet_moderation::{EntityId, EntityStatus, ReportId};
-    use pallet_utils::{SpaceId, Error as UtilsError, User, Content, Module as Utils};
+    use pallet_utils::{
+        mock_functions::*,
+        Error as UtilsError, Module as Utils,
+        SpaceId, User, Content,
+    };
 
     impl_outer_origin! {
         pub enum Origin for TestRuntime {}
@@ -456,11 +460,6 @@ mod tests {
 
     fn space_handle1() -> Vec<u8> {
         b"space_handle2".to_vec()
-    }
-
-    /// Returns an invalid cropped IPFS CID.
-    fn invalid_ipfs_content() -> Content {
-        Content::IPFS(b"QmV9tSDx9UiPeWExXEeH6aoDvmihvx6j".to_vec())
     }
 
     fn space_content_ipfs() -> Content {
@@ -1002,11 +1001,6 @@ mod tests {
     #[allow(dead_code)]
     const REPORT1: ReportId = 1;
 
-    // TODO export to pallet utils
-    pub(crate) fn valid_content_ipfs_1() -> Content {
-        Content::IPFS(b"QmRAQB6YaCaidP37UdDnjFY5aQuiBrbqdyoW1CaDgwxkD4".to_vec())
-    }
-
     pub(crate) fn _report_default_post() -> DispatchResult {
         _report_entity(None, None, None, None)
     }
@@ -1021,7 +1015,7 @@ mod tests {
             origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
             entity.unwrap_or(EntityId::Post(POST1)),
             scope.unwrap_or(SPACE1),
-            reason.unwrap_or_else(|| valid_content_ipfs_1()),
+            reason.unwrap_or_else(|| valid_content_ipfs()),
         )
     }
 
@@ -1085,7 +1079,7 @@ mod tests {
         assert_ok!(
             _update_entity_status(
                 None,
-                Some(EntityId::Content(valid_content_ipfs_1())),
+                Some(EntityId::Content(valid_content_ipfs())),
                 Some(SPACE1),
                 Some(Some(EntityStatus::Blocked))
             )
@@ -1101,7 +1095,7 @@ mod tests {
                     None,
                     Some(Some(SPACE1)),
                     None,
-                    Some(valid_content_ipfs_1()),
+                    Some(valid_content_ipfs()),
                     None,
                 ), UtilsError::<TestRuntime>::ContentIsBlocked
             );
@@ -1148,7 +1142,7 @@ mod tests {
                     None,
                     Some(space_update(
                         None,
-                        Some(valid_content_ipfs_1()),
+                        Some(valid_content_ipfs()),
                         None
                     ))
                 ),
@@ -1166,7 +1160,7 @@ mod tests {
                     None,
                     None,
                     None,
-                    Some(valid_content_ipfs_1()),
+                    Some(valid_content_ipfs()),
                 ), UtilsError::<TestRuntime>::ContentIsBlocked
             );
         });
@@ -1181,7 +1175,7 @@ mod tests {
                     None,
                     None,
                     None,
-                    Some(valid_content_ipfs_1()),
+                    Some(valid_content_ipfs()),
                 ), UtilsError::<TestRuntime>::AccountIsBlocked
             );
         });
@@ -1198,7 +1192,7 @@ mod tests {
                     Some(
                         post_update(
                             None,
-                            Some(valid_content_ipfs_1()),
+                            Some(valid_content_ipfs()),
                             Some(true)
                         )
                     )
@@ -1218,7 +1212,7 @@ mod tests {
                     Some(
                         post_update(
                             None,
-                            Some(valid_content_ipfs_1()),
+                            Some(valid_content_ipfs()),
                             Some(true)
                         )
                     )
@@ -1405,13 +1399,11 @@ mod tests {
     #[test]
     fn create_space_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build().execute_with(|| {
-            let content_ipfs = invalid_ipfs_content();
-
             // Try to catch an error creating a space with invalid content
             assert_noop!(_create_space(
                 None,
                 None,
-                Some(content_ipfs),
+                Some(invalid_content_ipfs()),
                 None
             ), UtilsError::<TestRuntime>::InvalidIpfsCid);
         });
@@ -1421,7 +1413,7 @@ mod tests {
     fn update_space_should_work() {
         ExtBuilder::build_with_space().execute_with(|| {
             let new_handle: Vec<u8> = b"new_handle".to_vec();
-            let content_ipfs = updated_space_content();
+            let expected_content_ipfs = updated_space_content();
             // Space update with ID 1 should be fine
 
             assert_ok!(_update_space(
@@ -1430,7 +1422,7 @@ mod tests {
                 Some(
                     space_update(
                         Some(Some(new_handle.clone())),
-                        Some(content_ipfs.clone()),
+                        Some(expected_content_ipfs.clone()),
                         Some(true),
                     )
                 )
@@ -1439,7 +1431,7 @@ mod tests {
             // Check whether space updates correctly
             let space = Spaces::space_by_id(SPACE1).unwrap();
             assert_eq!(space.handle, Some(new_handle.clone()));
-            assert_eq!(space.content, content_ipfs);
+            assert_eq!(space.content, expected_content_ipfs);
             assert_eq!(space.hidden, true);
 
             // Check whether history recorded correctly
@@ -1667,7 +1659,7 @@ mod tests {
                 Some(
                     space_update(
                         None,
-                        Some(invalid_ipfs_content()),
+                        Some(invalid_content_ipfs()),
                         None,
                     )
                 )
@@ -1762,14 +1754,12 @@ mod tests {
     #[test]
     fn create_post_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build_with_space().execute_with(|| {
-            let content_ipfs = invalid_ipfs_content();
-
             // Try to catch an error creating a regular post with invalid content
             assert_noop!(_create_post(
                 None,
                 None,
                 None,
-                Some(content_ipfs)
+                Some(invalid_content_ipfs())
             ), UtilsError::<TestRuntime>::InvalidIpfsCid);
         });
     }
@@ -1803,7 +1793,7 @@ mod tests {
     #[test]
     fn update_post_should_work() {
         ExtBuilder::build_with_post().execute_with(|| {
-            let content_ipfs = updated_post_content();
+            let expected_content_ipfs = updated_post_content();
 
             // Post update with ID 1 should be fine
             assert_ok!(_update_post(
@@ -1812,7 +1802,7 @@ mod tests {
                 Some(
                     post_update(
                         None,
-                        Some(content_ipfs.clone()),
+                        Some(expected_content_ipfs.clone()),
                         Some(true)
                     )
                 )
@@ -1821,7 +1811,7 @@ mod tests {
             // Check whether post updates correctly
             let post = Posts::post_by_id(POST1).unwrap();
             assert_eq!(post.space_id, Some(SPACE1));
-            assert_eq!(post.content, content_ipfs);
+            assert_eq!(post.content, expected_content_ipfs);
             assert_eq!(post.hidden, true);
 
             // Check whether history recorded correctly
@@ -2070,8 +2060,6 @@ mod tests {
     #[test]
     fn update_post_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build_with_post().execute_with(|| {
-            let content_ipfs = invalid_ipfs_content();
-
             // Try to catch an error updating a post with invalid content
             assert_noop!(_update_post(
                 None,
@@ -2079,7 +2067,7 @@ mod tests {
                 Some(
                     post_update(
                         None,
-                        Some(content_ipfs),
+                        Some(invalid_content_ipfs()),
                         None
                     )
                 )
@@ -2193,14 +2181,12 @@ mod tests {
     #[test]
     fn create_comment_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build_with_post().execute_with(|| {
-            let content_ipfs = invalid_ipfs_content();
-
             // Try to catch an error creating a comment with wrong parent
             assert_noop!(_create_comment(
                 None,
                 None,
                 None,
-                Some(content_ipfs)
+                Some(invalid_content_ipfs())
             ), UtilsError::<TestRuntime>::InvalidIpfsCid);
         });
     }
@@ -2320,8 +2306,6 @@ mod tests {
     #[test]
     fn update_comment_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build_with_comment().execute_with(|| {
-            let content_ipfs = invalid_ipfs_content();
-
             // Try to catch an error updating a comment with invalid content
             assert_noop!(_update_comment(
                 None,
@@ -2329,7 +2313,7 @@ mod tests {
                 Some(
                     post_update(
                         None,
-                        Some(content_ipfs),
+                        Some(invalid_content_ipfs()),
                         None
                     )
                 )
@@ -3142,11 +3126,9 @@ mod tests {
     #[test]
     fn create_profile_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build().execute_with(|| {
-            let content_ipfs = invalid_ipfs_content();
-
             assert_noop!(_create_profile(
                 None,
-                Some(content_ipfs)
+                Some(invalid_content_ipfs())
             ), UtilsError::<TestRuntime>::InvalidIpfsCid);
         });
     }
@@ -3208,12 +3190,10 @@ mod tests {
     #[test]
     fn update_profile_should_fail_with_invalid_ipfs_cid() {
         ExtBuilder::build().execute_with(|| {
-            let content_ipfs = invalid_ipfs_content();
-
             assert_ok!(_create_default_profile());
             assert_noop!(_update_profile(
                 None,
-                Some(content_ipfs)
+                Some(invalid_content_ipfs())
             ), UtilsError::<TestRuntime>::InvalidIpfsCid);
         });
     }

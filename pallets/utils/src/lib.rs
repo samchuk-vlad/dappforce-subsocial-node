@@ -18,6 +18,7 @@ use frame_system::{self as system};
 
 #[cfg(test)]
 mod mock;
+pub mod mock_functions;
 
 #[cfg(test)]
 mod tests;
