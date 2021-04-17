@@ -47,7 +47,10 @@ pub struct Post<T: Trait> {
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct PostUpdate {
+    /// Deprecated: This field has no effect in `fn update_post()` extrinsic.
+    /// See `fn move_post()` extrinsic if you want to move a post to another space.
     pub space_id: Option<SpaceId>,
+
     pub content: Option<Content>,
     pub hidden: Option<bool>,
 }
@@ -146,6 +149,8 @@ decl_error! {
 
         /// Post was not found by id.
         PostNotFound,
+        /// An account is not a post owner.
+        NotAPostOwner,
         /// Nothing to update in post.
         NoUpdatesForPost,
         /// Root post should have a space id.
@@ -154,8 +159,8 @@ decl_error! {
         CannotCreateInHiddenScope,
         /// Post has no any replies
         NoRepliesOnPost,
-        /// Trying to move post to the same space.
-        MoveToTheSameSpace,
+        /// Cannot move a post to the same space.
+        CannotMoveToSameSpace,
 
         // Sharing related errors:
 
@@ -280,36 +285,7 @@ decl_module! {
 
       if let Some(space) = &space_opt {
         ensure!(!T::IsAccountBlocked::is_account_blocked(editor.clone(), space.id), UtilsError::<T>::AccountIsBlocked);
-
-        let is_owner = post.is_owner(&editor);
-        let is_comment = post.is_comment();
-
-        let permission_to_check: SpacePermission;
-        let permission_error: DispatchError;
-
-        if is_comment {
-          if is_owner {
-            permission_to_check = SpacePermission::UpdateOwnComments;
-            permission_error = Error::<T>::NoPermissionToUpdateOwnComments.into();
-          } else {
-            return Err(Error::<T>::NotACommentAuthor.into());
-          }
-        } else { // not a comment
-          if is_owner {
-            permission_to_check = SpacePermission::UpdateOwnPosts;
-            permission_error = Error::<T>::NoPermissionToUpdateOwnPosts.into();
-          } else {
-            permission_to_check = SpacePermission::UpdateAnyPost;
-            permission_error = Error::<T>::NoPermissionToUpdateAnyPost.into();
-          }
-        }
-
-        Spaces::ensure_account_has_space_permission(
-          editor.clone(),
-          space,
-          permission_to_check,
-          permission_error
-        )?;
+        Self::ensure_account_can_update_post(&editor, &post, space)?;
       }
 
       let mut is_update_applied = false;
@@ -320,7 +296,10 @@ decl_module! {
           Utils::<T>::is_valid_content(content.clone())?;
 
           if let Some(space) = &space_opt {
-              ensure!(!T::IsContentBlocked::is_content_blocked(content.clone(), space.id), UtilsError::<T>::ContentIsBlocked);
+            ensure!(
+              !T::IsContentBlocked::is_content_blocked(content.clone(), space.id),
+              UtilsError::<T>::ContentIsBlocked
+            );
           }
 
           old_data.content = Some(post.content.clone());
@@ -333,9 +312,9 @@ decl_module! {
         if hidden != post.hidden {
           space_opt = space_opt.map(|mut space| {
             if hidden {
-                space.inc_hidden_posts();
+              space.inc_hidden_posts();
             } else {
-                space.dec_hidden_posts();
+              space.dec_hidden_posts();
             }
 
             space
@@ -356,7 +335,7 @@ decl_module! {
         post.updated = Some(WhoAndWhen::<T>::new(editor.clone()));
 
         if let Some(space) = space_opt {
-            <SpaceById<T>>::insert(space.id, space);
+          <SpaceById<T>>::insert(space.id, space);
         }
 
         <PostById<T>>::insert(post.id, post.clone());
@@ -373,7 +352,13 @@ decl_module! {
 
       let post = &mut Self::require_post(post_id)?;
 
-      ensure!(new_space_id != post.space_id, Error::<T>::MoveToTheSameSpace);
+      ensure!(new_space_id != post.space_id, Error::<T>::CannotMoveToSameSpace);
+
+      if let Some(space) = post.try_get_space() {
+        Self::ensure_account_can_update_post(&who, &post, &space)?;
+      } else {
+        post.ensure_owner(&who)?;
+      }
 
       let old_space_id = post.space_id;
 
