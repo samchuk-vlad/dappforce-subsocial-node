@@ -1,6 +1,6 @@
 [package]
 name = 'pallet-space-multi-ownership'
-version = '0.5.0'
+version = '0.5.1'
 authors = ['DappForce <dappforce@pm.me>']
 edition = '2018'
 license = 'GPL-3.0-only'
@@ -16,7 +16,6 @@ std = [
     'codec/std',
     'frame-support/std',
     'sp-runtime/std',
-    'sp-io/std',
     'sp-std/std',
     'frame-system/std',
     'pallet-timestamp/std',
@@ -47,12 +46,6 @@ git = 'https://github.com/paritytech/substrate.git'
 tag = 'v2.0.0-rc4'
 version = '2.0.0-rc4'
 
-[dependencies.sp-io]
-default-features = false
-git = 'https://github.com/paritytech/substrate.git'
-tag = 'v2.0.0-rc4'
-version = '2.0.0-rc4'
-
 [dependencies.sp-std]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
@@ -68,9 +61,20 @@ version = '2.0.0-rc4'
 [dependencies.pallet-utils]
 default-features = false
 path = '../utils'
-version = '0.5.0'
 
 [dev-dependencies.sp-core]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
+
+[dev-dependencies.sp-io]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
+
+[dev-dependencies.pallet-balances]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
 tag = 'v2.0.0-rc4'

@@ -1,6 +1,6 @@
 [package]
 name = 'pallet-session-keys'
-version = '0.5.0'
+version = '0.5.1'
 authors = ['DappForce <dappforce@pm.me>']
 edition = '2018'
 license = 'GPL-3.0-only'
@@ -22,8 +22,9 @@ std = [
     'frame-support/std',
     'frame-system/std',
     'sp-std/std',
+    'transaction-payment/std',
     'pallet-utils/std',
-    'pallet-permissions/std',
+    'pallet-profile-follows/std',
 ]
 
 [dependencies.serde]
@@ -61,12 +62,45 @@ git = 'https://github.com/paritytech/substrate.git'
 tag = 'v2.0.0-rc4'
 version = '2.0.0-rc4'
 
+[dependencies.transaction-payment]
+default-features = false
+package = 'pallet-transaction-payment'
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
+
 [dependencies.pallet-utils]
 default-features = false
 path = '../utils'
-version = '0.5.0'
 
-[dependencies.pallet-permissions]
+[dependencies.pallet-profile-follows]
 default-features = false
-path = '../permissions'
-version = '0.5.0'
+path = '../profile-follows'
+
+[dev-dependencies.sp-core]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
+
+[dev-dependencies.sp-io]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
+
+[dev-dependencies.pallet-timestamp]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
+
+[dev-dependencies.pallet-balances]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
+
+[dev-dependencies.pallet-profiles]
+default-features = false
+path = "../profiles"
