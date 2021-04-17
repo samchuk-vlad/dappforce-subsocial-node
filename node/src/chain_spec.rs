@@ -65,7 +65,7 @@ pub fn development_config() -> Result<ChainSpec, String> {
                     authority_keys_from_seed("Alice"),
                 ],
                 get_account_id_from_seed::<sr25519::Public>("Alice"),
-                endowed_accounts.iter().cloned().map(|k| (k, 10_000)).collect(),
+                endowed_accounts.iter().cloned().map(|k| (k, 100_000)).collect(),
                 get_account_id_from_seed::<sr25519::Public>("Ferdie"),
                 true,
             )
@@ -101,7 +101,7 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
                     authority_keys_from_seed("Bob"),
                 ],
                 get_account_id_from_seed::<sr25519::Public>("Alice"),
-                endowed_accounts.iter().cloned().map(|k| (k, 10_000)).collect(),
+                endowed_accounts.iter().cloned().map(|k| (k, 100_000)).collect(),
                 get_account_id_from_seed::<sr25519::Public>("Ferdie"),
                 true,
             )
@@ -227,7 +227,7 @@ pub fn subsocial_properties() -> Properties {
 	let mut properties = Properties::new();
 
 	properties.insert("ss58Format".into(), 28.into());
-	properties.insert("tokenDecimals".into(), 12.into());
+	properties.insert("tokenDecimals".into(), 11.into());
 	properties.insert("tokenSymbol".into(), "SUB".into());
 
 	properties

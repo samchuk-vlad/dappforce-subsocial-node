@@ -1,8 +1,8 @@
 pub mod currency {
 	use crate::Balance;
 
-	pub const SMNS: Balance = 1_000_000_000_000;
-	pub const DOLLARS: Balance = SMNS;             // 1_000_000_000_000
+	pub const SUBS: Balance = 100_000_000_000;
+	pub const DOLLARS: Balance = SUBS;             // 100_000_000_000
 	pub const CENTS: Balance = DOLLARS / 100;      // 10_000_000_000
 	pub const MILLICENTS: Balance = CENTS / 1_000; // 10_000_000
 
