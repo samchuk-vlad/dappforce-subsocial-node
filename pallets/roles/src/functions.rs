@@ -17,7 +17,12 @@ impl<T: Trait> Module<T> {
       Ok(Self::role_by_id(role_id).ok_or(Error::<T>::RoleNotFound)?)
   }
 
+  /// Ensure that this account is not blocked and has 'ManageRoles' permission in a given space
   pub fn ensure_role_manager(account: T::AccountId, space_id: SpaceId) -> DispatchResult {
+    ensure!(
+      !T::IsAccountBlocked::is_account_blocked(account.clone(), space_id),
+      UtilsError::<T>::AccountIsBlocked
+    );
     Self::ensure_user_has_space_permission_with_load_space(
       User::Account(account),
       space_id,

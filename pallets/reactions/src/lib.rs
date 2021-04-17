@@ -176,6 +176,7 @@ decl_module! {
 
       ensure!(owner == reaction.created.account, Error::<T>::NotReactionOwner);
       ensure!(reaction.kind != new_kind, Error::<T>::SameReaction);
+
       if let Some(space_id) = post.try_get_space_id() {
         ensure!(!T::IsAccountBlocked::is_account_blocked(owner.clone(), space_id), UtilsError::<T>::AccountIsBlocked);
       }

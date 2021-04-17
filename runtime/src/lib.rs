@@ -1,4 +1,4 @@
-//! The Substrate Node Template runtime. This can be compiled with `#[no_std]`, ready for Wasm.
+//! The Subsocial Node runtime.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
@@ -109,7 +109,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("subsocial"),
 	impl_name: create_runtime_str!("dappforce-subsocial"),
 	authoring_version: 0,
-	spec_version: 8,
+	spec_version: 9,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 2,
@@ -372,6 +372,7 @@ impl pallet_posts::Trait for Runtime {
 	type MaxCommentDepth = MaxCommentDepth;
 	type PostScores = Scores;
 	type AfterPostUpdated = PostHistory;
+	type IsPostBlocked = ()/*Moderation*/;
 }
 
 parameter_types! {}
@@ -496,6 +497,7 @@ impl Filter<Call> for BaseFilter {
 /*
 parameter_types! {
 	pub const MaxSessionKeysPerAccount: u16 = 10;
+	pub const BaseSessionKeyBond: Balance = 1 * DOLLARS;
 }
 
 pub struct SessionKeysProxyFilter;
@@ -512,11 +514,12 @@ impl Filter<Call> for SessionKeysProxyFilter {
 	}
 }
 
-impl session_keys::Trait for Runtime {
+impl pallet_session_keys::Trait for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type MaxSessionKeysPerAccount = MaxSessionKeysPerAccount;
 	type BaseFilter = SessionKeysProxyFilter;
+	type BaseSessionKeyBond = BaseSessionKeyBond;
 }
 
 impl pallet_donations::Trait for Runtime {
@@ -594,7 +597,7 @@ construct_runtime!(
 		// New experimental pallets. Not recommended to use in production yet.
 
 		Faucets: pallet_faucets::{Module, Call, Storage, Event<T>},
-		// SessionKeys: session_keys::{Module, Call, Storage, Event<T>},
+		// SessionKeys: pallet_session_keys::{Module, Call, Storage, Event<T>},
 		// Moderation: pallet_moderation::{Module, Call, Storage, Event<T>},
 		// Donations: pallet_donations::{Module, Call, Storage, Event<T>},
 		// Subscriptions: pallet_subscriptions::{Module, Call, Storage, Event<T>},
