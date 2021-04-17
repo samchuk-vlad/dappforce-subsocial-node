@@ -31,6 +31,11 @@ impl<T: Trait> Post<T> {
         }
     }
 
+    pub fn ensure_owner(&self, account: &T::AccountId) -> DispatchResult {
+        ensure!(self.is_owner(account), Error::<T>::NotAPostOwner);
+        Ok(())
+    }
+
     pub fn is_owner(&self, account: &T::AccountId) -> bool {
         self.owner == *account
     }
@@ -152,6 +157,44 @@ impl Default for PostUpdate {
 }
 
 impl<T: Trait> Module<T> {
+
+    pub fn ensure_account_can_update_post(
+        editor: &T::AccountId, 
+        post: &Post<T>,
+        space: &Space<T>
+    ) -> DispatchResult {
+        let is_owner = post.is_owner(&editor);
+        let is_comment = post.is_comment();
+
+        let permission_to_check: SpacePermission;
+        let permission_error: DispatchError;
+
+        if is_comment {
+          if is_owner {
+            permission_to_check = SpacePermission::UpdateOwnComments;
+            permission_error = Error::<T>::NoPermissionToUpdateOwnComments.into();
+          } else {
+            return Err(Error::<T>::NotACommentAuthor.into());
+          }
+        } else {
+          // Not a comment
+
+          if is_owner {
+            permission_to_check = SpacePermission::UpdateOwnPosts;
+            permission_error = Error::<T>::NoPermissionToUpdateOwnPosts.into();
+          } else {
+            permission_to_check = SpacePermission::UpdateAnyPost;
+            permission_error = Error::<T>::NoPermissionToUpdateAnyPost.into();
+          }
+        }
+
+        Spaces::ensure_account_has_space_permission(
+          editor.clone(),
+          space,
+          permission_to_check,
+          permission_error
+        )
+    }
 
     /// Check that there is a `Post` with such `post_id` in the storage
     /// or return`PostNotFound` error.
@@ -324,11 +367,9 @@ impl<T: Trait> Module<T> {
         mut f: F
     ) -> DispatchResult {
         Spaces::<T>::mutate_space_by_id(space_id, |space: &mut Space<T>| {
+            f(&mut space.posts_count);
             if post.hidden {
                 f(&mut space.hidden_posts_count);
-                f(&mut space.posts_count);
-            } else {
-                f(&mut space.posts_count);
             }
         }).map(|_| ())
     }
@@ -345,15 +386,16 @@ impl<T: Trait> Module<T> {
             !T::IsAccountBlocked::is_account_blocked(editor.clone(), new_space_id),
             UtilsError::<T>::AccountIsBlocked
         );
-
         Spaces::ensure_account_has_space_permission(
             editor,
             &new_space,
             SpacePermission::CreatePosts,
             Error::<T>::NoPermissionToCreatePosts.into()
         )?;
-
-        ensure!(!T::IsPostBlocked::is_post_blocked(post.id, new_space_id), UtilsError::<T>::PostIsBlocked);
+        ensure!(
+            !T::IsPostBlocked::is_post_blocked(post.id, new_space_id),
+            UtilsError::<T>::PostIsBlocked
+        );
         ensure!(
             !T::IsContentBlocked::is_content_blocked(post.content.clone(), new_space_id),
             UtilsError::<T>::ContentIsBlocked
@@ -362,25 +404,27 @@ impl<T: Trait> Module<T> {
         match post.extension {
             PostExtension::RegularPost | PostExtension::SharedPost(_) => {
 
-                // Substitute posts count from the old space
+                // Decrease the number of posts on the old space
                 Self::mutate_posts_count_on_space(
                     old_space_id,
                     post,
                     |counter| *counter = counter.saturating_sub(1)
                 )?;
-                // Add posts count to the new space
+
+                // Increase the number of posts on the new space
                 Self::mutate_posts_count_on_space(
                     new_space_id,
                     post,
                     |counter| *counter = counter.saturating_add(1)
                 )?;
 
-                // Substitute score from the old space
+                // Decrease a score on the old space
                 Spaces::<T>::mutate_space_by_id(
                     old_space_id,
                     |space| space.score = space.score.saturating_sub(post.score)
                 )?;
-                // Add score to the new space
+
+                // Increase a score on the new space
                 Spaces::<T>::mutate_space_by_id(
                     new_space_id,
                     |space| space.score = space.score.saturating_add(post.score)
@@ -407,35 +451,41 @@ impl<T: Trait> Module<T> {
             let root_post = &mut Self::require_post(comment_ext.root_post_id)?;
             let parent_id = comment_ext.parent_id.unwrap_or(root_post.id);
 
-            // Choose desired counter change whether comment was hidden or not
-            let mut update_replies_change: fn(&mut Post<T>) = Post::dec_replies;
-            if post.hidden {
-                update_replies_change = Post::dec_hidden_replies;
-            }
+            let dec_replies_count: fn(&mut Post<T>) = |p| {
+                p.dec_replies();
+                if p.hidden {
+                    p.dec_hidden_replies();
+                }
+            };
 
-            update_replies_change(root_post);
+            dec_replies_count(root_post);
             PostById::<T>::insert(root_post.id, root_post.clone());
-            Self::for_each_post_ancestor(parent_id, |p| update_replies_change(p))?;
+            Self::for_each_post_ancestor(parent_id, dec_replies_count)?;
 
-            // Subtract CreateComment score weight on root post and its space
+            // Subtract the weight of CreateComment from the root post and its space
             T::PostScores::score_root_post_on_new_comment(post.created.account.clone(), root_post)?;
             let replies = Self::get_post_replies(post_id)?;
             for reply in replies.iter() {
                 T::PostScores::score_root_post_on_new_comment(reply.created.account.clone(), root_post)?;
             }
         } else {
+            // If post is not a comment:
+
             let space_id = post.get_space_id()?;
+
+            // Decrease the number of posts on the space
             Self::mutate_posts_count_on_space(
                 space_id,
                 &post,
                 |counter| *counter = counter.saturating_sub(1)
             )?;
+
             Spaces::<T>::mutate_space_by_id(
                 space_id,
                 |space| space.score = space.score.saturating_sub(post.score)
             )?;
-            post.space_id = None;
 
+            post.space_id = None;
             PostIdsBySpaceId::mutate(space_id, |post_ids| vec_remove_on(post_ids, post_id));
         }
 
