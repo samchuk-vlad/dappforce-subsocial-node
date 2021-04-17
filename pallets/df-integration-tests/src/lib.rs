@@ -458,7 +458,7 @@ mod tests {
         b"Space_Handle".to_vec()
     }
 
-    fn space_handle1() -> Vec<u8> {
+    fn space_handle_2() -> Vec<u8> {
         b"space_handle2".to_vec()
     }
 
@@ -1110,7 +1110,7 @@ mod tests {
                 _create_subspace(
                     None,
                     Some(Some(SPACE1)),
-                    Some(Some(space_handle1())),
+                    Some(Some(space_handle_2())),
                     None,
                     None,
                 ), UtilsError::<TestRuntime>::AccountIsBlocked
@@ -1126,7 +1126,7 @@ mod tests {
                 _update_space(
                     None,
                     None,
-                    Some(update_for_space_handle(Some(space_handle1())))
+                    Some(update_for_space_handle(Some(space_handle_2())))
                 ), UtilsError::<TestRuntime>::AccountIsBlocked
             );
         });
