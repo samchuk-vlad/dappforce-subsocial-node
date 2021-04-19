@@ -16,6 +16,8 @@ use pallet_utils::{Content, SpaceId};
 use pallet_spaces::{RESERVED_SPACE_COUNT, SpaceById};
 use pallet_posts::{PostId, PostExtension};
 
+pub use pallet_utils::mock_functions::valid_content_ipfs;
+
 impl_outer_origin! {
     pub enum Origin for Test {}
 }
@@ -51,10 +53,11 @@ impl system::Trait for Test {
     type MaximumBlockLength = MaximumBlockLength;
     type AvailableBlockRatio = AvailableBlockRatio;
     type Version = ();
-    type ModuleToIndex = ();
+    type PalletInfo = ();
     type AccountData = pallet_balances::AccountData<u64>;
     type OnNewAccount = ();
     type OnKilledAccount = ();
+    type SystemWeightInfo = ();
 }
 
 parameter_types! {
@@ -65,6 +68,7 @@ impl pallet_timestamp::Trait for Test {
     type Moment = u64;
     type OnTimestampSet = ();
     type MinimumPeriod = MinimumPeriod;
+    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -81,6 +85,7 @@ impl pallet_utils::Trait for Test {
 
 parameter_types! {
     pub const ExistentialDeposit: u64 = 1;
+    pub const MaxLocks: u32 = 50;
 }
 
 impl pallet_balances::Trait for Test {
@@ -89,6 +94,8 @@ impl pallet_balances::Trait for Test {
     type Event = ();
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
+    type WeightInfo = ();
+    type MaxLocks = MaxLocks;
 }
 
 use pallet_permissions::default_permissions::DefaultSpacePermissions;
@@ -240,15 +247,6 @@ pub(crate) const REPORT2: ReportId = 2;
 
 pub(crate) const AUTOBLOCK_THRESHOLD: u16 = 5;
 
-// TODO export to pallet utils
-pub(crate) fn valid_content_ipfs_1() -> Content {
-    Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
-}
-
-pub(crate) fn invalid_content_ipfs() -> Content {
-    Content::IPFS(b"QmRAQB6DaazhR8".to_vec())
-}
-
 pub(crate) const fn new_autoblock_threshold() -> SpaceModerationSettingsUpdate {
     SpaceModerationSettingsUpdate {
         autoblock_threshold: Some(Some(AUTOBLOCK_THRESHOLD))
@@ -274,7 +272,7 @@ pub(crate) fn create_space_and_post() {
         Origin::signed(ACCOUNT_SCOPE_OWNER),
         Some(SPACE1),
         PostExtension::RegularPost,
-        valid_content_ipfs_1(),
+        valid_content_ipfs(),
     ));
 }
 
@@ -292,7 +290,7 @@ pub(crate) fn _report_entity(
         origin.unwrap_or_else(|| Origin::signed(ACCOUNT_SCOPE_OWNER)),
         entity.unwrap_or(EntityId::Post(POST1)),
         scope.unwrap_or(SPACE1),
-        reason.unwrap_or_else(|| self::valid_content_ipfs_1()),
+        reason.unwrap_or_else(|| valid_content_ipfs()),
     )
 }
 
