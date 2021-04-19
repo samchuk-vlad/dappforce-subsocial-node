@@ -459,7 +459,7 @@ mod tests {
     }
 
     fn space_handle_2() -> Vec<u8> {
-        b"space_handle2".to_vec()
+        b"space_handle_2".to_vec()
     }
 
     fn space_content_ipfs() -> Content {
@@ -997,7 +997,7 @@ mod tests {
 
     /* ---------------------------------------------------------------------------------------------- */
     // Moderation pallet mocks
-    // FIXME: remove until linter error is fixed
+    // FIXME: remove when linter error is fixed
     #[allow(dead_code)]
     const REPORT1: ReportId = 1;
 
