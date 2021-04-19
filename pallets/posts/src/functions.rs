@@ -383,7 +383,7 @@ impl<T: Trait> Module<T> {
         let new_space = Spaces::<T>::require_space(new_space_id)?;
 
         ensure!(
-            !T::IsAccountBlocked::is_blocked_account(editor.clone(), new_space_id),
+            T::IsAccountBlocked::is_allowed_account(editor.clone(), new_space_id),
             UtilsError::<T>::AccountIsBlocked
         );
         Spaces::ensure_account_has_space_permission(
@@ -393,11 +393,11 @@ impl<T: Trait> Module<T> {
             Error::<T>::NoPermissionToCreatePosts.into()
         )?;
         ensure!(
-            !T::IsPostBlocked::is_blocked_post(post.id, new_space_id),
+            T::IsPostBlocked::is_allowed_post(post.id, new_space_id),
             UtilsError::<T>::PostIsBlocked
         );
         ensure!(
-            !T::IsContentBlocked::is_blocked_content(post.content.clone(), new_space_id),
+            T::IsContentBlocked::is_allowed_content(post.content.clone(), new_space_id),
             UtilsError::<T>::ContentIsBlocked
         );
 

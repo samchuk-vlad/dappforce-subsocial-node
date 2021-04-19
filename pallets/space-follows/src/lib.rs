@@ -84,7 +84,7 @@ decl_module! {
       let space = &mut Spaces::require_space(space_id)?;
       ensure!(!space.hidden, Error::<T>::CannotFollowHiddenSpace);
 
-      ensure!(!T::IsAccountBlocked::is_blocked_account(follower.clone(), space.id), UtilsError::<T>::AccountIsBlocked);
+      ensure!(T::IsAccountBlocked::is_allowed_account(follower.clone(), space.id), UtilsError::<T>::AccountIsBlocked);
 
       Self::add_space_follower(follower, space)?;
       <SpaceById<T>>::insert(space_id, space);

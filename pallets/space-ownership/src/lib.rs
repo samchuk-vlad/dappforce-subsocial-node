@@ -73,7 +73,7 @@ decl_module! {
       space.ensure_space_owner(who.clone())?;
 
       ensure!(who != transfer_to, Error::<T>::CannotTranferToCurrentOwner);
-      ensure!(!T::IsAccountBlocked::is_blocked_account(transfer_to.clone(), space_id), UtilsError::<T>::AccountIsBlocked);
+      ensure!(T::IsAccountBlocked::is_allowed_account(transfer_to.clone(), space_id), UtilsError::<T>::AccountIsBlocked);
 
       <PendingSpaceOwner<T>>::insert(space_id, transfer_to.clone());
 
