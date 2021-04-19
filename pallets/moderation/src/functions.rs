@@ -114,7 +114,7 @@ impl<T: Trait> SuggestedStatus<T> {
 impl<T: Trait> IsAccountBlocked for Module<T> {
     type AccountId = T::AccountId;
 
-    fn is_account_blocked(account: Self::AccountId, scope: SpaceId) -> bool {
+    fn is_blocked_account(account: Self::AccountId, scope: SpaceId) -> bool {
         let entity = EntityId::Account(account);
 
         Self::status_by_entity_in_space(entity, scope) == Some(EntityStatus::Blocked)

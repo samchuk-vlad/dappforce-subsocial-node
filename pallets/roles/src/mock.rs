@@ -117,7 +117,7 @@ parameter_types! {
 impl df_traits::moderation::IsAccountBlocked for Test {
     type AccountId = u64;
 
-    fn is_account_blocked(_account: Self::AccountId, _scope: SpaceId) -> bool {
+    fn is_blocked_account(_account: Self::AccountId, _scope: SpaceId) -> bool {
         false
     }
 }

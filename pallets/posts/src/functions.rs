@@ -383,7 +383,7 @@ impl<T: Trait> Module<T> {
         let new_space = Spaces::<T>::require_space(new_space_id)?;
 
         ensure!(
-            !T::IsAccountBlocked::is_account_blocked(editor.clone(), new_space_id),
+            !T::IsAccountBlocked::is_blocked_account(editor.clone(), new_space_id),
             UtilsError::<T>::AccountIsBlocked
         );
         Spaces::ensure_account_has_space_permission(

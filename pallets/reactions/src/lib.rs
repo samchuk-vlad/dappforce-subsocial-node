@@ -124,7 +124,7 @@ decl_module! {
       ensure!(!space.hidden, Error::<T>::CannotReactWhenSpaceHidden);
       ensure!(Posts::<T>::is_root_post_visible(post_id)?, Error::<T>::CannotReactWhenPostHidden);
 
-      ensure!(!T::IsAccountBlocked::is_account_blocked(owner.clone(), space.id), UtilsError::<T>::AccountIsBlocked);
+      ensure!(!T::IsAccountBlocked::is_blocked_account(owner.clone(), space.id), UtilsError::<T>::AccountIsBlocked);
 
       let reaction_id = Self::insert_new_reaction(owner.clone(), kind);
 
@@ -178,7 +178,7 @@ decl_module! {
       ensure!(reaction.kind != new_kind, Error::<T>::SameReaction);
 
       if let Some(space_id) = post.try_get_space_id() {
-        ensure!(!T::IsAccountBlocked::is_account_blocked(owner.clone(), space_id), UtilsError::<T>::AccountIsBlocked);
+        ensure!(!T::IsAccountBlocked::is_blocked_account(owner.clone(), space_id), UtilsError::<T>::AccountIsBlocked);
       }
 
       let old_kind = reaction.kind;
@@ -221,7 +221,7 @@ decl_module! {
 
       ensure!(owner == reaction.created.account, Error::<T>::NotReactionOwner);
       if let Some(space_id) = post.try_get_space_id() {
-        ensure!(!T::IsAccountBlocked::is_account_blocked(owner.clone(), space_id), UtilsError::<T>::AccountIsBlocked);
+        ensure!(!T::IsAccountBlocked::is_blocked_account(owner.clone(), space_id), UtilsError::<T>::AccountIsBlocked);
       }
 
       match reaction.kind {

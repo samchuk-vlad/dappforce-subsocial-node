@@ -5,13 +5,13 @@ use pallet_utils::Content;
 pub trait IsAccountBlocked {
     type AccountId;
 
-    fn is_account_blocked(account: Self::AccountId, scope: SpaceId) -> bool;
+    fn is_blocked_account(account: Self::AccountId, scope: SpaceId) -> bool;
 }
 
 impl IsAccountBlocked for () {
     type AccountId = sp_runtime::AccountId32;
 
-    fn is_account_blocked(_account: Self::AccountId, _scope: u64) -> bool {
+    fn is_blocked_account(_account: Self::AccountId, _scope: u64) -> bool {
         false
     }
 }

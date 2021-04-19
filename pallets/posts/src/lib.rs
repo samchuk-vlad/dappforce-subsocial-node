@@ -230,7 +230,7 @@ decl_module! {
       let space = &mut new_post.get_space()?;
       ensure!(!space.hidden, Error::<T>::CannotCreateInHiddenScope);
 
-      ensure!(!T::IsAccountBlocked::is_account_blocked(creator.clone(), space.id), UtilsError::<T>::AccountIsBlocked);
+      ensure!(!T::IsAccountBlocked::is_blocked_account(creator.clone(), space.id), UtilsError::<T>::AccountIsBlocked);
       ensure!(!T::IsContentBlocked::is_content_blocked(content, space.id), UtilsError::<T>::ContentIsBlocked);
 
       let root_post = &mut new_post.get_root_post()?;
@@ -284,7 +284,7 @@ decl_module! {
       let mut space_opt = post.try_get_space();
 
       if let Some(space) = &space_opt {
-        ensure!(!T::IsAccountBlocked::is_account_blocked(editor.clone(), space.id), UtilsError::<T>::AccountIsBlocked);
+        ensure!(!T::IsAccountBlocked::is_blocked_account(editor.clone(), space.id), UtilsError::<T>::AccountIsBlocked);
         Self::ensure_account_can_update_post(&editor, &post, space)?;
       }
 

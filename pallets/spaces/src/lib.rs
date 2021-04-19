@@ -165,7 +165,7 @@ decl_module! {
       if let Some(parent_id) = parent_id_opt {
         let parent_space = Self::require_space(parent_id)?;
 
-        ensure!(!T::IsAccountBlocked::is_account_blocked(owner.clone(), parent_id), UtilsError::<T>::AccountIsBlocked);
+        ensure!(!T::IsAccountBlocked::is_blocked_account(owner.clone(), parent_id), UtilsError::<T>::AccountIsBlocked);
         ensure!(!T::IsContentBlocked::is_content_blocked(content.clone(), parent_id), UtilsError::<T>::ContentIsBlocked);
 
         Self::ensure_account_has_space_permission(
@@ -212,7 +212,7 @@ decl_module! {
 
       let mut space = Self::require_space(space_id)?;
 
-      ensure!(!T::IsAccountBlocked::is_account_blocked(owner.clone(), space.id), UtilsError::<T>::AccountIsBlocked);
+      ensure!(!T::IsAccountBlocked::is_blocked_account(owner.clone(), space.id), UtilsError::<T>::AccountIsBlocked);
 
       Self::ensure_account_has_space_permission(
         owner.clone(),
