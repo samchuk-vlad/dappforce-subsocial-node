@@ -114,20 +114,12 @@ parameter_types! {
   pub const MaxUsersToProcessPerDeleteRole: u16 = 20;
 }
 
-impl df_traits::moderation::IsAccountBlocked for Test {
-    type AccountId = u64;
-
-    fn is_blocked_account(_account: Self::AccountId, _scope: SpaceId) -> bool {
-        false
-    }
-}
-
 impl Trait for Test {
     type Event = ();
     type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
     type Spaces = Roles;
     type SpaceFollows = Roles;
-    type IsAccountBlocked = Self;
+    type IsAccountBlocked = ();
     type IsContentBlocked = ();
 }
 

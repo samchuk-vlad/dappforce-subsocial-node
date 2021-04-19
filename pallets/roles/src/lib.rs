@@ -61,7 +61,7 @@ pub trait Trait: system::Trait
 
     type SpaceFollows: SpaceFollowsProvider<AccountId=Self::AccountId>;
 
-    type IsAccountBlocked: IsAccountBlocked<AccountId=Self::AccountId>;
+    type IsAccountBlocked: IsAccountBlocked<Self::AccountId>;
 
     type IsContentBlocked: IsContentBlocked;
 }

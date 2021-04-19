@@ -111,13 +111,17 @@ impl<T: Trait> SuggestedStatus<T> {
 }
 
 // TODO: maybe simplify using one common trait?
-impl<T: Trait> IsAccountBlocked for Module<T> {
-    type AccountId = T::AccountId;
-
-    fn is_blocked_account(account: Self::AccountId, scope: SpaceId) -> bool {
+impl<T: Trait> IsAccountBlocked<T::AccountId> for Module<T> {
+    fn is_blocked_account(account: T::AccountId, scope: SpaceId) -> bool {
         let entity = EntityId::Account(account);
 
         Self::status_by_entity_in_space(entity, scope) == Some(EntityStatus::Blocked)
+    }
+
+    fn is_allowed_account(account: T::AccountId, scope: SpaceId) -> bool {
+        let entity = EntityId::Account(account);
+
+        Self::status_by_entity_in_space(entity, scope) != Some(EntityStatus::Blocked)
     }
 }
 
@@ -127,23 +131,38 @@ impl<T: Trait> IsSpaceBlocked for Module<T> {
 
         Self::status_by_entity_in_space(entity, scope) == Some(EntityStatus::Blocked)
     }
+
+    fn is_allowed_space(space_id: SpaceId, scope: SpaceId) -> bool {
+        let entity = EntityId::Space(space_id);
+
+        Self::status_by_entity_in_space(entity, scope) != Some(EntityStatus::Blocked)
+    }
 }
 
-impl<T: Trait> IsPostBlocked for Module<T> {
-    type PostId = PostId;
-
-    fn is_blocked_post(post_id: Self::PostId, scope: SpaceId) -> bool {
+impl<T: Trait> IsPostBlocked<PostId> for Module<T> {
+    fn is_blocked_post(post_id: PostId, scope: SpaceId) -> bool {
         let entity = EntityId::Post(post_id);
 
         Self::status_by_entity_in_space(entity, scope) == Some(EntityStatus::Blocked)
     }
+
+    fn is_allowed_post(post_id: PostId, scope: SpaceId) -> bool {
+        let entity = EntityId::Post(post_id);
+
+        Self::status_by_entity_in_space(entity, scope) != Some(EntityStatus::Blocked)
+    }
 }
 
 impl<T: Trait> IsContentBlocked for Module<T> {
-
     fn is_blocked_content(content: Content, scope: SpaceId) -> bool {
         let entity = EntityId::Content(content);
 
         Self::status_by_entity_in_space(entity, scope) == Some(EntityStatus::Blocked)
+    }
+
+    fn is_allowed_content(content: Content, scope: SpaceId) -> bool {
+        let entity = EntityId::Content(content);
+
+        Self::status_by_entity_in_space(entity, scope) != Some(EntityStatus::Blocked)
     }
 }

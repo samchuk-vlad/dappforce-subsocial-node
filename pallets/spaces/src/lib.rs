@@ -72,7 +72,7 @@ pub trait Trait: system::Trait
 
     type AfterSpaceUpdated: AfterSpaceUpdated<Self>;
 
-    type IsAccountBlocked: IsAccountBlocked<AccountId=Self::AccountId>;
+    type IsAccountBlocked: IsAccountBlocked<Self::AccountId>;
 
     type IsContentBlocked: IsContentBlocked;
 

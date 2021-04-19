@@ -89,7 +89,7 @@ pub trait Trait: system::Trait
 
     type AfterPostUpdated: AfterPostUpdated<Self>;
 
-    type IsPostBlocked: IsPostBlocked<PostId=PostId>;
+    type IsPostBlocked: IsPostBlocked<PostId>;
 }
 
 pub trait PostScores<T: Trait> {
