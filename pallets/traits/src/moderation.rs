@@ -23,13 +23,13 @@ pub trait IsSpaceBlocked {
 pub trait IsPostBlocked {
     type PostId;
 
-    fn is_post_blocked(post_id: Self::PostId, scope: SpaceId) -> bool;
+    fn is_blocked_post(post_id: Self::PostId, scope: SpaceId) -> bool;
 }
 
 impl IsPostBlocked for () {
     type PostId = u64;
 
-    fn is_post_blocked(_post_id: Self::PostId, _scope: SpaceId) -> bool {
+    fn is_blocked_post(_post_id: Self::PostId, _scope: SpaceId) -> bool {
         false
     }
 }

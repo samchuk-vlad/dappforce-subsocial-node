@@ -393,7 +393,7 @@ impl<T: Trait> Module<T> {
             Error::<T>::NoPermissionToCreatePosts.into()
         )?;
         ensure!(
-            !T::IsPostBlocked::is_post_blocked(post.id, new_space_id),
+            !T::IsPostBlocked::is_blocked_post(post.id, new_space_id),
             UtilsError::<T>::PostIsBlocked
         );
         ensure!(
