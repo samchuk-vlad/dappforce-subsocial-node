@@ -166,7 +166,7 @@ decl_module! {
         let parent_space = Self::require_space(parent_id)?;
 
         ensure!(!T::IsAccountBlocked::is_blocked_account(owner.clone(), parent_id), UtilsError::<T>::AccountIsBlocked);
-        ensure!(!T::IsContentBlocked::is_content_blocked(content.clone(), parent_id), UtilsError::<T>::ContentIsBlocked);
+        ensure!(!T::IsContentBlocked::is_blocked_content(content.clone(), parent_id), UtilsError::<T>::ContentIsBlocked);
 
         Self::ensure_account_has_space_permission(
           owner.clone(),
@@ -249,9 +249,9 @@ decl_module! {
         if content != space.content {
           Utils::<T>::is_valid_content(content.clone())?;
 
-          ensure!(!T::IsContentBlocked::is_content_blocked(content.clone(), space.id), UtilsError::<T>::ContentIsBlocked);
+          ensure!(!T::IsContentBlocked::is_blocked_content(content.clone(), space.id), UtilsError::<T>::ContentIsBlocked);
           if let Some(parent_id) = space.parent_id {
-            ensure!(!T::IsContentBlocked::is_content_blocked(content.clone(), parent_id), UtilsError::<T>::ContentIsBlocked);
+            ensure!(!T::IsContentBlocked::is_blocked_content(content.clone(), parent_id), UtilsError::<T>::ContentIsBlocked);
           }
 
           old_data.content = Some(space.content);

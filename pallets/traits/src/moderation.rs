@@ -35,11 +35,11 @@ impl IsPostBlocked for () {
 }
 
 pub trait IsContentBlocked {
-    fn is_content_blocked(content: Content, scope: SpaceId) -> bool;
+    fn is_blocked_content(content: Content, scope: SpaceId) -> bool;
 }
 
 impl IsContentBlocked for () {
-    fn is_content_blocked(_content: Content, _scope: u64) -> bool {
+    fn is_blocked_content(_content: Content, _scope: u64) -> bool {
         false
     }
 }

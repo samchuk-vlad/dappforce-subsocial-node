@@ -231,7 +231,7 @@ decl_module! {
       ensure!(!space.hidden, Error::<T>::CannotCreateInHiddenScope);
 
       ensure!(!T::IsAccountBlocked::is_blocked_account(creator.clone(), space.id), UtilsError::<T>::AccountIsBlocked);
-      ensure!(!T::IsContentBlocked::is_content_blocked(content, space.id), UtilsError::<T>::ContentIsBlocked);
+      ensure!(!T::IsContentBlocked::is_blocked_content(content, space.id), UtilsError::<T>::ContentIsBlocked);
 
       let root_post = &mut new_post.get_root_post()?;
       ensure!(!root_post.hidden, Error::<T>::CannotCreateInHiddenScope);
@@ -297,7 +297,7 @@ decl_module! {
 
           if let Some(space) = &space_opt {
             ensure!(
-              !T::IsContentBlocked::is_content_blocked(content.clone(), space.id),
+              !T::IsContentBlocked::is_blocked_content(content.clone(), space.id),
               UtilsError::<T>::ContentIsBlocked
             );
           }

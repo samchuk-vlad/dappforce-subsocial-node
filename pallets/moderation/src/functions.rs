@@ -141,7 +141,7 @@ impl<T: Trait> IsPostBlocked for Module<T> {
 
 impl<T: Trait> IsContentBlocked for Module<T> {
 
-    fn is_content_blocked(content: Content, scope: SpaceId) -> bool {
+    fn is_blocked_content(content: Content, scope: SpaceId) -> bool {
         let entity = EntityId::Content(content);
 
         Self::status_by_entity_in_space(entity, scope) == Some(EntityStatus::Blocked)

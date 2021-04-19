@@ -397,7 +397,7 @@ impl<T: Trait> Module<T> {
             UtilsError::<T>::PostIsBlocked
         );
         ensure!(
-            !T::IsContentBlocked::is_content_blocked(post.content.clone(), new_space_id),
+            !T::IsContentBlocked::is_blocked_content(post.content.clone(), new_space_id),
             UtilsError::<T>::ContentIsBlocked
         );
 
