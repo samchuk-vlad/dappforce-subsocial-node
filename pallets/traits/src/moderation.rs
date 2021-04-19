@@ -17,7 +17,7 @@ impl IsAccountBlocked for () {
 }
 
 pub trait IsSpaceBlocked {
-    fn is_space_blocked(space_id: SpaceId, scope: SpaceId) -> bool;
+    fn is_blocked_space(space_id: SpaceId, scope: SpaceId) -> bool;
 }
 
 pub trait IsPostBlocked {

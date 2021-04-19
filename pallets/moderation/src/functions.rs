@@ -122,7 +122,7 @@ impl<T: Trait> IsAccountBlocked for Module<T> {
 }
 
 impl<T: Trait> IsSpaceBlocked for Module<T> {
-    fn is_space_blocked(space_id: SpaceId, scope: SpaceId) -> bool {
+    fn is_blocked_space(space_id: SpaceId, scope: SpaceId) -> bool {
         let entity = EntityId::Space(space_id);
 
         Self::status_by_entity_in_space(entity, scope) == Some(EntityStatus::Blocked)
