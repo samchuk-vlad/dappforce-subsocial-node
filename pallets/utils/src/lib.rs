@@ -52,6 +52,24 @@ pub enum User<AccountId> {
     Space(SpaceId),
 }
 
+impl<AccountId> User<AccountId> {
+    pub fn account(self) -> Option<AccountId> {
+        return if let User::Account(account_id) = self {
+            Some(account_id)
+        } else {
+            None
+        }
+    }
+
+    pub fn space(self) -> Option<SpaceId> {
+        return if let User::Space(space_id) = self {
+            Some(space_id)
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Deserialize))]
 #[cfg_attr(feature = "std", serde(tag = "contentType", content = "contentId"))]
