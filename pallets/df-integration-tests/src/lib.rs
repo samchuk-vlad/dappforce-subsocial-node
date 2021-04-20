@@ -301,96 +301,75 @@ mod tests {
             ext
         }
 
+        fn add_default_space() {
+            assert_ok!(_create_default_space());
+        }
+
+        fn add_space_with_no_handle() {
+            assert_ok!(_create_space(None, Some(None), None, None));
+        }
+
+        fn add_post() {
+            Self::add_default_space();
+            assert_ok!(_create_default_post());
+        }
+
+        fn add_comment() {
+            Self::add_post();
+            assert_ok!(_create_default_comment());
+        }
+
         /// Custom ext configuration with SpaceId 1 and BlockNumber 1
         pub fn build_with_space() -> TestExternalities {
-            let mut storage = system::GenesisConfig::default()
-                .build_storage::<TestRuntime>()
-                .unwrap();
-
-            Self::configure_storages(&mut storage);
-
-            let mut ext = TestExternalities::from(storage);
-            ext.execute_with(|| {
-                System::set_block_number(1);
-                assert_ok!(_create_default_space());
-            });
-
+            let mut ext = Self::build();
+            ext.execute_with(|| Self::add_default_space());
             ext
         }
 
         /// Custom ext configuration with SpaceId 1, PostId 1 and BlockNumber 1
         pub fn build_with_post() -> TestExternalities {
-            let mut storage = system::GenesisConfig::default()
-                .build_storage::<TestRuntime>()
-                .unwrap();
-
-            Self::configure_storages(&mut storage);
-
-            let mut ext = TestExternalities::from(storage);
-            ext.execute_with(|| {
-                System::set_block_number(1);
-                assert_ok!(_create_default_space());
-                assert_ok!(_create_default_post());
-            });
-
+            let mut ext = Self::build();
+            ext.execute_with(|| Self::add_post());
             ext
         }
 
         /// Custom ext configuration with SpaceId 1, PostId 1, PostId 2 (as comment) and BlockNumber 1
         pub fn build_with_comment() -> TestExternalities {
-            let mut storage = system::GenesisConfig::default()
-                .build_storage::<TestRuntime>()
-                .unwrap();
+            let mut ext = Self::build();
+            ext.execute_with(|| Self::add_comment());
+            ext
+        }
 
-            Self::configure_storages(&mut storage);
+        /// Custom ext configuration with SpaceId 1-2, PostId 1 where BlockNumber 1
+        pub fn build_with_post_and_two_spaces() -> TestExternalities {
+            let mut ext = Self::build_with_post();
+            ext.execute_with(|| Self::add_space_with_no_handle());
+            ext
+        }
 
-            let mut ext = TestExternalities::from(storage);
-            ext.execute_with(|| {
-                System::set_block_number(1);
-                assert_ok!(_create_default_space());
-                assert_ok!(_create_default_post());
-                assert_ok!(_create_default_comment());
-            });
-
+        /// Custom ext configuration with SpaceId 1, PostId 1 and ReactionId 1 (on post) where BlockNumber is 1
+        pub fn build_with_reacted_post_and_two_spaces() -> TestExternalities {
+            let mut ext = Self::build_with_post_and_two_spaces();
+            ext.execute_with(|| { assert_ok!(_create_default_post_reaction()); });
             ext
         }
 
         /// Custom ext configuration with pending ownership transfer without Space
         pub fn build_with_pending_ownership_transfer_no_space() -> TestExternalities {
-            let mut storage = system::GenesisConfig::default()
-                .build_storage::<TestRuntime>()
-                .unwrap();
-
-            Self::configure_storages(&mut storage);
-
-            let mut ext = TestExternalities::from(storage);
+            let mut ext = Self::build_with_space();
             ext.execute_with(|| {
-                System::set_block_number(1);
-
-                assert_ok!(_create_default_space());
                 assert_ok!(_transfer_default_space_ownership());
-
                 <SpaceById<TestRuntime>>::remove(SPACE1);
             });
-
             ext
         }
 
         /// Custom ext configuration with specified permissions granted (includes SpaceId 1)
         pub fn build_with_a_few_roles_granted_to_account2(perms: Vec<SP>) -> TestExternalities {
-            let mut storage = system::GenesisConfig::default()
-                .build_storage::<TestRuntime>()
-                .unwrap();
+            let mut ext = Self::build_with_space();
 
-            Self::configure_storages(&mut storage);
-
-            let mut ext = TestExternalities::from(storage);
             ext.execute_with(|| {
-                System::set_block_number(1);
                 let user = User::Account(ACCOUNT2);
-
-                assert_ok!(_create_default_space());
-
                 assert_ok!(_create_role(
                     None,
                     None,
@@ -410,19 +389,10 @@ mod tests {
 
         /// Custom ext configuration with space follow without Space
         pub fn build_with_space_follow_no_space() -> TestExternalities {
-            let mut storage = system::GenesisConfig::default()
-                .build_storage::<TestRuntime>()
-                .unwrap();
+            let mut ext = Self::build_with_space();
 
-            Self::configure_storages(&mut storage);
-
-            let mut ext = TestExternalities::from(storage);
             ext.execute_with(|| {
-                System::set_block_number(1);
-
-                assert_ok!(_create_default_space());
                 assert_ok!(_default_follow_space());
-
                 <SpaceById<TestRuntime>>::remove(SPACE1);
             });
 
@@ -430,8 +400,7 @@ mod tests {
         }
     }
 
-
-    /* Integrated tests mocks */
+    /* Integration tests mocks */
 
     const ACCOUNT1: AccountId = 1;
     const ACCOUNT2: AccountId = 2;
@@ -694,6 +663,10 @@ mod tests {
 
     fn _move_post_1_to_space_2() -> DispatchResult {
         _move_post(None, None, None)
+    }
+
+    fn _move_post_out_of_space(post_id: PostId) -> DispatchResult {
+        _move_post(None, Some(post_id), Some(None))
     }
 
     fn _move_post(
@@ -1223,7 +1196,7 @@ mod tests {
     // FIXME: uncomment when `update_post` will be able to move post from one space to another
     /*
     #[test]
-    fn update_post_should_fail_with_post_is_blocked() {
+    fn update_post_should_fail_when_post_is_blocked() {
         ExtBuilder::build_with_post().execute_with(|| {
             assert_ok!(
                 _update_entity_status(
@@ -1821,51 +1794,104 @@ mod tests {
         });
     }
 
-    // TODO: after merging w/ moderation tests check whether `delete_post_from_space` tests exist
+    fn check_post_moved_correctly(
+        moved_post_id: PostId,
+        old_space_id: SpaceId,
+        expected_new_space_id: SpaceId
+    ) {
+        let post: Post<TestRuntime> = Posts::post_by_id(moved_post_id).unwrap(); // `POST2` is a comment
+        let new_space_id = post.space_id.unwrap();
+
+        // Check that space id of the post has been updated from 1 to 2
+        assert_eq!(new_space_id, expected_new_space_id);
+
+        // Check that stats on the old space have been decreased
+        let old_space = Spaces::space_by_id(old_space_id).unwrap();
+        assert_eq!(old_space.posts_count, 0);
+        assert_eq!(old_space.hidden_posts_count, 0);
+        assert_eq!(old_space.score, 0);
+
+        // Check that stats on the new space have been increased
+        let new_space = Spaces::space_by_id(new_space_id).unwrap();
+        assert_eq!(new_space.posts_count, 1);
+        assert_eq!(new_space.hidden_posts_count, 0);
+        assert_eq!(new_space.score, post.score);
+    }
+
+    fn check_hidden_post_moved_correctly(
+        moved_post_id: PostId,
+        old_space_id: SpaceId,
+        expected_new_space_id: SpaceId
+    ) {
+        let post: Post<TestRuntime> = Posts::post_by_id(moved_post_id).unwrap();
+        let new_space_id = post.space_id.unwrap();
+
+        // Check that space id of the post has been updated from 1 to 2
+        assert_eq!(new_space_id, expected_new_space_id);
+
+        // Check that stats on the old space have been decreased
+        let old_space = Spaces::space_by_id(old_space_id).unwrap();
+        assert_eq!(old_space.posts_count, 0);
+        assert_eq!(old_space.hidden_posts_count, 0);
+        assert_eq!(old_space.score, 0);
+
+        // Check that stats on the new space have been increased,
+        // especially the counter of hidden posts
+        let new_space = Spaces::space_by_id(new_space_id).unwrap();
+        assert_eq!(new_space.posts_count, 1);
+        assert_eq!(new_space.hidden_posts_count, 1);
+        assert_eq!(new_space.score, post.score);
+    }
+
     #[test]
     fn move_post_should_work() {
-        ExtBuilder::build_with_post().execute_with(|| {
-            assert_ok!(_create_space(None, Some(None), None, None));
-            assert_ok!(_create_default_post_reaction());
+        ExtBuilder::build_with_reacted_post_and_two_spaces().execute_with(|| {
             assert_ok!(_move_post_1_to_space_2());
 
-            let post: Post<TestRuntime> = Posts::post_by_id(POST1).unwrap();
+            let moved_post_id = POST1;
             let old_space_id = SPACE1;
-            let new_space_id = post.space_id.unwrap();
-
-            // Check that space id of the post has been updated from 1 to 2
-            assert_eq!(new_space_id, SPACE2);
-
-            // Check that stats on the old space have been decreased
-            let old_space = Spaces::space_by_id(old_space_id).unwrap();
-            assert_eq!(old_space.posts_count, 0);
-            assert_eq!(old_space.hidden_posts_count, 0);
-            assert_eq!(old_space.score, 0);
-
-            // Check that stats on the new space have been increased
-            let new_space = Spaces::space_by_id(new_space_id).unwrap();
-            assert_eq!(new_space.posts_count, 1);
-            assert_eq!(new_space.hidden_posts_count, 0);
-            assert_eq!(new_space.score, post.score);
+            let expected_new_space_id = SPACE2;
+            check_post_moved_correctly(moved_post_id, old_space_id, expected_new_space_id);
 
             // Check that there are no posts ids in the old space
             assert!(Posts::post_ids_by_space_id(old_space_id).is_empty());
 
             // Check that there is the post id in the new space
-            assert_eq!(Posts::post_ids_by_space_id(new_space_id), vec![POST1]);
+            assert_eq!(Posts::post_ids_by_space_id(expected_new_space_id), vec![moved_post_id]);
+        });
+    }
+
+    #[test]
+    fn move_post_should_work_when_space_id_none() {
+        ExtBuilder::build_with_reacted_post_and_two_spaces().execute_with(|| {
+            let moved_post_id = POST1;
+            let old_space_id = SPACE1; // Where post were before moving to `SpaceId:None`
+            let expected_new_space_id = SPACE2;
+
+            assert_ok!(_move_post_out_of_space(moved_post_id));
+            assert_ok!(_move_post_1_to_space_2());
+
+            check_post_moved_correctly(moved_post_id, old_space_id, expected_new_space_id);
+
+            // Check that there are no posts ids in the old space
+            assert!(Posts::post_ids_by_space_id(old_space_id).is_empty());
+
+            // Check that there is the post id in the new space
+            assert_eq!(Posts::post_ids_by_space_id(expected_new_space_id), vec![moved_post_id]);
         });
     }
 
     #[test]
     fn move_hidden_post_should_work() {
-        ExtBuilder::build_with_post().execute_with(|| {
-            assert_ok!(_create_space(None, Some(None), None, None));
-            assert_ok!(_create_default_post_reaction());
+        ExtBuilder::build_with_reacted_post_and_two_spaces().execute_with(|| {
+            let moved_post_id = POST1;
+            let old_space_id = SPACE1;
+            let expected_new_space_id = SPACE2;
 
             // Hide the post before moving it
             assert_ok!(_update_post(
                 None,
-                None,
+                Some(moved_post_id),
                 Some(post_update(
                     None,
                     None,
@@ -1875,25 +1901,13 @@ mod tests {
 
             assert_ok!(_move_post_1_to_space_2());
 
-            let post: Post<TestRuntime> = Posts::post_by_id(POST1).unwrap();
-            let old_space_id = SPACE1;
-            let new_space_id = post.space_id.unwrap();
+            check_hidden_post_moved_correctly(moved_post_id, old_space_id, expected_new_space_id);
 
-            // Check that space id of the post has been updated from 1 to 2
-            assert_eq!(new_space_id, SPACE2);
+            // Check that there are no posts ids in the old space
+            assert!(Posts::post_ids_by_space_id(old_space_id).is_empty());
 
-            // Check that stats on the old space have been decreased
-            let old_space = Spaces::space_by_id(old_space_id).unwrap();
-            assert_eq!(old_space.posts_count, 0);
-            assert_eq!(old_space.hidden_posts_count, 0);
-            assert_eq!(old_space.score, 0);
-
-            // Check that stats on the new space have been increased,
-            // especially the counter of hidden posts
-            let new_space = Spaces::space_by_id(new_space_id).unwrap();
-            assert_eq!(new_space.posts_count, 1);
-            assert_eq!(new_space.hidden_posts_count, 1);
-            assert_eq!(new_space.score, post.score);
+            // Check that there is the post id in the new space
+            assert_eq!(Posts::post_ids_by_space_id(expected_new_space_id), vec![moved_post_id]);
         });
     }
 
@@ -1935,7 +1949,28 @@ mod tests {
     }
 
     #[test]
-    fn should_fail_when_trying_to_hide_comment() {
+    fn move_post_should_fail_when_account_has_no_permission_to_move_post() {
+        ExtBuilder::build_with_post_and_two_spaces().execute_with(|| {
+            assert_noop!(
+                _move_post(Some(Origin::signed(ACCOUNT2)), None, None),
+                PostsError::<TestRuntime>::NoPermissionToUpdateAnyPost
+            );
+        });
+    }
+
+    #[test]
+    fn move_post_should_fail_when_space_none_and_account_is_not_post_owner() {
+        ExtBuilder::build_with_post_and_two_spaces().execute_with(|| {
+            assert_ok!(_move_post_out_of_space(POST1));
+            assert_noop!(
+                _move_post(Some(Origin::signed(ACCOUNT2)), None, None),
+                PostsError::<TestRuntime>::NotAPostOwner
+            );
+        });
+    }
+
+    #[test]
+    fn should_fail_when_trying_to_move_comment() {
         ExtBuilder::build_with_comment().execute_with(|| {
             assert_ok!(_create_space(None, Some(None), None, None));
 
@@ -2373,9 +2408,7 @@ mod tests {
 
     #[test]
     fn create_post_reaction_should_fail_when_account_has_already_reacted() {
-        ExtBuilder::build_with_post().execute_with(|| {
-            assert_ok!(_create_default_post_reaction()); // ReactionId1
-
+        ExtBuilder::build_with_reacted_post_and_two_spaces().execute_with(|| {
             // Try to catch an error creating reaction by the same account
             assert_noop!(_create_default_post_reaction(), ReactionsError::<TestRuntime>::AccountAlreadyReacted);
         });
