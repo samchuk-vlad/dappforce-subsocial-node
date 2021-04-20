@@ -10,7 +10,7 @@ mod tests {
     use sp_core::H256;
     use sp_io::TestExternalities;
     use sp_runtime::{
-        traits::{BlakeTwo256, IdentityLookup},
+        traits::{BlakeTwo256, IdentityLookup, Zero},
         testing::Header,
         Perbill,
         Storage,
@@ -92,7 +92,6 @@ mod tests {
 
     parameter_types! {
         pub const ExistentialDeposit: u64 = 1;
-        pub const MaxLocks: u32 = 50;
     }
 
     impl pallet_balances::Trait for TestRuntime {
@@ -102,7 +101,7 @@ mod tests {
         type ExistentialDeposit = ExistentialDeposit;
         type AccountStore = System;
         type WeightInfo = ();
-        type MaxLocks = MaxLocks;
+        type MaxLocks = ();
     }
 
     parameter_types! {
@@ -1486,7 +1485,7 @@ mod tests {
 
             // Check that the handle deposit has been unreserved:
             let reserved_balance = Balances::reserved_balance(ACCOUNT1);
-            assert_eq!(reserved_balance, 0u64);
+            assert!(reserved_balance.is_zero());
         });
     }
 
