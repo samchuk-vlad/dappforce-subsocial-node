@@ -1,6 +1,6 @@
 use frame_support::dispatch::DispatchResult;
 
-use pallet_utils::{SpaceId, vec_remove_on};
+use pallet_utils::{SpaceId, remove_from_vec};
 
 use super::*;
 
@@ -432,7 +432,7 @@ impl<T: Trait> Module<T> {
 
                 post.space_id = Some(new_space_id);
 
-                PostIdsBySpaceId::mutate(old_space_id, |post_ids| vec_remove_on(post_ids, post.id));
+                PostIdsBySpaceId::mutate(old_space_id, |post_ids| remove_from_vec(post_ids, post.id));
                 PostIdsBySpaceId::mutate(new_space_id, |ids| ids.push(post.id));
                 PostById::<T>::insert(post.id, post);
 
@@ -486,7 +486,7 @@ impl<T: Trait> Module<T> {
             )?;
 
             post.space_id = None;
-            PostIdsBySpaceId::mutate(space_id, |post_ids| vec_remove_on(post_ids, post_id));
+            PostIdsBySpaceId::mutate(space_id, |post_ids| remove_from_vec(post_ids, post_id));
         }
 
         PostById::<T>::insert(post.id, post);

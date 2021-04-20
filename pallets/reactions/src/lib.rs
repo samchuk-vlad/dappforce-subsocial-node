@@ -14,7 +14,7 @@ use df_traits::moderation::IsAccountBlocked;
 use pallet_permissions::SpacePermission;
 use pallet_posts::{Module as Posts, Post, PostById, PostId};
 use pallet_spaces::Module as Spaces;
-use pallet_utils::{Error as UtilsError, vec_remove_on, WhoAndWhen};
+use pallet_utils::{Error as UtilsError, remove_from_vec, WhoAndWhen};
 
 pub type ReactionId = u64;
 
@@ -233,7 +233,7 @@ decl_module! {
 
       <PostById<T>>::insert(post_id, post.clone());
       <ReactionById<T>>::remove(reaction_id);
-      ReactionIdsByPostId::mutate(post.id, |ids| vec_remove_on(ids, reaction_id));
+      ReactionIdsByPostId::mutate(post.id, |ids| remove_from_vec(ids, reaction_id));
       <PostReactionIdByAccount<T>>::remove((owner.clone(), post_id));
 
       Self::deposit_event(RawEvent::PostReactionDeleted(owner, post_id, reaction_id));

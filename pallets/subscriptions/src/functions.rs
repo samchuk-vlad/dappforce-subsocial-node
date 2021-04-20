@@ -72,8 +72,8 @@ impl<T: Trait> Module<T> {
         subscription.is_active = false;
 
         SubscriptionById::<T>::insert(subscription_id, subscription);
-        SubscriptionIdsByPatron::<T>::mutate(who, |ids| vec_remove_on(ids, subscription_id));
-        SubscriptionIdsBySpace::mutate(space_id, |ids| vec_remove_on(ids, subscription_id));
+        SubscriptionIdsByPatron::<T>::mutate(who, |ids| remove_from_vec(ids, subscription_id));
+        SubscriptionIdsBySpace::mutate(space_id, |ids| remove_from_vec(ids, subscription_id));
 
         Ok(())
     }
