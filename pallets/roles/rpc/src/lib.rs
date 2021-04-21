@@ -27,7 +27,7 @@ pub trait RolesApi<BlockHash, AccountId> {
         space_id: SpaceId
     ) -> Result<Vec<AccountId>>;
 
-    #[rpc(name = "roles_getSpaceIdsWhereAccountAnyHasRole")]
+    #[rpc(name = "roles_getSpaceIdsWhereAccountHasAnyRole")]
     fn get_space_ids_where_account_has_any_role(
         &self,
         at: Option<BlockHash>,
