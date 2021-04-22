@@ -147,11 +147,18 @@ mod tests {
         type BeforeAccountUnfollowed = Scores;
     }
 
+    impl pallet_faucets::Trait for TestRuntime {
+        type Event = ();
+        type Currency = Balances;
+    }
+
     parameter_types! {}
 
     impl pallet_profiles::Trait for TestRuntime {
         type Event = ();
         type AfterProfileUpdated = ProfileHistory;
+        type MaxCreationsPerPeriod = ();
+        type BlocksInPeriod = ();
     }
 
     parameter_types! {}

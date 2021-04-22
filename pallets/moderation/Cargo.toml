@@ -38,6 +38,7 @@ version = '1.3.4'
 [dependencies]
 # Local dependencies
 df-traits = { default-features = false, path = '../traits' }
+pallet-faucets = { default-features = false, path = '../faucets' }
 pallet-permissions = { default-features = false, path = '../permissions' }
 pallet-posts = { default-features = false, path = '../posts' }
 pallet-space-follows = { default-features = false, path = '../space-follows' }

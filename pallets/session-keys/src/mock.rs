@@ -122,9 +122,19 @@ impl pallet_profile_follows::Trait for Test {
 
 parameter_types! {}
 
+impl pallet_faucets::Trait for Test {
+    type Event = ();
+    type Currency = Balances;
+}
+
+parameter_types! {
+}
+
 impl pallet_profiles::Trait for Test {
     type Event = ();
     type AfterProfileUpdated = ();
+    type MaxCreationsPerPeriod = ();
+    type BlocksInPeriod = ();
 }
 
 // TODO export to a common place

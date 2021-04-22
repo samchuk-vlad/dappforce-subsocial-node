@@ -98,6 +98,13 @@ impl pallet_balances::Trait for Test {
     type MaxLocks = MaxLocks;
 }
 
+parameter_types! {}
+
+impl pallet_faucets::Trait for Test {
+    type Event = ();
+    type Currency = Balances;
+}
+
 use pallet_permissions::default_permissions::DefaultSpacePermissions;
 
 impl pallet_permissions::Trait for Test {
@@ -115,6 +122,8 @@ impl pallet_spaces::Trait for Test {
     type IsContentBlocked = Moderation;
     type HandleDeposit = ();
 }
+
+
 
 impl pallet_space_follows::Trait for Test {
     type Event = ();
@@ -150,6 +159,8 @@ impl pallet_roles::Trait for Test {
 impl pallet_profiles::Trait for Test {
     type Event = ();
     type AfterProfileUpdated = ();
+    type MaxCreationsPerPeriod = ();
+    type BlocksInPeriod = ();
 }
 
 parameter_types! {
