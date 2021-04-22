@@ -101,7 +101,6 @@ parameter_types! {}
 
 impl pallet_faucets::Trait for Test {
     type Event = ();
-    type Currency = Balances;
 }
 
 use pallet_permissions::default_permissions::DefaultSpacePermissions;

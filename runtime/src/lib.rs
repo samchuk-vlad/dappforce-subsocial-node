@@ -339,7 +339,7 @@ impl pallet_profile_follows::Trait for Runtime {
 
 parameter_types! {
 	pub const MaxCreationsPerPeriod: u32 = 1000;
-	pub const BlocksInPeriod: BlockNumber = 14400;
+	pub const BlocksInPeriod: BlockNumber = 1 * DAYS;
 }
 
 impl pallet_profiles::Trait for Runtime {
@@ -512,7 +512,6 @@ impl pallet_subscriptions::Trait for Runtime {
 
 impl pallet_faucets::Trait for Runtime {
 	type Event = Event;
-	type Currency = Balances;
 }
 
 construct_runtime!(

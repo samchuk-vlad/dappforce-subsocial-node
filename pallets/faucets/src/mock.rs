@@ -103,7 +103,6 @@ impl pallet_utils::Trait for Test {
 
 impl Trait for Test {
     type Event = ();
-    type Currency = Balances;
 }
 
 pub(crate) type System = system::Module<Test>;

@@ -7,8 +7,8 @@ use frame_support::{
     traits::{Currency, Get}
 };
 use sp_runtime::{
+    traits::{Saturating, Zero},
     RuntimeDebug,
-    traits::{Saturating, Zero}
 };
 use sp_std::prelude::*;
 use frame_system::{self as system, Module as System, ensure_signed};
@@ -19,12 +19,12 @@ use pallet_faucets::{Module as Faucets};
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct SocialAccount<T: Trait> {
-    pub created_at: T::BlockNumber,
     pub followers_count: u32,
     pub following_accounts_count: u16,
     pub following_spaces_count: u16,
     pub reputation: u32,
     pub profile: Option<Profile<T>>,
+    pub created_at: T::BlockNumber,
     pub referrer: Option<T::AccountId>,
 }
 
@@ -40,7 +40,7 @@ pub struct ProfileUpdate {
     pub content: Option<Content>,
 }
 
-type BalanceOf<T> = <<T as pallet_faucets::Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
+type BalanceOf<T> = <<T as pallet_utils::Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
 
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait

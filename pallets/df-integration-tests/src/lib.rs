@@ -148,7 +148,6 @@ mod tests {
 
     impl pallet_faucets::Trait for TestRuntime {
         type Event = ();
-        type Currency = Balances;
     }
 
     parameter_types! {}

@@ -123,11 +123,9 @@ parameter_types! {}
 
 impl pallet_faucets::Trait for Test {
     type Event = ();
-    type Currency = Balances;
 }
 
-parameter_types! {
-}
+parameter_types! {}
 
 impl pallet_profiles::Trait for Test {
     type Event = ();

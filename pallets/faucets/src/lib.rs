@@ -54,15 +54,14 @@ pub struct FaucetUpdate<BlockNumber, Balance> {
     pub drip_limit: Option<Balance>,
 }
 
-type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
+type BalanceOf<T> = <<T as pallet_utils::Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
 
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait {
-
+pub trait Trait: system::Trait
+    + pallet_utils::Trait
+{
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
-
-    type Currency: Currency<Self::AccountId>;
 }
 
 decl_storage! {
@@ -281,7 +280,7 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
-    pub fn do_drip(faucet: T::AccountId, recipient: T::AccountId, amount: BalanceOf<T>,) -> DispatchResult {
+    pub fn do_drip(faucet: T::AccountId, recipient: T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
         ensure!(faucet != recipient, Error::<T>::RecipientEqualsFaucet);
         ensure!(amount > Zero::zero(), Error::<T>::ZeroDripAmountProvided);
 
