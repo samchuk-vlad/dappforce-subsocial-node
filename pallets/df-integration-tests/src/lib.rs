@@ -157,6 +157,7 @@ mod tests {
         type AfterProfileUpdated = ProfileHistory;
         type MaxCreationsPerPeriod = ();
         type BlocksInPeriod = ();
+        type FaucetsProvider = ();
     }
 
     parameter_types! {}

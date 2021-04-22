@@ -347,6 +347,7 @@ impl pallet_profiles::Trait for Runtime {
 	type AfterProfileUpdated = ProfileHistory;
 	type MaxCreationsPerPeriod = MaxCreationsPerPeriod;
 	type BlocksInPeriod = BlocksInPeriod;
+	type FaucetsProvider = Faucets;
 }
 
 parameter_types! {}

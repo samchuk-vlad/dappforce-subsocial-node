@@ -13,9 +13,8 @@ use sp_runtime::{
 use sp_std::prelude::*;
 use frame_system::{self as system, Module as System, ensure_signed};
 
+use df_traits::FaucetsProvider;
 use pallet_utils::{Module as Utils, WhoAndWhen, Content};
-
-use pallet_faucets::{Module as Faucets};
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct SocialAccount<T: Trait> {
@@ -45,7 +44,6 @@ type BalanceOf<T> = <<T as pallet_utils::Trait>::Currency as Currency<<T as syst
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait
     + pallet_utils::Trait
-    + pallet_faucets::Trait
 {
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
@@ -55,6 +53,8 @@ pub trait Trait: system::Trait
     type MaxCreationsPerPeriod: Get<u32>;
 
     type BlocksInPeriod: Get<Self::BlockNumber>;
+
+    type FaucetsProvider: FaucetsProvider<Self::AccountId, BalanceOf<Self>>;
 }
 
 // This pallet's storage items.
@@ -75,7 +75,7 @@ decl_event!(
     {
         ProfileCreated(AccountId),
         ProfileUpdated(AccountId),
-        SocialAccountCreated(AccountId, Option<AccountId>),
+        SocialAccountCreated(/* New Account */ AccountId, /* Referrer */ Option<AccountId>),
     }
 );
 
@@ -89,8 +89,8 @@ decl_error! {
         NoUpdatesForProfile,
         /// Account has no profile yet.
         AccountHasNoProfile,
-
-        PeriodLimitReached
+        /// Too many accounts created in this limit.
+        PeriodLimitReached,
     }
 }
 
@@ -163,7 +163,7 @@ decl_module! {
       Ok(())
     }
 
-    #[weight = 100_000 + T::DbWeight::get().reads_writes(1, 2)]
+    #[weight = 50_000 + T::DbWeight::get().reads_writes(6, 5)]
     pub fn create_social_account(
       origin,
       new_account: T::AccountId,
@@ -183,29 +183,25 @@ decl_module! {
         created_in_current_period = Zero::zero();
       }
 
-      let account_created_in_current_period = T::MaxCreationsPerPeriod::get()
-        .saturating_sub(created_in_current_period);
-
-      ensure!(account_created_in_current_period > Zero::zero(), Error::<T>::PeriodLimitReached);
+      ensure!(created_in_current_period < T::MaxCreationsPerPeriod::get(), Error::<T>::PeriodLimitReached);
 
       let social_account = Self::get_or_new_social_account(new_account.clone(), None, referrer.clone());
+
+      if let Some(amount) = drip_amount {
+        T::FaucetsProvider::do_drip(owner, new_account.clone(), amount)?;
+      }
 
       if current_block == social_account.created_at {
         created_in_current_period = created_in_current_period.saturating_add(1);
 
         <SocialAccountById<T>>::insert(new_account.clone(), social_account);
-
-        Self::deposit_event(RawEvent::SocialAccountCreated(new_account.clone(), referrer));
+        Self::deposit_event(RawEvent::SocialAccountCreated(new_account, referrer));
       }
 
       CreatedInCurrentPeriod::mutate(|n| *n = created_in_current_period);
-      <NextPeriodAt<T>>::mutate(|p| *p = next_period_at);
+      NextPeriodAt::<T>::mutate(|p| *p = next_period_at);
 
-      if let Some(amount) = drip_amount  {
-        Faucets::<T>::do_drip(owner, new_account, amount)
-      } else {
-        Ok(())
-      }
+      Ok(())
     }
   }
 }
