@@ -1,10 +1,12 @@
 {
   "SocialAccount": {
+    "created_at": "Option<BlockNumber>",
     "followers_count": "u32",
     "following_accounts_count": "u16",
     "following_spaces_count": "u16",
     "reputation": "u32",
-    "profile": "Option<Profile>"
+    "profile": "Option<Profile>",
+    "referrer": "Option<AccountId>"
   },
 
   "Profile": {

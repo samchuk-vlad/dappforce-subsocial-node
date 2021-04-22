@@ -4,21 +4,28 @@ use codec::{Decode, Encode};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure,
     dispatch::DispatchResult,
-    traits::Get
+    traits::{Currency, Get}
 };
-use sp_runtime::RuntimeDebug;
+use sp_runtime::{
+    RuntimeDebug,
+    traits::{Saturating, Zero}
+};
 use sp_std::prelude::*;
-use frame_system::{self as system, ensure_signed};
+use frame_system::{self as system, Module as System, ensure_signed};
 
 use pallet_utils::{Module as Utils, WhoAndWhen, Content};
 
+use pallet_faucets::{Module as Faucets};
+
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct SocialAccount<T: Trait> {
+    pub created_at: T::BlockNumber,
     pub followers_count: u32,
     pub following_accounts_count: u16,
     pub following_spaces_count: u16,
     pub reputation: u32,
     pub profile: Option<Profile<T>>,
+    pub referrer: Option<T::AccountId>,
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
@@ -33,19 +40,30 @@ pub struct ProfileUpdate {
     pub content: Option<Content>,
 }
 
+type BalanceOf<T> = <<T as pallet_faucets::Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
+
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait
     + pallet_utils::Trait
+    + pallet_faucets::Trait
 {
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
     type AfterProfileUpdated: AfterProfileUpdated<Self>;
+
+    type MaxCreationsPerPeriod: Get<u32>;
+
+    type BlocksInPeriod: Get<Self::BlockNumber>;
 }
 
 // This pallet's storage items.
 decl_storage! {
     trait Store for Module<T: Trait> as ProfilesModule {
+        pub NextPeriodAt get(fn next_period_at): T::BlockNumber = Zero::zero();
+
+        pub CreatedInCurrentPeriod get(fn created_in_current_period): u32 = 0;
+
         pub SocialAccountById get(fn social_account_by_id):
             map hasher(blake2_128_concat) T::AccountId => Option<SocialAccount<T>>;
     }
@@ -57,6 +75,7 @@ decl_event!(
     {
         ProfileCreated(AccountId),
         ProfileUpdated(AccountId),
+        SocialAccountCreated(AccountId, Option<AccountId>),
     }
 );
 
@@ -70,11 +89,17 @@ decl_error! {
         NoUpdatesForProfile,
         /// Account has no profile yet.
         AccountHasNoProfile,
+
+        PeriodLimitReached
     }
 }
 
 decl_module! {
   pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+
+    const MaxCreationsPerPeriod: u32 = T::MaxCreationsPerPeriod::get();
+
+    const BlocksInPeriod: T::BlockNumber = T::BlocksInPeriod::get();
 
     // Initializing errors
     type Error = Error<T>;
@@ -88,7 +113,7 @@ decl_module! {
 
       Utils::<T>::is_valid_content(content.clone())?;
 
-      let mut social_account = Self::get_or_new_social_account(owner.clone());
+      let mut social_account = Self::get_or_new_social_account(owner.clone(),  None, None);
       ensure!(social_account.profile.is_none(), Error::<T>::ProfileAlreadyCreated);
 
       social_account.profile = Some(
@@ -136,6 +161,51 @@ decl_module! {
         Self::deposit_event(RawEvent::ProfileUpdated(owner));
       }
       Ok(())
+    }
+
+    #[weight = 100_000 + T::DbWeight::get().reads_writes(1, 2)]
+    pub fn create_social_account(
+      origin,
+      new_account: T::AccountId,
+      referrer: Option<T::AccountId>,
+      drip_amount: Option<BalanceOf<T>>
+    ) -> DispatchResult {
+      let owner = ensure_signed(origin)?;
+
+      let current_block = System::<T>::block_number();
+
+      let mut next_period_at = Self::next_period_at();
+      let mut created_in_current_period = Self::created_in_current_period();
+
+      if next_period_at <= current_block {
+        // Move to the next period and reset the period stats
+        next_period_at = current_block.saturating_add(T::BlocksInPeriod::get());
+        created_in_current_period = Zero::zero();
+      }
+
+      let account_created_in_current_period = T::MaxCreationsPerPeriod::get()
+        .saturating_sub(created_in_current_period);
+
+      ensure!(account_created_in_current_period > Zero::zero(), Error::<T>::PeriodLimitReached);
+
+      let social_account = Self::get_or_new_social_account(new_account.clone(), None, referrer.clone());
+
+      if current_block == social_account.created_at {
+        created_in_current_period = created_in_current_period.saturating_add(1);
+
+        <SocialAccountById<T>>::insert(new_account.clone(), social_account);
+
+        Self::deposit_event(RawEvent::SocialAccountCreated(new_account.clone(), referrer));
+      }
+
+      CreatedInCurrentPeriod::mutate(|n| *n = created_in_current_period);
+      <NextPeriodAt<T>>::mutate(|p| *p = next_period_at);
+
+      if let Some(amount) = drip_amount  {
+        Faucets::<T>::do_drip(owner, new_account, amount)
+      } else {
+        Ok(())
+      }
     }
   }
 }
@@ -186,14 +256,21 @@ impl Default for ProfileUpdate {
 }
 
 impl<T: Trait> Module<T> {
-    pub fn get_or_new_social_account(account: T::AccountId) -> SocialAccount<T> {
+    /// If `created_at_opt` is `None`, then current block number is set.
+    pub fn get_or_new_social_account(
+        account: T::AccountId,
+        created_at_opt: Option<T::BlockNumber>,
+        referrer: Option<T::AccountId>,
+    ) -> SocialAccount<T> {
         Self::social_account_by_id(account).unwrap_or(
             SocialAccount {
+                created_at: created_at_opt.unwrap_or_else(System::<T>::block_number),
                 followers_count: 0,
                 following_accounts_count: 0,
                 following_spaces_count: 0,
                 reputation: 1,
                 profile: None,
+                referrer,
             }
         )
     }

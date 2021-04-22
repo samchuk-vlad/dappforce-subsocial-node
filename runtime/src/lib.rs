@@ -337,11 +337,16 @@ impl pallet_profile_follows::Trait for Runtime {
 	type BeforeAccountUnfollowed = Scores;
 }
 
-parameter_types! {}
+parameter_types! {
+	pub const MaxCreationsPerPeriod: u32 = 1000;
+	pub const BlocksInPeriod: BlockNumber = 14400;
+}
 
 impl pallet_profiles::Trait for Runtime {
 	type Event = Event;
 	type AfterProfileUpdated = ProfileHistory;
+	type MaxCreationsPerPeriod = MaxCreationsPerPeriod;
+	type BlocksInPeriod = BlocksInPeriod;
 }
 
 parameter_types! {}
