@@ -32,6 +32,7 @@ use pallet_utils::{Content, WhoAndWhen, SpaceId, Module as Utils};
 use pallet_posts::PostId;
 use pallet_spaces::Module as Spaces;
 
+// TODO: move all tests to df-integration-tests
 #[cfg(test)]
 mod mock;
 

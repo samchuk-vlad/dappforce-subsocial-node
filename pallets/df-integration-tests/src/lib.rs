@@ -10,7 +10,7 @@ mod tests {
     use sp_core::H256;
     use sp_io::TestExternalities;
     use sp_runtime::{
-        traits::{BlakeTwo256, IdentityLookup},
+        traits::{BlakeTwo256, IdentityLookup, Zero},
         testing::Header,
         Perbill,
         Storage,
@@ -92,7 +92,6 @@ mod tests {
 
     parameter_types! {
         pub const ExistentialDeposit: u64 = 1;
-        pub const MaxLocks: u32 = 50;
     }
 
     impl pallet_balances::Trait for TestRuntime {
@@ -102,7 +101,7 @@ mod tests {
         type ExistentialDeposit = ExistentialDeposit;
         type AccountStore = System;
         type WeightInfo = ();
-        type MaxLocks = MaxLocks;
+        type MaxLocks = ();
     }
 
     parameter_types! {
@@ -309,96 +308,75 @@ mod tests {
             ext
         }
 
+        fn add_default_space() {
+            assert_ok!(_create_default_space());
+        }
+
+        fn add_space_with_no_handle() {
+            assert_ok!(_create_space(None, Some(None), None, None));
+        }
+
+        fn add_post() {
+            Self::add_default_space();
+            assert_ok!(_create_default_post());
+        }
+
+        fn add_comment() {
+            Self::add_post();
+            assert_ok!(_create_default_comment());
+        }
+
         /// Custom ext configuration with SpaceId 1 and BlockNumber 1
         pub fn build_with_space() -> TestExternalities {
-            let mut storage = system::GenesisConfig::default()
-                .build_storage::<TestRuntime>()
-                .unwrap();
-
-            Self::configure_storages(&mut storage);
-
-            let mut ext = TestExternalities::from(storage);
-            ext.execute_with(|| {
-                System::set_block_number(1);
-                assert_ok!(_create_default_space());
-            });
-
+            let mut ext = Self::build();
+            ext.execute_with(|| Self::add_default_space());
             ext
         }
 
         /// Custom ext configuration with SpaceId 1, PostId 1 and BlockNumber 1
         pub fn build_with_post() -> TestExternalities {
-            let mut storage = system::GenesisConfig::default()
-                .build_storage::<TestRuntime>()
-                .unwrap();
-
-            Self::configure_storages(&mut storage);
-
-            let mut ext = TestExternalities::from(storage);
-            ext.execute_with(|| {
-                System::set_block_number(1);
-                assert_ok!(_create_default_space());
-                assert_ok!(_create_default_post());
-            });
-
+            let mut ext = Self::build();
+            ext.execute_with(|| Self::add_post());
             ext
         }
 
         /// Custom ext configuration with SpaceId 1, PostId 1, PostId 2 (as comment) and BlockNumber 1
         pub fn build_with_comment() -> TestExternalities {
-            let mut storage = system::GenesisConfig::default()
-                .build_storage::<TestRuntime>()
-                .unwrap();
+            let mut ext = Self::build();
+            ext.execute_with(|| Self::add_comment());
+            ext
+        }
 
-            Self::configure_storages(&mut storage);
+        /// Custom ext configuration with SpaceId 1-2, PostId 1 where BlockNumber 1
+        pub fn build_with_post_and_two_spaces() -> TestExternalities {
+            let mut ext = Self::build_with_post();
+            ext.execute_with(|| Self::add_space_with_no_handle());
+            ext
+        }
 
-            let mut ext = TestExternalities::from(storage);
-            ext.execute_with(|| {
-                System::set_block_number(1);
-                assert_ok!(_create_default_space());
-                assert_ok!(_create_default_post());
-                assert_ok!(_create_default_comment());
-            });
-
+        /// Custom ext configuration with SpaceId 1, PostId 1 and ReactionId 1 (on post) where BlockNumber is 1
+        pub fn build_with_reacted_post_and_two_spaces() -> TestExternalities {
+            let mut ext = Self::build_with_post_and_two_spaces();
+            ext.execute_with(|| { assert_ok!(_create_default_post_reaction()); });
             ext
         }
 
         /// Custom ext configuration with pending ownership transfer without Space
         pub fn build_with_pending_ownership_transfer_no_space() -> TestExternalities {
-            let mut storage = system::GenesisConfig::default()
-                .build_storage::<TestRuntime>()
-                .unwrap();
-
-            Self::configure_storages(&mut storage);
-
-            let mut ext = TestExternalities::from(storage);
+            let mut ext = Self::build_with_space();
             ext.execute_with(|| {
-                System::set_block_number(1);
-
-                assert_ok!(_create_default_space());
                 assert_ok!(_transfer_default_space_ownership());
-
                 <SpaceById<TestRuntime>>::remove(SPACE1);
             });
-
             ext
         }
 
         /// Custom ext configuration with specified permissions granted (includes SpaceId 1)
         pub fn build_with_a_few_roles_granted_to_account2(perms: Vec<SP>) -> TestExternalities {
-            let mut storage = system::GenesisConfig::default()
-                .build_storage::<TestRuntime>()
-                .unwrap();
+            let mut ext = Self::build_with_space();
 
-            Self::configure_storages(&mut storage);
-
-            let mut ext = TestExternalities::from(storage);
             ext.execute_with(|| {
-                System::set_block_number(1);
                 let user = User::Account(ACCOUNT2);
-
-                assert_ok!(_create_default_space());
-
                 assert_ok!(_create_role(
                     None,
                     None,
@@ -418,19 +396,10 @@ mod tests {
 
         /// Custom ext configuration with space follow without Space
         pub fn build_with_space_follow_no_space() -> TestExternalities {
-            let mut storage = system::GenesisConfig::default()
-                .build_storage::<TestRuntime>()
-                .unwrap();
+            let mut ext = Self::build_with_space();
 
-            Self::configure_storages(&mut storage);
-
-            let mut ext = TestExternalities::from(storage);
             ext.execute_with(|| {
-                System::set_block_number(1);
-
-                assert_ok!(_create_default_space());
                 assert_ok!(_default_follow_space());
-
                 <SpaceById<TestRuntime>>::remove(SPACE1);
             });
 
@@ -438,8 +407,7 @@ mod tests {
         }
     }
 
-
-    /* Integrated tests mocks */
+    /* Integration tests mocks */
 
     const ACCOUNT1: AccountId = 1;
     const ACCOUNT2: AccountId = 2;
@@ -702,6 +670,11 @@ mod tests {
 
     fn _move_post_1_to_space_2() -> DispatchResult {
         _move_post(None, None, None)
+    }
+
+    /// Move the post out of this space to nowhere (space = None).
+    fn _move_post_to_nowhere(post_id: PostId) -> DispatchResult {
+        _move_post(None, Some(post_id), Some(None))
     }
 
     fn _move_post(
@@ -1094,7 +1067,7 @@ mod tests {
     }
 
     #[test]
-    fn create_subspace_should_fail_with_content_is_blocked() {
+    fn create_subspace_should_fail_when_content_is_blocked() {
         ExtBuilder::build_with_post().execute_with(|| {
             block_content_in_space_1();
             assert_noop!(
@@ -1110,7 +1083,7 @@ mod tests {
     }
 
     #[test]
-    fn create_subspace_should_fail_with_account_is_blocked() {
+    fn create_subspace_should_fail_when_account_is_blocked() {
         ExtBuilder::build_with_post().execute_with(|| {
             block_account_in_space_1();
             assert_noop!(
@@ -1126,7 +1099,7 @@ mod tests {
     }
 
     #[test]
-    fn update_space_should_fail_with_account_is_blocked() {
+    fn update_space_should_fail_when_account_is_blocked() {
         ExtBuilder::build_with_post().execute_with(|| {
             block_account_in_space_1();
             assert_noop!(
@@ -1140,7 +1113,7 @@ mod tests {
     }
 
     #[test]
-    fn update_space_should_fail_with_content_is_blocked() {
+    fn update_space_should_fail_when_content_is_blocked() {
         ExtBuilder::build_with_post().execute_with(|| {
             block_content_in_space_1();
             assert_noop!(
@@ -1159,7 +1132,7 @@ mod tests {
     }
 
     #[test]
-    fn create_post_should_fail_with_content_is_blocked() {
+    fn create_post_should_fail_when_content_is_blocked() {
         ExtBuilder::build_with_post().execute_with(|| {
             block_content_in_space_1();
             assert_noop!(
@@ -1174,7 +1147,7 @@ mod tests {
     }
 
     #[test]
-    fn create_post_should_fail_with_account_is_blocked() {
+    fn create_post_should_fail_when_account_is_blocked() {
         ExtBuilder::build_with_post().execute_with(|| {
             block_account_in_space_1();
             assert_noop!(
@@ -1189,7 +1162,7 @@ mod tests {
     }
 
     #[test]
-    fn update_post_should_fail_with_content_is_blocked() {
+    fn update_post_should_fail_when_content_is_blocked() {
         ExtBuilder::build_with_post().execute_with(|| {
             block_content_in_space_1();
             assert_noop!(
@@ -1209,7 +1182,7 @@ mod tests {
     }
 
     #[test]
-    fn update_post_should_fail_with_account_is_blocked() {
+    fn update_post_should_fail_when_account_is_blocked() {
         ExtBuilder::build_with_post().execute_with(|| {
             block_account_in_space_1();
             assert_noop!(
@@ -1231,7 +1204,7 @@ mod tests {
     // FIXME: uncomment when `update_post` will be able to move post from one space to another
     /*
     #[test]
-    fn update_post_should_fail_with_post_is_blocked() {
+    fn update_post_should_fail_when_post_is_blocked() {
         ExtBuilder::build_with_post().execute_with(|| {
             assert_ok!(
                 _update_entity_status(
@@ -1308,7 +1281,7 @@ mod tests {
     }
 
     #[test]
-    fn create_space_should_fail_with_handle_too_short() {
+    fn create_space_should_fail_when_too_short_handle_provided() {
         ExtBuilder::build().execute_with(|| {
             let short_handle: Vec<u8> = vec![65; (MinHandleLen::get() - 1) as usize];
 
@@ -1323,7 +1296,7 @@ mod tests {
     }
 
     #[test]
-    fn create_space_should_fail_with_handle_too_long() {
+    fn create_space_should_fail_when_too_long_handle_provided() {
         ExtBuilder::build().execute_with(|| {
             let long_handle: Vec<u8> = vec![65; (MaxHandleLen::get() + 1) as usize];
 
@@ -1338,7 +1311,7 @@ mod tests {
     }
 
     #[test]
-    fn create_space_should_fail_with_handle_not_unique() {
+    fn create_space_should_fail_when_not_unique_handle_provided() {
         ExtBuilder::build().execute_with(|| {
             assert_ok!(_create_default_space());
             // SpaceId 1
@@ -1348,7 +1321,7 @@ mod tests {
     }
 
     #[test]
-    fn create_space_should_fail_with_handle_contains_invalid_char_at() {
+    fn create_space_should_fail_when_handle_contains_at_char() {
         ExtBuilder::build().execute_with(|| {
             let invalid_handle: Vec<u8> = b"@space_handle".to_vec();
 
@@ -1362,7 +1335,7 @@ mod tests {
     }
 
     #[test]
-    fn create_space_should_fail_with_handle_contains_invalid_char_minus() {
+    fn create_space_should_fail_when_handle_contains_minus_char() {
         ExtBuilder::build().execute_with(|| {
             let invalid_handle: Vec<u8> = b"space-handle".to_vec();
 
@@ -1376,7 +1349,7 @@ mod tests {
     }
 
     #[test]
-    fn create_space_should_fail_with_handle_contains_invalid_char_space() {
+    fn create_space_should_fail_when_handle_contains_space_char() {
         ExtBuilder::build().execute_with(|| {
             let invalid_handle: Vec<u8> = b"space handle".to_vec();
 
@@ -1390,7 +1363,7 @@ mod tests {
     }
 
     #[test]
-    fn create_space_should_fail_with_handle_contains_invalid_chars_unicode() {
+    fn create_space_should_fail_when_handle_contains_unicode() {
         ExtBuilder::build().execute_with(|| {
             let invalid_handle: Vec<u8> = String::from("блог_хендл").into_bytes().to_vec();
 
@@ -1404,7 +1377,7 @@ mod tests {
     }
 
     #[test]
-    fn create_space_should_fail_with_invalid_ipfs_cid() {
+    fn create_space_should_fail_when_ipfs_cid_is_invalid() {
         ExtBuilder::build().execute_with(|| {
             // Try to catch an error creating a space with invalid content
             assert_noop!(_create_space(
@@ -1457,7 +1430,7 @@ mod tests {
     }
 
     #[test]
-    fn update_space_should_work_with_a_few_roles() {
+    fn update_space_should_work_when_one_of_roles_is_permitted() {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::UpdateSpace]).execute_with(|| {
             let space_update = space_update(
                 Some(Some(b"new_handle".to_vec())),
@@ -1474,7 +1447,7 @@ mod tests {
     }
 
     #[test]
-    fn update_space_should_work_with_unreserve_handle() {
+    fn update_space_should_work_when_unreserving_handle() {
         ExtBuilder::build_with_space().execute_with(|| {
             let no_handle = None;
             let space_update = update_for_space_handle(no_handle);
@@ -1493,12 +1466,12 @@ mod tests {
 
             // Check that the handle deposit has been unreserved:
             let reserved_balance = Balances::reserved_balance(ACCOUNT1);
-            assert_eq!(reserved_balance, 0u64);
+            assert!(reserved_balance.is_zero());
         });
     }
 
     #[test]
-    fn update_space_should_fail_with_no_updates_for_space() {
+    fn update_space_should_fail_when_no_updates_for_space_provided() {
         ExtBuilder::build_with_space().execute_with(|| {
             // Try to catch an error updating a space with no changes
             assert_noop!(
@@ -1509,7 +1482,7 @@ mod tests {
     }
 
     #[test]
-    fn update_space_should_fail_with_space_not_found() {
+    fn update_space_should_fail_when_space_not_found() {
         ExtBuilder::build_with_space().execute_with(|| {
             let new_handle: Vec<u8> = b"new_handle".to_vec();
 
@@ -1525,7 +1498,7 @@ mod tests {
     }
 
     #[test]
-    fn update_space_should_fail_with_no_permission() {
+    fn update_space_should_fail_when_account_has_no_permission_to_update_space() {
         ExtBuilder::build_with_space().execute_with(|| {
             let new_handle: Vec<u8> = b"new_handle".to_vec();
 
@@ -1541,7 +1514,7 @@ mod tests {
     }
 
     #[test]
-    fn update_space_should_fail_with_handle_too_short() {
+    fn update_space_should_fail_when_too_short_handle_provided() {
         ExtBuilder::build_with_space().execute_with(|| {
             let short_handle: Vec<u8> = vec![65; (MinHandleLen::get() - 1) as usize];
 
@@ -1557,7 +1530,7 @@ mod tests {
     }
 
     #[test]
-    fn update_space_should_fail_with_handle_too_long() {
+    fn update_space_should_fail_when_too_long_handle_provided() {
         ExtBuilder::build_with_space().execute_with(|| {
             let long_handle: Vec<u8> = vec![65; (MaxHandleLen::get() + 1) as usize];
 
@@ -1573,7 +1546,7 @@ mod tests {
     }
 
     #[test]
-    fn update_space_should_fail_with_handle_is_not_unique() {
+    fn update_space_should_fail_when_not_unique_handle_provided() {
         ExtBuilder::build_with_space().execute_with(|| {
             let handle: Vec<u8> = b"unique_handle".to_vec();
 
@@ -1596,7 +1569,7 @@ mod tests {
     }
 
     #[test]
-    fn update_space_should_fail_with_handle_contains_invalid_char_at() {
+    fn update_space_should_fail_when_handle_contains_at_char() {
         ExtBuilder::build_with_space().execute_with(|| {
             let invalid_handle: Vec<u8> = b"@space_handle".to_vec();
 
@@ -1611,7 +1584,7 @@ mod tests {
     }
 
     #[test]
-    fn update_space_should_fail_with_handle_contains_invalid_char_minus() {
+    fn update_space_should_fail_when_handle_contains_minus_char() {
         ExtBuilder::build_with_space().execute_with(|| {
             let invalid_handle: Vec<u8> = b"space-handle".to_vec();
 
@@ -1626,7 +1599,7 @@ mod tests {
     }
 
     #[test]
-    fn update_space_should_fail_with_handle_contains_invalid_space() {
+    fn update_space_should_fail_when_handle_contains_space_char() {
         ExtBuilder::build_with_space().execute_with(|| {
             let invalid_handle: Vec<u8> = b"space handle".to_vec();
 
@@ -1641,7 +1614,7 @@ mod tests {
     }
 
     #[test]
-    fn update_space_should_fail_with_handle_contains_invalid_chars_unicode() {
+    fn update_space_should_fail_when_handle_contains_unicode() {
         ExtBuilder::build_with_space().execute_with(|| {
             let invalid_handle: Vec<u8> = String::from("блог_хендл").into_bytes().to_vec();
 
@@ -1656,7 +1629,7 @@ mod tests {
     }
 
     #[test]
-    fn update_space_should_fail_with_invalid_ipfs_cid() {
+    fn update_space_should_fail_when_ipfs_cid_is_invalid() {
         ExtBuilder::build_with_space().execute_with(|| {
 
             // Try to catch an error updating a space with invalid content
@@ -1675,7 +1648,7 @@ mod tests {
     }
 
     #[test]
-    fn update_space_should_fail_with_a_few_roles_no_permission() {
+    fn update_space_should_fail_when_no_right_permission_in_account_roles() {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::UpdateSpace]).execute_with(|| {
             let space_update = space_update(
                 Some(Some(b"new_handle".to_vec())),
@@ -1728,7 +1701,7 @@ mod tests {
     }
 
     #[test]
-    fn create_post_should_work_with_a_few_roles() {
+    fn create_post_should_work_when_one_of_roles_is_permitted() {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::CreatePosts]).execute_with(|| {
             assert_ok!(_create_post(
                 Some(Origin::signed(ACCOUNT2)),
@@ -1740,7 +1713,7 @@ mod tests {
     }
 
     #[test]
-    fn create_post_should_fail_with_post_has_no_spaceid() {
+    fn create_post_should_fail_when_post_has_no_space_id() {
         ExtBuilder::build_with_space().execute_with(|| {
             assert_noop!(_create_post(
                 None,
@@ -1752,14 +1725,14 @@ mod tests {
     }
 
     #[test]
-    fn create_post_should_fail_with_space_not_found() {
+    fn create_post_should_fail_when_space_not_found() {
         ExtBuilder::build().execute_with(|| {
             assert_noop!(_create_default_post(), SpacesError::<TestRuntime>::SpaceNotFound);
         });
     }
 
     #[test]
-    fn create_post_should_fail_with_invalid_ipfs_cid() {
+    fn create_post_should_fail_when_ipfs_cid_is_invalid() {
         ExtBuilder::build_with_space().execute_with(|| {
             // Try to catch an error creating a regular post with invalid content
             assert_noop!(_create_post(
@@ -1772,7 +1745,7 @@ mod tests {
     }
 
     #[test]
-    fn create_post_should_fail_with_no_permission() {
+    fn create_post_should_fail_when_account_has_no_permission() {
         ExtBuilder::build_with_space().execute_with(|| {
             assert_noop!(_create_post(
                 Some(Origin::signed(ACCOUNT2)),
@@ -1784,7 +1757,7 @@ mod tests {
     }
 
     #[test]
-    fn create_post_should_fail_with_a_few_roles_no_permission() {
+    fn create_post_should_fail_when_no_right_permission_in_account_roles() {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::CreatePosts]).execute_with(|| {
             assert_ok!(_delete_default_role());
 
@@ -1829,51 +1802,79 @@ mod tests {
         });
     }
 
-    // TODO: after merging w/ moderation tests check whether `delete_post_from_space` tests exist
+    fn check_if_post_moved_correctly(
+        moved_post_id: PostId,
+        old_space_id: SpaceId,
+        expected_new_space_id: SpaceId
+    ) {
+        let post: Post<TestRuntime> = Posts::post_by_id(moved_post_id).unwrap(); // `POST2` is a comment
+        let new_space_id = post.space_id.unwrap();
+
+        // Check that space id of the post has been updated from 1 to 2
+        assert_eq!(new_space_id, expected_new_space_id);
+
+        // Check that stats on the old space have been decreased
+        let old_space = Spaces::space_by_id(old_space_id).unwrap();
+        assert_eq!(old_space.posts_count, 0);
+        assert_eq!(old_space.hidden_posts_count, 0);
+        assert_eq!(old_space.score, 0);
+
+        // Check that stats on the new space have been increased
+        let new_space = Spaces::space_by_id(new_space_id).unwrap();
+        assert_eq!(new_space.posts_count, 1);
+        assert_eq!(new_space.hidden_posts_count, if post.hidden { 1 } else { 0 });
+        assert_eq!(new_space.score, post.score);
+    }
+
     #[test]
     fn move_post_should_work() {
-        ExtBuilder::build_with_post().execute_with(|| {
-            assert_ok!(_create_space(None, Some(None), None, None));
-            assert_ok!(_create_default_post_reaction());
+        ExtBuilder::build_with_reacted_post_and_two_spaces().execute_with(|| {
             assert_ok!(_move_post_1_to_space_2());
 
-            let post: Post<TestRuntime> = Posts::post_by_id(POST1).unwrap();
+            let moved_post_id = POST1;
             let old_space_id = SPACE1;
-            let new_space_id = post.space_id.unwrap();
-
-            // Check that space id of the post has been updated from 1 to 2
-            assert_eq!(new_space_id, SPACE2);
-
-            // Check that stats on the old space have been decreased
-            let old_space = Spaces::space_by_id(old_space_id).unwrap();
-            assert_eq!(old_space.posts_count, 0);
-            assert_eq!(old_space.hidden_posts_count, 0);
-            assert_eq!(old_space.score, 0);
-
-            // Check that stats on the new space have been increased
-            let new_space = Spaces::space_by_id(new_space_id).unwrap();
-            assert_eq!(new_space.posts_count, 1);
-            assert_eq!(new_space.hidden_posts_count, 0);
-            assert_eq!(new_space.score, post.score);
+            let expected_new_space_id = SPACE2;
+            check_if_post_moved_correctly(moved_post_id, old_space_id, expected_new_space_id);
 
             // Check that there are no posts ids in the old space
             assert!(Posts::post_ids_by_space_id(old_space_id).is_empty());
 
             // Check that there is the post id in the new space
-            assert_eq!(Posts::post_ids_by_space_id(new_space_id), vec![POST1]);
+            assert_eq!(Posts::post_ids_by_space_id(expected_new_space_id), vec![moved_post_id]);
+        });
+    }
+
+    #[test]
+    fn move_post_should_work_when_space_id_none() {
+        ExtBuilder::build_with_reacted_post_and_two_spaces().execute_with(|| {
+            let moved_post_id = POST1;
+            let old_space_id = SPACE1; // Where post were before moving to `SpaceId:None`
+            let expected_new_space_id = SPACE2;
+
+            assert_ok!(_move_post_to_nowhere(moved_post_id));
+            assert_ok!(_move_post_1_to_space_2());
+
+            check_if_post_moved_correctly(moved_post_id, old_space_id, expected_new_space_id);
+
+            // Check that there are no posts ids in the old space
+            assert!(Posts::post_ids_by_space_id(old_space_id).is_empty());
+
+            // Check that there is the post id in the new space
+            assert_eq!(Posts::post_ids_by_space_id(expected_new_space_id), vec![moved_post_id]);
         });
     }
 
     #[test]
     fn move_hidden_post_should_work() {
-        ExtBuilder::build_with_post().execute_with(|| {
-            assert_ok!(_create_space(None, Some(None), None, None));
-            assert_ok!(_create_default_post_reaction());
+        ExtBuilder::build_with_reacted_post_and_two_spaces().execute_with(|| {
+            let moved_post_id = POST1;
+            let old_space_id = SPACE1;
+            let expected_new_space_id = SPACE2;
 
             // Hide the post before moving it
             assert_ok!(_update_post(
                 None,
-                None,
+                Some(moved_post_id),
                 Some(post_update(
                     None,
                     None,
@@ -1883,25 +1884,13 @@ mod tests {
 
             assert_ok!(_move_post_1_to_space_2());
 
-            let post: Post<TestRuntime> = Posts::post_by_id(POST1).unwrap();
-            let old_space_id = SPACE1;
-            let new_space_id = post.space_id.unwrap();
+            check_if_post_moved_correctly(moved_post_id, old_space_id, expected_new_space_id);
 
-            // Check that space id of the post has been updated from 1 to 2
-            assert_eq!(new_space_id, SPACE2);
+            // Check that there are no posts ids in the old space
+            assert!(Posts::post_ids_by_space_id(old_space_id).is_empty());
 
-            // Check that stats on the old space have been decreased
-            let old_space = Spaces::space_by_id(old_space_id).unwrap();
-            assert_eq!(old_space.posts_count, 0);
-            assert_eq!(old_space.hidden_posts_count, 0);
-            assert_eq!(old_space.score, 0);
-
-            // Check that stats on the new space have been increased,
-            // especially the counter of hidden posts
-            let new_space = Spaces::space_by_id(new_space_id).unwrap();
-            assert_eq!(new_space.posts_count, 1);
-            assert_eq!(new_space.hidden_posts_count, 1);
-            assert_eq!(new_space.score, post.score);
+            // Check that there is the post id in the new space
+            assert_eq!(Posts::post_ids_by_space_id(expected_new_space_id), vec![moved_post_id]);
         });
     }
 
@@ -1943,7 +1932,28 @@ mod tests {
     }
 
     #[test]
-    fn should_fail_when_trying_to_hide_comment() {
+    fn move_post_should_fail_when_account_has_no_permission() {
+        ExtBuilder::build_with_post_and_two_spaces().execute_with(|| {
+            assert_noop!(
+                _move_post(Some(Origin::signed(ACCOUNT2)), None, None),
+                PostsError::<TestRuntime>::NoPermissionToUpdateAnyPost
+            );
+        });
+    }
+
+    #[test]
+    fn move_post_should_fail_when_space_none_and_account_is_not_post_owner() {
+        ExtBuilder::build_with_post_and_two_spaces().execute_with(|| {
+            assert_ok!(_move_post_to_nowhere(POST1));
+            assert_noop!(
+                _move_post(Some(Origin::signed(ACCOUNT2)), None, None),
+                PostsError::<TestRuntime>::NotAPostOwner
+            );
+        });
+    }
+
+    #[test]
+    fn should_fail_when_trying_to_move_comment() {
         ExtBuilder::build_with_comment().execute_with(|| {
             assert_ok!(_create_space(None, Some(None), None, None));
 
@@ -1972,7 +1982,7 @@ mod tests {
     }
 
     #[test]
-    fn update_any_post_should_work_with_default_permission() {
+    fn update_any_post_should_work_when_account_has_default_permission() {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::CreatePosts]).execute_with(|| {
             let post_update = post_update(
                 None,
@@ -1996,7 +2006,7 @@ mod tests {
     }
 
     #[test]
-    fn update_any_post_should_work_with_a_few_roles() {
+    fn update_any_post_should_work_when_one_of_roles_is_permitted() {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::UpdateAnyPost]).execute_with(|| {
             let post_update = post_update(
                 None,
@@ -2015,7 +2025,7 @@ mod tests {
     }
 
     #[test]
-    fn update_post_should_fail_with_no_updates_for_post() {
+    fn update_post_should_fail_when_no_updates_for_post_provided() {
         ExtBuilder::build_with_post().execute_with(|| {
             // Try to catch an error updating a post with no changes
             assert_noop!(_update_post(None, None, None), PostsError::<TestRuntime>::NoUpdatesForPost);
@@ -2023,7 +2033,7 @@ mod tests {
     }
 
     #[test]
-    fn update_post_should_fail_with_post_not_found() {
+    fn update_post_should_fail_when_post_not_found() {
         ExtBuilder::build_with_post().execute_with(|| {
             assert_ok!(_create_space(None, Some(Some(b"space2_handle".to_vec())), None, None)); // SpaceId 2
 
@@ -2044,7 +2054,7 @@ mod tests {
     }
 
     #[test]
-    fn update_post_should_fail_with_no_permission_to_update_any_post() {
+    fn update_post_should_fail_when_account_has_no_permission_to_update_any_post() {
         ExtBuilder::build_with_post().execute_with(|| {
             assert_ok!(_create_space(None, Some(Some(b"space2_handle".to_vec())), None, None)); // SpaceId 2
 
@@ -2065,7 +2075,7 @@ mod tests {
     }
 
     #[test]
-    fn update_post_should_fail_with_invalid_ipfs_cid() {
+    fn update_post_should_fail_when_ipfs_cid_is_invalid() {
         ExtBuilder::build_with_post().execute_with(|| {
             // Try to catch an error updating a post with invalid content
             assert_noop!(_update_post(
@@ -2083,7 +2093,7 @@ mod tests {
     }
 
     #[test]
-    fn update_any_post_should_fail_with_a_few_roles_no_permission() {
+    fn update_post_should_fail_when_no_right_permission_in_account_roles() {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::UpdateAnyPost]).execute_with(|| {
             let post_update = post_update(
                 None,
@@ -2136,7 +2146,7 @@ mod tests {
     }
 
     #[test]
-    fn create_comment_should_work_with_parents() {
+    fn create_comment_should_work_when_comment_has_parents() {
         ExtBuilder::build_with_comment().execute_with(|| {
             let first_comment_id: PostId = 2;
             let penultimate_comment_id: PostId = 8;
@@ -2165,7 +2175,7 @@ mod tests {
     }
 
     #[test]
-    fn create_comment_should_fail_with_post_not_found() {
+    fn create_comment_should_fail_when_post_not_found() {
         ExtBuilder::build().execute_with(|| {
             // Try to catch an error creating a comment with wrong post
             assert_noop!(_create_default_comment(), PostsError::<TestRuntime>::PostNotFound);
@@ -2173,7 +2183,7 @@ mod tests {
     }
 
     #[test]
-    fn create_comment_should_fail_with_unknown_parent_comment() {
+    fn create_comment_should_fail_when_parent_comment_is_unknown() {
         ExtBuilder::build_with_post().execute_with(|| {
             // Try to catch an error creating a comment with wrong parent
             assert_noop!(_create_comment(
@@ -2186,7 +2196,7 @@ mod tests {
     }
 
     #[test]
-    fn create_comment_should_fail_with_invalid_ipfs_cid() {
+    fn create_comment_should_fail_when_ipfs_cid_is_invalid() {
         ExtBuilder::build_with_post().execute_with(|| {
             // Try to catch an error creating a comment with wrong parent
             assert_noop!(_create_comment(
@@ -2199,7 +2209,7 @@ mod tests {
     }
 
     #[test]
-    fn create_comment_should_fail_with_cannot_create_in_hidden_space_scope() {
+    fn create_comment_should_fail_when_trying_to_create_in_hidden_space_scope() {
         ExtBuilder::build_with_post().execute_with(|| {
             assert_ok!(_update_space(
                 None,
@@ -2212,7 +2222,7 @@ mod tests {
     }
 
     #[test]
-    fn create_comment_should_fail_with_cannot_create_in_hidden_post_scope() {
+    fn create_comment_should_fail_when_trying_create_in_hidden_post_scope() {
         ExtBuilder::build_with_post().execute_with(|| {
             assert_ok!(_update_post(
                 None,
@@ -2225,7 +2235,7 @@ mod tests {
     }
 
     #[test]
-    fn create_comment_should_fail_with_max_comment_depth_reached() {
+    fn create_comment_should_fail_when_max_comment_depth_reached() {
         ExtBuilder::build_with_post().execute_with(|| {
             assert_ok!(_create_comment(None, None, Some(None), None)); // PostId 2
 
@@ -2259,7 +2269,7 @@ mod tests {
     }
 
     #[test]
-    fn update_comment_hidden_should_work_with_parents() {
+    fn update_comment_hidden_should_work_when_comment_has_parents() {
         ExtBuilder::build_with_comment().execute_with(|| {
             let first_comment_id: PostId = 2;
             let penultimate_comment_id: PostId = 8;
@@ -2291,7 +2301,7 @@ mod tests {
 
     #[test]
     // `PostNotFound` here: Post with Comment extension. Means that comment wasn't found.
-    fn update_comment_should_fail_with_post_not_found() {
+    fn update_comment_should_fail_when_post_not_found() {
         ExtBuilder::build().execute_with(|| {
             // Try to catch an error updating a comment with wrong PostId
             assert_noop!(_update_comment(None, None, None), PostsError::<TestRuntime>::PostNotFound);
@@ -2299,7 +2309,7 @@ mod tests {
     }
 
     #[test]
-    fn update_comment_should_fail_with_not_a_comment_author() {
+    fn update_comment_should_fail_when_account_is_not_a_comment_author() {
         ExtBuilder::build_with_comment().execute_with(|| {
             // Try to catch an error updating a comment with wrong Account
             assert_noop!(_update_comment(
@@ -2311,7 +2321,7 @@ mod tests {
     }
 
     #[test]
-    fn update_comment_should_fail_with_invalid_ipfs_cid() {
+    fn update_comment_should_fail_when_ipfs_cid_is_invalid() {
         ExtBuilder::build_with_comment().execute_with(|| {
             // Try to catch an error updating a comment with invalid content
             assert_noop!(_update_comment(
@@ -2380,17 +2390,15 @@ mod tests {
     }
 
     #[test]
-    fn create_post_reaction_should_fail_with_account_already_reacted() {
-        ExtBuilder::build_with_post().execute_with(|| {
-            assert_ok!(_create_default_post_reaction()); // ReactionId1
-
+    fn create_post_reaction_should_fail_when_account_has_already_reacted() {
+        ExtBuilder::build_with_reacted_post_and_two_spaces().execute_with(|| {
             // Try to catch an error creating reaction by the same account
             assert_noop!(_create_default_post_reaction(), ReactionsError::<TestRuntime>::AccountAlreadyReacted);
         });
     }
 
     #[test]
-    fn create_post_reaction_should_fail_with_post_not_found() {
+    fn create_post_reaction_should_fail_when_post_not_found() {
         ExtBuilder::build().execute_with(|| {
             // Try to catch an error creating reaction by the same account
             assert_noop!(_create_default_post_reaction(), PostsError::<TestRuntime>::PostNotFound);
@@ -2398,8 +2406,10 @@ mod tests {
     }
 
     #[test]
-    fn create_post_reaction_should_fail_with_cannot_react_when_space_hidden() {
+    fn create_post_reaction_should_fail_when_trying_to_react_in_hidden_space() {
         ExtBuilder::build_with_post().execute_with(|| {
+            
+            // Hide the space
             assert_ok!(_update_space(
                 None,
                 None,
@@ -2411,8 +2421,10 @@ mod tests {
     }
 
     #[test]
-    fn create_post_reaction_should_fail_with_cannot_react_when_post_hidden() {
+    fn create_post_reaction_should_fail_when_trying_to_react_on_hidden_post() {
         ExtBuilder::build_with_post().execute_with(|| {
+            
+            // Hide the post
             assert_ok!(_update_post(
                 None,
                 None,
@@ -2648,7 +2660,7 @@ mod tests {
 //--------------------------------------------------------------------------------------------------
 
     #[test]
-    fn change_social_account_reputation_should_work_with_max_score_diff() {
+    fn change_social_account_reputation_should_work_when_max_score_diff_provided() {
         ExtBuilder::build_with_space().execute_with(|| {
             assert_ok!(_create_post(Some(Origin::signed(ACCOUNT1)), None, None, None));
             assert_ok!(Scores::change_social_account_reputation(
@@ -2661,7 +2673,7 @@ mod tests {
     }
 
     #[test]
-    fn change_social_account_reputation_should_work_with_min_score_diff() {
+    fn change_social_account_reputation_should_work_when_min_score_diff_provided() {
         ExtBuilder::build_with_space().execute_with(|| {
             assert_ok!(_create_post(Some(Origin::signed(ACCOUNT1)), None, None, None));
             assert_ok!(Scores::change_social_account_reputation(
@@ -2920,7 +2932,7 @@ mod tests {
     }
 
     #[test]
-    fn share_post_should_work_with_a_few_roles() {
+    fn share_post_should_work_when_one_of_roles_is_permitted() {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::CreatePosts]).execute_with(|| {
             assert_ok!(_create_space(
                 None, // From ACCOUNT1
@@ -3011,7 +3023,7 @@ mod tests {
     }
 
     #[test]
-    fn share_post_should_fail_with_original_post_not_found() {
+    fn share_post_should_fail_when_original_post_not_found() {
         ExtBuilder::build_with_space().execute_with(|| {
             assert_ok!(_create_space(
                 Some(Origin::signed(ACCOUNT2)),
@@ -3031,7 +3043,7 @@ mod tests {
     }
 
     #[test]
-    fn share_post_should_fail_with_cannot_share_sharing_post() {
+    fn share_post_should_fail_when_trying_to_share_shared_post() {
         ExtBuilder::build_with_post().execute_with(|| {
             assert_ok!(_create_space(
                 Some(Origin::signed(ACCOUNT2)),
@@ -3058,7 +3070,7 @@ mod tests {
     }
 
     #[test]
-    fn share_post_should_fail_with_no_permission_to_create_posts() {
+    fn share_post_should_fail_when_account_has_no_permission_to_create_posts_in_new_space() {
         ExtBuilder::build_with_post().execute_with(|| {
             assert_ok!(_create_space(
                 Some(Origin::signed(ACCOUNT1)),
@@ -3078,7 +3090,7 @@ mod tests {
     }
 
     #[test]
-    fn share_post_should_fail_with_a_few_roles_no_permission() {
+    fn share_post_should_fail_when_no_right_permission_in_account_roles() {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::CreatePosts]).execute_with(|| {
             assert_ok!(_create_space(
                 None, // From ACCOUNT1
@@ -3122,7 +3134,7 @@ mod tests {
     }
 
     #[test]
-    fn create_profile_should_fail_with_profile_already_created() {
+    fn create_profile_should_fail_when_profile_is_already_created() {
         ExtBuilder::build().execute_with(|| {
             assert_ok!(_create_default_profile());
             // AccountId 1
@@ -3131,7 +3143,7 @@ mod tests {
     }
 
     #[test]
-    fn create_profile_should_fail_with_invalid_ipfs_cid() {
+    fn create_profile_should_fail_when_ipfs_cid_is_invalid() {
         ExtBuilder::build().execute_with(|| {
             assert_noop!(_create_profile(
                 None,
@@ -3162,7 +3174,7 @@ mod tests {
     }
 
     #[test]
-    fn update_profile_should_fail_with_social_account_not_found() {
+    fn update_profile_should_fail_when_social_account_not_found() {
         ExtBuilder::build().execute_with(|| {
             assert_noop!(_update_profile(
                 None,
@@ -3172,7 +3184,7 @@ mod tests {
     }
 
     #[test]
-    fn update_profile_should_fail_with_account_has_no_profile() {
+    fn update_profile_should_fail_when_account_has_no_profile() {
         ExtBuilder::build().execute_with(|| {
             assert_ok!(ProfileFollows::follow_account(Origin::signed(ACCOUNT1), ACCOUNT2));
             assert_noop!(_update_profile(
@@ -3183,7 +3195,7 @@ mod tests {
     }
 
     #[test]
-    fn update_profile_should_fail_with_no_updates_for_profile() {
+    fn update_profile_should_fail_when_no_updates_for_profile_provided() {
         ExtBuilder::build().execute_with(|| {
             assert_ok!(_create_default_profile());
             // AccountId 1
@@ -3195,7 +3207,7 @@ mod tests {
     }
 
     #[test]
-    fn update_profile_should_fail_with_invalid_ipfs_cid() {
+    fn update_profile_should_fail_when_ipfs_cid_is_invalid() {
         ExtBuilder::build().execute_with(|| {
             assert_ok!(_create_default_profile());
             assert_noop!(_update_profile(
@@ -3220,14 +3232,14 @@ mod tests {
     }
 
     #[test]
-    fn follow_space_should_fail_with_space_not_found() {
+    fn follow_space_should_fail_when_space_not_found() {
         ExtBuilder::build().execute_with(|| {
             assert_noop!(_default_follow_space(), SpacesError::<TestRuntime>::SpaceNotFound);
         });
     }
 
     #[test]
-    fn follow_space_should_fail_with_already_space_follower() {
+    fn follow_space_should_fail_when_account_is_already_space_follower() {
         ExtBuilder::build_with_space().execute_with(|| {
             assert_ok!(_default_follow_space()); // Follow SpaceId 1 by ACCOUNT2
 
@@ -3236,7 +3248,7 @@ mod tests {
     }
 
     #[test]
-    fn follow_space_should_fail_with_cannot_follow_hidden_space() {
+    fn follow_space_should_fail_when_trying_to_follow_hidden_space() {
         ExtBuilder::build_with_space().execute_with(|| {
             assert_ok!(_update_space(
                 None,
@@ -3262,14 +3274,14 @@ mod tests {
     }
 
     #[test]
-    fn unfollow_space_should_fail_with_space_not_found() {
+    fn unfollow_space_should_fail_when_space_not_found() {
         ExtBuilder::build_with_space_follow_no_space().execute_with(|| {
             assert_noop!(_default_unfollow_space(), SpacesError::<TestRuntime>::SpaceNotFound);
         });
     }
 
     #[test]
-    fn unfollow_space_should_fail_with_not_space_follower() {
+    fn unfollow_space_should_fail_when_account_is_not_space_follower_yet() {
         ExtBuilder::build_with_space().execute_with(|| {
             assert_noop!(_default_unfollow_space(), SpaceFollowsError::<TestRuntime>::NotSpaceFollower);
         });
@@ -3289,7 +3301,7 @@ mod tests {
     }
 
     #[test]
-    fn follow_account_should_fail_with_account_cannot_follow_itself() {
+    fn follow_account_should_fail_when_account_tries_to_follow_themself() {
         ExtBuilder::build().execute_with(|| {
             assert_noop!(_follow_account(
                 None,
@@ -3299,7 +3311,7 @@ mod tests {
     }
 
     #[test]
-    fn follow_account_should_fail_with_already_account_follower() {
+    fn follow_account_should_fail_when_account_is_already_following_account() {
         ExtBuilder::build().execute_with(|| {
             assert_ok!(_default_follow_account());
 
@@ -3321,7 +3333,7 @@ mod tests {
     }
 
     #[test]
-    fn unfollow_account_should_fail_with_account_cannot_unfollow_itself() {
+    fn unfollow_account_should_fail_when_account_tries_to_unfollow_themself() {
         ExtBuilder::build().execute_with(|| {
             assert_noop!(_unfollow_account(
                 None,
@@ -3331,7 +3343,7 @@ mod tests {
     }
 
     #[test]
-    fn unfollow_account_should_fail_with_not_account_follower() {
+    fn unfollow_account_should_fail_when_account_is_not_following_another_account_yet() {
         ExtBuilder::build().execute_with(|| {
             assert_ok!(_default_follow_account());
             assert_ok!(_default_unfollow_account());
@@ -3352,14 +3364,14 @@ mod tests {
     }
 
     #[test]
-    fn transfer_space_ownership_should_fail_with_space_not_found() {
+    fn transfer_space_ownership_should_fail_when_space_not_found() {
         ExtBuilder::build().execute_with(|| {
             assert_noop!(_transfer_default_space_ownership(), SpacesError::<TestRuntime>::SpaceNotFound);
         });
     }
 
     #[test]
-    fn transfer_space_ownership_should_fail_with_not_a_space_owner() {
+    fn transfer_space_ownership_should_fail_when_account_is_not_space_owner() {
         ExtBuilder::build_with_space().execute_with(|| {
             assert_noop!(_transfer_space_ownership(
                 Some(Origin::signed(ACCOUNT2)),
@@ -3370,7 +3382,7 @@ mod tests {
     }
 
     #[test]
-    fn transfer_space_ownership_should_fail_with_cannot_transfer_to_current_owner() {
+    fn transfer_space_ownership_should_fail_when_trying_to_transfer_to_current_owner() {
         ExtBuilder::build_with_space().execute_with(|| {
             assert_noop!(_transfer_space_ownership(
                 Some(Origin::signed(ACCOUNT1)),
@@ -3396,14 +3408,14 @@ mod tests {
     }
 
     #[test]
-    fn accept_pending_ownership_should_fail_with_space_not_found() {
+    fn accept_pending_ownership_should_fail_when_space_not_found() {
         ExtBuilder::build_with_pending_ownership_transfer_no_space().execute_with(|| {
             assert_noop!(_accept_default_pending_ownership(), SpacesError::<TestRuntime>::SpaceNotFound);
         });
     }
 
     #[test]
-    fn accept_pending_ownership_should_fail_with_no_pending_transfer_on_space() {
+    fn accept_pending_ownership_should_fail_when_no_pending_transfer_for_space() {
         ExtBuilder::build_with_space().execute_with(|| {
             assert_noop!(_accept_default_pending_ownership(), SpaceOwnershipError::<TestRuntime>::NoPendingTransferOnSpace);
         });
@@ -3450,7 +3462,7 @@ mod tests {
     }
 
     #[test]
-    fn reject_pending_ownership_should_work_with_reject_by_current_space_owner() {
+    fn reject_pending_ownership_should_work_when_proposal_rejected_by_current_space_owner() {
         ExtBuilder::build_with_space().execute_with(|| {
             assert_ok!(_transfer_default_space_ownership());
             // Transfer SpaceId 1 owned by ACCOUNT1 to ACCOUNT2
@@ -3466,21 +3478,21 @@ mod tests {
     }
 
     #[test]
-    fn reject_pending_ownership_should_fail_with_space_not_found() {
+    fn reject_pending_ownership_should_fail_when_space_not_found() {
         ExtBuilder::build_with_pending_ownership_transfer_no_space().execute_with(|| {
             assert_noop!(_reject_default_pending_ownership(), SpacesError::<TestRuntime>::SpaceNotFound);
         });
     }
 
     #[test]
-    fn reject_pending_ownership_should_fail_with_no_pending_transfer_on_space() {
+    fn reject_pending_ownership_should_fail_when_no_pending_transfer_on_space() {
         ExtBuilder::build_with_space().execute_with(|| {
             assert_noop!(_reject_default_pending_ownership(), SpaceOwnershipError::<TestRuntime>::NoPendingTransferOnSpace); // Rejecting a transfer from ACCOUNT2
         });
     }
 
     #[test]
-    fn reject_pending_ownership_should_fail_with_not_allowed_to_reject() {
+    fn reject_pending_ownership_should_fail_when_account_is_not_allowed_to_reject() {
         ExtBuilder::build_with_space().execute_with(|| {
             assert_ok!(_transfer_default_space_ownership()); // Transfer SpaceId 1 owned by ACCOUNT1 to ACCOUNT2
 
