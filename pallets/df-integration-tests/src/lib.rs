@@ -1795,7 +1795,7 @@ mod tests {
         });
     }
 
-    fn check_post_moved_correctly(
+    fn check_if_post_moved_correctly(
         moved_post_id: PostId,
         old_space_id: SpaceId,
         expected_new_space_id: SpaceId
@@ -1827,7 +1827,7 @@ mod tests {
             let moved_post_id = POST1;
             let old_space_id = SPACE1;
             let expected_new_space_id = SPACE2;
-            check_post_moved_correctly(moved_post_id, old_space_id, expected_new_space_id);
+            check_if_post_moved_correctly(moved_post_id, old_space_id, expected_new_space_id);
 
             // Check that there are no posts ids in the old space
             assert!(Posts::post_ids_by_space_id(old_space_id).is_empty());
@@ -1847,7 +1847,7 @@ mod tests {
             assert_ok!(_move_post_to_nowhere(moved_post_id));
             assert_ok!(_move_post_1_to_space_2());
 
-            check_post_moved_correctly(moved_post_id, old_space_id, expected_new_space_id);
+            check_if_post_moved_correctly(moved_post_id, old_space_id, expected_new_space_id);
 
             // Check that there are no posts ids in the old space
             assert!(Posts::post_ids_by_space_id(old_space_id).is_empty());
@@ -1877,7 +1877,7 @@ mod tests {
 
             assert_ok!(_move_post_1_to_space_2());
 
-            check_post_moved_correctly(moved_post_id, old_space_id, expected_new_space_id);
+            check_if_post_moved_correctly(moved_post_id, old_space_id, expected_new_space_id);
 
             // Check that there are no posts ids in the old space
             assert!(Posts::post_ids_by_space_id(old_space_id).is_empty());
