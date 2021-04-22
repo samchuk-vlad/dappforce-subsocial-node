@@ -332,7 +332,7 @@ impl<T: Trait> Module<T> {
 
         Self::for_each_post_ancestor(commented_post_id, |post| post.inc_replies())?;
         PostById::insert(root_post.id, root_post);
-        ReplyIdsByPostId::mutate(commented_post_id, |ids| ids.push(new_post_id));
+        ReplyIdsByPostId::mutate(commented_post_id, |reply_ids| reply_ids.push(new_post_id));
 
         Ok(())
     }
@@ -404,20 +404,8 @@ impl<T: Trait> Module<T> {
         match post.extension {
             PostExtension::RegularPost | PostExtension::SharedPost(_) => {
 
-                // Increase a score on the new space
-                Spaces::<T>::mutate_space_by_id(
-                    new_space_id,
-                    |space| space.score = space.score.saturating_add(post.score)
-                )?;
-
-                // Increase the number of posts on the new space
-                Self::mutate_posts_count_on_space(
-                    new_space_id,
-                    post,
-                    |counter| *counter = counter.saturating_add(1)
-                )?;
-
                 if let Some(old_space_id) = old_space_id_opt {
+                    
                     // Decrease the number of posts on the old space
                     Self::mutate_posts_count_on_space(
                         old_space_id,
@@ -434,7 +422,20 @@ impl<T: Trait> Module<T> {
                     PostIdsBySpaceId::mutate(old_space_id, |post_ids| remove_from_vec(post_ids, post.id));
                 }
 
-                PostIdsBySpaceId::mutate(new_space_id, |ids| ids.push(post.id));
+                // Increase the number of posts on the new space
+                Self::mutate_posts_count_on_space(
+                    new_space_id,
+                    post,
+                    |counter| *counter = counter.saturating_add(1)
+                )?;
+
+                // Increase a score on the new space
+                Spaces::<T>::mutate_space_by_id(
+                    new_space_id,
+                    |space| space.score = space.score.saturating_add(post.score)
+                )?;
+
+                PostIdsBySpaceId::mutate(new_space_id, |post_ids| post_ids.push(post.id));
 
                 post.space_id = Some(new_space_id);
                 PostById::<T>::insert(post.id, post);
