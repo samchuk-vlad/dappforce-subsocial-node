@@ -20,7 +20,7 @@ impl<T: Trait> Module<T> {
   /// Ensure that this account is not blocked and has 'ManageRoles' permission in a given space
   pub fn ensure_role_manager(account: T::AccountId, space_id: SpaceId) -> DispatchResult {
     ensure!(
-      !T::IsAccountBlocked::is_account_blocked(account.clone(), space_id),
+      T::IsAccountBlocked::is_allowed_account(account.clone(), space_id),
       UtilsError::<T>::AccountIsBlocked
     );
     Self::ensure_user_has_space_permission_with_load_space(

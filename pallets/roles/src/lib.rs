@@ -61,7 +61,7 @@ pub trait Trait: system::Trait
 
     type SpaceFollows: SpaceFollowsProvider<AccountId=Self::AccountId>;
 
-    type IsAccountBlocked: IsAccountBlocked<AccountId=Self::AccountId>;
+    type IsAccountBlocked: IsAccountBlocked<Self::AccountId>;
 
     type IsContentBlocked: IsContentBlocked;
 }
@@ -157,7 +157,7 @@ decl_module! {
       ensure!(!permissions.is_empty(), Error::<T>::NoPermissionsProvided);
 
       Utils::<T>::is_valid_content(content.clone())?;
-      ensure!(!T::IsContentBlocked::is_content_blocked(content.clone(), space_id), UtilsError::<T>::ContentIsBlocked);
+      ensure!(T::IsContentBlocked::is_allowed_content(content.clone(), space_id), UtilsError::<T>::ContentIsBlocked);
 
       Self::ensure_role_manager(who.clone(), space_id)?;
       
@@ -204,7 +204,7 @@ decl_module! {
       if let Some(content) = update.content {
         if content != role.content {
           Utils::<T>::is_valid_content(content.clone())?;
-          ensure!(!T::IsContentBlocked::is_content_blocked(content.clone(), role.space_id), UtilsError::<T>::ContentIsBlocked);
+          ensure!(T::IsContentBlocked::is_allowed_content(content.clone(), role.space_id), UtilsError::<T>::ContentIsBlocked);
 
           role.content = content;
           is_update_applied = true;
