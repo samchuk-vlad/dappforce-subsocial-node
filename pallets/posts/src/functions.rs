@@ -379,7 +379,7 @@ impl<T: Trait> Module<T> {
         post: &mut Post<T>,
         new_space_id: SpaceId
     ) -> DispatchResult {
-        let old_space_id = post.get_space_id()?;
+        let old_space_id_opt = post.try_get_space_id();
         let new_space = Spaces::<T>::require_space(new_space_id)?;
 
         ensure!(
@@ -404,11 +404,10 @@ impl<T: Trait> Module<T> {
         match post.extension {
             PostExtension::RegularPost | PostExtension::SharedPost(_) => {
 
-                // Decrease the number of posts on the old space
-                Self::mutate_posts_count_on_space(
-                    old_space_id,
-                    post,
-                    |counter| *counter = counter.saturating_sub(1)
+                // Increase a score on the new space
+                Spaces::<T>::mutate_space_by_id(
+                    new_space_id,
+                    |space| space.score = space.score.saturating_add(post.score)
                 )?;
 
                 // Increase the number of posts on the new space
@@ -418,22 +417,26 @@ impl<T: Trait> Module<T> {
                     |counter| *counter = counter.saturating_add(1)
                 )?;
 
-                // Decrease a score on the old space
-                Spaces::<T>::mutate_space_by_id(
-                    old_space_id,
-                    |space| space.score = space.score.saturating_sub(post.score)
-                )?;
+                if let Some(old_space_id) = old_space_id_opt {
+                    // Decrease the number of posts on the old space
+                    Self::mutate_posts_count_on_space(
+                        old_space_id,
+                        post,
+                        |counter| *counter = counter.saturating_sub(1)
+                    )?;
 
-                // Increase a score on the new space
-                Spaces::<T>::mutate_space_by_id(
-                    new_space_id,
-                    |space| space.score = space.score.saturating_add(post.score)
-                )?;
+                    // Decrease a score on the old space
+                    Spaces::<T>::mutate_space_by_id(
+                        old_space_id,
+                        |space| space.score = space.score.saturating_sub(post.score)
+                    )?;
+
+                    PostIdsBySpaceId::mutate(old_space_id, |post_ids| remove_from_vec(post_ids, post.id));
+                }
+
+                PostIdsBySpaceId::mutate(new_space_id, |ids| ids.push(post.id));
 
                 post.space_id = Some(new_space_id);
-
-                PostIdsBySpaceId::mutate(old_space_id, |post_ids| remove_from_vec(post_ids, post.id));
-                PostIdsBySpaceId::mutate(new_space_id, |ids| ids.push(post.id));
                 PostById::<T>::insert(post.id, post);
 
                 Ok(())
