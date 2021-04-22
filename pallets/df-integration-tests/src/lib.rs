@@ -665,7 +665,8 @@ mod tests {
         _move_post(None, None, None)
     }
 
-    fn _move_post_out_of_space(post_id: PostId) -> DispatchResult {
+    /// Move the post out of this space to nowhere (space = None).
+    fn _move_post_to_nowhere(post_id: PostId) -> DispatchResult {
         _move_post(None, Some(post_id), Some(None))
     }
 
@@ -1313,7 +1314,7 @@ mod tests {
     }
 
     #[test]
-    fn create_space_should_fail_when_handle_contains_at_sign() {
+    fn create_space_should_fail_when_handle_contains_at_char() {
         ExtBuilder::build().execute_with(|| {
             let invalid_handle: Vec<u8> = b"@space_handle".to_vec();
 
@@ -1327,7 +1328,7 @@ mod tests {
     }
 
     #[test]
-    fn create_space_should_fail_when_handle_contains_minus_symbol() {
+    fn create_space_should_fail_when_handle_contains_minus_char() {
         ExtBuilder::build().execute_with(|| {
             let invalid_handle: Vec<u8> = b"space-handle".to_vec();
 
@@ -1561,7 +1562,7 @@ mod tests {
     }
 
     #[test]
-    fn update_space_should_fail_when_handle_contains_at_sign() {
+    fn update_space_should_fail_when_handle_contains_at_char() {
         ExtBuilder::build_with_space().execute_with(|| {
             let invalid_handle: Vec<u8> = b"@space_handle".to_vec();
 
@@ -1576,7 +1577,7 @@ mod tests {
     }
 
     #[test]
-    fn update_space_should_fail_when_handle_contains_minus_symbol() {
+    fn update_space_should_fail_when_handle_contains_minus_char() {
         ExtBuilder::build_with_space().execute_with(|| {
             let invalid_handle: Vec<u8> = b"space-handle".to_vec();
 
@@ -1640,7 +1641,7 @@ mod tests {
     }
 
     #[test]
-    fn update_space_should_fail_when_any_account_role_has_no_permission() {
+    fn update_space_should_fail_when_no_right_permission_in_account_roles() {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::UpdateSpace]).execute_with(|| {
             let space_update = space_update(
                 Some(Some(b"new_handle".to_vec())),
@@ -1737,7 +1738,7 @@ mod tests {
     }
 
     #[test]
-    fn create_post_should_fail_when_account_has_no_permission_to_create_post() {
+    fn create_post_should_fail_when_account_has_no_permission() {
         ExtBuilder::build_with_space().execute_with(|| {
             assert_noop!(_create_post(
                 Some(Origin::signed(ACCOUNT2)),
@@ -1749,7 +1750,7 @@ mod tests {
     }
 
     #[test]
-    fn create_post_should_fail_when_any_account_role_has_no_permission() {
+    fn create_post_should_fail_when_no_right_permission_in_account_roles() {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::CreatePosts]).execute_with(|| {
             assert_ok!(_delete_default_role());
 
@@ -1814,32 +1815,7 @@ mod tests {
         // Check that stats on the new space have been increased
         let new_space = Spaces::space_by_id(new_space_id).unwrap();
         assert_eq!(new_space.posts_count, 1);
-        assert_eq!(new_space.hidden_posts_count, 0);
-        assert_eq!(new_space.score, post.score);
-    }
-
-    fn check_hidden_post_moved_correctly(
-        moved_post_id: PostId,
-        old_space_id: SpaceId,
-        expected_new_space_id: SpaceId
-    ) {
-        let post: Post<TestRuntime> = Posts::post_by_id(moved_post_id).unwrap();
-        let new_space_id = post.space_id.unwrap();
-
-        // Check that space id of the post has been updated from 1 to 2
-        assert_eq!(new_space_id, expected_new_space_id);
-
-        // Check that stats on the old space have been decreased
-        let old_space = Spaces::space_by_id(old_space_id).unwrap();
-        assert_eq!(old_space.posts_count, 0);
-        assert_eq!(old_space.hidden_posts_count, 0);
-        assert_eq!(old_space.score, 0);
-
-        // Check that stats on the new space have been increased,
-        // especially the counter of hidden posts
-        let new_space = Spaces::space_by_id(new_space_id).unwrap();
-        assert_eq!(new_space.posts_count, 1);
-        assert_eq!(new_space.hidden_posts_count, 1);
+        assert_eq!(new_space.hidden_posts_count, if post.hidden { 1 } else { 0 });
         assert_eq!(new_space.score, post.score);
     }
 
@@ -1868,7 +1844,7 @@ mod tests {
             let old_space_id = SPACE1; // Where post were before moving to `SpaceId:None`
             let expected_new_space_id = SPACE2;
 
-            assert_ok!(_move_post_out_of_space(moved_post_id));
+            assert_ok!(_move_post_to_nowhere(moved_post_id));
             assert_ok!(_move_post_1_to_space_2());
 
             check_post_moved_correctly(moved_post_id, old_space_id, expected_new_space_id);
@@ -1901,7 +1877,7 @@ mod tests {
 
             assert_ok!(_move_post_1_to_space_2());
 
-            check_hidden_post_moved_correctly(moved_post_id, old_space_id, expected_new_space_id);
+            check_post_moved_correctly(moved_post_id, old_space_id, expected_new_space_id);
 
             // Check that there are no posts ids in the old space
             assert!(Posts::post_ids_by_space_id(old_space_id).is_empty());
@@ -1949,7 +1925,7 @@ mod tests {
     }
 
     #[test]
-    fn move_post_should_fail_when_account_has_no_permission_to_move_post() {
+    fn move_post_should_fail_when_account_has_no_permission() {
         ExtBuilder::build_with_post_and_two_spaces().execute_with(|| {
             assert_noop!(
                 _move_post(Some(Origin::signed(ACCOUNT2)), None, None),
@@ -1961,7 +1937,7 @@ mod tests {
     #[test]
     fn move_post_should_fail_when_space_none_and_account_is_not_post_owner() {
         ExtBuilder::build_with_post_and_two_spaces().execute_with(|| {
-            assert_ok!(_move_post_out_of_space(POST1));
+            assert_ok!(_move_post_to_nowhere(POST1));
             assert_noop!(
                 _move_post(Some(Origin::signed(ACCOUNT2)), None, None),
                 PostsError::<TestRuntime>::NotAPostOwner
@@ -2110,7 +2086,7 @@ mod tests {
     }
 
     #[test]
-    fn update_post_should_fail_when_any_account_role_has_no_permission_to_update_any_post() {
+    fn update_post_should_fail_when_no_right_permission_in_account_roles() {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::UpdateAnyPost]).execute_with(|| {
             let post_update = post_update(
                 None,
@@ -2425,6 +2401,8 @@ mod tests {
     #[test]
     fn create_post_reaction_should_fail_when_trying_to_react_in_hidden_space() {
         ExtBuilder::build_with_post().execute_with(|| {
+            
+            // Hide the space
             assert_ok!(_update_space(
                 None,
                 None,
@@ -2436,8 +2414,10 @@ mod tests {
     }
 
     #[test]
-    fn create_post_reaction_should_fail_when_trying_to_react_in_hidden_post() {
+    fn create_post_reaction_should_fail_when_trying_to_react_on_hidden_post() {
         ExtBuilder::build_with_post().execute_with(|| {
+            
+            // Hide the post
             assert_ok!(_update_post(
                 None,
                 None,
@@ -3103,7 +3083,7 @@ mod tests {
     }
 
     #[test]
-    fn share_post_should_fail_when_any_account_role_has_no_permission_to_create_post_in_new_space() {
+    fn share_post_should_fail_when_no_right_permission_in_account_roles() {
         ExtBuilder::build_with_a_few_roles_granted_to_account2(vec![SP::CreatePosts]).execute_with(|| {
             assert_ok!(_create_space(
                 None, // From ACCOUNT1
@@ -3147,7 +3127,7 @@ mod tests {
     }
 
     #[test]
-    fn create_profile_should_fail_when_profile_was_already_created() {
+    fn create_profile_should_fail_when_profile_is_already_created() {
         ExtBuilder::build().execute_with(|| {
             assert_ok!(_create_default_profile());
             // AccountId 1
@@ -3314,7 +3294,7 @@ mod tests {
     }
 
     #[test]
-    fn follow_account_should_fail_when_account_trying_to_follow_himself() {
+    fn follow_account_should_fail_when_account_tries_to_follow_themself() {
         ExtBuilder::build().execute_with(|| {
             assert_noop!(_follow_account(
                 None,
@@ -3346,7 +3326,7 @@ mod tests {
     }
 
     #[test]
-    fn unfollow_account_should_fail_when_account_trying_to_unfollow_himself() {
+    fn unfollow_account_should_fail_when_account_tries_to_unfollow_themself() {
         ExtBuilder::build().execute_with(|| {
             assert_noop!(_unfollow_account(
                 None,
@@ -3384,7 +3364,7 @@ mod tests {
     }
 
     #[test]
-    fn transfer_space_ownership_should_fail_when_account_is_not_a_space_owner() {
+    fn transfer_space_ownership_should_fail_when_account_is_not_space_owner() {
         ExtBuilder::build_with_space().execute_with(|| {
             assert_noop!(_transfer_space_ownership(
                 Some(Origin::signed(ACCOUNT2)),
@@ -3428,7 +3408,7 @@ mod tests {
     }
 
     #[test]
-    fn accept_pending_ownership_should_fail_when_no_pending_transfer_on_space() {
+    fn accept_pending_ownership_should_fail_when_no_pending_transfer_for_space() {
         ExtBuilder::build_with_space().execute_with(|| {
             assert_noop!(_accept_default_pending_ownership(), SpaceOwnershipError::<TestRuntime>::NoPendingTransferOnSpace);
         });
