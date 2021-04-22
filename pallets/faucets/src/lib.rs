@@ -26,6 +26,8 @@ use sp_std::{
     prelude::*,
 };
 
+use df_traits::FaucetsProvider;
+
 #[cfg(test)]
 mod mock;
 
@@ -338,5 +340,11 @@ impl<T: Trait> Faucet<T> {
             next_period_at: Zero::zero(),
             dripped_in_current_period: Zero::zero(),
         }
+    }
+}
+
+impl<T: Trait> FaucetsProvider<T::AccountId, BalanceOf<T>> for Module<T> {
+    fn do_drip(faucet: T::AccountId, recipient: T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
+        Self::do_drip(faucet, recipient, amount)
     }
 }
