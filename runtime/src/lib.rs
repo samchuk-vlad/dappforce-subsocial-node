@@ -338,7 +338,7 @@ impl pallet_profile_follows::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const MaxCreationsPerPeriod: u32 = 1000;
+	pub const MaxCreationsPerPeriod: u32 = 4000;
 	pub const BlocksInPeriod: BlockNumber = 1 * DAYS;
 }
 

@@ -37,6 +37,9 @@ mod tests {
         SpaceId, User, Content,
     };
 
+    mod faucets;
+    use faucets::*;
+
     impl_outer_origin! {
         pub enum Origin for TestRuntime {}
     }
@@ -144,10 +147,6 @@ mod tests {
         type Event = ();
         type BeforeAccountFollowed = Scores;
         type BeforeAccountUnfollowed = Scores;
-    }
-
-    impl pallet_faucets::Trait for TestRuntime {
-        type Event = ();
     }
 
     parameter_types! {}
@@ -274,9 +273,11 @@ mod tests {
     type SpaceOwnership = pallet_space_ownership::Module<TestRuntime>;
     type Spaces = pallet_spaces::Module<TestRuntime>;
     type Moderation = pallet_moderation::Module<TestRuntime>;
+    type Faucets = pallet_faucets::Module<TestRuntime>;
 
-    pub type AccountId = u64;
-    type BlockNumber = u64;
+    pub(crate) type AccountId = u64;
+    pub(crate) type BlockNumber = u64;
+    pub(crate) type Balance = u64;
 
 
     pub struct ExtBuilder;
@@ -284,14 +285,21 @@ mod tests {
     // TODO: make created space/post/comment configurable or by default
     impl ExtBuilder {
         fn configure_storages(storage: &mut Storage) {
+            let mut balances = Vec::new();
             let mut accounts = Vec::new();
             for account in ACCOUNT1..=ACCOUNT3 {
-                accounts.push(account);
+                accounts.push((account, 100));
             }
 
-            let _ = pallet_balances::GenesisConfig::<TestRuntime> {
-                balances: accounts.iter().cloned().map(|k|(k, 100)).collect()
-            }.assimilate_storage(storage);
+            let mut faucet_accounts = Vec::new();
+            for faucet_account in FAUCET1..=FAUCET8 {
+                faucet_accounts.push((faucet_account, FAUCET_INITIAL_BALANCE));
+            }
+
+            balances.append(&mut accounts);
+            balances.append(&mut faucet_accounts);
+
+            let _ = pallet_balances::GenesisConfig::<TestRuntime> { balances }.assimilate_storage(storage);
         }
 
         /// Default ext configuration with BlockNumber 1

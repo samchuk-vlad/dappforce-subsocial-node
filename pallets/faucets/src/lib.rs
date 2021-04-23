@@ -28,12 +28,6 @@ use sp_std::{
 
 use df_traits::FaucetsProvider;
 
-#[cfg(test)]
-mod mock;
-
-#[cfg(test)]
-mod tests;
-
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Faucet<T: Trait> {
 
