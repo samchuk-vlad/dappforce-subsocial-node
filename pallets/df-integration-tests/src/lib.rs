@@ -23,7 +23,6 @@ mod tests {
         SpacePermissions,
     };
     use pallet_posts::{PostId, Post, PostUpdate, PostExtension, Comment, Error as PostsError};
-    use pallet_profiles::{ProfileUpdate, Error as ProfilesError};
     use pallet_profile_follows::Error as ProfileFollowsError;
     use pallet_reactions::{ReactionId, ReactionKind, PostReactionScores, Error as ReactionsError};
     use pallet_scores::ScoringAction;
@@ -39,6 +38,7 @@ mod tests {
 
     mod faucets;
     use faucets::*;
+    mod profiles;
 
     impl_outer_origin! {
         pub enum Origin for TestRuntime {}
@@ -147,16 +147,6 @@ mod tests {
         type Event = ();
         type BeforeAccountFollowed = Scores;
         type BeforeAccountUnfollowed = Scores;
-    }
-
-    parameter_types! {}
-
-    impl pallet_profiles::Trait for TestRuntime {
-        type Event = ();
-        type AfterProfileUpdated = ProfileHistory;
-        type MaxCreationsPerPeriod = ();
-        type BlocksInPeriod = ();
-        type FaucetsProvider = ();
     }
 
     parameter_types! {}
@@ -420,6 +410,8 @@ mod tests {
     const ACCOUNT1: AccountId = 1;
     const ACCOUNT2: AccountId = 2;
     const ACCOUNT3: AccountId = 3;
+    const ACCOUNT4: AccountId = 4;
+    const ACCOUNT5: AccountId = 5;
 
     const SPACE1: SpaceId = 1001;
     const SPACE2: SpaceId = 1002;
@@ -801,32 +793,6 @@ mod tests {
         reaction_id: ReactionId,
     ) -> DispatchResult {
         _delete_post_reaction(origin, Some(post_id.unwrap_or(2)), reaction_id)
-    }
-
-    fn _create_default_profile() -> DispatchResult {
-        _create_profile(None, None)
-    }
-
-    fn _create_profile(
-        origin: Option<Origin>,
-        content: Option<Content>
-    ) -> DispatchResult {
-        Profiles::create_profile(
-            origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
-            content.unwrap_or_else(profile_content_ipfs),
-        )
-    }
-
-    fn _update_profile(
-        origin: Option<Origin>,
-        content: Option<Content>
-    ) -> DispatchResult {
-        Profiles::update_profile(
-            origin.unwrap_or_else(|| Origin::signed(ACCOUNT1)),
-            ProfileUpdate {
-                content,
-            },
-        )
     }
 
     fn _default_follow_account() -> DispatchResult {
@@ -3122,106 +3088,6 @@ mod tests {
                 Some(extension_shared_post(POST1)),
                 None
             ), PostsError::<TestRuntime>::NoPermissionToCreatePosts);
-        });
-    }
-
-// Profiles tests
-
-    #[test]
-    fn create_profile_should_work() {
-        ExtBuilder::build().execute_with(|| {
-            assert_ok!(_create_default_profile()); // AccountId 1
-
-            let profile = Profiles::social_account_by_id(ACCOUNT1).unwrap().profile.unwrap();
-            assert_eq!(profile.created.account, ACCOUNT1);
-            assert!(profile.updated.is_none());
-            assert_eq!(profile.content, profile_content_ipfs());
-
-            assert!(ProfileHistory::edit_history(ACCOUNT1).is_empty());
-        });
-    }
-
-    #[test]
-    fn create_profile_should_fail_when_profile_is_already_created() {
-        ExtBuilder::build().execute_with(|| {
-            assert_ok!(_create_default_profile());
-            // AccountId 1
-            assert_noop!(_create_default_profile(), ProfilesError::<TestRuntime>::ProfileAlreadyCreated);
-        });
-    }
-
-    #[test]
-    fn create_profile_should_fail_when_ipfs_cid_is_invalid() {
-        ExtBuilder::build().execute_with(|| {
-            assert_noop!(_create_profile(
-                None,
-                Some(invalid_content_ipfs())
-            ), UtilsError::<TestRuntime>::InvalidIpfsCid);
-        });
-    }
-
-    #[test]
-    fn update_profile_should_work() {
-        ExtBuilder::build().execute_with(|| {
-            assert_ok!(_create_default_profile());
-            // AccountId 1
-            assert_ok!(_update_profile(
-                None,
-                Some(space_content_ipfs())
-            ));
-
-            // Check whether profile updated correctly
-            let profile = Profiles::social_account_by_id(ACCOUNT1).unwrap().profile.unwrap();
-            assert!(profile.updated.is_some());
-            assert_eq!(profile.content, space_content_ipfs());
-
-            // Check whether profile history is written correctly
-            let profile_history = ProfileHistory::edit_history(ACCOUNT1)[0].clone();
-            assert_eq!(profile_history.old_data.content, Some(profile_content_ipfs()));
-        });
-    }
-
-    #[test]
-    fn update_profile_should_fail_when_social_account_not_found() {
-        ExtBuilder::build().execute_with(|| {
-            assert_noop!(_update_profile(
-                None,
-                Some(profile_content_ipfs())
-            ), ProfilesError::<TestRuntime>::SocialAccountNotFound);
-        });
-    }
-
-    #[test]
-    fn update_profile_should_fail_when_account_has_no_profile() {
-        ExtBuilder::build().execute_with(|| {
-            assert_ok!(ProfileFollows::follow_account(Origin::signed(ACCOUNT1), ACCOUNT2));
-            assert_noop!(_update_profile(
-                None,
-                Some(profile_content_ipfs())
-            ), ProfilesError::<TestRuntime>::AccountHasNoProfile);
-        });
-    }
-
-    #[test]
-    fn update_profile_should_fail_when_no_updates_for_profile_provided() {
-        ExtBuilder::build().execute_with(|| {
-            assert_ok!(_create_default_profile());
-            // AccountId 1
-            assert_noop!(_update_profile(
-                None,
-                None
-            ), ProfilesError::<TestRuntime>::NoUpdatesForProfile);
-        });
-    }
-
-    #[test]
-    fn update_profile_should_fail_when_ipfs_cid_is_invalid() {
-        ExtBuilder::build().execute_with(|| {
-            assert_ok!(_create_default_profile());
-            assert_noop!(_update_profile(
-                None,
-                Some(invalid_content_ipfs())
-            ), UtilsError::<TestRuntime>::InvalidIpfsCid);
         });
     }
 

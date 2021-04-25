@@ -260,7 +260,7 @@ impl<T: Trait> Module<T> {
     ) -> SocialAccount<T> {
         Self::social_account_by_id(account).unwrap_or(
             SocialAccount {
-                created_at: created_at_opt.unwrap_or_else(System::<T>::block_number),
+                created_at: created_at_opt.unwrap_or_else(|| System::<T>::block_number()),
                 followers_count: 0,
                 following_accounts_count: 0,
                 following_spaces_count: 0,
