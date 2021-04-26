@@ -74,7 +74,7 @@ pub trait Trait: system::Trait
 
     type AfterSpaceUpdated: AfterSpaceUpdated<Self>;
 
-    type IsAccountBlocked: IsAccountBlocked<AccountId=Self::AccountId>;
+    type IsAccountBlocked: IsAccountBlocked<Self::AccountId>;
 
     type IsContentBlocked: IsContentBlocked;
 
@@ -102,6 +102,8 @@ decl_error! {
   }
 }
 
+pub const RESERVED_SPACE_COUNT: u64 = 1000;
+
 // This pallet's storage items.
 decl_storage! {
     trait Store for Module<T: Trait> as SpacesModule {
@@ -111,7 +113,7 @@ decl_storage! {
         pub SpaceById get(fn space_by_id) build(|config: &GenesisConfig<T>| {
           let mut spaces: Vec<(SpaceId, Space<T>)> = Vec::new();
           let endowed_account = config.endowed_account.clone();
-          for id in 1..=1000 {
+          for id in 1..=RESERVED_SPACE_COUNT {
             spaces.push((id, Space::<T>::new(id, None, endowed_account.clone(), Content::None, None, None)));
           }
           spaces
@@ -169,8 +171,8 @@ decl_module! {
       if let Some(parent_id) = parent_id_opt {
         let parent_space = Self::require_space(parent_id)?;
 
-        ensure!(!T::IsAccountBlocked::is_account_blocked(owner.clone(), parent_id), UtilsError::<T>::AccountIsBlocked);
-        ensure!(!T::IsContentBlocked::is_content_blocked(content.clone(), parent_id), UtilsError::<T>::ContentIsBlocked);
+        ensure!(T::IsAccountBlocked::is_allowed_account(owner.clone(), parent_id), UtilsError::<T>::AccountIsBlocked);
+        ensure!(T::IsContentBlocked::is_allowed_content(content.clone(), parent_id), UtilsError::<T>::ContentIsBlocked);
 
         Self::ensure_account_has_space_permission(
           owner.clone(),
@@ -216,7 +218,7 @@ decl_module! {
 
       let mut space = Self::require_space(space_id)?;
 
-      ensure!(!T::IsAccountBlocked::is_account_blocked(owner.clone(), space.id), UtilsError::<T>::AccountIsBlocked);
+      ensure!(T::IsAccountBlocked::is_allowed_account(owner.clone(), space.id), UtilsError::<T>::AccountIsBlocked);
 
       Self::ensure_account_has_space_permission(
         owner.clone(),
@@ -253,9 +255,9 @@ decl_module! {
         if content != space.content {
           Utils::<T>::is_valid_content(content.clone())?;
 
-          ensure!(!T::IsContentBlocked::is_content_blocked(content.clone(), space.id), UtilsError::<T>::ContentIsBlocked);
+          ensure!(T::IsContentBlocked::is_allowed_content(content.clone(), space.id), UtilsError::<T>::ContentIsBlocked);
           if let Some(parent_id) = space.parent_id {
-            ensure!(!T::IsContentBlocked::is_content_blocked(content.clone(), parent_id), UtilsError::<T>::ContentIsBlocked);
+            ensure!(T::IsContentBlocked::is_allowed_content(content.clone(), parent_id), UtilsError::<T>::ContentIsBlocked);
           }
 
           old_data.content = Some(space.content);

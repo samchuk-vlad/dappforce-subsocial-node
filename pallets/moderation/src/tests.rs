@@ -3,27 +3,28 @@ use crate::*;
 
 use frame_support::{assert_ok, assert_noop};
 use pallet_posts::PostById;
-use pallet_utils::{Error as UtilsError};
+use pallet_utils::{
+    Error as UtilsError,
+    mock_functions::invalid_content_ipfs,
+};
 use pallet_spaces::{SpaceById, Error as SpaceError};
 
 #[test]
 fn report_entity_should_work() {
-    ExtBuilder::build_with_space_and_post().execute_with(|| {
-        assert_ok!(_report_default_entity());
-
+    ExtBuilder::build_with_space_and_post_then_report().execute_with(|| {
         assert_eq!(Moderation::next_report_id(), REPORT2);
 
         let report = Moderation::report_by_id(REPORT1).unwrap();
         assert_eq!(report.id, REPORT1);
-        assert_eq!(report.created.account, ACCOUNT1);
+        assert_eq!(report.created.account, ACCOUNT_SCOPE_OWNER);
         assert_eq!(report.reported_entity, EntityId::Post(POST1));
         assert_eq!(report.reported_within, SPACE1);
-        assert_eq!(report.reason, valid_content_ipfs_1());
+        assert_eq!(report.reason, valid_content_ipfs());
     });
 }
 
 #[test]
-fn report_entity_should_fail_with_reason_is_empty() {
+fn report_entity_should_fail_when_no_reason_provided() {
     ExtBuilder::build_with_space_and_post().execute_with(|| {
         assert_noop!(
             _report_entity(
@@ -37,7 +38,7 @@ fn report_entity_should_fail_with_reason_is_empty() {
 }
 
 #[test]
-fn report_entity_should_fail_with_invalid_ipfs_cid() {
+fn report_entity_should_fail_when_reason_is_invalid_ipfs_cid() {
     ExtBuilder::build_with_space_and_post().execute_with(|| {
         assert_noop!(
             _report_entity(
@@ -51,42 +52,41 @@ fn report_entity_should_fail_with_invalid_ipfs_cid() {
 }
 
 #[test]
-fn report_entity_should_fail_with_invalid_scope() {
+fn report_entity_should_fail_when_invalid_scope_provided() {
     ExtBuilder::build().execute_with(|| {
-        assert_noop!(_report_default_entity(), Error::<Test>::InvalidScope);
+        assert_noop!(_report_default_post(), Error::<Test>::ScopeNotFound);
     });
 }
 
 #[test]
-fn report_entity_should_fail_with_already_reported_entity() {
-    ExtBuilder::build_with_space_and_post().execute_with(|| {
-        assert_ok!(_report_default_entity());
-        assert_noop!(_report_default_entity(), Error::<Test>::AlreadyReportedEntity);
+fn report_entity_should_fail_when_entity_already_reported() {
+    ExtBuilder::build_with_space_and_post_then_report().execute_with(|| {
+        assert_noop!(_report_default_post(), Error::<Test>::AlreadyReportedEntity);
     });
 }
 
+// Suggest entity status
 //-------------------------------------------------------------------------
+
 #[test]
 fn suggest_entity_status_should_work() {
-    ExtBuilder::build_with_space_and_post().execute_with(|| {
-        assert_ok!(_report_default_entity());
-        assert_ok!(_suggest_default_entity_status());
+    ExtBuilder::build_with_space_and_post_then_report().execute_with(|| {
+        assert_ok!(_suggest_blocked_status_for_post());
 
         let suggestions = Moderation::suggested_statuses(EntityId::Post(POST1), SPACE1);
-        let suggested_status = SuggestedStatus::<Test>::new(
-            ACCOUNT1,
+        let expected_status = SuggestedStatus::<Test>::new(
+            ACCOUNT_SCOPE_OWNER,
             Some(EntityStatus::Blocked),
             Some(REPORT1),
         );
 
-        assert!(suggestions == vec![suggested_status]);
+        assert!(suggestions == vec![expected_status]);
     });
 }
 
 #[test]
-fn suggest_entity_status_should_fail_with_report_not_found() {
-    ExtBuilder::build_with_space_and_post().execute_with(|| {
-        assert_ok!(_report_default_entity());
+fn suggest_entity_status_should_fail_when_report_not_found() {
+    ExtBuilder::build_with_space_and_post_then_report().execute_with(|| {
         assert_noop!(
             _suggest_entity_status(
                 None,
@@ -100,9 +100,8 @@ fn suggest_entity_status_should_fail_with_report_not_found() {
 }
 
 #[test]
-fn suggest_entity_status_should_fail_with_suggested_status_in_wrong_scope() {
-    ExtBuilder::build_with_space_and_post().execute_with(|| {
-        assert_ok!(_report_default_entity());
+fn suggest_entity_status_should_fail_when_report_in_another_scope() {
+    ExtBuilder::build_with_space_and_post_then_report().execute_with(|| {
         assert_noop!(
             _suggest_entity_status(
                 None,
@@ -116,11 +115,10 @@ fn suggest_entity_status_should_fail_with_suggested_status_in_wrong_scope() {
 }
 
 #[test]
-fn suggest_entity_status_should_fail_with_suggested_same_entity_status() {
-    ExtBuilder::build_with_space_and_post().execute_with(|| {
-        assert_ok!(_report_default_entity());
-        assert_ok!(_suggest_default_entity_status());
-        assert_ok!(_update_default_entity_status());
+fn suggest_entity_status_should_fail_when_same_entity_status_already_suggested() {
+    ExtBuilder::build_with_space_and_post_then_report().execute_with(|| {
+        assert_ok!(_suggest_blocked_status_for_post());
+        assert_ok!(_update_post_status_to_allowed());
         assert_noop!(
             _suggest_entity_status(
                 None,
@@ -134,19 +132,18 @@ fn suggest_entity_status_should_fail_with_suggested_same_entity_status() {
 }
 
 #[test]
-fn suggest_entity_status_should_fail_with_invalid_scope() {
-    ExtBuilder::build_with_report_no_space().execute_with(|| {
-        assert_noop!(_suggest_default_entity_status(), Error::<Test>::InvalidScope);
+fn suggest_entity_status_should_fail_when_scope_not_found() {
+    ExtBuilder::build_with_report_then_remove_scope().execute_with(|| {
+        assert_noop!(_suggest_blocked_status_for_post(), Error::<Test>::ScopeNotFound);
     });
 }
 
 #[test]
-fn suggest_entity_status_should_fail_with_no_permission_to_suggest_entity_status() {
-    ExtBuilder::build_with_space_and_post().execute_with(|| {
-        assert_ok!(_report_default_entity());
+fn suggest_entity_status_should_fail_when_origin_has_no_permission() {
+    ExtBuilder::build_with_space_and_post_then_report().execute_with(|| {
         assert_noop!(
             _suggest_entity_status(
-                Some(Origin::signed(ACCOUNT2)),
+                Some(Origin::signed(ACCOUNT_NOT_MODERATOR)),
                 None,
                 None,
                 None,
@@ -156,26 +153,24 @@ fn suggest_entity_status_should_fail_with_no_permission_to_suggest_entity_status
     });
 }
 
+// Update entity status
 //----------------------------------------------------------------------------
+
 #[test]
-fn update_entity_status_should_work_status_allowed() {
-    ExtBuilder::build_with_space_and_post().execute_with(|| {
-        assert_ok!(_report_default_entity());
-        assert_ok!(_suggest_default_entity_status());
-        assert_ok!(_update_default_entity_status());
+fn update_entity_status_should_work_for_status_allowed() {
+    ExtBuilder::build_with_space_and_post_then_report().execute_with(|| {
+        assert_ok!(_suggest_blocked_status_for_post());
+        assert_ok!(_update_post_status_to_allowed());
 
         let status = Moderation::status_by_entity_in_space(EntityId::Post(POST1), SPACE1).unwrap();
         assert_eq!(status, EntityStatus::Allowed);
-        // let post = PostById::<Test>::get(POST1).unwrap();
-        // assert!(post.space_id.is_none());
     });
 }
 
 #[test]
-fn update_entity_status_should_work_status_blocked() {
-    ExtBuilder::build_with_space_and_post().execute_with(|| {
-        assert_ok!(_report_default_entity());
-        assert_ok!(_suggest_default_entity_status());
+fn update_entity_status_should_work_for_status_blocked() {
+    ExtBuilder::build_with_space_and_post_then_report().execute_with(|| {
+        assert_ok!(_suggest_blocked_status_for_post());
         assert_ok!(
             _update_entity_status(
                 None,
@@ -185,24 +180,26 @@ fn update_entity_status_should_work_status_blocked() {
             )
         );
 
+        // Check that post was removed from its space, 
+        // because when removing a post, we set its space to None
         let post = PostById::<Test>::get(POST1).unwrap();
         assert!(post.space_id.is_none());
     });
 }
 
 #[test]
-fn update_entity_status_should_fail_with_invalid_scope() {
-    ExtBuilder::build_with_report_no_space().execute_with(|| {
-        assert_noop!(_update_default_entity_status(), Error::<Test>::InvalidScope);
+fn update_entity_status_should_fail_when_invalid_scope_provided() {
+    ExtBuilder::build_with_report_then_remove_scope().execute_with(|| {
+        assert_noop!(_update_post_status_to_allowed(), Error::<Test>::ScopeNotFound);
     });
 }
 
 #[test]
-fn update_entity_status_should_fail_with_no_permission_to_update_entity_status() {
+fn update_entity_status_should_fail_when_origin_has_no_permission() {
     ExtBuilder::build_with_space_and_post().execute_with(|| {
         assert_noop!(
             _update_entity_status(
-                Some(Origin::signed(ACCOUNT2)),
+                Some(Origin::signed(ACCOUNT_NOT_MODERATOR)),
                 None,
                 None,
                 None
@@ -211,14 +208,15 @@ fn update_entity_status_should_fail_with_no_permission_to_update_entity_status()
     });
 }
 
+// Delete entity status
 //---------------------------------------------------------------------------
+
 #[test]
 fn delete_entity_status_should_work() {
-    ExtBuilder::build_with_space_and_post().execute_with(|| {
-        assert_ok!(_report_default_entity());
-        assert_ok!(_suggest_default_entity_status());
-        assert_ok!(_update_default_entity_status());
-        assert_ok!(_delete_default_entity_status());
+    ExtBuilder::build_with_space_and_post_then_report().execute_with(|| {
+        assert_ok!(_suggest_blocked_status_for_post());
+        assert_ok!(_update_post_status_to_allowed());
+        assert_ok!(_delete_post_status());
 
         let status = Moderation::status_by_entity_in_space(EntityId::Post(POST1), SPACE1);
         assert!(status.is_none());
@@ -226,34 +224,30 @@ fn delete_entity_status_should_work() {
 }
 
 #[test]
-fn delete_entity_status_should_fail_entity_has_no_status_in_scope() {
-    ExtBuilder::build_with_space_and_post().execute_with(|| {
-        assert_ok!(_report_default_entity());
-        assert_ok!(_suggest_default_entity_status());
-        assert_noop!(_delete_default_entity_status(), Error::<Test>::EntityHasNoStatusInScope);
+fn delete_entity_status_should_fail_when_entity_has_no_status_in_scope() {
+    ExtBuilder::build_with_space_and_post_then_report().execute_with(|| {
+        assert_noop!(_delete_post_status(), Error::<Test>::EntityHasNoStatusInScope);
     });
 }
 
 #[test]
-fn delete_entity_status_should_fail_invalid_scope() {
-    ExtBuilder::build_with_space_and_post().execute_with(|| {
-        assert_ok!(_report_default_entity());
-        assert_ok!(_suggest_default_entity_status());
-        assert_ok!(_update_default_entity_status());
+fn delete_entity_status_should_fail_when_scope_not_found() {
+    ExtBuilder::build_with_space_and_post_then_report().execute_with(|| {
+        assert_ok!(_suggest_blocked_status_for_post());
+        assert_ok!(_update_post_status_to_allowed());
         SpaceById::<Test>::remove(SPACE1);
-        assert_noop!(_delete_default_entity_status(), Error::<Test>::InvalidScope);
+        assert_noop!(_delete_post_status(), Error::<Test>::ScopeNotFound);
     });
 }
 
 #[test]
-fn delete_entity_status_should_fail_no_permission_to_update_entity_status() {
-    ExtBuilder::build_with_space_and_post().execute_with(|| {
-        assert_ok!(_report_default_entity());
-        assert_ok!(_suggest_default_entity_status());
-        assert_ok!(_update_default_entity_status());
+fn delete_entity_status_should_fail_when_origin_has_no_permission() {
+    ExtBuilder::build_with_space_and_post_then_report().execute_with(|| {
+        assert_ok!(_suggest_blocked_status_for_post());
+        assert_ok!(_update_post_status_to_allowed());
         assert_noop!(
             _delete_entity_status(
-                Some(Origin::signed(ACCOUNT2)),
+                Some(Origin::signed(ACCOUNT_NOT_MODERATOR)),
                 None,
                 None
             ), Error::<Test>::NoPermissionToUpdateEntityStatus
@@ -261,19 +255,23 @@ fn delete_entity_status_should_fail_no_permission_to_update_entity_status() {
     });
 }
 
+// Update moderation settings
 //----------------------------------------------------------------------------
+
 #[test]
 fn update_moderation_settings_should_work() {
     ExtBuilder::build_with_space_and_post().execute_with(|| {
-        assert_ok!(_update_default_moderation_settings());
+        assert_ok!(_update_autoblock_threshold_in_moderation_settings());
 
         let settings = Moderation::moderation_settings(SPACE1).unwrap();
         assert_eq!(settings.autoblock_threshold, Some(AUTOBLOCK_THRESHOLD));
     });
 }
 
+// TODO test that autoblock works
+
 #[test]
-fn update_moderation_settings_should_fail_with_no_updates_for_moderation_settings() {
+fn update_moderation_settings_should_fail_when_no_updates_provided() {
     ExtBuilder::build_with_space_and_post().execute_with(|| {
         assert_noop!(
             _update_moderation_settings(
@@ -286,18 +284,21 @@ fn update_moderation_settings_should_fail_with_no_updates_for_moderation_setting
 }
 
 #[test]
-fn update_moderation_settings_should_fail_with_space_not_found() {
-    ExtBuilder::build_with_report_no_space().execute_with(|| {
-        assert_noop!(_update_default_moderation_settings(), SpaceError::<Test>::SpaceNotFound);
+fn update_moderation_settings_should_fail_when_space_not_found() {
+    ExtBuilder::build_with_report_then_remove_scope().execute_with(|| {
+        assert_noop!(
+            _update_autoblock_threshold_in_moderation_settings(),
+            SpaceError::<Test>::SpaceNotFound
+        );
     });
 }
 
 #[test]
-fn update_moderation_settings_should_fail_with_no_permission_to_update_moderation_settings() {
+fn update_moderation_settings_should_fail_when_origin_has_no_permission() {
     ExtBuilder::build_with_space_and_post().execute_with(|| {
         assert_noop!(
             _update_moderation_settings(
-                Some(Origin::signed(ACCOUNT2)),
+                Some(Origin::signed(ACCOUNT_NOT_MODERATOR)),
                 None,
                 None
             ), Error::<Test>::NoPermissionToUpdateModerationSettings
