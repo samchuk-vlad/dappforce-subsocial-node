@@ -1,4 +1,4 @@
-use crate::{Module, Trait, RoleId, Role, RoleIdsByUserInSpace};
+use crate::{Module, Trait, Role, RoleIdsByUserInSpace};
 
 use frame_support::storage::IterableStorageDoubleMap;
 use sp_std::prelude::*;
