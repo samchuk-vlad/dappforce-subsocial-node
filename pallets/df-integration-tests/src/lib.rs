@@ -223,7 +223,6 @@ mod tests {
 
     const HANDLE_DEPOSIT: u64 = 0;
     parameter_types! {
-        pub const HandleDeposit: u64 = HANDLE_DEPOSIT;
         pub const DefaultRPCLimit: u64 = 20;
     }
 
@@ -1228,7 +1227,7 @@ mod tests {
 
     /*---------------------------------------------------------------------------------------------------*/
     // Space tests
-    
+
     #[test]
     fn create_space_should_work() {
         ExtBuilder::build().execute_with(|| {
@@ -1455,8 +1454,8 @@ mod tests {
             // Check that the previous space handle has been added to the space history:
             let edit_history = &SpaceHistory::edit_history(space.id)[0];
             assert_eq!(edit_history.old_data.handle, Some(Some(space_handle())));
-            
-            // Check that the previous space handle is not reserved in storage anymore: 
+
+            // Check that the previous space handle is not reserved in storage anymore:
             assert_eq!(find_space_id_by_handle(space_handle()), None);
 
             // Check that the handle deposit has been unreserved:
@@ -2697,7 +2696,7 @@ mod tests {
     #[test]
     fn create_post_reaction_should_fail_when_trying_to_react_in_hidden_space() {
         ExtBuilder::build_with_post().execute_with(|| {
-            
+
             // Hide the space
             assert_ok!(_update_space(
                 None,
@@ -2712,7 +2711,7 @@ mod tests {
     #[test]
     fn create_post_reaction_should_fail_when_trying_to_react_on_hidden_post() {
         ExtBuilder::build_with_post().execute_with(|| {
-            
+
             // Hide the post
             assert_ok!(_update_post(
                 None,
