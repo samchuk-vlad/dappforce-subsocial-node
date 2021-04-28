@@ -2,7 +2,7 @@
 
 use codec::{Decode, Encode};
 use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage,
+    decl_error, decl_module, decl_storage, decl_event,
     dispatch::{DispatchError, DispatchResult}, ensure,
     traits::{
         Currency, Get,
@@ -10,6 +10,7 @@ use frame_support::{
     },
 };
 use frame_system as system;
+
 #[cfg(feature = "std")]
 use serde::Deserialize;
 use sp_runtime::RuntimeDebug;
@@ -234,7 +235,7 @@ impl<T: Trait> Module<T> {
                 // IPFS CID v1 is 59 bytes.df-integration-tests/src/lib.rs:272:5
                 ensure!(len == 46 || len == 59, Error::<T>::InvalidIpfsCid);
                 Ok(())
-            }
+            },
             Content::Hyper(_) => Err(Error::<T>::HypercoreContentTypeNotSupported.into())
         }
     }
@@ -267,7 +268,7 @@ impl<T: Trait> Module<T> {
     /// - Lowercase a handle.
     /// - Check if a handle contains only valid chars: 0-9, a-z, _.
     pub fn lowercase_and_validate_a_handle(handle: Vec<u8>) -> Result<Vec<u8>, DispatchError> {
-        
+
         // Check if a handle length fits into min/max length constraints:
         ensure!(handle.len() >= T::MinHandleLen::get() as usize, Error::<T>::HandleIsTooShort);
         ensure!(handle.len() <= T::MaxHandleLen::get() as usize, Error::<T>::HandleIsTooLong);

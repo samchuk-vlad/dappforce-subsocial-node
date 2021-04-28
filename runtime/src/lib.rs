@@ -44,7 +44,6 @@ pub use frame_support::{
 };
 use frame_system::EnsureRoot;
 
-use pallet_utils::{SpaceId, PostId};
 use pallet_permissions::SpacePermission;
 use pallet_posts::rpc::FlatPost;
 use pallet_profiles::rpc::FlatSocialAccount;
@@ -53,6 +52,7 @@ use pallet_reactions::{
 	rpc::FlatReaction,
 };
 use pallet_spaces::rpc::FlatSpace;
+use pallet_utils::{SpaceId, PostId};
 
 pub mod constants;
 use constants::{currency::*, time::*};
