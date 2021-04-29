@@ -4,7 +4,7 @@ use codec::{Decode, Encode};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure,
     dispatch::DispatchResult,
-    traits::{Currency, Get}
+    traits::{Currency, Get},
 };
 use sp_runtime::{
     traits::{Saturating, Zero},
@@ -55,6 +55,8 @@ pub trait Trait: system::Trait
     type BlocksInPeriod: Get<Self::BlockNumber>;
 
     type FaucetsProvider: FaucetsProvider<Self::AccountId, BalanceOf<Self>>;
+
+    type AddSocialAccountMembers: Get<Vec<Self::AccountId>>;
 }
 
 // This pallet's storage items.
@@ -91,6 +93,8 @@ decl_error! {
         AccountHasNoProfile,
         /// Too many accounts created in this limit.
         PeriodLimitReached,
+        /// Account is not permitted to add new social accounts.
+        NotMember,
     }
 }
 
@@ -100,6 +104,8 @@ decl_module! {
     const MaxCreationsPerPeriod: u32 = T::MaxCreationsPerPeriod::get();
 
     const BlocksInPeriod: T::BlockNumber = T::BlocksInPeriod::get();
+
+    const AddSocialAccountMembers: Vec<T::AccountId> = T::AddSocialAccountMembers::get();
 
     // Initializing errors
     type Error = Error<T>;
@@ -163,14 +169,16 @@ decl_module! {
       Ok(())
     }
 
-    #[weight = 50_000 + T::DbWeight::get().reads_writes(6, 5)]
+    #[weight = 50_000 + T::DbWeight::get().reads_writes(7, 5)]
     pub fn create_social_account(
       origin,
       new_account: T::AccountId,
       referrer: Option<T::AccountId>,
       drip_amount: Option<BalanceOf<T>>
     ) -> DispatchResult {
-      let owner = ensure_signed(origin)?;
+      let who = ensure_signed(origin)?;
+      let members = T::AddSocialAccountMembers::get();
+      ensure!(members.contains(&who), Error::<T>::NotMember);
 
       let current_block = System::<T>::block_number();
 
@@ -188,7 +196,7 @@ decl_module! {
       let social_account = Self::get_or_new_social_account(new_account.clone(), None, referrer.clone());
 
       if let Some(amount) = drip_amount {
-        T::FaucetsProvider::do_drip(owner, new_account.clone(), amount)?;
+        T::FaucetsProvider::do_drip(who, new_account.clone(), amount)?;
       }
 
       if current_block == social_account.created_at {

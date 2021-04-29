@@ -340,6 +340,7 @@ impl pallet_profile_follows::Trait for Runtime {
 parameter_types! {
 	pub const MaxCreationsPerPeriod: u32 = 4000;
 	pub const BlocksInPeriod: BlockNumber = 1 * DAYS;
+	pub Members: Vec<AccountId> = FaucetsMembership::members();
 }
 
 impl pallet_profiles::Trait for Runtime {
@@ -348,6 +349,19 @@ impl pallet_profiles::Trait for Runtime {
 	type MaxCreationsPerPeriod = MaxCreationsPerPeriod;
 	type BlocksInPeriod = BlocksInPeriod;
 	type FaucetsProvider = Faucets;
+	type AddSocialAccountMembers = Members;
+}
+
+type MembershipFaucetsInstance = pallet_membership::Instance1;
+impl pallet_membership::Trait<MembershipFaucetsInstance> for Runtime {
+	type Event = Event;
+	type AddOrigin = EnsureRoot<AccountId>;
+	type RemoveOrigin = EnsureRoot<AccountId>;
+	type SwapOrigin = EnsureRoot<AccountId>;
+	type ResetOrigin = EnsureRoot<AccountId>;
+	type PrimeOrigin = EnsureRoot<AccountId>;
+	type MembershipInitialized = ();
+	type MembershipChanged = ();
 }
 
 parameter_types! {}
@@ -531,6 +545,7 @@ construct_runtime!(
 		Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
 		Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
 		Utility: pallet_utility::{Module, Call, Event},
+		FaucetsMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
 
 		// Subsocial custom pallets:
 
