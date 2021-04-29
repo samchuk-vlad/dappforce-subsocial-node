@@ -133,6 +133,7 @@ impl pallet_profiles::Trait for Test {
     type MaxCreationsPerPeriod = ();
     type BlocksInPeriod = ();
     type FaucetsProvider = ();
+    type AddSocialAccountMembers = ();
 }
 
 // TODO export to a common place

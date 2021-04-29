@@ -154,6 +154,7 @@ impl pallet_profiles::Trait for Test {
     type MaxCreationsPerPeriod = ();
     type BlocksInPeriod = ();
     type FaucetsProvider = ();
+    type AddSocialAccountMembers = ();
 }
 
 parameter_types! {

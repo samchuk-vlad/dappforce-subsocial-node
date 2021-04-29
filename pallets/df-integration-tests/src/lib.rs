@@ -2,7 +2,7 @@
 mod tests {
     use frame_support::{
         assert_ok, assert_noop,
-        impl_outer_origin, parameter_types,
+        impl_outer_origin, parameter_types, ord_parameter_types,
         weights::Weight,
         dispatch::DispatchResult,
         storage::StorageMap,
@@ -15,7 +15,7 @@ mod tests {
         Perbill,
         Storage,
     };
-    use frame_system::{self as system};
+    use frame_system::{self as system, EnsureSignedBy};
 
     use pallet_permissions::{
         SpacePermission,
@@ -80,6 +80,10 @@ mod tests {
         type OnNewAccount = ();
         type OnKilledAccount = ();
         type SystemWeightInfo = ();
+    }
+    const SUDO_ACCOUNT: AccountId = 100;
+    ord_parameter_types! {
+        pub const SudoAccount: AccountId = SUDO_ACCOUNT;
     }
 
     parameter_types! {
@@ -247,8 +251,20 @@ mod tests {
         type DefaultAutoblockThreshold = DefaultAutoblockThreshold;
     }
 
+    impl pallet_membership::Trait for TestRuntime {
+        type Event = ();
+        type AddOrigin = EnsureSignedBy<SudoAccount, AccountId>;
+        type RemoveOrigin = EnsureSignedBy<SudoAccount, AccountId>;
+        type SwapOrigin = EnsureSignedBy<SudoAccount, AccountId>;
+        type ResetOrigin = EnsureSignedBy<SudoAccount, AccountId>;
+        type PrimeOrigin = EnsureSignedBy<SudoAccount, AccountId>;
+        type MembershipInitialized = ();
+        type MembershipChanged = ();
+    }
+
     type System = system::Module<TestRuntime>;
     type Balances = pallet_balances::Module<TestRuntime>;
+    type FaucetsMembership = pallet_membership::Module<TestRuntime>;
 
     type Posts = pallet_posts::Module<TestRuntime>;
     type PostHistory = pallet_post_history::Module<TestRuntime>;

@@ -13,7 +13,10 @@ impl pallet_faucets::Trait for TestRuntime {
 impl ExtBuilder {
     pub fn build_with_faucet() -> TestExternalities {
         let mut ext = Self::build();
-        ext.execute_with(|| { assert_ok!(_add_default_faucet()); });
+        ext.execute_with(|| {
+            assert_ok!(_add_default_faucet());
+            assert_ok!(FaucetsMembership::add_member(Origin::signed(SUDO_ACCOUNT), FAUCET1));
+        });
         ext
     }
 

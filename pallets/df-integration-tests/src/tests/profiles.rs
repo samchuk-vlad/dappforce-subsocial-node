@@ -2,9 +2,10 @@ use super::*;
 use pallet_profiles::{ProfileUpdate, Error as ProfilesError};
 
 parameter_types! {
-        pub const MaxCreationsPerPeriod: u32 = 1;
-        pub const BlocksInPeriod: BlockNumber = 1;
-    }
+    pub const MaxCreationsPerPeriod: u32 = 1;
+    pub const BlocksInPeriod: BlockNumber = 1;
+    pub AddSocialAccountMembers: Vec<AccountId> = FaucetsMembership::members();
+}
 
 impl pallet_profiles::Trait for TestRuntime {
     type Event = ();
@@ -12,17 +13,13 @@ impl pallet_profiles::Trait for TestRuntime {
     type MaxCreationsPerPeriod = MaxCreationsPerPeriod;
     type BlocksInPeriod = BlocksInPeriod;
     type FaucetsProvider = Faucets;
+    type AddSocialAccountMembers = AddSocialAccountMembers;
 }
 
 impl ExtBuilder {
     pub fn build_with_one_default_social_account() -> TestExternalities {
         let mut ext = Self::build_with_faucet();
-
-        ext.execute_with(|| {
-            System::set_block_number(1);
-            assert_ok!(_create_default_social_account());
-        });
-
+        ext.execute_with(|| { assert_ok!(_create_default_social_account()); });
         ext
     }
 }
@@ -253,18 +250,6 @@ fn create_social_account_should_work_with_referrer_and_drip_amount() {
 }
 
 #[test]
-fn create_social_account_should_fail_with_period_limit_reached() {
-    ExtBuilder::build_with_one_default_social_account().execute_with(|| {
-        assert_noop!(_create_social_account(
-            None,
-            Some(ACCOUNT3),
-            Some(Some(ACCOUNT2)),
-            None
-        ), ProfilesError::<TestRuntime>::PeriodLimitReached);
-    });
-}
-
-#[test]
 fn create_social_account_should_work_when_next_period_will_come() {
     ExtBuilder::build_with_one_default_social_account().execute_with(|| {
         System::set_block_number(NEXT_PERIOD);
@@ -277,5 +262,29 @@ fn create_social_account_should_work_when_next_period_will_come() {
         ));
 
         check_profile_storages(ACCOUNT5, Some(ACCOUNT2), 0, NEXT_PERIOD + PERIOD);
+    });
+}
+
+#[test]
+fn create_social_account_should_fail_with_period_limit_reached() {
+    ExtBuilder::build_with_one_default_social_account().execute_with(|| {
+        assert_noop!(_create_social_account(
+            None,
+            Some(ACCOUNT3),
+            Some(Some(ACCOUNT2)),
+            None
+        ), ProfilesError::<TestRuntime>::PeriodLimitReached);
+    });
+}
+
+#[test]
+fn create_social_account_should_fail_with_not_member() {
+    ExtBuilder::build_with_faucet().execute_with(|| {
+        assert_noop!(_create_social_account(
+            Some(Origin::signed(FAUCET2)),
+            None,
+            None,
+            None
+        ), ProfilesError::<TestRuntime>::NotMember);
     });
 }
