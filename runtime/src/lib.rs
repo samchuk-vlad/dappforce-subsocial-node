@@ -427,7 +427,6 @@ impl pallet_space_ownership::Trait for Runtime {
 
 parameter_types! {
 	pub HandleDeposit: Balance = 50 * CENTS;
-	pub const DefaultRPCLimit: u64 = 20;
 }
 
 impl pallet_spaces::Trait for Runtime {
@@ -440,7 +439,6 @@ impl pallet_spaces::Trait for Runtime {
 	type IsAccountBlocked = ()/*Moderation*/;
 	type IsContentBlocked = ()/*Moderation*/;
 	type HandleDeposit = HandleDeposit;
-	type DefaultRPCLimit = DefaultRPCLimit;
 }
 
 parameter_types! {}
@@ -774,8 +772,8 @@ impl_runtime_apis! {
     		SpaceFollows::get_space_ids_followed_by_account(account)
     	}
 
-    	fn filter_followed_spaces(account: AccountId, space_ids: Vec<SpaceId>) -> Vec<SpaceId> {
-    		SpaceFollows::filter_followed_spaces(account, space_ids)
+    	fn filter_followed_space_ids(account: AccountId, space_ids: Vec<SpaceId>) -> Vec<SpaceId> {
+    		SpaceFollows::filter_followed_space_ids(account, space_ids)
     	}
     }
 
@@ -824,12 +822,12 @@ impl_runtime_apis! {
 			Posts::get_posts_by_ids(post_ids)
 		}
 
-		fn get_public_posts_by_space(space_id: SpaceId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>> {
-			Posts::get_public_posts_by_space(space_id, offset, limit)
+		fn get_public_posts_by_space_id(space_id: SpaceId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>> {
+			Posts::get_public_posts_by_space_id(space_id, offset, limit)
 		}
 
-		fn get_unlisted_posts_by_space(space_id: SpaceId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>> {
-			Posts::get_unlisted_posts_by_space(space_id, offset, limit)
+		fn get_unlisted_posts_by_space_id(space_id: SpaceId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>> {
+			Posts::get_unlisted_posts_by_space_id(space_id, offset, limit)
 		}
 
 		fn get_reply_ids_by_post_id(post_id: PostId) -> Vec<PostId> {
@@ -840,12 +838,12 @@ impl_runtime_apis! {
 			Posts::get_comment_ids_tree(post_id)
 		}
 
-		fn get_public_post_ids_by_space(space_id: SpaceId) -> Vec<PostId> {
-			Posts::get_public_post_ids_by_space(space_id)
+		fn get_public_post_ids_by_space_id(space_id: SpaceId) -> Vec<PostId> {
+			Posts::get_public_post_ids_by_space_id(space_id)
 		}
 
-		fn get_unlisted_post_ids_by_space(space_id: SpaceId) -> Vec<PostId> {
-			Posts::get_unlisted_post_ids_by_space(space_id)
+		fn get_unlisted_post_ids_by_space_id(space_id: SpaceId) -> Vec<PostId> {
+			Posts::get_unlisted_post_ids_by_space_id(space_id)
 		}
 
 		fn get_next_post_id() -> PostId {
@@ -859,8 +857,8 @@ impl_runtime_apis! {
 
 	impl profile_follows_runtime_api::ProfileFollowsApi<Block, AccountId> for Runtime
     {
-    	fn filter_followed_accounts(account: AccountId, other_accounts: Vec<AccountId>) -> Vec<AccountId> {
-    		ProfileFollows::filter_followed_accounts(account, other_accounts)
+    	fn filter_followed_accounts(account: AccountId, maybe_following: Vec<AccountId>) -> Vec<AccountId> {
+    		ProfileFollows::filter_followed_accounts(account, maybe_following)
     	}
     }
 
@@ -887,21 +885,21 @@ impl_runtime_apis! {
 			Reactions::get_reactions_by_post_id(post_id, limit, offset)
 		}
 
-		fn get_reactions_by_account(
+		fn get_reactions_by_account_and_post_ids(
 			account: AccountId,
 			post_ids: Vec<PostId>,
 		) -> BTreeMap<PostId, FlatReaction<AccountId, BlockNumber>> {
-			Reactions::get_reactions_by_account(account, post_ids)
+			Reactions::get_reactions_by_account_and_post_ids(account, post_ids)
 		}
     }
 
 	impl roles_runtime_api::RolesApi<Block, AccountId> for Runtime
 	{
-		fn get_space_permissions_by_user(
+		fn get_space_permissions_by_account(
 			account: AccountId,
 			space_id: SpaceId
 		) -> Vec<SpacePermission> {
-			Roles::get_space_permissions_by_user(account, space_id)
+			Roles::get_space_permissions_by_account(account, space_id)
 		}
 
 		fn get_space_editors(space_id: SpaceId) -> Vec<AccountId> {

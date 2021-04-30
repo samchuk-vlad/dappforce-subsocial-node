@@ -222,9 +222,6 @@ mod tests {
     }
 
     const HANDLE_DEPOSIT: u64 = 0;
-    parameter_types! {
-        pub const DefaultRPCLimit: u64 = 20;
-    }
 
     impl pallet_spaces::Trait for TestRuntime {
         type Event = ();
@@ -236,7 +233,6 @@ mod tests {
         type IsAccountBlocked = Moderation;
         type IsContentBlocked = Moderation;
         type HandleDeposit = ();
-        type DefaultRPCLimit = DefaultRPCLimit;
     }
 
     parameter_types! {}
