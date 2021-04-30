@@ -26,7 +26,7 @@ impl<T: Trait> Module<T> {
         Self::role_ids_by_space_id(space_id)
             .iter()
             .flat_map(Self::users_by_role_id)
-            .filter_map(|user| user.account())
+            .filter_map(|user| user.maybe_account())
             .collect::<BTreeSet<_>>()
             .iter().cloned().collect()
     }

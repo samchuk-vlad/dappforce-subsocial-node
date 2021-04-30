@@ -7,7 +7,7 @@ use sp_std::{vec, prelude::*};
 
 use pallet_space_follows::Module as SpaceFollows;
 use pallet_spaces::Module as Spaces;
-use pallet_utils::{from_bool_to_option, PostId, rpc::{FlatContent, FlatWhoAndWhen}, SpaceId};
+use pallet_utils::{bool_to_option, PostId, rpc::{FlatContent, FlatWhoAndWhen}, SpaceId};
 
 use crate::{Module, Post, PostExtension, Trait};
 
@@ -66,9 +66,9 @@ impl<T: Trait> From<Post<T>> for FlatPost<T::AccountId, T::BlockNumber> {
             content: content.into(),
             is_hidden: Some(hidden).filter(|value| *value == true),
             extension,
-            is_regular_post: from_bool_to_option(from.is_regular_post()),
-            is_shared_post: from_bool_to_option(from.is_sharing_post()),
-            is_comment: from_bool_to_option(from.is_comment()),
+            is_regular_post: bool_to_option(from.is_regular_post()),
+            is_shared_post: bool_to_option(from.is_sharing_post()),
+            is_comment: bool_to_option(from.is_comment()),
             root_post_id: comment_ext.clone().map(|comment_ext| comment_ext.root_post_id),
             parent_post_id: comment_ext.and_then(|comment_ext| comment_ext.parent_id),
             shared_post_id: from.get_shared_post_id().ok(),

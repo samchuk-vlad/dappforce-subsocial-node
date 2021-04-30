@@ -382,7 +382,7 @@ impl<T: Trait> Space<T> {
     }
 
     pub fn is_public(&self) -> bool {
-        !self.clone().hidden && !self.content.is_none()
+        !self.hidden && self.content.is_some()
     }
 
     // TODO: make not_public function

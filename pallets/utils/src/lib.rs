@@ -55,7 +55,7 @@ pub enum User<AccountId> {
 }
 
 impl<AccountId> User<AccountId> {
-    pub fn account(self) -> Option<AccountId> {
+    pub fn maybe_account(self) -> Option<AccountId> {
         return if let User::Account(account_id) = self {
             Some(account_id)
         } else {
@@ -63,7 +63,7 @@ impl<AccountId> User<AccountId> {
         }
     }
 
-    pub fn space(self) -> Option<SpaceId> {
+    pub fn maybe_space(self) -> Option<SpaceId> {
         return if let User::Space(space_id) = self {
             Some(space_id)
         } else {
@@ -89,7 +89,7 @@ pub enum Content {
 impl Into<Vec<u8>> for Content {
     fn into(self) -> Vec<u8> {
         match self {
-            Content::None => b"None".to_vec(),
+            Content::None => vec![],
             Content::Raw(vec_u8) => vec_u8,
             Content::IPFS(vec_u8) => vec_u8,
             Content::Hyper(vec_u8) => vec_u8,
@@ -220,8 +220,8 @@ pub fn remove_from_vec<F: PartialEq>(vector: &mut Vec<F>, element: F) {
     }
 }
 
-pub fn from_bool_to_option(value: bool) -> Option<bool> {
-    Some(value).filter(|v| *v == true)
+pub fn bool_to_option(value: bool) -> Option<bool> {
+    if value { Some(value) } else None
 }
 
 impl<T: Trait> Module<T> {
