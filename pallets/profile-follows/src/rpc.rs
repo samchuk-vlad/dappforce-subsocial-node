@@ -3,9 +3,10 @@ use sp_std::prelude::*;
 use crate::{Module, Trait};
 
 impl<T: Trait> Module<T> {
-    pub fn filter_followed_accounts(account: T::AccountId, other_accounts: Vec<T::AccountId>) -> Vec<T::AccountId> {
-        other_accounts.iter()
-                      .filter(|following_account| Self::account_followed_by_account((&account, following_account)))
-                      .cloned().collect()
+    pub fn filter_followed_accounts(account: T::AccountId, maybe_following: Vec<T::AccountId>) -> Vec<T::AccountId> {
+        maybe_following.iter()
+            .filter(|maybe_following| Self::account_followed_by_account((&account, maybe_following)))
+            .cloned()
+            .collect()
     }
 }

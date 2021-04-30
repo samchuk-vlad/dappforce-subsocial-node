@@ -137,7 +137,7 @@ impl<T: Trait> Module<T> {
         posts
     }
 
-    pub fn get_public_posts_by_space(
+    pub fn get_public_posts_by_space_id(
         space_id: SpaceId,
         offset: u64,
         limit: u16,
@@ -150,7 +150,7 @@ impl<T: Trait> Module<T> {
         vec![]
     }
 
-    pub fn get_unlisted_posts_by_space(
+    pub fn get_unlisted_posts_by_space_id(
         space_id: SpaceId,
         offset: u64,
         limit: u16,
@@ -187,7 +187,7 @@ impl<T: Trait> Module<T> {
             .collect()
     }
 
-    pub fn get_public_post_ids_by_space(space_id: SpaceId) -> Vec<PostId> {
+    pub fn get_public_post_ids_by_space_id(space_id: SpaceId) -> Vec<PostId> {
         let public_space = Spaces::<T>::require_space(space_id).ok().filter(|space| space.is_public());
         if public_space.is_some() {
             return Self::get_post_ids_by_space(space_id, |post| post.is_public());
@@ -196,7 +196,7 @@ impl<T: Trait> Module<T> {
         vec![]
     }
 
-    pub fn get_unlisted_post_ids_by_space(space_id: SpaceId) -> Vec<PostId> {
+    pub fn get_unlisted_post_ids_by_space_id(space_id: SpaceId) -> Vec<PostId> {
         let unlisted_space = Spaces::<T>::require_space(space_id).ok().filter(|space| !space.is_public());
         if unlisted_space.is_some() {
             return Self::get_post_ids_by_space(space_id, |post| !post.is_public());

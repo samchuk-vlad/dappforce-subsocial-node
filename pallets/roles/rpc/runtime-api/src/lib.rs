@@ -9,7 +9,7 @@ sp_api::decl_runtime_apis! {
     pub trait RolesApi<AccountId> where
         AccountId: Codec
     {
-        fn get_space_permissions_by_user(account: AccountId, space_id: SpaceId) -> Vec<SpacePermission>;
+        fn get_space_permissions_by_account(account: AccountId, space_id: SpaceId) -> Vec<SpacePermission>;
 
         fn get_space_editors(space_id: SpaceId) -> Vec<AccountId>;
 

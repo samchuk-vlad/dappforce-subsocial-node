@@ -73,7 +73,7 @@ impl<T: Trait> Module<T> {
         reactions
     }
 
-    pub fn get_reactions_by_account(
+    pub fn get_reactions_by_account_and_post_ids(
         account: T::AccountId,
         post_ids: Vec<PostId>,
     ) -> BTreeMap<PostId, FlatReaction<T::AccountId, T::BlockNumber>> {

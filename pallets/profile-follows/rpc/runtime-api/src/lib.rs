@@ -7,6 +7,6 @@ sp_api::decl_runtime_apis! {
     pub trait ProfileFollowsApi<AccountId> where
         AccountId: Codec
     {
-        fn filter_followed_accounts(account: AccountId, other_accounts: Vec<AccountId>) -> Vec<AccountId>;
+        fn filter_followed_accounts(account: AccountId, maybe_following: Vec<AccountId>) -> Vec<AccountId>;
     }
 }

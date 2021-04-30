@@ -8,7 +8,7 @@ use pallet_utils::{SpaceId, User};
 use pallet_permissions::{SpacePermission};
 
 impl<T: Trait> Module<T> {
-    pub fn get_space_permissions_by_user(
+    pub fn get_space_permissions_by_account(
         account: T::AccountId,
         space_id: SpaceId
     ) -> Vec<SpacePermission> {

@@ -15,7 +15,7 @@ pub trait ProfileFollowsApi<BlockHash, AccountId> {
         &self,
         at: Option<BlockHash>,
         account: AccountId,
-        other_accounts: Vec<AccountId>,
+        maybe_following: Vec<AccountId>,
     ) -> Result<Vec<AccountId>>;
 }
 
@@ -45,12 +45,12 @@ where
         &self, at:
         Option<<Block as BlockT>::Hash>,
         account: AccountId,
-        other_accounts: Vec<AccountId>,
+        maybe_following: Vec<AccountId>,
     ) -> Result<Vec<AccountId>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
-        let runtime_api_result = api.filter_followed_accounts(&at, account, other_accounts);
+        let runtime_api_result = api.filter_followed_accounts(&at, account, maybe_following);
         runtime_api_result.map_err(map_rpc_error)
     }
 }

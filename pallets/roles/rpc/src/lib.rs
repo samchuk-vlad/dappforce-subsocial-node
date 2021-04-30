@@ -13,7 +13,7 @@ pub use roles_runtime_api::RolesApi as RolesRuntimeApi;
 #[rpc]
 pub trait RolesApi<BlockHash, AccountId> {
     #[rpc(name = "roles_getSpacePermissionsByAccount")]
-    fn get_space_permissions_by_user(
+    fn get_space_permissions_by_account(
         &self,
         at: Option<BlockHash>,
         account: AccountId,
@@ -57,7 +57,7 @@ where
     C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
     C::Api: RolesRuntimeApi<Block, AccountId>,
 {
-    fn get_space_permissions_by_user(
+    fn get_space_permissions_by_account(
         &self, at:
         Option<<Block as BlockT>::Hash>,
         account: AccountId,
@@ -66,7 +66,7 @@ where
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
-        let runtime_api_result = api.get_space_permissions_by_user(&at, account, space_id);
+        let runtime_api_result = api.get_space_permissions_by_account(&at, account, space_id);
         runtime_api_result.map_err(map_rpc_error)
     }
 
