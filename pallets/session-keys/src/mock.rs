@@ -76,7 +76,6 @@ impl system::Trait for Test {
 pub(crate) const EXISTENTIAL_DEPOSIT: Balance = 1 * CENTS;
 parameter_types! {
     pub const ExistentialDeposit: u64 = EXISTENTIAL_DEPOSIT;
-    pub const MaxLocks: u32 = 50;
 }
 
 impl pallet_balances::Trait for Test {
@@ -86,7 +85,7 @@ impl pallet_balances::Trait for Test {
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
     type WeightInfo = ();
-    type MaxLocks = MaxLocks;
+    type MaxLocks = ();
 }
 
 parameter_types! {

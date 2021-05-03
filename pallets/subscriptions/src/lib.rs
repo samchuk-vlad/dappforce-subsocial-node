@@ -29,7 +29,7 @@ use frame_support::{
 use frame_system::{self as system, ensure_signed, ensure_root};
 
 use pallet_spaces::Module as Spaces;
-use pallet_utils::{Module as Utils, SpaceId, Content, WhoAndWhen, vec_remove_on};
+use pallet_utils::{Module as Utils, SpaceId, Content, WhoAndWhen, remove_from_vec};
 
 /*#[cfg(test)]
 mod mock;
@@ -275,7 +275,7 @@ decl_module! {
 
 			plan.is_active = false;
 			PlanById::<T>::insert(plan_id, plan.clone());
-			PlanIdsBySpace::mutate(plan.space_id, |ids| vec_remove_on(ids, plan_id));
+			PlanIdsBySpace::mutate(plan.space_id, |ids| remove_from_vec(ids, plan_id));
 
 			Ok(())
 		}

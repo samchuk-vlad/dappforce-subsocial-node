@@ -14,7 +14,7 @@ use df_traits::moderation::IsAccountBlocked;
 use pallet_permissions::SpacePermission;
 use pallet_posts::{Module as Posts, Post, PostById, PostId};
 use pallet_spaces::Module as Spaces;
-use pallet_utils::{Error as UtilsError, vec_remove_on, WhoAndWhen};
+use pallet_utils::{Error as UtilsError, remove_from_vec, WhoAndWhen};
 
 pub type ReactionId = u64;
 
@@ -124,7 +124,7 @@ decl_module! {
       ensure!(!space.hidden, Error::<T>::CannotReactWhenSpaceHidden);
       ensure!(Posts::<T>::is_root_post_visible(post_id)?, Error::<T>::CannotReactWhenPostHidden);
 
-      ensure!(!T::IsAccountBlocked::is_account_blocked(owner.clone(), space.id), UtilsError::<T>::AccountIsBlocked);
+      ensure!(T::IsAccountBlocked::is_allowed_account(owner.clone(), space.id), UtilsError::<T>::AccountIsBlocked);
 
       let reaction_id = Self::insert_new_reaction(owner.clone(), kind);
 
@@ -176,8 +176,9 @@ decl_module! {
 
       ensure!(owner == reaction.created.account, Error::<T>::NotReactionOwner);
       ensure!(reaction.kind != new_kind, Error::<T>::SameReaction);
+
       if let Some(space_id) = post.try_get_space_id() {
-        ensure!(!T::IsAccountBlocked::is_account_blocked(owner.clone(), space_id), UtilsError::<T>::AccountIsBlocked);
+        ensure!(T::IsAccountBlocked::is_allowed_account(owner.clone(), space_id), UtilsError::<T>::AccountIsBlocked);
       }
 
       let old_kind = reaction.kind;
@@ -220,7 +221,7 @@ decl_module! {
 
       ensure!(owner == reaction.created.account, Error::<T>::NotReactionOwner);
       if let Some(space_id) = post.try_get_space_id() {
-        ensure!(!T::IsAccountBlocked::is_account_blocked(owner.clone(), space_id), UtilsError::<T>::AccountIsBlocked);
+        ensure!(T::IsAccountBlocked::is_allowed_account(owner.clone(), space_id), UtilsError::<T>::AccountIsBlocked);
       }
 
       match reaction.kind {
@@ -232,7 +233,7 @@ decl_module! {
 
       <PostById<T>>::insert(post_id, post.clone());
       <ReactionById<T>>::remove(reaction_id);
-      ReactionIdsByPostId::mutate(post.id, |ids| vec_remove_on(ids, reaction_id));
+      ReactionIdsByPostId::mutate(post.id, |ids| remove_from_vec(ids, reaction_id));
       <PostReactionIdByAccount<T>>::remove((owner.clone(), post_id));
 
       Self::deposit_event(RawEvent::PostReactionDeleted(owner, post_id, reaction_id));
