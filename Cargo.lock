@@ -1189,6 +1189,7 @@ dependencies = [
  "pallet-timestamp",
  "pallet-utils",
  "parity-scale-codec",
+ "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -3804,6 +3805,7 @@ dependencies = [
  "pallet-timestamp",
  "pallet-utils",
  "parity-scale-codec",
+ "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -3849,6 +3851,7 @@ dependencies = [
  "pallet-timestamp",
  "pallet-utils",
  "parity-scale-codec",
+ "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -3978,6 +3981,7 @@ dependencies = [
  "pallet-timestamp",
  "pallet-utils",
  "parity-scale-codec",
+ "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -4041,26 +4045,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-session-keys"
-version = "0.7.0"
-dependencies = [
- "frame-support",
- "frame-system",
- "pallet-balances",
- "pallet-profile-follows",
- "pallet-profiles",
- "pallet-timestamp",
- "pallet-transaction-payment",
- "pallet-utils",
- "parity-scale-codec",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-space-follows"
 version = "0.7.0"
 dependencies = [
@@ -4098,6 +4082,7 @@ dependencies = [
  "pallet-timestamp",
  "pallet-utils",
  "parity-scale-codec",
+ "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
