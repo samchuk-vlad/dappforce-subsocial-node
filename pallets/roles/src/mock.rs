@@ -120,8 +120,8 @@ parameter_types! {
   pub const MaxUsersToProcessPerDeleteRole: u16 = 20;
 }
 
-impl Trait for Test {
-    type Event = ();
+impl Config for Test {
+    type Event = Event;
     type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
     type Spaces = Roles;
     type SpaceFollows = Roles;
