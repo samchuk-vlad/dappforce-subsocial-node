@@ -3859,6 +3859,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-donations"
+version = "0.7.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-permissions",
+ "pallet-posts",
+ "pallet-spaces",
+ "pallet-utils",
+ "parity-scale-codec",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-faucets"
 version = "0.7.0"
 dependencies = [
@@ -4177,6 +4192,23 @@ dependencies = [
  "pallet-utils",
  "parity-scale-codec",
  "serde",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-subscriptions"
+version = "0.7.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-permissions",
+ "pallet-spaces",
+ "pallet-sudo",
+ "pallet-utils",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
 ]
