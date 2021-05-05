@@ -66,6 +66,9 @@ frame-system-rpc-runtime-api = { default-features = false, version = '3.0.0' }
 
 pallet-aura = { default-features = false, version = '3.0.0' }
 pallet-balances = { default-features = false, version = '3.0.0' }
+pallet-contracts = { default-features = false, version = '3.0.0' }
+pallet-contracts-primitives = { default-features = false, version = '3.0.0' }
+pallet-contracts-rpc-runtime-api = { default-features = false, version = '3.0.0' }
 pallet-grandpa = { default-features = false, version = '3.0.0' }
 pallet-randomness-collective-flip = { default-features = false, version = '3.0.0' }
 pallet-scheduler = { default-features = false, version = '3.0.0' }
@@ -109,6 +112,9 @@ std = [
     'frame-system-rpc-runtime-api/std',
     'pallet-aura/std',
     'pallet-balances/std',
+    'pallet-contracts/std',
+    'pallet-contracts-primitives/std',
+    'pallet-contracts-rpc-runtime-api/std',
     'pallet-grandpa/std',
     'pallet-randomness-collective-flip/std',
     'pallet-scheduler/std',

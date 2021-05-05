@@ -11,7 +11,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 use sp_std::prelude::*;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 pub use subsocial_primitives::{AccountId, Signature, Balance, Index};
-use subsocial_primitives::{BlockNumber, Hash, Moment};
+// use subsocial_primitives::{BlockNumber, Hash, Moment};
 use sp_runtime::{
     ApplyExtrinsicResult, generic, create_runtime_str, impl_opaque_keys,
     transaction_validity::{TransactionValidity, TransactionSource},
@@ -47,9 +47,16 @@ use frame_system::{
 };
 use pallet_transaction_payment::CurrencyAdapter;
 use static_assertions::const_assert;
+use pallet_contracts::weights::WeightInfo;
 
 pub mod constants;
 use constants::{currency::*, time::*};
+
+pub type BlockNumber = u32;
+
+pub type Moment = u64;
+
+pub type Hash = sp_core::H256;
 
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
@@ -116,6 +123,10 @@ const AVERAGE_ON_INITIALIZE_RATIO: Perbill = Perbill::from_percent(10);
 const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
 /// We allow for 2 seconds of compute with a 6 second average block time.
 const MAXIMUM_BLOCK_WEIGHT: Weight = 2 * WEIGHT_PER_SECOND;
+
+const fn deposit(items: u32, bytes: u32) -> Balance {
+	items as Balance * 15 * CENTS + (bytes as Balance) * 6 * CENTS
+}
 
 parameter_types! {
 	pub const BlockHashCount: BlockNumber = 2400;
@@ -436,6 +447,54 @@ impl Filter<Call> for BaseFilter {
     }
 }
 
+parameter_types! {
+    pub const TombstoneDeposit: Balance = deposit(
+        1,
+        sp_std::mem::size_of::<pallet_contracts::ContractInfo<Runtime>>() as u32
+    );
+    pub const DepositPerContract: Balance = TombstoneDeposit::get();
+    pub const DepositPerStorageByte: Balance = deposit(0, 1);
+    pub const DepositPerStorageItem: Balance = deposit(1, 0);
+    pub RentFraction: Perbill = Perbill::from_rational_approximation(1u32, 30 * DAYS);
+    pub const SurchargeReward: Balance = 150 * MILLICENTS;
+    pub const SignedClaimHandicap: u32 = 2;
+    pub const MaxDepth: u32 = 32;
+    pub const MaxValueSize: u32 = 16 * 1024;
+    // The lazy deletion runs inside on_initialize.
+    pub DeletionWeightLimit: Weight = AVERAGE_ON_INITIALIZE_RATIO *
+        RuntimeBlockWeights::get().max_block;
+    // The weight needed for decoding the queue should be less or equal than a fifth
+    // of the overall weight dedicated to the lazy deletion.
+    pub DeletionQueueDepth: u32 = ((DeletionWeightLimit::get() / (
+            <Runtime as pallet_contracts::Config>::WeightInfo::on_initialize_per_queue_item(1) -
+            <Runtime as pallet_contracts::Config>::WeightInfo::on_initialize_per_queue_item(0)
+        )) / 5) as u32;
+    pub MaxCodeSize: u32 = 128 * 1024;
+}
+
+impl pallet_contracts::Config for Runtime {
+	type Time = Timestamp;
+	type Randomness = RandomnessCollectiveFlip;
+	type Currency = Balances;
+	type Event = Event;
+	type RentPayment = ();
+	type SignedClaimHandicap = SignedClaimHandicap;
+	type TombstoneDeposit = TombstoneDeposit;
+	type DepositPerContract = DepositPerContract;
+	type DepositPerStorageByte = DepositPerStorageByte;
+	type DepositPerStorageItem = DepositPerStorageItem;
+	type RentFraction = RentFraction;
+	type SurchargeReward = SurchargeReward;
+	type MaxDepth = MaxDepth;
+	type MaxValueSize = MaxValueSize;
+	type WeightPrice = pallet_transaction_payment::Module<Self>;
+	type WeightInfo = pallet_contracts::weights::SubstrateWeight<Self>;
+	type ChainExtension = ();
+	type DeletionQueueDepth = DeletionQueueDepth;
+	type DeletionWeightLimit = DeletionWeightLimit;
+	type MaxCodeSize = MaxCodeSize;
+}
+
 /*
 parameter_types! {
 	pub const MaxSessionKeysPerAccount: u16 = 10;
@@ -508,6 +567,7 @@ construct_runtime!(
 		NodeBlock = opaque::Block,
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
+        Contracts: pallet_contracts::{Module, Call, Config<T>, Storage, Event<T>},
 		System: frame_system::{Module, Call, Config, Storage, Event<T>},
 		RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
 		Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
@@ -750,4 +810,30 @@ impl_runtime_apis! {
 			Ok(batches)
 		}
 	}
+    impl pallet_contracts_rpc_runtime_api::ContractsApi<Block, AccountId, Balance, BlockNumber>
+    for Runtime
+    {
+        fn call(
+            origin: AccountId,
+            dest: AccountId,
+            value: Balance,
+            gas_limit: u64,
+            input_data: Vec<u8>,
+        ) -> pallet_contracts_primitives::ContractExecResult {
+            Contracts::bare_call(origin, dest, value, gas_limit, input_data)
+        }
+
+        fn get_storage(
+            address: AccountId,
+            key: [u8; 32],
+        ) -> pallet_contracts_primitives::GetStorageResult {
+            Contracts::get_storage(address, key)
+        }
+
+        fn rent_projection(
+            address: AccountId,
+        ) -> pallet_contracts_primitives::RentProjectionResult<BlockNumber> {
+            Contracts::rent_projection(address)
+        }
+    }
 }
