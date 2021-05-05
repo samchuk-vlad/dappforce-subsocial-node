@@ -14,22 +14,33 @@ categories = ['cryptography::cryptocurrencies']
 default = ['std']
 std = [
     'codec/std',
-    'frame-support/std',
-    'frame-system/std',
-    'pallet-balances/std',
-    'pallet-timestamp/std',
+    'sp-io/std',
     'sp-runtime/std',
     'sp-std/std',
-    'sp-io/std',
+    'pallet-balances/std',
+    'pallet-timestamp/std',
+    'frame-support/std',
+    'frame-system/std',
+    'pallet-moderation/std',
+    'pallet-permissions/std',
+    'pallet-post-history/std',
+    'pallet-posts/std',
+    'pallet-profile-follows/std',
+    'pallet-profile-history/std',
+    'pallet-profiles/std',
+    'pallet-reactions/std',
+    'pallet-roles/std',
+    'pallet-scores/std',
+    'pallet-space-follows/std',
+    'pallet-space-history/std',
+    'pallet-space-ownership/std',
+    'pallet-spaces/std',
+    'pallet-utils/std',
 ]
 
-[dependencies.codec]
-default-features = false
-features = ['derive']
-package = 'parity-scale-codec'
-version = '2.0.0'
-
 [dependencies]
+codec = { package = 'parity-scale-codec', version = '2.0.0', default-features = false, features = ['derive'] }
+
 frame-support = { default-features = false, version = '3.0.0' }
 frame-system = { default-features = false, version = '3.0.0' }
 pallet-balances = { default-features = false, version = '3.0.0' }
@@ -39,6 +50,8 @@ sp-runtime = { default-features = false, version = '3.0.0' }
 sp-std = { default-features = false, version = '3.0.0' }
 
 [dev-dependencies]
+serde = { version = '1.0.119' }
+
 pallet-moderation = { default-features = false, path = '../moderation' }
 pallet-permissions = { default-features = false, path = '../permissions' }
 pallet-post-history = { default-features = false, path = '../post-history' }

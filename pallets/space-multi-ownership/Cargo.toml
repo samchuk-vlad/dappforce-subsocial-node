@@ -14,21 +14,17 @@ categories = ['cryptography::cryptocurrencies']
 default = ['std']
 std = [
     'codec/std',
-    'frame-support/std',
-    'frame-system/std',
-    'pallet-timestamp/std',
     'sp-runtime/std',
     'sp-std/std',
+    'pallet-timestamp/std',
+    'frame-support/std',
+    'frame-system/std',
     'pallet-utils/std',
 ]
 
-[dependencies.codec]
-default-features = false
-features = ['derive']
-package = 'parity-scale-codec'
-version = '2.0.0'
-
 [dependencies]
+codec = { package = 'parity-scale-codec', version = '2.0.0', default-features = false, features = ['derive'] }
+
 # Local dependencies
 pallet-utils = { default-features = false, path = '../utils' }
 
@@ -40,6 +36,8 @@ sp-runtime = { default-features = false, version = '3.0.0' }
 sp-std = { default-features = false, version = '3.0.0' }
 
 [dev-dependencies]
+serde = { version = '1.0.119' }
+
 # Substrate dependencies
 pallet-balances = { default-features = false, version = '3.0.0' }
 sp-core = { default-features = false, version = '3.0.0' }

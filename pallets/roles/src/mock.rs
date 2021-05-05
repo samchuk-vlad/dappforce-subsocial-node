@@ -86,7 +86,6 @@ impl pallet_timestamp::Config for Test {
 
 parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
-	pub const MaxLocks: u32 = 50;
 }
 
 impl pallet_balances::Config for Test {
@@ -96,7 +95,7 @@ impl pallet_balances::Config for Test {
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
     type WeightInfo = ();
-    type MaxLocks = MaxLocks;
+    type MaxLocks = ();
 }
 
 parameter_types! {
@@ -121,20 +120,12 @@ parameter_types! {
   pub const MaxUsersToProcessPerDeleteRole: u16 = 20;
 }
 
-impl df_traits::moderation::IsAccountBlocked for Test {
-    type AccountId = u64;
-
-    fn is_account_blocked(_account: Self::AccountId, _scope: SpaceId) -> bool {
-        false
-    }
-}
-
 impl Config for Test {
     type Event = Event;
     type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
     type Spaces = Roles;
     type SpaceFollows = Roles;
-    type IsAccountBlocked = Self;
+    type IsAccountBlocked = ();
     type IsContentBlocked = ();
 }
 
