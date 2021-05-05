@@ -264,7 +264,7 @@ mod tests {
 
     type System = system::Module<TestRuntime>;
     type Balances = pallet_balances::Module<TestRuntime>;
-    type FaucetsMembership = pallet_membership::Module<TestRuntime>;
+    type OffchainMembership = pallet_membership::Module<TestRuntime>;
 
     type Posts = pallet_posts::Module<TestRuntime>;
     type PostHistory = pallet_post_history::Module<TestRuntime>;

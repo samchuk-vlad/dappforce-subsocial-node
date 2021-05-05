@@ -340,7 +340,7 @@ impl pallet_profile_follows::Trait for Runtime {
 parameter_types! {
 	pub const MaxCreationsPerPeriod: u32 = 4000;
 	pub const BlocksInPeriod: BlockNumber = 1 * DAYS;
-	pub Members: Vec<AccountId> = FaucetsMembership::members();
+	pub Members: Vec<AccountId> = OffchainMembership::members();
 }
 
 impl pallet_profiles::Trait for Runtime {
@@ -545,7 +545,7 @@ construct_runtime!(
 		Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
 		Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
 		Utility: pallet_utility::{Module, Call, Event},
-		FaucetsMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
+		OffchainMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
 
 		// Subsocial custom pallets:
 

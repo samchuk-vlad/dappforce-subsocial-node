@@ -4,7 +4,7 @@ use pallet_profiles::{ProfileUpdate, Error as ProfilesError};
 parameter_types! {
     pub const MaxCreationsPerPeriod: u32 = 1;
     pub const BlocksInPeriod: BlockNumber = 1;
-    pub AddSocialAccountMembers: Vec<AccountId> = FaucetsMembership::members();
+    pub AddSocialAccountMembers: Vec<AccountId> = OffchainMembership::members();
 }
 
 impl pallet_profiles::Trait for TestRuntime {
