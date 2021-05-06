@@ -17,6 +17,17 @@ pub trait PostsApi<BlockHash, AccountId, BlockNumber> {
         &self,
         at: Option<BlockHash>,
         post_ids: Vec<PostId>,
+        offset: u64,
+        limit: u16,
+    ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>>;
+
+    #[rpc(name = "posts_getPublicPosts")]
+    fn get_public_posts(
+        &self,
+        at: Option<BlockHash>,
+        ext_filter: Vec<PostId>,
+        offset: u64,
+        limit: u16
     ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>>;
 
     #[rpc(name = "posts_getPublicPostsBySpaceId")]
@@ -105,11 +116,27 @@ where
         &self,
         at: Option<<Block as BlockT>::Hash>,
         post_ids: Vec<u64>,
+        offset: u64,
+        limit: u16,
     ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
-        let runtime_api_result = api.get_posts_by_ids(&at, post_ids);
+        let runtime_api_result = api.get_posts_by_ids(&at, post_ids, offset, limit);
+        runtime_api_result.map_err(map_rpc_error)
+    }
+
+    fn get_public_posts(
+        &self,
+        at: Option<BlockHash>,
+        ext_filter: Vec<PostId>,
+        offset: u64,
+        limit: u16
+    ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
+
+        let runtime_api_result = api.get_public_posts(&at, ext_filter, offset, limit);
         runtime_api_result.map_err(map_rpc_error)
     }
 

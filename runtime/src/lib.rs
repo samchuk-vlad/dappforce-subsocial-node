@@ -818,8 +818,8 @@ impl_runtime_apis! {
 
     impl posts_runtime_api::PostsApi<Block, AccountId, BlockNumber> for Runtime
     {
-		fn get_posts_by_ids(post_ids: Vec<PostId>) -> Vec<FlatPost<AccountId, BlockNumber>> {
-			Posts::get_posts_by_ids(post_ids)
+		fn get_posts_by_ids(post_ids: Vec<PostId>, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>> {
+			Posts::get_posts_by_ids(post_ids, offset, limit)
 		}
 
 		fn get_public_posts_by_space_id(space_id: SpaceId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>> {
