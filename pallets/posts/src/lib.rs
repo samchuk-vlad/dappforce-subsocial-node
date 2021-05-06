@@ -59,7 +59,7 @@ pub struct PostUpdate {
 
 #[derive(Encode, Decode, Clone, Copy, Eq, PartialEq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "std", serde(tag = "kind", content = "contentId"))]
+#[cfg_attr(feature = "std", serde(untagged))]
 pub enum PostExtension {
     RegularPost,
     Comment(Comment),
