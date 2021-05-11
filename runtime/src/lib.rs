@@ -45,7 +45,7 @@ pub use frame_support::{
 use frame_system::EnsureRoot;
 
 use pallet_permissions::SpacePermission;
-use pallet_posts::rpc::FlatPost;
+use pallet_posts::rpc::{FlatPost, ExtFilter};
 use pallet_profiles::rpc::FlatSocialAccount;
 use pallet_reactions::{
 	ReactionId,
@@ -822,6 +822,10 @@ impl_runtime_apis! {
 			Posts::get_posts_by_ids(post_ids, offset, limit)
 		}
 
+		fn get_public_posts(ext_filter: Vec<ExtFilter>, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>> {
+			Posts::get_public_posts(ext_filter, offset, limit)
+		}
+
 		fn get_public_posts_by_space_id(space_id: SpaceId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>> {
 			Posts::get_public_posts_by_space_id(space_id, offset, limit)
 		}
@@ -830,12 +834,20 @@ impl_runtime_apis! {
 			Posts::get_unlisted_posts_by_space_id(space_id, offset, limit)
 		}
 
-		fn get_reply_ids_by_post_id(post_id: PostId) -> Vec<PostId> {
-			Posts::get_reply_ids_by_post_id(post_id)
+		fn get_reply_ids_by_parent_id(post_id: PostId) -> Vec<PostId> {
+			Posts::get_reply_ids_by_parent_id(post_id)
 		}
 
-		fn get_comment_ids_tree(post_id: PostId) -> BTreeMap<PostId, Vec<PostId>> {
-			Posts::get_comment_ids_tree(post_id)
+		fn get_reply_ids_by_parent_ids(post_ids: Vec<PostId>) -> BTreeMap<PostId, Vec<PostId>> {
+			Posts::get_reply_ids_by_parent_ids(post_ids)
+		}
+
+		fn get_replies_by_parent_id(post_id: PostId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>> {
+			Posts::get_replies_by_parent_id(post_id, offset, limit)
+		}
+
+		fn get_replies_by_parent_ids(post_ids: Vec<PostId>, offset: u64, limit: u16) -> BTreeMap<PostId, Vec<FlatPost<AccountId, BlockNumber>>> {
+			Posts::get_replies_by_parent_ids(post_ids, offset, limit)
 		}
 
 		fn get_public_post_ids_by_space_id(space_id: SpaceId) -> Vec<PostId> {
@@ -885,11 +897,11 @@ impl_runtime_apis! {
 			Reactions::get_reactions_by_post_id(post_id, limit, offset)
 		}
 
-		fn get_reactions_by_account_and_post_ids(
-			account: AccountId,
+		fn get_reactions_by_post_ids_and_responder(
 			post_ids: Vec<PostId>,
-		) -> BTreeMap<PostId, FlatReaction<AccountId, BlockNumber>> {
-			Reactions::get_reactions_by_account_and_post_ids(account, post_ids)
+        	reactor: AccountId,
+		) -> BTreeMap<PostId, Vec<u8>> {
+			Reactions::get_reactions_by_post_ids_and_responder(post_ids, reactor)
 		}
     }
 
