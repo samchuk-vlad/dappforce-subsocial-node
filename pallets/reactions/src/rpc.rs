@@ -2,7 +2,6 @@ use codec::{Decode, Encode};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_std::collections::btree_map::BTreeMap;
-use sp_std::iter::FromIterator;
 use sp_std::prelude::*;
 
 use pallet_utils::{PostId, rpc::FlatWhoAndWhen};
@@ -73,22 +72,26 @@ impl<T: Trait> Module<T> {
         reactions
     }
 
-    pub fn get_reactions_by_account_and_post_ids(
-        account: T::AccountId,
+    pub fn get_reactions_by_post_ids_and_responder(
         post_ids: Vec<PostId>,
-    ) -> BTreeMap<PostId, FlatReaction<T::AccountId, T::BlockNumber>> {
+        reactor: T::AccountId,
+    ) -> BTreeMap<PostId, Vec<u8>> {
         let reaction_zipped_with_post_id =
             post_ids.iter()
                     .filter_map(|post_id|
                         Some(*post_id).zip(
-                            Option::from(Self::post_reaction_id_by_account((&account, post_id)))
+                            Option::from(Self::post_reaction_id_by_account((&reactor, post_id)))
                                 .filter(|v| *v != 0)
                                 .and_then(|reaction_id|
-                                    Self::require_reaction(reaction_id).ok().map(|reaction| reaction.into())
+                                    Self::require_reaction(reaction_id).ok()
+                                        .map(|reaction| match reaction.kind {
+                                            ReactionKind::Upvote => { b"U".to_vec() }
+                                            ReactionKind::Downvote => { b"D".to_vec() }
+                                    })
                                 )
                         )
                     );
 
-        BTreeMap::from_iter(reaction_zipped_with_post_id)
+        reaction_zipped_with_post_id.clone().collect::<BTreeMap<_, _>>()
     }
 }

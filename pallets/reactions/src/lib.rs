@@ -25,7 +25,7 @@ pub type ReactionId = u64;
 
 #[derive(Encode, Decode, Clone, Copy, Eq, PartialEq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "std", serde(tag = "kind"))]
+#[cfg_attr(feature = "std", serde(untagged))]
 pub enum ReactionKind {
     Upvote,
     Downvote,
