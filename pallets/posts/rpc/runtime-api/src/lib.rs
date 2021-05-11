@@ -14,9 +14,9 @@ sp_api::decl_runtime_apis! {
     {
         fn get_next_post_id() -> PostId;
 
-        fn get_posts_by_ids(post_ids: Vec<ExtFilter>, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>>;
+        fn get_posts_by_ids(post_ids: Vec<PostId>, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>>;
 
-        fn get_public_posts(ext_filter: Vec<PostId>, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>>;
+        fn get_public_posts(ext_filter: Vec<ExtFilter>, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>>;
 
         fn get_public_posts_by_space_id(space_id: SpaceId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>>;
     
@@ -26,9 +26,13 @@ sp_api::decl_runtime_apis! {
 
         fn get_unlisted_post_ids_by_space_id(space_id: SpaceId) -> Vec<PostId>;
 
-        fn get_reply_ids_by_post_id(post_id: PostId) -> Vec<PostId>;
-    
-        fn get_comment_ids_tree(post_id: PostId) -> BTreeMap<PostId, Vec<PostId>>;
+        fn get_reply_ids_by_parent_id(post_id: PostId) -> Vec<PostId>;
+
+        fn get_reply_ids_by_parent_ids(post_ids: Vec<PostId>) -> BTreeMap<PostId, Vec<PostId>>;
+
+        fn get_replies_by_parent_id(post_id: PostId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>>;
+
+        fn get_replies_by_parent_ids(post_ids: Vec<PostId>, offset: u64, limit: u16) -> BTreeMap<PostId, Vec<FlatPost<AccountId, BlockNumber>>>;
 
         fn get_feed(account: AccountId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>>;
     }
