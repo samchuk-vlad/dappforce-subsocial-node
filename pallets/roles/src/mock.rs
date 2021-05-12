@@ -14,7 +14,7 @@ use sp_runtime::{
 use frame_support::{
     impl_outer_origin, parameter_types, assert_ok,
     weights::Weight,
-    dispatch::{DispatchResult, DispatchError}
+    dispatch::{DispatchResult}
 };
 use frame_system as system;
 
@@ -22,7 +22,6 @@ use pallet_permissions::{
     SpacePermission,
     SpacePermission as SP,
 };
-use df_traits::{SpaceForRoles, SpaceFollowsProvider, SpaceForRolesProvider};
 use pallet_utils::{SpaceId, User, Content};
 
 impl_outer_origin! {
@@ -91,6 +90,20 @@ impl pallet_balances::Trait for Test {
     type MaxLocks = ();
 }
 
+parameter_types! {}
+
+impl pallet_spaces::Trait for Test {
+    type Event = ();
+    type Currency = Balances;
+    type Roles = Roles;
+    type SpaceFollows = ();
+    type BeforeSpaceCreated = ();
+    type AfterSpaceUpdated = ();
+    type IsAccountBlocked = ();
+    type IsContentBlocked = ();
+    type HandleDeposit = ();
+}
+
 parameter_types! {
     pub const MinHandleLen: u32 = 5;
     pub const MaxHandleLen: u32 = 50;
@@ -116,8 +129,6 @@ parameter_types! {
 impl Trait for Test {
     type Event = ();
     type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
-    type Spaces = Roles;
-    type SpaceFollows = Roles;
     type IsAccountBlocked = ();
     type IsContentBlocked = ();
 }
@@ -128,29 +139,6 @@ pub(crate) type Roles = Module<Test>;
 
 pub type AccountId = u64;
 pub type BlockNumber = u64;
-
-impl<T: Trait> SpaceForRolesProvider for Module<T> {
-    type AccountId = AccountId;
-
-    // This function should return an error every time Space doesn't exist by SpaceId
-    // Currently, we have a list of valid space id's to check
-    fn get_space(id: SpaceId) -> Result<SpaceForRoles<Self::AccountId>, DispatchError> {
-        if self::valid_space_ids().contains(&id) {
-            return Ok(SpaceForRoles { owner: ACCOUNT1, permissions: None })
-        }
-
-        Err("SpaceNotFound".into())
-    }
-}
-
-impl<T: Trait> SpaceFollowsProvider for Module<T> {
-    type AccountId = AccountId;
-
-    fn is_space_follower(_account: Self::AccountId, _space_id: u64) -> bool {
-        true
-    }
-}
-
 
 pub struct ExtBuilder;
 
@@ -233,10 +221,6 @@ pub(crate) fn permission_set_updated() -> Vec<SpacePermission> {
 /// Permissions Set that includes random permissions
 pub(crate) fn permission_set_random() -> Vec<SpacePermission> {
     vec![SP::CreatePosts, SP::UpdateOwnPosts, SP::UpdateAnyPost, SP::UpdateEntityStatus]
-}
-
-pub(crate) fn valid_space_ids() -> Vec<SpaceId> {
-    vec![SPACE1]
 }
 
 /// Permissions Set that includes nothing

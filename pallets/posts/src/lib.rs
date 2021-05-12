@@ -18,6 +18,7 @@ use pallet_utils::{
 };
 
 pub mod functions;
+mod benchmarking;
 
 pub type PostId = u64;
 

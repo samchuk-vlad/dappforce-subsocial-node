@@ -1,5 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+mod benchmarking;
+
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure,
     dispatch::DispatchResult,
@@ -144,10 +146,8 @@ impl<T: Trait> Module<T> {
     }
 }
 
-impl<T: Trait> SpaceFollowsProvider for Module<T> {
-    type AccountId = T::AccountId;
-
-    fn is_space_follower(account: Self::AccountId, space_id: SpaceId) -> bool {
+impl<T: Trait> SpaceFollowsProvider<T::AccountId> for Module<T> {
+    fn is_space_follower(account: T::AccountId, space_id: SpaceId) -> bool {
         Module::<T>::space_followed_by_account((account, space_id))
     }
 }

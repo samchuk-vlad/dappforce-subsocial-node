@@ -31,6 +31,7 @@ mod mock;
 
 #[cfg(test)]
 mod tests;
+mod benchmarking;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Faucet<T: Trait> {
@@ -57,7 +58,9 @@ pub struct FaucetUpdate<BlockNumber, Balance> {
 type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
 
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait {
+pub trait Trait: system::Trait
+    + pallet_balances::Trait
+{
 
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;

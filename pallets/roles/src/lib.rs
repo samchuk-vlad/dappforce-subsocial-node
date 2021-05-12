@@ -12,10 +12,11 @@ use sp_std::{collections::btree_set::BTreeSet, iter::FromIterator, prelude::*};
 use frame_system::{self as system, ensure_signed};
 
 use df_traits::{
-    PermissionChecker, SpaceFollowsProvider, SpaceForRolesProvider,
+    PermissionChecker, SpaceFollowsProvider,
     moderation::{IsAccountBlocked, IsContentBlocked},
 };
 use pallet_permissions::{Module as Permissions, SpacePermission, SpacePermissionSet};
+
 use pallet_utils::{Module as Utils, Error as UtilsError, SpaceId, User, WhoAndWhen, Content};
 
 pub mod functions;
@@ -25,6 +26,7 @@ mod mock;
 
 #[cfg(test)]
 mod tests;
+mod benchmarking;
 
 type RoleId = u64;
 
@@ -50,16 +52,13 @@ pub struct RoleUpdate {
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait
     + pallet_permissions::Trait
+    + pallet_spaces::Trait
     + pallet_utils::Trait
 {
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
     type MaxUsersToProcessPerDeleteRole: Get<u16>;
-
-    type Spaces: SpaceForRolesProvider<AccountId=Self::AccountId>;
-
-    type SpaceFollows: SpaceFollowsProvider<AccountId=Self::AccountId>;
 
     type IsAccountBlocked: IsAccountBlocked<Self::AccountId>;
 
@@ -157,7 +156,7 @@ decl_module! {
       ensure!(!permissions.is_empty(), Error::<T>::NoPermissionsProvided);
 
       Utils::<T>::is_valid_content(content.clone())?;
-      ensure!(T::IsContentBlocked::is_allowed_content(content.clone(), space_id), UtilsError::<T>::ContentIsBlocked);
+      ensure!(<T as Trait>::IsContentBlocked::is_allowed_content(content.clone(), space_id), UtilsError::<T>::ContentIsBlocked);
 
       Self::ensure_role_manager(who.clone(), space_id)?;
       
@@ -204,7 +203,7 @@ decl_module! {
       if let Some(content) = update.content {
         if content != role.content {
           Utils::<T>::is_valid_content(content.clone())?;
-          ensure!(T::IsContentBlocked::is_allowed_content(content.clone(), role.space_id), UtilsError::<T>::ContentIsBlocked);
+          ensure!(<T as Trait>::IsContentBlocked::is_allowed_content(content.clone(), role.space_id), UtilsError::<T>::ContentIsBlocked);
 
           role.content = content;
           is_update_applied = true;

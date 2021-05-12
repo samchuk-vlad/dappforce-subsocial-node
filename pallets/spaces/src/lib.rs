@@ -1,5 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+mod benchmarking;
+
 use codec::{Decode, Encode};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure,
@@ -11,7 +13,7 @@ use sp_std::prelude::*;
 use frame_system::{self as system, ensure_signed};
 
 use df_traits::{
-    SpaceForRoles, SpaceForRolesProvider, PermissionChecker, SpaceFollowsProvider,
+    PermissionChecker, SpaceFollowsProvider,
     moderation::{IsAccountBlocked, IsContentBlocked},
 };
 use pallet_permissions::{Module as Permissions, SpacePermission, SpacePermissions, SpacePermissionsContext};
@@ -66,7 +68,7 @@ pub trait Trait: system::Trait
 
     type Roles: PermissionChecker<AccountId=Self::AccountId>;
 
-    type SpaceFollows: SpaceFollowsProvider<AccountId=Self::AccountId>;
+    type SpaceFollows: SpaceFollowsProvider<Self::AccountId>;
 
     type BeforeSpaceCreated: BeforeSpaceCreated<Self>;
 
@@ -545,19 +547,6 @@ impl<T: Trait> Module<T> {
             }
         }
         Ok(is_handle_updated)
-    }
-}
-
-impl<T: Trait> SpaceForRolesProvider for Module<T> {
-    type AccountId = T::AccountId;
-
-    fn get_space(id: SpaceId) -> Result<SpaceForRoles<Self::AccountId>, DispatchError> {
-        let space = Module::<T>::require_space(id)?;
-
-        Ok(SpaceForRoles {
-            owner: space.owner,
-            permissions: space.permissions,
-        })
     }
 }
 

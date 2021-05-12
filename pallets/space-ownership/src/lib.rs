@@ -1,5 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+mod benchmarking;
+
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
     ensure,

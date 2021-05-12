@@ -140,8 +140,6 @@ parameter_types! {
 impl pallet_roles::Trait for Test {
     type Event = ();
     type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
-    type Spaces = Spaces;
-    type SpaceFollows = SpaceFollows;
     type IsAccountBlocked = Moderation;
     type IsContentBlocked = Moderation;
 }

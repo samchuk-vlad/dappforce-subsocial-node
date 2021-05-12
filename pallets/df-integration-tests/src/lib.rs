@@ -171,8 +171,6 @@ mod tests {
     impl pallet_roles::Trait for TestRuntime {
         type Event = ();
         type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
-        type Spaces = Spaces;
-        type SpaceFollows = SpaceFollows;
         type IsAccountBlocked = Moderation;
         type IsContentBlocked = Moderation;
     }
