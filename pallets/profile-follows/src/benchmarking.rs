@@ -10,6 +10,7 @@ use sp_runtime::traits::Bounded;
 use pallet_utils::{Trait as UtilsTrait, BalanceOf, Content};
 use crate::sp_api_hidden_includes_decl_storage::hidden_include::traits::Currency;
 use pallet_profiles::Module as ProfilesModule;
+use frame_support::dispatch::DispatchError;
 
 const SEED: u32 = 0;
 
@@ -17,20 +18,26 @@ fn profile_content_ipfs() -> Content {
     Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiaRtqdyoW2CuDgwxkA5".to_vec())
 }
 
+fn caller_with_profile_and_balance<T: Trait>() -> Result<T::AccountId, DispatchError> {
+    let caller: T::AccountId = whitelisted_caller();
+    let origin = RawOrigin::Signed(caller.clone());
+
+    <T as UtilsTrait>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
+
+    ProfilesModule::<T>::create_profile(origin.into(), profile_content_ipfs())?;
+
+    Ok(caller)
+}
 
 benchmarks! {
 	_ { }
-    // TODO: Remove copy-paste
+
     follow_account {
-        let caller: T::AccountId = whitelisted_caller();
+        let caller: T::AccountId = caller_with_profile_and_balance::<T>()?;
+
         let follower: T::AccountId = account("user", 0, SEED);
-        let origin = RawOrigin::Signed(caller.clone());
-
-        <T as UtilsTrait>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
-
-        ProfilesModule::<T>::create_profile(origin.into(), profile_content_ipfs())?;
-
-    }: _(RawOrigin::Signed(follower.clone()), caller.clone())
+        let follower_origin = RawOrigin::Signed(follower.clone());
+    }: _(follower_origin, caller.clone())
     verify {
         assert_eq!(AccountsFollowedByAccount::<T>::get(follower.clone()), vec![caller.clone()]);
         assert_eq!(AccountFollowers::<T>::get(caller.clone()), vec![follower.clone()]);
@@ -38,16 +45,12 @@ benchmarks! {
     }
 
     unfollow_account {
-        let caller: T::AccountId = whitelisted_caller();
+        let caller: T::AccountId = caller_with_profile_and_balance::<T>()?;
+
         let follower: T::AccountId = account("user", 0, SEED);
         let follower_origin = RawOrigin::Signed(follower.clone());
-        let origin = RawOrigin::Signed(caller.clone());
 
-        <T as UtilsTrait>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
-
-        ProfilesModule::<T>::create_profile(origin.into(), profile_content_ipfs())?;
         Module::<T>::follow_account(follower_origin.clone().into(), caller.clone())?;
-
     }: _(follower_origin, caller.clone())
     verify {
         assert!(AccountsFollowedByAccount::<T>::get(follower.clone()).is_empty());

@@ -40,23 +40,32 @@ fn check_if_post_moved_correctly<T: Trait>(
     old_space_id: SpaceId,
     expected_new_space_id: SpaceId
 ) {
-    let post: Post<T> = PostById::<T>::get(moved_post_id).unwrap(); // `POST2` is a comment
+    let post: Post<T> = PostById::<T>::get(moved_post_id).unwrap();
     let new_space_id = post.space_id.unwrap();
 
-    // Check that space id of the post has been updated from 1 to 2
     assert_eq!(new_space_id, expected_new_space_id);
 
-    // Check that stats on the old space have been decreased
     let old_space: Space<T> = SpaceById::<T>::get(old_space_id).unwrap();
     assert_eq!(old_space.posts_count, 0);
     assert_eq!(old_space.hidden_posts_count, 0);
     assert_eq!(old_space.score, 0);
 
-    // Check that stats on the new space have been increased
     let new_space: Space<T> = SpaceById::<T>::get(new_space_id).unwrap();
     assert_eq!(new_space.posts_count, 1);
     assert_eq!(new_space.hidden_posts_count, if post.hidden { 1 } else { 0 });
     assert_eq!(new_space.score, post.score);
+}
+
+fn add_origin_with_space_post_and_balance<T: Trait>() -> Result<RawOrigin<T::AccountId>, DispatchError> {
+    let caller: T::AccountId = whitelisted_caller();
+    let origin = RawOrigin::Signed(caller.clone());
+
+    <T as UtilsTrait>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
+
+    SpaceModule::<T>::create_space(origin.clone().into(), None, space_handle_1(), space_content_ipfs(), None)?;
+    Module::<T>::create_post(origin.clone().into(), Some(SPACE1), PostExtension::RegularPost, post_content_ipfs())?;
+
+    Ok(origin)
 }
 
 benchmarks! {
@@ -69,20 +78,13 @@ benchmarks! {
         <T as UtilsTrait>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
 
         SpaceModule::<T>::create_space(origin.clone().into(), None, space_handle_1(), space_content_ipfs(), None)?;
-        // let _ = <T as Trait>::Currency::make_free_balance_be(&caller, BALANCE);
     }: _(origin, Some(SPACE1), PostExtension::RegularPost, post_content_ipfs())
     verify {
         ensure!(PostById::<T>::get(POST).is_some(), Error::<T>::PostNotFound)
     }
 
     update_post {
-        let caller: T::AccountId = whitelisted_caller();
-        let origin = RawOrigin::Signed(caller.clone());
-
-        <T as UtilsTrait>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
-
-        SpaceModule::<T>::create_space(origin.clone().into(), None, space_handle_1(), space_content_ipfs(), None)?;
-        Module::<T>::create_post(origin.clone().into(), Some(SPACE1), PostExtension::RegularPost, post_content_ipfs())?;
+        let origin = add_origin_with_space_post_and_balance::<T>()?;
 
         let post_update: PostUpdate = PostUpdate {
             space_id: Some(SPACE1),
@@ -99,14 +101,9 @@ benchmarks! {
     }
 
     move_post {
-        let caller: T::AccountId = whitelisted_caller();
-        let origin = RawOrigin::Signed(caller.clone());
+        let origin = add_origin_with_space_post_and_balance::<T>()?;
 
-        <T as UtilsTrait>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
-
-        SpaceModule::<T>::create_space(origin.clone().into(), None, space_handle_1(), space_content_ipfs(), None)?;
         SpaceModule::<T>::create_space(origin.clone().into(), None, space_handle_2(), space_content_ipfs(), None)?;
-        Module::<T>::create_post(origin.clone().into(), Some(SPACE1), PostExtension::RegularPost, post_content_ipfs())?;
 
     }: _(origin, POST, Some(SPACE2))
     verify {

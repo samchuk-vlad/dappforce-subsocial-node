@@ -10,6 +10,7 @@ use sp_runtime::traits::Bounded;
 use pallet_utils::{Trait as UtilsTrait, BalanceOf, Content, SpaceId};
 use crate::sp_api_hidden_includes_decl_storage::hidden_include::traits::Currency;
 use pallet_spaces::Module as SpacesModule;
+use frame_support::dispatch::DispatchError;
 
 const SPACE: SpaceId = 1001;
 const ROLE: RoleId = 1;
@@ -19,7 +20,7 @@ fn space_content_ipfs() -> Content {
     Content::IPFS(b"bafyreib3mgbou4xln42qqcgj6qlt3cif35x4ribisxgq7unhpun525l54e".to_vec())
 }
 
-fn space_handle_1() -> Option<Vec<u8>> {
+fn space_handle() -> Option<Vec<u8>> {
     Some(b"Space_Handle".to_vec())
 }
 
@@ -39,22 +40,34 @@ fn permission_set_updated() -> Vec<SpacePermission> {
     vec![SpacePermission::ManageRoles, SpacePermission::CreatePosts]
 }
 
+fn add_origin_with_space_and_balance<T: Trait>() -> Result<RawOrigin<T::AccountId>, DispatchError> {
+    let caller: T::AccountId = whitelisted_caller();
+    let origin = RawOrigin::Signed(caller.clone());
+
+    <T as UtilsTrait>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
+
+    SpacesModule::<T>::create_space(origin.clone().into(), None, space_handle(), space_content_ipfs(), None)?;
+
+    Ok(origin)
+}
+
+fn add_origin_with_space_balance_and_role<T: Trait>() -> Result<RawOrigin<T::AccountId>, DispatchError> {
+    let origin = add_origin_with_space_and_balance::<T>()?;
+
+    Module::<T>::create_role(origin.clone().into(), SPACE, Some(100u32.into()), default_role_content_ipfs(), permission_set_default())?;
+
+    Ok(origin)
+}
+
 benchmarks! {
 	_ { }
     // TODO: Remove copy-paste
     create_role {
-        let caller: T::AccountId = whitelisted_caller();
-        let origin = RawOrigin::Signed(caller.clone());
-
-        <T as UtilsTrait>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
-
-        SpacesModule::<T>::create_space(origin.clone().into(), None, space_handle_1(), space_content_ipfs(), None)?;
-
-    }: _(RawOrigin::Signed(caller), SPACE, Some(100u32.into()), default_role_content_ipfs(), permission_set_default())
+        let origin = add_origin_with_space_and_balance::<T>()?;
+    }: _(origin, SPACE, Some(100u32.into()), default_role_content_ipfs(), permission_set_default())
     verify {
         assert!(RoleById::<T>::get(ROLE).is_some());
 
-        // Check whether data in Role structure is correct
         let role = RoleById::<T>::get(ROLE).unwrap();
 
         assert!(role.updated.is_none());
@@ -68,13 +81,7 @@ benchmarks! {
     }
 
     update_role {
-        let caller: T::AccountId = whitelisted_caller();
-        let origin = RawOrigin::Signed(caller.clone());
-
-        <T as UtilsTrait>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
-
-        SpacesModule::<T>::create_space(origin.clone().into(), None, space_handle_1(), space_content_ipfs(), None)?;
-        Module::<T>::create_role(origin.clone().into(), SPACE, Some(100u32.into()), default_role_content_ipfs(), permission_set_default())?;
+        let origin = add_origin_with_space_balance_and_role::<T>()?;
 
         let role_update: RoleUpdate = RoleUpdate {
             disabled: Some(true),
@@ -83,8 +90,7 @@ benchmarks! {
                 BTreeSet::from_iter(self::permission_set_updated().into_iter())
             ),
         };
-
-    }: _(origin.clone(), ROLE, role_update)
+    }: _(origin, ROLE, role_update)
     verify {
         assert!(RoleById::<T>::get(ROLE).is_some());
 
@@ -102,17 +108,11 @@ benchmarks! {
     }
 
     delete_role {
-        let caller: T::AccountId = whitelisted_caller();
+        let origin = add_origin_with_space_balance_and_role::<T>()?;
         let user: T::AccountId = account("user", 0, SEED);
-        let origin = RawOrigin::Signed(caller.clone());
 
-        <T as UtilsTrait>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
-
-        SpacesModule::<T>::create_space(origin.clone().into(), None, space_handle_1(), space_content_ipfs(), None)?;
-        Module::<T>::create_role(origin.clone().into(), SPACE, Some(100u32.into()), default_role_content_ipfs(), permission_set_default())?;
         Module::<T>::grant_role(origin.clone().into(), ROLE, vec![User::Account(user.clone())])?;
-
-    }: _(RawOrigin::Signed(caller), ROLE)
+    }: _(origin, ROLE)
     verify {
         assert!(RoleById::<T>::get(ROLE).is_none());
         assert!(UsersByRoleId::<T>::get(ROLE).is_empty());
@@ -121,33 +121,20 @@ benchmarks! {
     }
 
     grant_role {
-        let caller: T::AccountId = whitelisted_caller();
+        let origin = add_origin_with_space_balance_and_role::<T>()?;
         let user: T::AccountId = account("user", 0, SEED);
-        let origin = RawOrigin::Signed(caller.clone());
-
-        <T as UtilsTrait>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
-
-        SpacesModule::<T>::create_space(origin.clone().into(), None, space_handle_1(), space_content_ipfs(), None)?;
-        Module::<T>::create_role(origin.clone().into(), SPACE, Some(100u32.into()), default_role_content_ipfs(), permission_set_default())?;
-
-    }: _(RawOrigin::Signed(caller), ROLE, vec![User::Account(user.clone())])
+    }: _(origin, ROLE, vec![User::Account(user.clone())])
     verify {
         assert_eq!(UsersByRoleId::<T>::get(ROLE), vec![User::Account(user.clone())]);
         assert_eq!(RoleIdsByUserInSpace::<T>::get(User::Account(user.clone()), SPACE), vec![ROLE]);
     }
 
     revoke_role {
-        let caller: T::AccountId = whitelisted_caller();
         let user: T::AccountId = account("user", 0, SEED);
-        let origin = RawOrigin::Signed(caller.clone());
+        let origin = add_origin_with_space_balance_and_role::<T>()?;
 
-        <T as UtilsTrait>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
-
-        SpacesModule::<T>::create_space(origin.clone().into(), None, space_handle_1(), space_content_ipfs(), None)?;
-        Module::<T>::create_role(origin.clone().into(), SPACE, Some(100u32.into()), default_role_content_ipfs(), permission_set_default())?;
         Module::<T>::grant_role(origin.clone().into(), ROLE, vec![User::Account(user.clone())])?;
-
-    }: _(RawOrigin::Signed(caller), ROLE, vec![User::Account(user.clone())])
+    }: _(origin, ROLE, vec![User::Account(user.clone())])
     verify {
         assert!(UsersByRoleId::<T>::get(ROLE).is_empty());
         assert!(RoleIdsByUserInSpace::<T>::get(User::Account(user), SPACE).is_empty());

@@ -11,6 +11,7 @@ use pallet_utils::{Trait as UtilsTrait, BalanceOf, Content, SpaceId};
 use crate::sp_api_hidden_includes_decl_storage::hidden_include::traits::Currency;
 use pallet_spaces::Module as SpaceModule;
 use pallet_posts::{Module as PostsModule, PostExtension};
+use frame_support::dispatch::DispatchError;
 
 const POST: PostId = 1;
 const SPACE: SpaceId = 1001;
@@ -36,47 +37,40 @@ fn space_handle_1() -> Option<Vec<u8>> {
     Some(b"Space_Handle".to_vec())
 }
 
+fn origin_with_space_post_and_balance<T: Trait>() -> Result<RawOrigin<T::AccountId>, DispatchError> {
+    let caller: T::AccountId = whitelisted_caller();
+    let origin = RawOrigin::Signed(caller.clone());
+
+    <T as UtilsTrait>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
+
+    SpaceModule::<T>::create_space(origin.clone().into(), None, space_handle_1(), space_content_ipfs(), None)?;
+    PostsModule::<T>::create_post(origin.clone().into(), Some(SPACE), PostExtension::RegularPost, post_content_ipfs())?;
+
+    Ok(origin)
+}
+
 benchmarks! {
 	_ { }
-    // TODO: Remove copy-paste
+
     create_post_reaction {
-        let caller: T::AccountId = whitelisted_caller();
-        let origin = RawOrigin::Signed(caller.clone());
-
-        <T as UtilsTrait>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
-
-        SpaceModule::<T>::create_space(origin.clone().into(), None, space_handle_1(), space_content_ipfs(), None)?;
-        PostsModule::<T>::create_post(origin.clone().into(), Some(SPACE), PostExtension::RegularPost, post_content_ipfs())?;
-
-    }: _(RawOrigin::Signed(caller), POST, reaction_upvote())
+        let origin = origin_with_space_post_and_balance::<T>()?;
+    }: _(origin, POST, reaction_upvote())
     verify {
         assert_eq!(ReactionIdsByPostId::get(POST), vec![REACTION]);
     }
 
     update_post_reaction {
-        let caller: T::AccountId = whitelisted_caller();
-        let origin = RawOrigin::Signed(caller.clone());
+        let origin = origin_with_space_post_and_balance::<T>()?;
 
-        <T as UtilsTrait>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
-
-        SpaceModule::<T>::create_space(origin.clone().into(), None, space_handle_1(), space_content_ipfs(), None)?;
-        PostsModule::<T>::create_post(origin.clone().into(), Some(SPACE), PostExtension::RegularPost, post_content_ipfs())?;
         Module::<T>::create_post_reaction(origin.clone().into(), POST, reaction_upvote())?;
-
     }: _(origin, POST, REACTION, reaction_downvote())
     verify {
     }
 
     delete_post_reaction {
-        let caller: T::AccountId = whitelisted_caller();
-        let origin = RawOrigin::Signed(caller.clone());
+        let origin = origin_with_space_post_and_balance::<T>()?;
 
-        <T as UtilsTrait>::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
-
-        SpaceModule::<T>::create_space(origin.clone().into(), None, space_handle_1(), space_content_ipfs(), None)?;
-        PostsModule::<T>::create_post(origin.clone().into(), Some(SPACE), PostExtension::RegularPost, post_content_ipfs())?;
         Module::<T>::create_post_reaction(origin.clone().into(), POST, reaction_upvote())?;
-
     }: _(origin, POST, REACTION)
     verify {
     }
