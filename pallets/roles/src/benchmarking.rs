@@ -61,7 +61,7 @@ fn add_origin_with_space_balance_and_role<T: Trait>() -> Result<RawOrigin<T::Acc
 
 benchmarks! {
 	_ { }
-    // TODO: Remove copy-paste
+
     create_role {
         let origin = add_origin_with_space_and_balance::<T>()?;
     }: _(origin, SPACE, Some(100u32.into()), default_role_content_ipfs(), permission_set_default())

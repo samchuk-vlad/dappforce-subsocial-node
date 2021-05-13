@@ -18,10 +18,7 @@ use frame_support::{
 };
 use frame_system as system;
 
-use pallet_permissions::{
-    SpacePermission,
-    SpacePermission as SP,
-};
+use pallet_permissions::{SpacePermission, SpacePermission as SP};
 use pallet_utils::{SpaceId, User, Content};
 
 impl_outer_origin! {
@@ -137,6 +134,7 @@ impl Trait for Test {
 
 type System = system::Module<Test>;
 type Balances = pallet_balances::Module<Test>;
+type Spaces = pallet_spaces::Module<Test>;
 pub(crate) type Roles = Module<Test>;
 
 pub type AccountId = u64;
@@ -150,7 +148,24 @@ impl ExtBuilder {
             .build_storage::<Test>()
             .unwrap();
 
+
         let mut ext = TestExternalities::from(storage);
+
+        ext.execute_with(|| {
+            System::set_block_number(1);
+            assert_ok!(Spaces::create_space(Origin::signed(ACCOUNT1), None, None, Content::None, None));
+        });
+
+        ext
+    }
+
+    pub fn build_without_space() -> TestExternalities {
+        let storage = system::GenesisConfig::default()
+            .build_storage::<Test>()
+            .unwrap();
+
+        let mut ext = TestExternalities::from(storage);
+
         ext.execute_with(|| System::set_block_number(1));
 
         ext
@@ -165,6 +180,8 @@ impl ExtBuilder {
         ext.execute_with(|| {
             System::set_block_number(1);
             let user = User::Account(ACCOUNT2);
+
+            assert_ok!(Spaces::create_space(Origin::signed(ACCOUNT1), None, None, Content::None, None));
 
             assert_ok!(
             _create_role(
@@ -195,8 +212,8 @@ pub(crate) const ROLE2: RoleId = 2;
 pub(crate) const ROLE3: RoleId = 3;
 pub(crate) const ROLE4: RoleId = 4;
 
-pub(crate) const SPACE1: SpaceId = 1;
-pub(crate) const SPACE2: SpaceId = 2;
+pub(crate) const SPACE1: SpaceId = 1001;
+pub(crate) const SPACE2: SpaceId = 1002;
 
 pub(crate) fn default_role_content_ipfs() -> Content {
     Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiBrcqdyoW1CuDgwxkD4".to_vec())
