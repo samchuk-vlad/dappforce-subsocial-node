@@ -323,6 +323,7 @@ impl pallet_posts::Trait for Runtime {
 	type PostScores = Scores;
 	type AfterPostUpdated = PostHistory;
 	type IsPostBlocked = ()/*Moderation*/;
+	type WeightInfo = pallet_posts::weights::WeightInfo;
 }
 
 parameter_types! {}
@@ -335,6 +336,7 @@ impl pallet_profile_follows::Trait for Runtime {
 	type Event = Event;
 	type BeforeAccountFollowed = Scores;
 	type BeforeAccountUnfollowed = Scores;
+	type WeightInfo = pallet_profile_follows::weights::WeightInfo;
 }
 
 parameter_types! {}
@@ -342,6 +344,7 @@ parameter_types! {}
 impl pallet_profiles::Trait for Runtime {
 	type Event = Event;
 	type AfterProfileUpdated = ProfileHistory;
+	type WeightInfo = pallet_profiles::weights::WeightInfo;
 }
 
 parameter_types! {}
@@ -353,6 +356,7 @@ parameter_types! {}
 impl pallet_reactions::Trait for Runtime {
 	type Event = Event;
 	type PostReactionScores = Scores;
+	type WeightInfo = pallet_reactions::weights::WeightInfo;
 }
 
 parameter_types! {
@@ -364,6 +368,7 @@ impl pallet_roles::Trait for Runtime {
 	type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
 	type IsAccountBlocked = ()/*Moderation*/;
 	type IsContentBlocked = ()/*Moderation*/;
+	type WeightInfo = pallet_roles::weights::WeightInfo;
 }
 
 parameter_types! {
@@ -402,12 +407,14 @@ impl pallet_space_follows::Trait for Runtime {
 	type Event = Event;
 	type BeforeSpaceFollowed = Scores;
 	type BeforeSpaceUnfollowed = Scores;
+	type WeightInfo = pallet_space_follows::weights::WeightInfo;
 }
 
 parameter_types! {}
 
 impl pallet_space_ownership::Trait for Runtime {
 	type Event = Event;
+	type WeightInfo = pallet_space_ownership::weights::WeightInfo;
 }
 
 parameter_types! {
@@ -424,6 +431,7 @@ impl pallet_spaces::Trait for Runtime {
 	type IsAccountBlocked = ()/*Moderation*/;
 	type IsContentBlocked = ()/*Moderation*/;
 	type HandleDeposit = HandleDeposit;
+	type WeightInfo = pallet_spaces::weights::WeightInfo;
 }
 
 parameter_types! {}
@@ -506,6 +514,7 @@ impl pallet_subscriptions::Trait for Runtime {
 impl pallet_faucets::Trait for Runtime {
 	type Event = Event;
 	type Currency = Balances;
+	type WeightInfo = pallet_faucets::weights::WeightInfo;
 }
 
 construct_runtime!(

@@ -14,8 +14,8 @@ use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
     dispatch::{DispatchError, DispatchResult},
     ensure,
-    traits::{Currency, ExistenceRequirement, Get},
-    weights::Pays,
+    traits::{Currency, ExistenceRequirement},
+    weights::{Weight, Pays},
 };
 use frame_system::{self as system, ensure_root, ensure_signed};
 use sp_runtime::RuntimeDebug;
@@ -32,6 +32,7 @@ mod mock;
 #[cfg(test)]
 mod tests;
 mod benchmarking;
+pub mod weights;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Faucet<T: Trait> {
@@ -57,6 +58,13 @@ pub struct FaucetUpdate<BlockNumber, Balance> {
 
 type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
 
+pub trait WeightInfo {
+    fn add_faucet() -> Weight;
+    fn update_faucet() -> Weight;
+    fn remove_faucets() -> Weight;
+    fn drip() -> Weight;
+}
+
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait
     + pallet_balances::Trait
@@ -66,6 +74,8 @@ pub trait Trait: system::Trait
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
     type Currency: Currency<Self::AccountId>;
+
+    type WeightInfo: WeightInfo;
 }
 
 decl_storage! {
@@ -125,7 +135,7 @@ decl_module! {
         // Initializing events
         fn deposit_event() = default;
 
-        #[weight = 50_000 + T::DbWeight::get().reads_writes(2, 1)]
+        #[weight = <T as Trait>::WeightInfo::add_faucet()]
         pub fn add_faucet(
             origin,
             faucet: T::AccountId,
@@ -162,7 +172,7 @@ decl_module! {
             Ok(())
         }
 
-        #[weight = 50_000 + T::DbWeight::get().reads_writes(1, 1)]
+        #[weight = <T as Trait>::WeightInfo::update_faucet()]
         pub fn update_faucet(
             origin,
             faucet: T::AccountId,
@@ -225,7 +235,7 @@ decl_module! {
             Ok(())
         }
 
-        #[weight = 20_000 + T::DbWeight::get().reads_writes(0, 0) + 20_000 * faucets.len() as u64]
+        #[weight = <T as Trait>::WeightInfo::remove_faucets()]
         pub fn remove_faucets(
             origin,
             faucets: Vec<T::AccountId>
@@ -245,7 +255,7 @@ decl_module! {
         }
 
         #[weight = (
-            50_000 + T::DbWeight::get().reads_writes(2, 2),
+            <T as Trait>::WeightInfo::drip(),
             
             // TODO Replace with Ok(Pays::No.into())
             // See https://github.com/substrate-developer-hub/substrate-node-template/commit/6546b15634bf088e8faee806b5cf266621412889#diff-657cb55f3d39058f730b46f7c84f90698ad43b3ab5c1aa8789a435a230c77f19R106

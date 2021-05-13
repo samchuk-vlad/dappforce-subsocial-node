@@ -102,6 +102,7 @@ impl pallet_spaces::Trait for Test {
     type IsAccountBlocked = ();
     type IsContentBlocked = ();
     type HandleDeposit = ();
+    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -131,6 +132,7 @@ impl Trait for Test {
     type MaxUsersToProcessPerDeleteRole = MaxUsersToProcessPerDeleteRole;
     type IsAccountBlocked = ();
     type IsContentBlocked = ();
+    type WeightInfo = ();
 }
 
 type System = system::Module<Test>;

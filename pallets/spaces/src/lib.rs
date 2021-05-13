@@ -1,12 +1,14 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 mod benchmarking;
+pub mod weights;
 
 use codec::{Decode, Encode};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure,
     dispatch::{DispatchError, DispatchResult},
     traits::{Get, Currency, ExistenceRequirement, ReservableCurrency},
+    weights::Weight
 };
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
@@ -56,6 +58,11 @@ pub struct SpaceUpdate {
 type BalanceOf<T> =
   <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
 
+pub trait WeightInfo {
+    fn create_space() -> Weight;
+    fn update_space() -> Weight;
+}
+
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait
     + pallet_utils::Trait
@@ -79,6 +86,8 @@ pub trait Trait: system::Trait
     type IsContentBlocked: IsContentBlocked;
 
     type HandleDeposit: Get<BalanceOf<Self>>;
+
+    type WeightInfo: WeightInfo;
 }
 
 decl_error! {
@@ -151,7 +160,7 @@ decl_module! {
     // Initializing events
     fn deposit_event() = default;
 
-    #[weight = 500_000 + T::DbWeight::get().reads_writes(4, 4)]
+    #[weight = <T as Trait>::WeightInfo::create_space()]
     pub fn create_space(
       origin,
       parent_id_opt: Option<SpaceId>,
@@ -199,7 +208,7 @@ decl_module! {
       Ok(())
     }
 
-    #[weight = 500_000 + T::DbWeight::get().reads_writes(2, 3)]
+    #[weight = <T as Trait>::WeightInfo::update_space()]
     pub fn update_space(origin, space_id: SpaceId, update: SpaceUpdate) -> DispatchResult {
       let owner = ensure_signed(origin)?;
 
