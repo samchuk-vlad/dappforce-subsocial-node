@@ -73,7 +73,7 @@ impl system::Trait for Test {
     type SystemWeightInfo = ();
 }
 
-pub(crate) const EXISTENTIAL_DEPOSIT: Balance = 1 * CENTS;
+pub(crate) const EXISTENTIAL_DEPOSIT: Balance = 10 * CENTS;
 parameter_types! {
     pub const ExistentialDeposit: u64 = EXISTENTIAL_DEPOSIT;
 }
@@ -128,7 +128,7 @@ impl pallet_profiles::Trait for Test {
 
 // TODO export to a common place
 parameter_types! {
-	pub const TransactionByteFee: Balance = 1 * MILLICENTS;
+	pub const TransactionByteFee: Balance = 10 * MILLICENTS;
 	pub const TargetBlockFullness: Perquintill = Perquintill::from_percent(25);
 	pub AdjustmentVariable: Multiplier = Multiplier::saturating_from_rational(1, 100_000);
 	pub MinimumMultiplier: Multiplier = Multiplier::saturating_from_rational(1, 1_000_000_000u128);
