@@ -140,3 +140,21 @@ benchmarks! {
         assert!(RoleIdsByUserInSpace::<T>::get(User::Account(user), SPACE).is_empty());
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::mock::{Test, ExtBuilder};
+    use frame_support::assert_ok;
+
+    #[test]
+    fn test_benchmarks() {
+        ExtBuilder::build_without_space().execute_with(|| {
+            assert_ok!(test_benchmark_create_role::<Test>());
+            assert_ok!(test_benchmark_update_role::<Test>());
+            assert_ok!(test_benchmark_delete_role::<Test>());
+            assert_ok!(test_benchmark_grant_role::<Test>());
+            assert_ok!(test_benchmark_revoke_role::<Test>());
+        });
+    }
+}

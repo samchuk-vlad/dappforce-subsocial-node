@@ -86,3 +86,20 @@ benchmarks! {
         assert_eq!(T::Currency::free_balance(&caller), amount);
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::mock::{Test, ExtBuilder};
+    use frame_support::assert_ok;
+
+    #[test]
+    fn test_benchmarks() {
+        ExtBuilder::build_with_faucet().execute_with(|| {
+            assert_ok!(test_benchmark_drip::<Test>());
+            assert_ok!(test_benchmark_add_faucet::<Test>());
+            assert_ok!(test_benchmark_remove_faucets::<Test>());
+            assert_ok!(test_benchmark_update_faucet::<Test>());
+        });
+    }
+}
