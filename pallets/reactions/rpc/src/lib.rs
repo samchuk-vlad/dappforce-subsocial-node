@@ -2,12 +2,12 @@ use std::{sync::Arc, collections::BTreeMap};
 use codec::Codec;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::{generic::BlockId, traits::Block as BlockT};
-use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
+use jsonrpc_core::Result;
 use jsonrpc_derive::rpc;
 use sp_api::ProvideRuntimeApi;
 
 use pallet_reactions::{ReactionId, rpc::FlatReaction};
-use pallet_utils::PostId;
+use pallet_utils::{PostId, rpc::map_rpc_error};
 pub use reactions_runtime_api::ReactionsApi as ReactionsRuntimeApi;
 
 #[rpc]
@@ -101,14 +101,5 @@ where
             .map(|(post_id, vec_u8)| (*post_id, String::from_utf8(vec_u8.clone()).unwrap_or_default()))
             .collect::<BTreeMap<_, _>>()
         ).map_err(map_rpc_error)
-    }
-}
-
-// TODO: move this copy-paste code to a common file
-fn map_rpc_error(err: impl std::fmt::Debug) -> RpcError {
-    RpcError {
-        code: ErrorCode::ServerError(1),
-        message: "An RPC error occurred".into(),
-        data: Some(format!("{:?}", err).into()),
     }
 }

@@ -1,6 +1,9 @@
-use codec::{Decode, Encode};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "std")]
+use jsonrpc_core::{Error as RpcError, ErrorCode};
+
+use codec::{Decode, Encode};
 use sp_runtime::SaturatedConversion;
 use sp_std::prelude::*;
 
@@ -91,5 +94,14 @@ pub trait ShouldSkip {
 impl<T> ShouldSkip for Option<T> {
     fn should_skip(&self) -> bool {
         self.is_none()
+    }
+}
+
+#[cfg(feature = "std")]
+pub fn map_rpc_error(err: impl std::fmt::Debug) -> RpcError {
+    RpcError {
+        code: ErrorCode::ServerError(1),
+        message: "An RPC error occurred".into(),
+        data: Some(format!("{:?}", err).into()),
     }
 }
