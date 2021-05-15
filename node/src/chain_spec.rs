@@ -3,7 +3,7 @@ use subsocial_runtime::{
 	AccountId, AuraConfig, BalancesConfig,
 	GenesisConfig, GrandpaConfig, UtilsConfig,
 	SudoConfig, SpacesConfig, SystemConfig,
-	WASM_BINARY, Signature, constants::currency::SUBS,
+	WASM_BINARY, Signature, constants::currency::DOLLARS,
 };
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_finality_grandpa::AuthorityId as GrandpaId;
@@ -203,7 +203,7 @@ fn testnet_genesis(
 			changes_trie_config: Default::default(),
 		}),
         pallet_balances: Some(BalancesConfig {
-			balances: endowed_accounts.iter().cloned().map(|(k, b)|(k, b * SUBS)).collect(),
+			balances: endowed_accounts.iter().cloned().map(|(k, b)|(k, b * DOLLARS)).collect(),
 		}),
 		pallet_aura: Some(AuraConfig {
 			authorities: initial_authorities.iter().map(|x| (x.0.clone())).collect(),
