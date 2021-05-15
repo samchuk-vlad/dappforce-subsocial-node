@@ -6,7 +6,7 @@ edition = '2018'
 license = 'GPL-3.0-only'
 homepage = 'https://subsocial.network'
 repository = 'https://github.com/dappforce/dappforce-subsocial-node'
-description = 'Profiles pallet RPC to call a custom Runtime API'
+description = 'RPC methods for the profiles pallet'
 keywords = ['blockchain', 'cryptocurrency', 'social-network', 'news-feed', 'marketplace']
 categories = ['cryptography::cryptocurrencies']
 
@@ -28,6 +28,7 @@ jsonrpc-derive = '15.0.0'
 
 # Local dependencies
 pallet-profiles = { default-features = false, path = '..' }
+pallet-utils = { default-features = false, path = '../../utils' }
 
 # Custom Runtime API
 profiles-runtime-api = { default-features = false, path = 'runtime-api' }

@@ -11,6 +11,6 @@ sp_api::decl_runtime_apis! {
     {
         fn get_space_ids_followed_by_account(account: AccountId) -> Vec<SpaceId>;
 
-        fn filter_followed_spaces(account: AccountId, space_ids: Vec<SpaceId>) -> Vec<SpaceId>;
+        fn filter_followed_space_ids(account: AccountId, space_ids: Vec<SpaceId>) -> Vec<SpaceId>;
     }
 }

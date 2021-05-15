@@ -2,10 +2,11 @@ use std::sync::Arc;
 use codec::Codec;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::{generic::BlockId, traits::Block as BlockT};
-use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
+use jsonrpc_core::Result;
 use jsonrpc_derive::rpc;
 use sp_api::ProvideRuntimeApi;
 
+use pallet_utils::rpc::map_rpc_error;
 pub use profile_follows_runtime_api::ProfileFollowsApi as ProfileFollowsRuntimeApi;
 
 #[rpc]
@@ -15,7 +16,7 @@ pub trait ProfileFollowsApi<BlockHash, AccountId> {
         &self,
         at: Option<BlockHash>,
         account: AccountId,
-        other_accounts: Vec<AccountId>,
+        maybe_following: Vec<AccountId>,
     ) -> Result<Vec<AccountId>>;
 }
 
@@ -45,21 +46,12 @@ where
         &self, at:
         Option<<Block as BlockT>::Hash>,
         account: AccountId,
-        other_accounts: Vec<AccountId>,
+        maybe_following: Vec<AccountId>,
     ) -> Result<Vec<AccountId>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
-        let runtime_api_result = api.filter_followed_accounts(&at, account, other_accounts);
+        let runtime_api_result = api.filter_followed_accounts(&at, account, maybe_following);
         runtime_api_result.map_err(map_rpc_error)
-    }
-}
-
-// TODO: move this copy-paste code to a common file
-fn map_rpc_error(err: impl std::fmt::Debug) -> RpcError {
-    RpcError {
-        code: ErrorCode::ServerError(1),
-        message: "An RPC error occurred".into(),
-        data: Some(format!("{:?}", err).into()),
     }
 }

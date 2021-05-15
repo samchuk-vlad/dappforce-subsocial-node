@@ -2,15 +2,12 @@ use std::{sync::Arc, collections::BTreeMap};
 use codec::Codec;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::{generic::BlockId, traits::Block as BlockT};
-use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
+use jsonrpc_core::Result;
 use jsonrpc_derive::rpc;
 use sp_api::ProvideRuntimeApi;
 
-use pallet_reactions::{
-    ReactionId,
-    rpc::FlatReaction,
-};
-use pallet_utils::PostId;
+use pallet_reactions::{ReactionId, rpc::FlatReaction};
+use pallet_utils::{PostId, rpc::map_rpc_error};
 pub use reactions_runtime_api::ReactionsApi as ReactionsRuntimeApi;
 
 #[rpc]
@@ -31,8 +28,8 @@ pub trait ReactionsApi<BlockHash, AccountId, BlockNumber> {
         offset: u64,
     ) -> Result<Vec<FlatReaction<AccountId, BlockNumber>>>;
 
-    #[rpc(name = "reactions_getReactionsByAccount")]
-    fn get_reactions_by_account(
+    #[rpc(name = "reactions_getReactionsByAccountAndPostIds")]
+    fn get_reactions_by_account_and_post_ids(
         &self,
         at: Option<BlockHash>,
         account: AccountId,
@@ -89,7 +86,7 @@ where
         runtime_api_result.map_err(map_rpc_error)
     }
 
-    fn get_reactions_by_account(
+    fn get_reactions_by_account_and_post_ids(
         &self,
         at: Option<<Block as BlockT>::Hash>,
         account: AccountId,
@@ -98,16 +95,7 @@ where
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
-        let runtime_api_result = api.get_reactions_by_account(&at, account, post_ids);
+        let runtime_api_result = api.get_reactions_by_account_and_post_ids(&at, account, post_ids);
         runtime_api_result.map_err(map_rpc_error)
-    }
-}
-
-// TODO: move this copy-paste code to a common file
-fn map_rpc_error(err: impl std::fmt::Debug) -> RpcError {
-    RpcError {
-        code: ErrorCode::ServerError(1),
-        message: "An RPC error occurred".into(),
-        data: Some(format!("{:?}", err).into()),
     }
 }

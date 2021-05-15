@@ -2,11 +2,11 @@ use std::sync::Arc;
 use codec::Codec;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::{generic::BlockId, traits::Block as BlockT};
-use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
+use jsonrpc_core::Result;
 use jsonrpc_derive::rpc;
 use sp_api::ProvideRuntimeApi;
 
-use pallet_utils::SpaceId;
+use pallet_utils::{SpaceId, rpc::map_rpc_error};
 pub use space_follows_runtime_api::SpaceFollowsApi as SpaceFollowsRuntimeApi;
 
 #[rpc]
@@ -18,8 +18,8 @@ pub trait SpaceFollowsApi<BlockHash, AccountId> {
         account: AccountId,
     ) -> Result<Vec<SpaceId>>;
 
-    #[rpc(name = "spaceFollows_filterSpacesFollowed")]
-    fn filter_followed_spaces(
+    #[rpc(name = "spaceFollows_filterFollowedSpaceIds")]
+    fn filter_followed_space_ids(
         &self,
         at: Option<BlockHash>,
         account: AccountId,
@@ -61,7 +61,7 @@ where
         runtime_api_result.map_err(map_rpc_error)
     }
 
-    fn filter_followed_spaces(
+    fn filter_followed_space_ids(
         &self,
         at: Option<<Block as BlockT>::Hash>,
         account: AccountId,
@@ -70,16 +70,7 @@ where
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
-        let runtime_api_result = api.filter_followed_spaces(&at, account, space_ids);
+        let runtime_api_result = api.filter_followed_space_ids(&at, account, space_ids);
         runtime_api_result.map_err(map_rpc_error)
-    }
-}
-
-// TODO: move this copy-paste code to a common file
-fn map_rpc_error(err: impl std::fmt::Debug) -> RpcError {
-    RpcError {
-        code: ErrorCode::ServerError(1),
-        message: "An RPC error occurred".into(),
-        data: Some(format!("{:?}", err).into()),
     }
 }

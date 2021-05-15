@@ -2,12 +2,12 @@ use std::{sync::Arc, collections::BTreeMap};
 use codec::Codec;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::{generic::BlockId, traits::Block as BlockT};
-use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
+use jsonrpc_core::Result;
 use jsonrpc_derive::rpc;
 use sp_api::ProvideRuntimeApi;
 
 use pallet_posts::rpc::FlatPost;
-use pallet_utils::{PostId, SpaceId};
+use pallet_utils::{PostId, SpaceId, rpc::map_rpc_error};
 pub use posts_runtime_api::PostsApi as PostsRuntimeApi;
 
 #[rpc]
@@ -19,8 +19,8 @@ pub trait PostsApi<BlockHash, AccountId, BlockNumber> {
         post_ids: Vec<PostId>,
     ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>>;
 
-    #[rpc(name = "posts_getPublicPostsBySpace")]
-    fn get_public_posts_by_space(
+    #[rpc(name = "posts_getPublicPostsBySpaceId")]
+    fn get_public_posts_by_space_id(
         &self,
         at: Option<BlockHash>,
         space_id: SpaceId,
@@ -28,8 +28,8 @@ pub trait PostsApi<BlockHash, AccountId, BlockNumber> {
         limit: u16,
     ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>>;
 
-    #[rpc(name = "posts_getUnlistedPostsBySpace")]
-    fn get_unlisted_posts_by_space(
+    #[rpc(name = "posts_getUnlistedPostsBySpaceId")]
+    fn get_unlisted_posts_by_space_id(
         &self,
         at: Option<BlockHash>,
         space_id: SpaceId,
@@ -51,15 +51,15 @@ pub trait PostsApi<BlockHash, AccountId, BlockNumber> {
         post_id: PostId,
     ) -> Result<BTreeMap<PostId, Vec<PostId>>>;
 
-    #[rpc(name = "posts_getUnlistedPostIdsBySpace")]
-    fn get_unlisted_post_ids_by_space(
+    #[rpc(name = "posts_getUnlistedPostIdsBySpaceId")]
+    fn get_unlisted_post_ids_by_space_id(
         &self,
         at: Option<BlockHash>,
         space_id: SpaceId,
     ) -> Result<Vec<PostId>>;
 
-    #[rpc(name = "posts_getPublicPostIdsBySpace")]
-    fn get_public_post_ids_by_space(
+    #[rpc(name = "posts_getPublicPostIdsBySpaceId")]
+    fn get_public_post_ids_by_space_id(
         &self,
         at: Option<BlockHash>,
         space_id: SpaceId,
@@ -113,7 +113,7 @@ where
         runtime_api_result.map_err(map_rpc_error)
     }
 
-    fn get_public_posts_by_space(
+    fn get_public_posts_by_space_id(
         &self,
         at: Option<<Block as BlockT>::Hash>,
         space_id: u64,
@@ -123,11 +123,11 @@ where
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
-        let runtime_api_result = api.get_public_posts_by_space(&at, space_id, offset, limit);
+        let runtime_api_result = api.get_public_posts_by_space_id(&at, space_id, offset, limit);
         runtime_api_result.map_err(map_rpc_error)
     }
 
-    fn get_unlisted_posts_by_space(
+    fn get_unlisted_posts_by_space_id(
         &self,
         at: Option<<Block as BlockT>::Hash>,
         space_id: u64,
@@ -137,7 +137,7 @@ where
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
-        let runtime_api_result = api.get_unlisted_posts_by_space(&at, space_id, offset, limit);
+        let runtime_api_result = api.get_unlisted_posts_by_space_id(&at, space_id, offset, limit);
         runtime_api_result.map_err(map_rpc_error)
     }
 
@@ -161,19 +161,19 @@ where
         runtime_api_result.map_err(map_rpc_error)
     }
 
-    fn get_unlisted_post_ids_by_space(&self, at: Option<<Block as BlockT>::Hash>, space_id: u64) -> Result<Vec<u64>> {
+    fn get_unlisted_post_ids_by_space_id(&self, at: Option<<Block as BlockT>::Hash>, space_id: u64) -> Result<Vec<u64>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
-        let runtime_api_result = api.get_unlisted_post_ids_by_space(&at, space_id);
+        let runtime_api_result = api.get_unlisted_post_ids_by_space_id(&at, space_id);
         runtime_api_result.map_err(map_rpc_error)
     }
 
-    fn get_public_post_ids_by_space(&self, at: Option<<Block as BlockT>::Hash>, space_id: u64) -> Result<Vec<u64>> {
+    fn get_public_post_ids_by_space_id(&self, at: Option<<Block as BlockT>::Hash>, space_id: u64) -> Result<Vec<u64>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
-        let runtime_api_result = api.get_public_post_ids_by_space(&at, space_id);
+        let runtime_api_result = api.get_public_post_ids_by_space_id(&at, space_id);
         runtime_api_result.map_err(map_rpc_error)
     }
 
@@ -197,14 +197,5 @@ where
 
         let runtime_api_result = api.get_feed(&at, account, offset, limit);
         runtime_api_result.map_err(map_rpc_error)
-    }
-}
-
-// TODO: move this copy-paste code to a common file
-fn map_rpc_error(err: impl std::fmt::Debug) -> RpcError {
-    RpcError {
-        code: ErrorCode::ServerError(1),
-        message: "An RPC error occurred".into(),
-        data: Some(format!("{:?}", err).into()),
     }
 }

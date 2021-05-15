@@ -7,7 +7,7 @@ use sp_std::{vec, prelude::*};
 
 use pallet_space_follows::Module as SpaceFollows;
 use pallet_spaces::Module as Spaces;
-use pallet_utils::{from_bool_to_option, PostId, rpc::{FlatContent, FlatWhoAndWhen}, SpaceId};
+use pallet_utils::{bool_to_option, PostId, rpc::{FlatContent, FlatWhoAndWhen}, SpaceId};
 
 use crate::{Module, Post, PostExtension, Trait};
 
@@ -66,9 +66,9 @@ impl<T: Trait> From<Post<T>> for FlatPost<T::AccountId, T::BlockNumber> {
             content: content.into(),
             is_hidden: Some(hidden).filter(|value| *value == true),
             extension,
-            is_regular_post: from_bool_to_option(from.is_regular_post()),
-            is_shared_post: from_bool_to_option(from.is_sharing_post()),
-            is_comment: from_bool_to_option(from.is_comment()),
+            is_regular_post: bool_to_option(from.is_regular_post()),
+            is_shared_post: bool_to_option(from.is_sharing_post()),
+            is_comment: bool_to_option(from.is_comment()),
             root_post_id: comment_ext.clone().map(|comment_ext| comment_ext.root_post_id),
             parent_post_id: comment_ext.and_then(|comment_ext| comment_ext.parent_id),
             shared_post_id: from.get_shared_post_id().ok(),
@@ -137,7 +137,7 @@ impl<T: Trait> Module<T> {
         posts
     }
 
-    pub fn get_public_posts_by_space(
+    pub fn get_public_posts_by_space_id(
         space_id: SpaceId,
         offset: u64,
         limit: u16,
@@ -150,7 +150,7 @@ impl<T: Trait> Module<T> {
         vec![]
     }
 
-    pub fn get_unlisted_posts_by_space(
+    pub fn get_unlisted_posts_by_space_id(
         space_id: SpaceId,
         offset: u64,
         limit: u16,
@@ -187,7 +187,7 @@ impl<T: Trait> Module<T> {
             .collect()
     }
 
-    pub fn get_public_post_ids_by_space(space_id: SpaceId) -> Vec<PostId> {
+    pub fn get_public_post_ids_by_space_id(space_id: SpaceId) -> Vec<PostId> {
         let public_space = Spaces::<T>::require_space(space_id).ok().filter(|space| space.is_public());
         if public_space.is_some() {
             return Self::get_post_ids_by_space(space_id, |post| post.is_public());
@@ -196,7 +196,7 @@ impl<T: Trait> Module<T> {
         vec![]
     }
 
-    pub fn get_unlisted_post_ids_by_space(space_id: SpaceId) -> Vec<PostId> {
+    pub fn get_unlisted_post_ids_by_space_id(space_id: SpaceId) -> Vec<PostId> {
         let unlisted_space = Spaces::<T>::require_space(space_id).ok().filter(|space| !space.is_public());
         if unlisted_space.is_some() {
             return Self::get_post_ids_by_space(space_id, |post| !post.is_public());

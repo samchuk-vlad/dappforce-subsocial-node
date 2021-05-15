@@ -1,10 +1,13 @@
-use codec::{Decode, Encode};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "std")]
+use jsonrpc_core::{Error as RpcError, ErrorCode};
+
+use codec::{Decode, Encode};
 use sp_runtime::SaturatedConversion;
 use sp_std::prelude::*;
 
-use crate::{Content, from_bool_to_option, Trait, WhoAndWhen};
+use crate::{Content, bool_to_option, Trait, WhoAndWhen};
 
 #[derive(Eq, PartialEq, Encode, Decode, Default)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
@@ -30,7 +33,7 @@ impl<T: Trait> From<(WhoAndWhen<T>, Option<WhoAndWhen<T>>)> for FlatWhoAndWhen<T
             created_by: created.account,
             created_at_block: created.block,
             created_at_time: created.time.saturated_into::<u64>(),
-            is_updated: from_bool_to_option(updated.is_some()),
+            is_updated: bool_to_option(updated.is_some()),
             updated_by: updated.clone().map(|value| value.account),
             updated_at_block: updated.clone().map(|value| value.block),
             updated_at_time: updated.map(|value| value.time.saturated_into::<u64>()),
@@ -80,7 +83,7 @@ impl From<Content> for FlatContent {
     fn from(content: Content) -> Self {
         Self {
             content_id: content.clone(),
-            is_ipfs_content: from_bool_to_option(content.is_ipfs()),
+            is_ipfs_content: bool_to_option(content.is_ipfs()),
         }
     }
 }
@@ -91,5 +94,14 @@ pub trait ShouldSkip {
 impl<T> ShouldSkip for Option<T> {
     fn should_skip(&self) -> bool {
         self.is_none()
+    }
+}
+
+#[cfg(feature = "std")]
+pub fn map_rpc_error(err: impl std::fmt::Debug) -> RpcError {
+    RpcError {
+        code: ErrorCode::ServerError(1),
+        message: "An RPC error occurred".into(),
+        data: Some(format!("{:?}", err).into()),
     }
 }

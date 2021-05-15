@@ -79,8 +79,6 @@ pub trait Trait: system::Trait
     type IsContentBlocked: IsContentBlocked;
 
     type HandleDeposit: Get<BalanceOf<Self>>;
-
-    type DefaultRPCLimit: Get<u64>;
 }
 
 decl_error! {
@@ -146,8 +144,6 @@ decl_module! {
   pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 
     const HandleDeposit: BalanceOf<T> = T::HandleDeposit::get();
-
-    const DefaultRPCLimit: u64 = T::DefaultRPCLimit::get();
 
     // Initializing errors
     type Error = Error<T>;
@@ -386,7 +382,7 @@ impl<T: Trait> Space<T> {
     }
 
     pub fn is_public(&self) -> bool {
-        !self.clone().hidden && !self.content.is_none()
+        !self.hidden && self.content.is_some()
     }
 
     // TODO: make not_public function

@@ -8,7 +8,7 @@ use pallet_utils::{SpaceId, User};
 use pallet_permissions::{SpacePermission};
 
 impl<T: Trait> Module<T> {
-    pub fn get_space_permissions_by_user(
+    pub fn get_space_permissions_by_account(
         account: T::AccountId,
         space_id: SpaceId
     ) -> Vec<SpacePermission> {
@@ -26,7 +26,7 @@ impl<T: Trait> Module<T> {
         Self::role_ids_by_space_id(space_id)
             .iter()
             .flat_map(Self::users_by_role_id)
-            .filter_map(|user| user.account())
+            .filter_map(|user| user.maybe_account())
             .collect::<BTreeSet<_>>()
             .iter().cloned().collect()
     }
