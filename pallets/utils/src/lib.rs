@@ -18,6 +18,7 @@ use frame_system::{self as system};
 
 #[cfg(test)]
 mod mock;
+pub mod mock_functions;
 
 #[cfg(test)]
 mod tests;
@@ -166,9 +167,8 @@ pub fn log_2(x: u32) -> Option<u32> {
     } else { None }
 }
 
-pub fn vec_remove_on<F: PartialEq>(vector: &mut Vec<F>, element: F) {
+pub fn remove_from_vec<F: PartialEq>(vector: &mut Vec<F>, element: F) {
     if let Some(index) = vector.iter().position(|x| *x == element) {
-        // TODO fix: swap_remove doesn't remove tha last element.
         vector.swap_remove(index);
     }
 }
