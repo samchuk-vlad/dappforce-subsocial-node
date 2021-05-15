@@ -2,7 +2,7 @@ pub mod currency {
 	use crate::Balance;
 
 	pub const UNITS: Balance = 100_000_000_000;
-	pub const DOLLARS: Balance = UNITS;             // 100_000_000_000
+	pub const DOLLARS: Balance = UNITS;            // 100_000_000_000
 	pub const CENTS: Balance = DOLLARS / 100;      // 1_000_000_000
 	pub const MILLICENTS: Balance = CENTS / 1_000; // 1_000_000
 
