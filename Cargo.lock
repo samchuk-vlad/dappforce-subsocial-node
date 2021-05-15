@@ -4282,6 +4282,7 @@ version = "0.6.0"
 dependencies = [
  "frame-support",
  "frame-system",
+ "jsonrpc-core",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -4819,6 +4820,7 @@ dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
  "jsonrpc-derive",
+ "pallet-utils",
  "parity-scale-codec",
  "profile-follows-runtime-api",
  "serde",
@@ -4847,6 +4849,7 @@ dependencies = [
  "jsonrpc-core-client",
  "jsonrpc-derive",
  "pallet-profiles",
+ "pallet-utils",
  "parity-scale-codec",
  "profiles-runtime-api",
  "serde",
