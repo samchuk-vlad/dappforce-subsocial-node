@@ -2,11 +2,12 @@ use std::sync::Arc;
 use codec::Codec;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::{generic::BlockId, traits::Block as BlockT};
-use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
+use jsonrpc_core::Result;
 use jsonrpc_derive::rpc;
 use sp_api::ProvideRuntimeApi;
 
 use pallet_profiles::rpc::FlatSocialAccount;
+use pallet_utils::rpc::map_rpc_error;
 pub use profiles_runtime_api::ProfilesApi as ProfilesRuntimeApi;
 
 #[rpc]
@@ -48,14 +49,5 @@ where
 
         let runtime_api_result = api.get_social_accounts_by_ids(&at, account_ids);
         runtime_api_result.map_err(map_rpc_error)
-    }
-}
-
-// TODO: move this copy-paste code to a common file
-fn map_rpc_error(err: impl std::fmt::Debug) -> RpcError {
-    RpcError {
-        code: ErrorCode::ServerError(1),
-        message: "An RPC error occurred".into(),
-        data: Some(format!("{:?}", err).into()),
     }
 }
