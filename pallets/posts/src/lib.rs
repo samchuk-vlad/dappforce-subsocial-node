@@ -1,6 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
+#[cfg(feature = "std")]
+use serde::{Serialize, Deserialize};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, fail,
     dispatch::{DispatchError, DispatchResult}, ensure, traits::Get,
@@ -14,12 +16,12 @@ use pallet_permissions::SpacePermission;
 use pallet_spaces::{Module as Spaces, Space, SpaceById};
 use pallet_utils::{
     Module as Utils, Error as UtilsError,
-    SpaceId, WhoAndWhen, Content
+    SpaceId, WhoAndWhen, Content, PostId
 };
 
 pub mod functions;
 
-pub type PostId = u64;
+pub mod rpc;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Post<T: Trait> {
@@ -56,6 +58,8 @@ pub struct PostUpdate {
 }
 
 #[derive(Encode, Decode, Clone, Copy, Eq, PartialEq, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "std", serde(tag = "kind", content = "contentId"))]
 pub enum PostExtension {
     RegularPost,
     Comment(Comment),
@@ -63,6 +67,7 @@ pub enum PostExtension {
 }
 
 #[derive(Encode, Decode, Clone, Copy, Eq, PartialEq, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct Comment {
     pub parent_id: Option<PostId>,
     pub root_post_id: PostId,
@@ -77,6 +82,7 @@ impl Default for PostExtension {
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait
     + pallet_utils::Trait
+    + pallet_space_follows::Trait
     + pallet_spaces::Trait
 {
     /// The overarching event type.
@@ -168,6 +174,8 @@ decl_error! {
         OriginalPostNotFound,
         /// Cannot share a post that shares another post.
         CannotShareSharingPost,
+        /// Post extension is not a sharing post.
+        NotASharingPost,
 
         // Comment related errors:
 
