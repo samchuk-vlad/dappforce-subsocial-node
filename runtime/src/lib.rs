@@ -250,7 +250,7 @@ impl pallet_timestamp::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const ExistentialDeposit: u128 = 1 * CENTS;
+	pub const ExistentialDeposit: u128 = 10 * CENTS;
 	pub const MaxLocks: u32 = 50;
 }
 
@@ -267,7 +267,7 @@ impl pallet_balances::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const TransactionByteFee: Balance = 1 * MILLICENTS;
+	pub const TransactionByteFee: Balance = 10 * MILLICENTS;
 }
 
 impl pallet_transaction_payment::Trait for Runtime {
@@ -426,8 +426,7 @@ impl pallet_space_ownership::Trait for Runtime {
 }
 
 parameter_types! {
-	pub HandleDeposit: Balance = 50 * CENTS;
-	pub const DefaultRPCLimit: u64 = 20;
+	pub HandleDeposit: Balance = 5 * DOLLARS;
 }
 
 impl pallet_spaces::Trait for Runtime {
