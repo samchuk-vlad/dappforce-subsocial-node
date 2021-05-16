@@ -90,7 +90,7 @@ pub struct PostUpdate {
     pub hidden: Option<bool>,
 }
 
-/// Post extension you to provide specific information necessary for different kinds 
+/// Post extension provides specific information necessary for different kinds 
 /// of posts such as regular posts, comments, and shared posts.
 #[derive(Encode, Decode, Clone, Copy, Eq, PartialEq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
