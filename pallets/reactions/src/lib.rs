@@ -39,7 +39,11 @@ impl Default for ReactionKind {
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Reaction<T: Trait> {
+
+    /// Unique sequential identifier of a reaction. Examples of reaction ids: `1`, `2`, `3`,
+    /// and so on.
     pub id: ReactionId,
+
     pub created: WhoAndWhen<T>,
     pub updated: Option<WhoAndWhen<T>>,
     pub kind: ReactionKind,
