@@ -8,10 +8,12 @@ use frame_system::RawOrigin;
 use frame_benchmarking::{benchmarks, whitelisted_caller};
 use sp_runtime::traits::Bounded;
 use pallet_utils::{Trait as UtilsTrait, BalanceOf, Content, SpaceId};
-use crate::sp_api_hidden_includes_decl_storage::hidden_include::traits::Currency;
 use pallet_spaces::Module as SpaceModule;
 use pallet_posts::{Module as PostsModule, PostExtension};
-use frame_support::dispatch::DispatchError;
+use frame_support::{
+    dispatch::DispatchError,
+    traits::Currency,
+};
 
 const POST: PostId = 1;
 const SPACE: SpaceId = 1001;

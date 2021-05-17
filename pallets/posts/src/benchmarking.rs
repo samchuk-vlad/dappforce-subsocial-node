@@ -9,7 +9,10 @@ use frame_support::ensure;
 use sp_runtime::traits::Bounded;
 use frame_benchmarking::{benchmarks, whitelisted_caller};
 use pallet_utils::{Trait as UtilsTrait, BalanceOf};
-use crate::sp_api_hidden_includes_decl_storage::hidden_include::traits::Currency;
+use frame_support::{
+    dispatch::DispatchError,
+    traits::Currency,
+};
 use pallet_spaces::Module as SpaceModule;
 
 const SPACE1: SpaceId = 1001;

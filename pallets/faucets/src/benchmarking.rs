@@ -7,7 +7,7 @@ use sp_std::{vec};
 use frame_system::{RawOrigin};
 use frame_benchmarking::{benchmarks, account, whitelisted_caller};
 use sp_runtime::traits::Bounded;
-use crate::sp_api_hidden_includes_decl_storage::hidden_include::traits::Currency;
+use frame_support::traits::Currency;
 
 const SEED: u32 = 0;
 

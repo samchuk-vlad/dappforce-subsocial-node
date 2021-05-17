@@ -8,9 +8,10 @@ use frame_system::RawOrigin;
 use frame_benchmarking::{benchmarks, account, whitelisted_caller};
 use sp_runtime::traits::Bounded;
 use pallet_utils::{Trait as UtilsTrait, BalanceOf, Content, SpaceId};
-use crate::sp_api_hidden_includes_decl_storage::hidden_include::traits::Currency;
 use pallet_spaces::Module as SpacesModule;
-use frame_support::dispatch::DispatchError;
+use frame_support::{
+    dispatch::DispatchError, traits::Currency,
+};
 
 const SPACE: SpaceId = 1001;
 const ROLE: RoleId = 1;
@@ -142,7 +143,7 @@ benchmarks! {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
     use crate::mock::{Test, ExtBuilder};
     use frame_support::assert_ok;

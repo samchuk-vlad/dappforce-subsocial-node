@@ -8,9 +8,11 @@ use frame_system::RawOrigin;
 use frame_benchmarking::{benchmarks, account, whitelisted_caller};
 use sp_runtime::traits::Bounded;
 use pallet_utils::{Trait as UtilsTrait, BalanceOf, Content, SpaceId};
-use crate::sp_api_hidden_includes_decl_storage::hidden_include::traits::Currency;
 use pallet_spaces::Module as SpaceModule;
-use frame_support::dispatch::DispatchError;
+use frame_support::{
+    dispatch::DispatchError,
+    traits::Currency,
+};
 
 const SPACE: SpaceId = 1001;
 const SEED: u32 = 0;

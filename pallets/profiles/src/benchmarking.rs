@@ -8,7 +8,7 @@ use frame_system::{RawOrigin};
 use frame_benchmarking::{benchmarks, whitelisted_caller};
 use sp_runtime::traits::Bounded;
 use pallet_utils::{Trait as UtilsTrait, BalanceOf};
-use crate::sp_api_hidden_includes_decl_storage::hidden_include::traits::Currency;
+use frame_support::traits::Currency;
 
 fn profile_content_ipfs() -> Content {
     Content::IPFS(b"QmRAQB6YaCyidP37UdDnjFY5vQuiaRtqdyoW2CuDgwxkA5".to_vec())
