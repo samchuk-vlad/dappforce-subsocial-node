@@ -83,32 +83,16 @@ impl<T: Trait> Module<T> {
         limit: u64,
         mut filter: F,
     ) -> Vec<FlatSpace<T::AccountId, T::BlockNumber>> {
-        let mut start_from = offset;
-        let mut iterate_until = offset;
-        let last_space_id = Self::next_space_id().saturating_sub(1);
-
+        let mut space_id = Self::next_space_id().saturating_sub(offset + 1);
         let mut spaces = Vec::new();
 
-        'outer: loop {
-            iterate_until = iterate_until.saturating_add(limit);
-
-            if start_from > last_space_id {
-                break;
-            }
-
-            if iterate_until > last_space_id {
-                iterate_until = last_space_id;
-            }
-
-            for space_id in start_from..=iterate_until {
-                if let Some(space) = Self::require_space(space_id).ok() {
-                    if filter(&space) {
-                        spaces.push(space.into());
-                        if spaces.len() >= limit as usize { break 'outer; }
-                    }
+        while spaces.len() < limit as usize && space_id >= 1 {
+            if let Some(space) = Self::require_space(space_id).ok() {
+                if filter(&space) {
+                    spaces.push(space.into());
                 }
             }
-            start_from = iterate_until;
+            space_id = space_id.saturating_sub(1);
         }
 
         spaces
@@ -123,7 +107,7 @@ impl<T: Trait> Module<T> {
     }
 
     pub fn get_unlisted_spaces(offset: u64, limit: u64) -> Vec<FlatSpace<T::AccountId, T::BlockNumber>> {
-        Self::get_spaces_slice(offset, limit, |space| !space.is_public())
+        Self::get_spaces_slice(offset, limit, |space| space.is_unlisted())
     }
 
     pub fn get_space_id_by_handle(handle: Vec<u8>) -> Option<SpaceId> {
@@ -152,7 +136,6 @@ impl<T: Trait> Module<T> {
     pub fn get_unlisted_space_ids_by_owner(owner: T::AccountId) -> Vec<SpaceId> {
         Self::get_space_ids_by_owner(owner, |space| space.hidden)
     }
-
 
     pub fn get_next_space_id() -> SpaceId {
         Self::next_space_id()
