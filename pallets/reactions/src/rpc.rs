@@ -18,6 +18,20 @@ pub struct FlatReaction<AccountId, BlockNumber> {
     pub kind: ReactionKind,
 }
 
+#[cfg(feature = "std")]
+impl Serialize for ReactionKind {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer {
+        let reaction_kind_bytes: &[u8; 1] = match self {
+            ReactionKind::Upvote => b"U",
+            ReactionKind::Downvote => b"D"
+        };
+
+        serializer.serialize_str(
+            std::str::from_utf8(reaction_kind_bytes).unwrap_or_default()
+        )
+    }
+}
+
 impl<T: Trait> From<Reaction<T>> for FlatReaction<T::AccountId, T::BlockNumber> {
     fn from(from: Reaction<T>) -> Self {
         let Reaction { id, created, updated, kind } = from;
@@ -75,23 +89,16 @@ impl<T: Trait> Module<T> {
     pub fn get_reactions_by_post_ids_and_responder(
         post_ids: Vec<PostId>,
         reactor: T::AccountId,
-    ) -> BTreeMap<PostId, Vec<u8>> {
-        let reaction_zipped_with_post_id =
-            post_ids.iter()
-                    .filter_map(|post_id|
-                        Some(*post_id).zip(
-                            Option::from(Self::post_reaction_id_by_account((&reactor, post_id)))
-                                .filter(|v| *v != 0)
-                                .and_then(|reaction_id|
-                                    Self::require_reaction(reaction_id).ok()
-                                        .map(|reaction| match reaction.kind {
-                                            ReactionKind::Upvote => { b"U".to_vec() }
-                                            ReactionKind::Downvote => { b"D".to_vec() }
-                                    })
-                                )
-                        )
-                    );
+    ) -> BTreeMap<PostId, ReactionKind> {
+        let reaction_zipped_with_post_id = post_ids.iter()
+            .filter_map(|post_id| Some(*post_id).zip(
+                Option::from(Self::post_reaction_id_by_account((&reactor, post_id)))
+                    .filter(|v| *v != 0)
+                    .and_then(|reaction_id|
+                        Self::require_reaction(reaction_id).ok().map(|reaction| reaction.kind)
+                    )
+            ));
 
-        reaction_zipped_with_post_id.clone().collect::<BTreeMap<_, _>>()
+        reaction_zipped_with_post_id.clone().collect()
     }
 }

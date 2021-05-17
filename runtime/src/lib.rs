@@ -49,6 +49,7 @@ use pallet_posts::rpc::{FlatPost, ExtFilter, RepliesByPostId};
 use pallet_profiles::rpc::FlatSocialAccount;
 use pallet_reactions::{
 	ReactionId,
+	ReactionKind,
 	rpc::FlatReaction,
 };
 use pallet_spaces::rpc::FlatSpace;
@@ -900,7 +901,7 @@ impl_runtime_apis! {
 		fn get_reactions_by_post_ids_and_responder(
 			post_ids: Vec<PostId>,
         	reactor: AccountId,
-		) -> BTreeMap<PostId, Vec<u8>> {
+		) -> BTreeMap<PostId, ReactionKind> {
 			Reactions::get_reactions_by_post_ids_and_responder(post_ids, reactor)
 		}
     }
