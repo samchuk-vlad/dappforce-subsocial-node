@@ -45,7 +45,7 @@ pub use frame_support::{
 use frame_system::EnsureRoot;
 
 use pallet_permissions::SpacePermission;
-use pallet_posts::rpc::{FlatPost, ExtFilter};
+use pallet_posts::rpc::{FlatPost, ExtFilter, RepliesByPostId};
 use pallet_profiles::rpc::FlatSocialAccount;
 use pallet_reactions::{
 	ReactionId,
@@ -846,7 +846,7 @@ impl_runtime_apis! {
 			Posts::get_replies_by_parent_id(post_id, offset, limit)
 		}
 
-		fn get_replies_by_parent_ids(post_ids: Vec<PostId>, offset: u64, limit: u16) -> BTreeMap<PostId, Vec<FlatPost<AccountId, BlockNumber>>> {
+		fn get_replies_by_parent_ids(post_ids: Vec<PostId>, offset: u64, limit: u16) -> RepliesByPostId<AccountId, BlockNumber> {
 			Posts::get_replies_by_parent_ids(post_ids, offset, limit)
 		}
 

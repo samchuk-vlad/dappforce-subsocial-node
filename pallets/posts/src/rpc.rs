@@ -1,8 +1,7 @@
 use codec::{Decode, Encode};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_std::collections::{ btree_map::BTreeMap, btree_set::BTreeSet };
-use sp_std::iter::FromIterator;
+use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 use sp_std::{vec, prelude::*};
 
 use pallet_space_follows::Module as SpaceFollows;
@@ -10,6 +9,7 @@ use pallet_spaces::Module as Spaces;
 use pallet_utils::{PostId, rpc::{FlatContent, FlatWhoAndWhen, ShouldSkip}, SpaceId};
 
 use crate::{Module, Post, PostExtension, Trait};
+pub type RepliesByPostId<AccountId, BlockNumber> = BTreeMap<PostId, Vec<FlatPost<AccountId, BlockNumber>>>;
 
 #[derive(Eq, PartialEq, Encode, Decode, Default)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
@@ -214,26 +214,30 @@ impl<T: Trait> Module<T> {
     }
 
     pub fn get_reply_ids_by_parent_ids(post_ids: Vec<PostId>) -> BTreeMap<PostId, Vec<PostId>> {
-        let mut reply_ids_bt_parent: BTreeMap<PostId, Vec<PostId>> = BTreeMap::new();
+        let mut reply_ids_by_parent: BTreeMap<PostId, Vec<PostId>> = BTreeMap::new();
 
         for post_id in post_ids.iter() {
             let reply_ids = Self::get_reply_ids_by_parent_id(*post_id);
 
             if !reply_ids.is_empty() {
-                reply_ids_bt_parent.insert(*post_id, reply_ids);
+                reply_ids_by_parent.insert(*post_id, reply_ids);
             }
         }
 
-        reply_ids_bt_parent
+        reply_ids_by_parent
     }
 
-    pub fn get_replies_by_parent_ids(post_ids: Vec<PostId>, offset: u64, limit: u16) -> BTreeMap<PostId, Vec<FlatPost<T::AccountId, T::BlockNumber>>> {
+    pub fn get_replies_by_parent_ids(
+        post_ids: Vec<PostId>,
+        offset: u64,
+        limit: u16
+    ) -> RepliesByPostId<T::AccountId, T::BlockNumber> {
        Self::get_reply_ids_by_parent_ids(post_ids)
            .into_iter()
-           .map(|(parent_id, reply_ids)| {
-                (parent_id, Self::get_posts_by_ids(reply_ids, offset, limit))
-            })
-           .collect::<BTreeMap<_, _>>()
+           .map(|(parent_id, reply_ids)|
+               (parent_id, Self::get_posts_by_ids(reply_ids, offset, limit))
+           )
+           .collect()
     }
 
     pub fn get_public_posts(
@@ -242,15 +246,16 @@ impl<T: Trait> Module<T> {
         limit: u16,
     ) -> Vec<FlatPost<T::AccountId, T::BlockNumber>> {
         let not_filter = ext_filter.is_empty();
-        let ext_filter_set: BTreeSet<_> = BTreeSet::from_iter(ext_filter.into_iter());
+        let ext_filter_set: BTreeSet<_> = ext_filter.into_iter().collect();
 
         let mut posts = Vec::new();
         let mut post_id = Self::get_next_post_id().saturating_sub(offset + 1);
 
         while posts.len() < limit as usize && post_id >= 1 {
             if let Ok(post) = Self::require_post(post_id) {
-                if post.is_public() &&
-                    (not_filter || ext_filter_set.contains(&ExtFilter::from(post.clone()))) {
+                let extension_filter: ExtFilter = post.clone().into();
+
+                if post.is_public() && (not_filter || ext_filter_set.contains(&extension_filter)) {
                     posts.push(post.into());
                 }
             }
@@ -301,9 +306,4 @@ impl<T: Trait> Module<T> {
 
         Self::get_posts_by_ids_with_filter(post_ids, offset, limit, |post: &Post<T>| post.is_public() && !post.is_comment())
     }
-}
-
-#[test]
-fn get_public_posts_test () {
-
 }

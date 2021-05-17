@@ -6,7 +6,7 @@ use jsonrpc_core::Result;
 use jsonrpc_derive::rpc;
 use sp_api::ProvideRuntimeApi;
 
-use pallet_posts::rpc::{FlatPost, ExtFilter};
+use pallet_posts::rpc::{FlatPost, ExtFilter, RepliesByPostId};
 use pallet_utils::{PostId, SpaceId, rpc::map_rpc_error};
 pub use posts_runtime_api::PostsApi as PostsRuntimeApi;
 
@@ -71,14 +71,14 @@ pub trait PostsApi<BlockHash, AccountId, BlockNumber> {
         limit: u16,
     ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>>;
 
-    #[rpc(name = "posts_getRepliesByParentId")]
+    #[rpc(name = "posts_getRepliesByParentIds")]
     fn get_replies_by_parent_ids(
         &self,
         at: Option<BlockHash>,
         post_ids: Vec<PostId>,
         offset: u64,
         limit: u16,
-    ) -> Result<BTreeMap<PostId,Vec<FlatPost<AccountId, BlockNumber>>>>;
+    ) -> Result<RepliesByPostId<AccountId, BlockNumber>>;
 
     #[rpc(name = "posts_getUnlistedPostIdsBySpaceId")]
     fn get_unlisted_post_ids_by_space_id(
@@ -222,7 +222,7 @@ where
         post_ids: Vec<PostId>,
         offset: u64,
         limit: u16
-    ) -> Result<BTreeMap<PostId,Vec<FlatPost<AccountId, BlockNumber>>>> {
+    ) -> Result<RepliesByPostId<AccountId, BlockNumber>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
