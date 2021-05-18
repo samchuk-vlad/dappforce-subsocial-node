@@ -61,26 +61,15 @@ impl<T: Trait> Module<T> {
     ) -> Vec<FlatReaction<T::AccountId, T::BlockNumber>> {
         let mut reactions = Vec::new();
 
-        let reaction_ids: Vec<PostId> = Self::reaction_ids_by_post_id(&post_id);
-        let mut start_from = offset;
-        let mut iterate_until = offset;
-        let last_post_id = reaction_ids.len().saturating_sub(1) as u64;
+        let all_reaction_ids: Vec<PostId> = Self::reaction_ids_by_post_id(&post_id);
+        let (_, reaction_ids) = all_reaction_ids.split_at(offset as usize);
 
-        'outer: loop {
-            iterate_until = iterate_until.saturating_add(limit);
-
-            if start_from > last_post_id { break; }
-            if iterate_until > last_post_id {
-                iterate_until = last_post_id;
+        for reaction_id in reaction_ids.iter() {
+            if let Some(reaction) = Self::require_reaction(*reaction_id).ok() {
+                reactions.push(reaction.into());
             }
 
-            for reaction_id in start_from..=iterate_until {
-                if let Some(reaction) = Self::require_reaction(reaction_id).ok() {
-                    reactions.push(reaction.into());
-                    if reactions.len() >= limit as usize { break 'outer; }
-                }
-            }
-            start_from = iterate_until;
+            if reactions.len() >= limit as usize { break; }
         }
 
         reactions
