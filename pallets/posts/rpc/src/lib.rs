@@ -6,7 +6,7 @@ use jsonrpc_core::Result;
 use jsonrpc_derive::rpc;
 use sp_api::ProvideRuntimeApi;
 
-use pallet_posts::rpc::{FlatPost, ExtFilter, RepliesByPostId};
+use pallet_posts::rpc::{FlatPost, FlatPostKind, RepliesByPostId};
 use pallet_utils::{PostId, SpaceId, rpc::map_rpc_error};
 pub use posts_runtime_api::PostsApi as PostsRuntimeApi;
 
@@ -25,7 +25,7 @@ pub trait PostsApi<BlockHash, AccountId, BlockNumber> {
     fn get_public_posts(
         &self,
         at: Option<BlockHash>,
-        ext_filter: Vec<ExtFilter>,
+        kind_filter: Vec<FlatPostKind>,
         start_id: u64,
         limit: u16
     ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>>;
@@ -147,14 +147,14 @@ where
     fn get_public_posts(
         &self,
         at: Option<<Block as BlockT>::Hash>,
-        ext_filter: Vec<ExtFilter>,
+        kind_filter: Vec<FlatPostKind>,
         start_id: u64,
         limit: u16
     ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
-        let runtime_api_result = api.get_public_posts(&at, ext_filter, start_id, limit);
+        let runtime_api_result = api.get_public_posts(&at, kind_filter, start_id, limit);
         runtime_api_result.map_err(map_rpc_error)
     }
 

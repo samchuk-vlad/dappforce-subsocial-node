@@ -4,7 +4,7 @@ use codec::Codec;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::vec::Vec;
 
-use pallet_posts::rpc::{FlatPost, ExtFilter, RepliesByPostId};
+use pallet_posts::rpc::{FlatPost, FlatPostKind, RepliesByPostId};
 use pallet_utils::{PostId, SpaceId};
 
 sp_api::decl_runtime_apis! {
@@ -16,7 +16,7 @@ sp_api::decl_runtime_apis! {
 
         fn get_posts_by_ids(post_ids: Vec<PostId>, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>>;
 
-        fn get_public_posts(ext_filter: Vec<ExtFilter>, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>>;
+        fn get_public_posts(kind_filter: Vec<FlatPostKind>, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>>;
 
         fn get_public_posts_by_space_id(space_id: SpaceId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>>;
     
