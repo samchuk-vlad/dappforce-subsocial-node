@@ -38,9 +38,9 @@ pub fn create_full<C, P>(
     C::Api: profile_follows_rpc::ProfileFollowsRuntimeApi<Block, AccountId>,
     C::Api: profiles_rpc::ProfilesRuntimeApi<Block, AccountId, BlockNumber>,
     C::Api: reactions_rpc::ReactionsRuntimeApi<Block, AccountId, BlockNumber>,
+    C::Api: roles_rpc::RolesRuntimeApi<Block, AccountId>,
     C::Api: space_follows_rpc::SpaceFollowsRuntimeApi<Block, AccountId>,
     C::Api: spaces_rpc::SpacesRuntimeApi<Block, AccountId, BlockNumber>,
-    C::Api: roles_rpc::RolesRuntimeApi<Block, AccountId>,
     C::Api: BlockBuilder<Block>,
     P: TransactionPool + 'static,
 {
@@ -51,9 +51,9 @@ pub fn create_full<C, P>(
     use profile_follows_rpc::{ProfileFollows, ProfileFollowsApi};
     use profiles_rpc::{Profiles, ProfilesApi};
     use reactions_rpc::{Reactions, ReactionsApi};
+    use roles_rpc::{Roles, RolesApi};
     use space_follows_rpc::{SpaceFollows, SpaceFollowsApi};
     use spaces_rpc::{Spaces, SpacesApi};
-    use roles_rpc::{Roles, RolesApi};
 
     let mut io = jsonrpc_core::IoHandler::default();
     let FullDeps {
@@ -75,7 +75,7 @@ pub fn create_full<C, P>(
     ));
 
     io.extend_with(
-    SpaceFollowsApi::to_delegate(SpaceFollows::new(client.clone()),
+        SpaceFollowsApi::to_delegate(SpaceFollows::new(client.clone()),
     ));
 
     io.extend_with(

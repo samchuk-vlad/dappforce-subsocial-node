@@ -428,7 +428,6 @@ impl<T: Trait> Space<T> {
     pub fn is_unlisted(&self) -> bool {
         !self.is_public()
     }
-
 }
 
 impl Default for SpaceUpdate {

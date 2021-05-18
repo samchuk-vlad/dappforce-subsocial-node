@@ -3,7 +3,7 @@ use codec::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use sp_std::prelude::*;
 
-use pallet_utils::{SpaceId, rpc::{FlatContent, FlatWhoAndWhen, ShouldSkip}};
+use pallet_utils::{bool_to_option, SpaceId, rpc::{FlatContent, FlatWhoAndWhen, ShouldSkip}};
 
 use crate::{Module, Space, Trait};
 
@@ -12,6 +12,7 @@ use crate::{Module, Space, Trait};
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub struct FlatSpace<AccountId, BlockNumber> {
     pub id: SpaceId,
+
     #[cfg_attr(feature = "std", serde(flatten))]
     pub who_and_when: FlatWhoAndWhen<AccountId, BlockNumber>,
 
@@ -19,14 +20,15 @@ pub struct FlatSpace<AccountId, BlockNumber> {
 
     #[cfg_attr(feature = "std", serde(skip_serializing_if = "ShouldSkip::should_skip"))]
     pub parent_id: Option<SpaceId>,
-    #[cfg_attr(feature = "std", serde(skip_serializing_if = "ShouldSkip::should_skip"))]
-    #[cfg_attr(feature = "std", serde(serialize_with = "bytes_to_string"))]
+
+    #[cfg_attr(feature = "std", serde(skip_serializing_if = "ShouldSkip::should_skip", serialize_with = "bytes_to_string"))]
     pub handle: Option<Vec<u8>>,
+
     #[cfg_attr(feature = "std", serde(flatten))]
     pub content: FlatContent,
 
-    // #[cfg_attr(feature = "std", serde(skip_serializing_if = "ShouldSkip::should_skip"))]
-    pub is_hidden: bool,
+    #[cfg_attr(feature = "std", serde(skip_serializing_if = "ShouldSkip::should_skip"))]
+    pub is_hidden: Option<bool>,
 
     pub posts_count: u32,
     pub hidden_posts_count: u32,
@@ -60,7 +62,7 @@ impl<T: Trait> From<Space<T>> for FlatSpace<T::AccountId, T::BlockNumber> {
             parent_id,
             handle,
             content: content.into(),
-            is_hidden: hidden,
+            is_hidden: bool_to_option(hidden),
             posts_count,
             hidden_posts_count,
             visible_posts_count: posts_count.saturating_sub(hidden_posts_count),
