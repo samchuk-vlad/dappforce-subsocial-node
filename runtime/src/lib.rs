@@ -898,11 +898,11 @@ impl_runtime_apis! {
 			Reactions::get_reactions_by_post_id(post_id, limit, offset)
 		}
 
-		fn get_reactions_by_post_ids_and_reactor(
+		fn get_reaction_kinds_by_post_ids_and_reactor(
 			post_ids: Vec<PostId>,
         	reactor: AccountId,
 		) -> BTreeMap<PostId, ReactionKind> {
-			Reactions::get_reactions_by_post_ids_and_reactor(post_ids, reactor)
+			Reactions::get_reaction_kinds_by_post_ids_and_reactor(post_ids, reactor)
 		}
     }
 

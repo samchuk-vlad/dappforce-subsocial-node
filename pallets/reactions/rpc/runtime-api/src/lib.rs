@@ -24,7 +24,7 @@ sp_api::decl_runtime_apis! {
             offset: u64
         ) -> Vec<FlatReaction<AccountId, BlockNumber>>;
 
-        fn get_reactions_by_post_ids_and_reactor(
+        fn get_reaction_kinds_by_post_ids_and_reactor(
             post_ids: Vec<PostId>,
             reactor: AccountId,
         ) -> BTreeMap<PostId, ReactionKind>;

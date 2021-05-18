@@ -76,11 +76,11 @@ impl<T: Trait> Module<T> {
         reactions
     }
 
-    pub fn get_reactions_by_post_ids_and_reactor(
+    pub fn get_reaction_kinds_by_post_ids_and_reactor(
         post_ids: Vec<PostId>,
         reactor: T::AccountId,
     ) -> BTreeMap<PostId, ReactionKind> {
-        let reaction_zipped_with_post_id = post_ids.iter()
+        let res = post_ids.iter()
             .filter_map(|post_id| Some(*post_id).zip(
                 Option::from(Self::post_reaction_id_by_account((&reactor, post_id)))
                     .filter(|v| *v != 0)
@@ -89,6 +89,6 @@ impl<T: Trait> Module<T> {
                     )
             ));
 
-        reaction_zipped_with_post_id.clone().collect()
+        res.clone().collect()
     }
 }
