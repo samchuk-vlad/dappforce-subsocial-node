@@ -780,20 +780,20 @@ impl_runtime_apis! {
 
 	impl spaces_runtime_api::SpacesApi<Block, AccountId, BlockNumber> for Runtime
 	{
-		fn get_spaces(offset: u64, limit: u64) -> Vec<FlatSpace<AccountId, BlockNumber>> {
-			Spaces::get_spaces(offset, limit)
+		fn get_spaces(start_id: u64, limit: u64) -> Vec<FlatSpace<AccountId, BlockNumber>> {
+			Spaces::get_spaces(start_id, limit)
 		}
 
 		fn get_spaces_by_ids(space_ids: Vec<SpaceId>) -> Vec<FlatSpace<AccountId, BlockNumber>> {
 			Spaces::get_spaces_by_ids(space_ids)
 		}
 
-		fn get_public_spaces(offset: u64, limit: u64) -> Vec<FlatSpace<AccountId, BlockNumber>> {
-			Spaces::get_public_spaces(offset, limit)
+		fn get_public_spaces(start_id: u64, limit: u64) -> Vec<FlatSpace<AccountId, BlockNumber>> {
+			Spaces::get_public_spaces(start_id, limit)
 		}
 
-		fn get_unlisted_spaces(offset: u64, limit: u64) -> Vec<FlatSpace<AccountId, BlockNumber>> {
-			Spaces::get_unlisted_spaces(offset, limit)
+		fn get_unlisted_spaces(start_id: u64, limit: u64) -> Vec<FlatSpace<AccountId, BlockNumber>> {
+			Spaces::get_unlisted_spaces(start_id, limit)
 		}
 
 		fn get_space_id_by_handle(handle: Vec<u8>) -> Option<SpaceId> {
@@ -823,8 +823,8 @@ impl_runtime_apis! {
 			Posts::get_posts_by_ids(post_ids, offset, limit)
 		}
 
-		fn get_public_posts(ext_filter: Vec<ExtFilter>, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>> {
-			Posts::get_public_posts(ext_filter, offset, limit)
+		fn get_public_posts(ext_filter: Vec<ExtFilter>, start_id: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>> {
+			Posts::get_public_posts(ext_filter, start_id, limit)
 		}
 
 		fn get_public_posts_by_space_id(space_id: SpaceId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>> {
@@ -898,11 +898,11 @@ impl_runtime_apis! {
 			Reactions::get_reactions_by_post_id(post_id, limit, offset)
 		}
 
-		fn get_reactions_by_post_ids_and_responder(
+		fn get_reactions_by_post_ids_and_reactor(
 			post_ids: Vec<PostId>,
         	reactor: AccountId,
 		) -> BTreeMap<PostId, ReactionKind> {
-			Reactions::get_reactions_by_post_ids_and_responder(post_ids, reactor)
+			Reactions::get_reactions_by_post_ids_and_reactor(post_ids, reactor)
 		}
     }
 

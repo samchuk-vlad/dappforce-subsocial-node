@@ -79,11 +79,11 @@ impl<T: Trait> Module<T> {
     }
 
     fn get_spaces_slice<F: FnMut(&Space<T>) -> bool>(
-        offset: u64,
+        start_id: u64,
         limit: u64,
         mut filter: F,
     ) -> Vec<FlatSpace<T::AccountId, T::BlockNumber>> {
-        let mut space_id = Self::next_space_id().saturating_sub(offset + 1);
+        let mut space_id = Self::next_space_id().saturating_sub(start_id + 1);
         let mut spaces = Vec::new();
 
         while spaces.len() < limit as usize && space_id >= 1 {
@@ -98,16 +98,16 @@ impl<T: Trait> Module<T> {
         spaces
     }
 
-    pub fn get_spaces(offset: u64, limit: u64) -> Vec<FlatSpace<T::AccountId, T::BlockNumber>> {
-        Self::get_spaces_slice(offset, limit, |_| true)
+    pub fn get_spaces(start_id: u64, limit: u64) -> Vec<FlatSpace<T::AccountId, T::BlockNumber>> {
+        Self::get_spaces_slice(start_id, limit, |_| true)
     }
 
-    pub fn get_public_spaces(offset: u64, limit: u64) -> Vec<FlatSpace<T::AccountId, T::BlockNumber>> {
-        Self::get_spaces_slice(offset, limit, |space| space.is_public())
+    pub fn get_public_spaces(start_id: u64, limit: u64) -> Vec<FlatSpace<T::AccountId, T::BlockNumber>> {
+        Self::get_spaces_slice(start_id, limit, |space| space.is_public())
     }
 
-    pub fn get_unlisted_spaces(offset: u64, limit: u64) -> Vec<FlatSpace<T::AccountId, T::BlockNumber>> {
-        Self::get_spaces_slice(offset, limit, |space| space.is_unlisted())
+    pub fn get_unlisted_spaces(start_id: u64, limit: u64) -> Vec<FlatSpace<T::AccountId, T::BlockNumber>> {
+        Self::get_spaces_slice(start_id, limit, |space| space.is_unlisted())
     }
 
     pub fn get_space_id_by_handle(handle: Vec<u8>) -> Option<SpaceId> {

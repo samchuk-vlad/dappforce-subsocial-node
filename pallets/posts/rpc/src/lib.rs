@@ -26,7 +26,7 @@ pub trait PostsApi<BlockHash, AccountId, BlockNumber> {
         &self,
         at: Option<BlockHash>,
         ext_filter: Vec<ExtFilter>,
-        offset: u64,
+        start_id: u64,
         limit: u16
     ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>>;
 
@@ -148,13 +148,13 @@ where
         &self,
         at: Option<<Block as BlockT>::Hash>,
         ext_filter: Vec<ExtFilter>,
-        offset: u64,
+        start_id: u64,
         limit: u16
     ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
-        let runtime_api_result = api.get_public_posts(&at, ext_filter, offset, limit);
+        let runtime_api_result = api.get_public_posts(&at, ext_filter, start_id, limit);
         runtime_api_result.map_err(map_rpc_error)
     }
 
