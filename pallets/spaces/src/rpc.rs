@@ -85,7 +85,7 @@ impl<T: Trait> Module<T> {
         limit: u64,
         mut filter: F,
     ) -> Vec<FlatSpace<T::AccountId, T::BlockNumber>> {
-        let mut space_id = Self::next_space_id().saturating_sub(start_id + 1);
+        let mut space_id = start_id;
         let mut spaces = Vec::new();
 
         while spaces.len() < limit as usize && space_id >= FIRST_SPACE_ID {

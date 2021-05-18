@@ -249,7 +249,7 @@ impl<T: Trait> Module<T> {
         let ext_filter_set: BTreeSet<_> = ext_filter.into_iter().collect();
 
         let mut posts = Vec::new();
-        let mut post_id = Self::get_next_post_id().saturating_sub(start_id + 1);
+        let mut post_id = start_id;
 
         while posts.len() < limit as usize && post_id >= 1 {
             if let Ok(post) = Self::require_post(post_id) {
