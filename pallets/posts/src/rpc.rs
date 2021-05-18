@@ -308,7 +308,7 @@ impl<T: Trait> Module<T> {
             .flat_map(Self::post_ids_by_space_id)
             .collect();
 
-        // Sort `post_ids` in descending order
+        // Sort post ids in a descending order
         post_ids.sort_by(|a, b| b.cmp(a));
 
         Self::get_posts_by_ids_with_filter(post_ids, offset, limit, |post| post.is_public() && !post.is_comment())
