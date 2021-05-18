@@ -204,23 +204,23 @@ impl<T: Trait> Module<T> {
         vec![]
     }
 
-    pub fn get_reply_ids_by_parent_id(post_id: PostId) -> Vec<PostId> {
-        Self::reply_ids_by_post_id(post_id)
+    pub fn get_reply_ids_by_parent_id(parent_id: PostId) -> Vec<PostId> {
+        Self::reply_ids_by_post_id(parent_id)
     }
 
-    pub fn get_replies_by_parent_id(post_id: PostId, offset: u64, limit: u16) -> Vec<FlatPost<T::AccountId, T::BlockNumber>> {
-        let reply_ids = Self::get_reply_ids_by_parent_id(post_id);
+    pub fn get_replies_by_parent_id(parent_id: PostId, offset: u64, limit: u16) -> Vec<FlatPost<T::AccountId, T::BlockNumber>> {
+        let reply_ids = Self::get_reply_ids_by_parent_id(parent_id);
         Self::get_posts_by_ids(reply_ids, offset, limit)
     }
 
-    pub fn get_reply_ids_by_parent_ids(post_ids: Vec<PostId>) -> BTreeMap<PostId, Vec<PostId>> {
+    pub fn get_reply_ids_by_parent_ids(parent_ids: Vec<PostId>) -> BTreeMap<PostId, Vec<PostId>> {
         let mut reply_ids_by_parent: BTreeMap<PostId, Vec<PostId>> = BTreeMap::new();
 
-        for post_id in post_ids.iter() {
-            let reply_ids = Self::get_reply_ids_by_parent_id(*post_id);
+        for parent_id in parent_ids.iter() {
+            let reply_ids = Self::get_reply_ids_by_parent_id(*parent_id);
 
             if !reply_ids.is_empty() {
-                reply_ids_by_parent.insert(*post_id, reply_ids);
+                reply_ids_by_parent.insert(*parent_id, reply_ids);
             }
         }
 
@@ -228,11 +228,11 @@ impl<T: Trait> Module<T> {
     }
 
     pub fn get_replies_by_parent_ids(
-        post_ids: Vec<PostId>,
+        parent_ids: Vec<PostId>,
         offset: u64,
         limit: u16
     ) -> RepliesByPostId<T::AccountId, T::BlockNumber> {
-       Self::get_reply_ids_by_parent_ids(post_ids)
+       Self::get_reply_ids_by_parent_ids(parent_ids)
            .into_iter()
            .map(|(parent_id, reply_ids)|
                (parent_id, Self::get_posts_by_ids(reply_ids, offset, limit))

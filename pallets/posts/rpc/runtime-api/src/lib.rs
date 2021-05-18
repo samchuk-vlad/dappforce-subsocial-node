@@ -26,13 +26,13 @@ sp_api::decl_runtime_apis! {
 
         fn get_unlisted_post_ids_by_space_id(space_id: SpaceId) -> Vec<PostId>;
 
-        fn get_reply_ids_by_parent_id(post_id: PostId) -> Vec<PostId>;
+        fn get_reply_ids_by_parent_id(parent_id: PostId) -> Vec<PostId>;
 
-        fn get_reply_ids_by_parent_ids(post_ids: Vec<PostId>) -> BTreeMap<PostId, Vec<PostId>>;
+        fn get_reply_ids_by_parent_ids(parent_ids: Vec<PostId>) -> BTreeMap<PostId, Vec<PostId>>;
 
-        fn get_replies_by_parent_id(post_id: PostId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>>;
+        fn get_replies_by_parent_id(parent_id: PostId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>>;
 
-        fn get_replies_by_parent_ids(post_ids: Vec<PostId>, offset: u64, limit: u16) -> RepliesByPostId<AccountId, BlockNumber>;
+        fn get_replies_by_parent_ids(parent_ids: Vec<PostId>, offset: u64, limit: u16) -> RepliesByPostId<AccountId, BlockNumber>;
 
         fn get_feed(account: AccountId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>>;
     }

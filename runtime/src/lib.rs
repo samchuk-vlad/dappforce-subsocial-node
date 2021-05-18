@@ -835,20 +835,20 @@ impl_runtime_apis! {
 			Posts::get_unlisted_posts_by_space_id(space_id, offset, limit)
 		}
 
-		fn get_reply_ids_by_parent_id(post_id: PostId) -> Vec<PostId> {
-			Posts::get_reply_ids_by_parent_id(post_id)
+		fn get_reply_ids_by_parent_id(parent_id: PostId) -> Vec<PostId> {
+			Posts::get_reply_ids_by_parent_id(parent_id)
 		}
 
-		fn get_reply_ids_by_parent_ids(post_ids: Vec<PostId>) -> BTreeMap<PostId, Vec<PostId>> {
-			Posts::get_reply_ids_by_parent_ids(post_ids)
+		fn get_reply_ids_by_parent_ids(parent_ids: Vec<PostId>) -> BTreeMap<PostId, Vec<PostId>> {
+			Posts::get_reply_ids_by_parent_ids(parent_ids)
 		}
 
-		fn get_replies_by_parent_id(post_id: PostId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>> {
-			Posts::get_replies_by_parent_id(post_id, offset, limit)
+		fn get_replies_by_parent_id(parent_id: PostId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>> {
+			Posts::get_replies_by_parent_id(parent_id, offset, limit)
 		}
 
-		fn get_replies_by_parent_ids(post_ids: Vec<PostId>, offset: u64, limit: u16) -> RepliesByPostId<AccountId, BlockNumber> {
-			Posts::get_replies_by_parent_ids(post_ids, offset, limit)
+		fn get_replies_by_parent_ids(parent_ids: Vec<PostId>, offset: u64, limit: u16) -> RepliesByPostId<AccountId, BlockNumber> {
+			Posts::get_replies_by_parent_ids(parent_ids, offset, limit)
 		}
 
 		fn get_public_post_ids_by_space_id(space_id: SpaceId) -> Vec<PostId> {

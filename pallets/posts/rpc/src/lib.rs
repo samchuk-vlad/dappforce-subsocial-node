@@ -66,7 +66,7 @@ pub trait PostsApi<BlockHash, AccountId, BlockNumber> {
     fn get_replies_by_parent_id(
         &self,
         at: Option<BlockHash>,
-        post_id: PostId,
+        parent_id: PostId,
         offset: u64,
         limit: u16,
     ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>>;
@@ -75,7 +75,7 @@ pub trait PostsApi<BlockHash, AccountId, BlockNumber> {
     fn get_replies_by_parent_ids(
         &self,
         at: Option<BlockHash>,
-        post_ids: Vec<PostId>,
+        parent_ids: Vec<PostId>,
         offset: u64,
         limit: u16,
     ) -> Result<RepliesByPostId<AccountId, BlockNumber>>;
@@ -186,47 +186,47 @@ where
         runtime_api_result.map_err(map_rpc_error)
     }
 
-    fn get_reply_ids_by_parent_id(&self, at: Option<<Block as BlockT>::Hash>, post_id: PostId) -> Result<Vec<PostId>> {
+    fn get_reply_ids_by_parent_id(&self, at: Option<<Block as BlockT>::Hash>, parent_id: PostId) -> Result<Vec<PostId>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
-        let runtime_api_result = api.get_reply_ids_by_parent_id(&at, post_id);
+        let runtime_api_result = api.get_reply_ids_by_parent_id(&at, parent_id);
         runtime_api_result.map_err(map_rpc_error)
     }
 
-    fn get_reply_ids_by_parent_ids(&self, at: Option<<Block as BlockT>::Hash>, post_ids: Vec<PostId>) -> Result<BTreeMap<PostId, Vec<PostId>>> {
+    fn get_reply_ids_by_parent_ids(&self, at: Option<<Block as BlockT>::Hash>, parent_ids: Vec<PostId>) -> Result<BTreeMap<PostId, Vec<PostId>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
-        let runtime_api_result = api.get_reply_ids_by_parent_ids(&at, post_ids);
+        let runtime_api_result = api.get_reply_ids_by_parent_ids(&at, parent_ids);
         runtime_api_result.map_err(map_rpc_error)
     }
 
     fn get_replies_by_parent_id(
         &self,
         at: Option<<Block as BlockT>::Hash>,
-        post_id: PostId,
+        parent_id: PostId,
         offset: u64,
         limit: u16
     ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
-        let runtime_api_result = api.get_replies_by_parent_id(&at, post_id, offset, limit);
+        let runtime_api_result = api.get_replies_by_parent_id(&at, parent_id, offset, limit);
         runtime_api_result.map_err(map_rpc_error)
     }
 
     fn get_replies_by_parent_ids(
         &self,
         at: Option<<Block as BlockT>::Hash>,
-        post_ids: Vec<PostId>,
+        parent_ids: Vec<PostId>,
         offset: u64,
         limit: u16
     ) -> Result<RepliesByPostId<AccountId, BlockNumber>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
-        let runtime_api_result = api.get_replies_by_parent_ids(&at, post_ids, offset, limit);
+        let runtime_api_result = api.get_replies_by_parent_ids(&at, parent_ids, offset, limit);
         runtime_api_result.map_err(map_rpc_error)
     }
 
