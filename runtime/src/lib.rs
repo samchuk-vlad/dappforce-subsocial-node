@@ -915,12 +915,12 @@ impl_runtime_apis! {
 			Roles::get_space_permissions_by_account(account, space_id)
 		}
 
-		fn get_space_editors(space_id: SpaceId) -> Vec<AccountId> {
-			Roles::get_space_editors(space_id)
+		fn get_accounts_with_any_role_in_space(space_id: SpaceId) -> Vec<AccountId> {
+			Roles::get_accounts_with_any_role_in_space(space_id)
 		}
 
-        fn get_space_ids_where_account_has_any_role(account_id: AccountId) -> Vec<SpaceId> {
-			Roles::get_space_ids_where_account_has_any_role(account_id)
+        fn get_space_ids_for_account_with_any_role(account_id: AccountId) -> Vec<SpaceId> {
+			Roles::get_space_ids_for_account_with_any_role(account_id)
         }
 	}
 }
