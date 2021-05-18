@@ -75,7 +75,7 @@ impl<T: Trait> Module<T> {
         reactions
     }
 
-    pub fn get_reactions_by_post_ids_and_responder(
+    pub fn get_reactions_by_post_ids_and_reactor(
         post_ids: Vec<PostId>,
         reactor: T::AccountId,
     ) -> BTreeMap<PostId, ReactionKind> {

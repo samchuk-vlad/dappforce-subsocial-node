@@ -28,8 +28,8 @@ pub trait ReactionsApi<BlockHash, AccountId, BlockNumber> {
         offset: u64,
     ) -> Result<Vec<FlatReaction<AccountId, BlockNumber>>>;
 
-    #[rpc(name = "reactions_getReactionsByPostIdsAndResponder")]
-    fn get_reactions_by_post_ids_and_responder(
+    #[rpc(name = "reactions_getReactionsByPostIdsAndReactor")]
+    fn get_reactions_by_post_ids_and_reactor(
         &self,
         at: Option<BlockHash>,
         post_ids: Vec<PostId>,
@@ -86,7 +86,7 @@ where
         runtime_api_result.map_err(map_rpc_error)
     }
 
-    fn get_reactions_by_post_ids_and_responder(
+    fn get_reactions_by_post_ids_and_reactor(
         &self,
         at: Option<<Block as BlockT>::Hash>,
         post_ids: Vec<PostId>,
@@ -95,7 +95,7 @@ where
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
-        let runtime_api_result = api.get_reactions_by_post_ids_and_responder(&at, post_ids, reactor);
+        let runtime_api_result = api.get_reactions_by_post_ids_and_reactor(&at, post_ids, reactor);
         runtime_api_result.map_err(map_rpc_error)
     }
 }
