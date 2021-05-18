@@ -7,7 +7,7 @@ use sp_std::{vec, prelude::*};
 
 use pallet_space_follows::Module as SpaceFollows;
 use pallet_spaces::Module as Spaces;
-use pallet_utils::{PostId, rpc::{FlatContent, FlatWhoAndWhen, ShouldSkip}, SpaceId};
+use pallet_utils::{bool_to_option, PostId, rpc::{FlatContent, FlatWhoAndWhen, ShouldSkip}, SpaceId};
 
 use crate::{Module, Post, PostExtension, Trait};
 
@@ -117,7 +117,7 @@ impl<T: Trait> From<Post<T>> for FlatPost<T::AccountId, T::BlockNumber> {
             owner,
             space_id,
             content: content.into(),
-            is_hidden: Some(hidden).filter(|value| *value),
+            is_hidden: bool_to_option(hidden),
             extension: extension.into(),
             visible_replies_count: replies_count.saturating_sub(hidden_replies_count),
             shares_count,

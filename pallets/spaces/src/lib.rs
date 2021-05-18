@@ -425,7 +425,9 @@ impl<T: Trait> Space<T> {
         !self.hidden && self.content.is_some()
     }
 
-    // TODO: make not_public function
+    pub fn is_unlisted(&self) -> bool {
+        !self.is_public()
+    }
 }
 
 impl Default for SpaceUpdate {
