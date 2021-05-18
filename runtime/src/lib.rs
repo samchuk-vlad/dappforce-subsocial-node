@@ -45,7 +45,7 @@ pub use frame_support::{
 use frame_system::EnsureRoot;
 
 use pallet_permissions::SpacePermission;
-use pallet_posts::rpc::{FlatPost, ExtFilter, RepliesByPostId};
+use pallet_posts::rpc::{FlatPost, FlatPostKind, RepliesByPostId};
 use pallet_profiles::rpc::FlatSocialAccount;
 use pallet_reactions::{
 	ReactionId,
@@ -823,8 +823,8 @@ impl_runtime_apis! {
 			Posts::get_posts_by_ids(post_ids, offset, limit)
 		}
 
-		fn get_public_posts(ext_filter: Vec<ExtFilter>, start_id: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>> {
-			Posts::get_public_posts(ext_filter, start_id, limit)
+		fn get_public_posts(kind_filter: Vec<FlatPostKind>, start_id: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>> {
+			Posts::get_public_posts(kind_filter, start_id, limit)
 		}
 
 		fn get_public_posts_by_space_id(space_id: SpaceId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>> {
@@ -835,20 +835,20 @@ impl_runtime_apis! {
 			Posts::get_unlisted_posts_by_space_id(space_id, offset, limit)
 		}
 
-		fn get_reply_ids_by_parent_id(post_id: PostId) -> Vec<PostId> {
-			Posts::get_reply_ids_by_parent_id(post_id)
+		fn get_reply_ids_by_parent_id(parent_id: PostId) -> Vec<PostId> {
+			Posts::get_reply_ids_by_parent_id(parent_id)
 		}
 
-		fn get_reply_ids_by_parent_ids(post_ids: Vec<PostId>) -> BTreeMap<PostId, Vec<PostId>> {
-			Posts::get_reply_ids_by_parent_ids(post_ids)
+		fn get_reply_ids_by_parent_ids(parent_ids: Vec<PostId>) -> BTreeMap<PostId, Vec<PostId>> {
+			Posts::get_reply_ids_by_parent_ids(parent_ids)
 		}
 
-		fn get_replies_by_parent_id(post_id: PostId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>> {
-			Posts::get_replies_by_parent_id(post_id, offset, limit)
+		fn get_replies_by_parent_id(parent_id: PostId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>> {
+			Posts::get_replies_by_parent_id(parent_id, offset, limit)
 		}
 
-		fn get_replies_by_parent_ids(post_ids: Vec<PostId>, offset: u64, limit: u16) -> RepliesByPostId<AccountId, BlockNumber> {
-			Posts::get_replies_by_parent_ids(post_ids, offset, limit)
+		fn get_replies_by_parent_ids(parent_ids: Vec<PostId>, offset: u64, limit: u16) -> RepliesByPostId<AccountId, BlockNumber> {
+			Posts::get_replies_by_parent_ids(parent_ids, offset, limit)
 		}
 
 		fn get_public_post_ids_by_space_id(space_id: SpaceId) -> Vec<PostId> {
@@ -898,11 +898,11 @@ impl_runtime_apis! {
 			Reactions::get_reactions_by_post_id(post_id, limit, offset)
 		}
 
-		fn get_reactions_by_post_ids_and_reactor(
+		fn get_reaction_kinds_by_post_ids_and_reactor(
 			post_ids: Vec<PostId>,
         	reactor: AccountId,
 		) -> BTreeMap<PostId, ReactionKind> {
-			Reactions::get_reactions_by_post_ids_and_reactor(post_ids, reactor)
+			Reactions::get_reaction_kinds_by_post_ids_and_reactor(post_ids, reactor)
 		}
     }
 
