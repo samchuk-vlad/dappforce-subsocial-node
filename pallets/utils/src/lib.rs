@@ -221,7 +221,7 @@ pub fn remove_from_vec<F: PartialEq>(vector: &mut Vec<F>, element: F) {
 }
 
 pub fn bool_to_option(value: bool) -> Option<bool> {
-    if value { Some(value) } else None
+    if value { Some(value) } else { None }
 }
 
 impl<T: Trait> Module<T> {

@@ -16,7 +16,7 @@ pub trait SpacesApi<BlockHash, AccountId, BlockNumber> {
     fn get_spaces(
         &self,
         at: Option<BlockHash>,
-        offset: u64,
+        start_id: u64,
         limit: u64,
     ) -> Result<Vec<FlatSpace<AccountId, BlockNumber>>>;
 
@@ -31,7 +31,7 @@ pub trait SpacesApi<BlockHash, AccountId, BlockNumber> {
     fn get_public_spaces(
         &self,
         at: Option<BlockHash>,
-        offset: u64,
+        start_id: u64,
         limit: u64,
     ) -> Result<Vec<FlatSpace<AccountId, BlockNumber>>>;
 
@@ -39,7 +39,7 @@ pub trait SpacesApi<BlockHash, AccountId, BlockNumber> {
     fn get_unlisted_spaces(
         &self,
         at: Option<BlockHash>,
-        offset: u64,
+        start_id: u64,
         limit: u64,
     ) -> Result<Vec<FlatSpace<AccountId, BlockNumber>>>;
 
@@ -101,13 +101,13 @@ where
     fn get_spaces(
         &self,
         at: Option<<Block as BlockT>::Hash>,
-        offset: u64,
+        start_id: u64,
         limit: u64,
     ) -> Result<Vec<FlatSpace<AccountId, BlockNumber>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
-        let runtime_api_result = api.get_spaces(&at, offset, limit);
+        let runtime_api_result = api.get_spaces(&at, start_id, limit);
         runtime_api_result.map_err(map_rpc_error)
     }
 
@@ -126,26 +126,26 @@ where
     fn get_public_spaces(
         &self,
         at: Option<<Block as BlockT>::Hash>,
-        offset: u64,
+        start_id: u64,
         limit: u64,
     ) -> Result<Vec<FlatSpace<AccountId, BlockNumber>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
-        let runtime_api_result = api.get_public_spaces(&at, offset, limit);
+        let runtime_api_result = api.get_public_spaces(&at, start_id, limit);
         runtime_api_result.map_err(map_rpc_error)
     }
 
     fn get_unlisted_spaces(
         &self,
         at: Option<<Block as BlockT>::Hash>,
-        offset: u64,
+        start_id: u64,
         limit: u64,
     ) -> Result<Vec<FlatSpace<AccountId, BlockNumber>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
-        let runtime_api_result = api.get_unlisted_spaces(&at, offset, limit);
+        let runtime_api_result = api.get_unlisted_spaces(&at, start_id, limit);
         runtime_api_result.map_err(map_rpc_error)
     }
 

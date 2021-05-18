@@ -45,10 +45,11 @@ pub use frame_support::{
 use frame_system::EnsureRoot;
 
 use pallet_permissions::SpacePermission;
-use pallet_posts::rpc::FlatPost;
+use pallet_posts::rpc::{FlatPost, ExtFilter, RepliesByPostId};
 use pallet_profiles::rpc::FlatSocialAccount;
 use pallet_reactions::{
 	ReactionId,
+	ReactionKind,
 	rpc::FlatReaction,
 };
 use pallet_spaces::rpc::FlatSpace;
@@ -779,20 +780,20 @@ impl_runtime_apis! {
 
 	impl spaces_runtime_api::SpacesApi<Block, AccountId, BlockNumber> for Runtime
 	{
-		fn get_spaces(offset: u64, limit: u64) -> Vec<FlatSpace<AccountId, BlockNumber>> {
-			Spaces::get_spaces(offset, limit)
+		fn get_spaces(start_id: u64, limit: u64) -> Vec<FlatSpace<AccountId, BlockNumber>> {
+			Spaces::get_spaces(start_id, limit)
 		}
 
 		fn get_spaces_by_ids(space_ids: Vec<SpaceId>) -> Vec<FlatSpace<AccountId, BlockNumber>> {
 			Spaces::get_spaces_by_ids(space_ids)
 		}
 
-		fn get_public_spaces(offset: u64, limit: u64) -> Vec<FlatSpace<AccountId, BlockNumber>> {
-			Spaces::get_public_spaces(offset, limit)
+		fn get_public_spaces(start_id: u64, limit: u64) -> Vec<FlatSpace<AccountId, BlockNumber>> {
+			Spaces::get_public_spaces(start_id, limit)
 		}
 
-		fn get_unlisted_spaces(offset: u64, limit: u64) -> Vec<FlatSpace<AccountId, BlockNumber>> {
-			Spaces::get_unlisted_spaces(offset, limit)
+		fn get_unlisted_spaces(start_id: u64, limit: u64) -> Vec<FlatSpace<AccountId, BlockNumber>> {
+			Spaces::get_unlisted_spaces(start_id, limit)
 		}
 
 		fn get_space_id_by_handle(handle: Vec<u8>) -> Option<SpaceId> {
@@ -818,8 +819,12 @@ impl_runtime_apis! {
 
     impl posts_runtime_api::PostsApi<Block, AccountId, BlockNumber> for Runtime
     {
-		fn get_posts_by_ids(post_ids: Vec<PostId>) -> Vec<FlatPost<AccountId, BlockNumber>> {
-			Posts::get_posts_by_ids(post_ids)
+		fn get_posts_by_ids(post_ids: Vec<PostId>, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>> {
+			Posts::get_posts_by_ids(post_ids, offset, limit)
+		}
+
+		fn get_public_posts(ext_filter: Vec<ExtFilter>, start_id: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>> {
+			Posts::get_public_posts(ext_filter, start_id, limit)
 		}
 
 		fn get_public_posts_by_space_id(space_id: SpaceId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>> {
@@ -830,12 +835,20 @@ impl_runtime_apis! {
 			Posts::get_unlisted_posts_by_space_id(space_id, offset, limit)
 		}
 
-		fn get_reply_ids_by_post_id(post_id: PostId) -> Vec<PostId> {
-			Posts::get_reply_ids_by_post_id(post_id)
+		fn get_reply_ids_by_parent_id(post_id: PostId) -> Vec<PostId> {
+			Posts::get_reply_ids_by_parent_id(post_id)
 		}
 
-		fn get_comment_ids_tree(post_id: PostId) -> BTreeMap<PostId, Vec<PostId>> {
-			Posts::get_comment_ids_tree(post_id)
+		fn get_reply_ids_by_parent_ids(post_ids: Vec<PostId>) -> BTreeMap<PostId, Vec<PostId>> {
+			Posts::get_reply_ids_by_parent_ids(post_ids)
+		}
+
+		fn get_replies_by_parent_id(post_id: PostId, offset: u64, limit: u16) -> Vec<FlatPost<AccountId, BlockNumber>> {
+			Posts::get_replies_by_parent_id(post_id, offset, limit)
+		}
+
+		fn get_replies_by_parent_ids(post_ids: Vec<PostId>, offset: u64, limit: u16) -> RepliesByPostId<AccountId, BlockNumber> {
+			Posts::get_replies_by_parent_ids(post_ids, offset, limit)
 		}
 
 		fn get_public_post_ids_by_space_id(space_id: SpaceId) -> Vec<PostId> {
@@ -885,11 +898,11 @@ impl_runtime_apis! {
 			Reactions::get_reactions_by_post_id(post_id, limit, offset)
 		}
 
-		fn get_reactions_by_account_and_post_ids(
-			account: AccountId,
+		fn get_reactions_by_post_ids_and_reactor(
 			post_ids: Vec<PostId>,
-		) -> BTreeMap<PostId, FlatReaction<AccountId, BlockNumber>> {
-			Reactions::get_reactions_by_account_and_post_ids(account, post_ids)
+        	reactor: AccountId,
+		) -> BTreeMap<PostId, ReactionKind> {
+			Reactions::get_reactions_by_post_ids_and_reactor(post_ids, reactor)
 		}
     }
 
@@ -902,12 +915,12 @@ impl_runtime_apis! {
 			Roles::get_space_permissions_by_account(account, space_id)
 		}
 
-		fn get_space_editors(space_id: SpaceId) -> Vec<AccountId> {
-			Roles::get_space_editors(space_id)
+		fn get_accounts_with_any_role_in_space(space_id: SpaceId) -> Vec<AccountId> {
+			Roles::get_accounts_with_any_role_in_space(space_id)
 		}
 
-        fn get_space_ids_where_account_has_any_role(account_id: AccountId) -> Vec<SpaceId> {
-			Roles::get_space_ids_where_account_has_any_role(account_id)
+        fn get_space_ids_for_account_with_any_role(account_id: AccountId) -> Vec<SpaceId> {
+			Roles::get_space_ids_for_account_with_any_role(account_id)
         }
 	}
 }

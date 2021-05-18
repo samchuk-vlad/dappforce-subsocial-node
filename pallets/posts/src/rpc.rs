@@ -1,43 +1,80 @@
 use codec::{Decode, Encode};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_std::collections::btree_map::BTreeMap;
-use sp_std::iter::FromIterator;
+use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 use sp_std::{vec, prelude::*};
 
 use pallet_space_follows::Module as SpaceFollows;
 use pallet_spaces::Module as Spaces;
-use pallet_utils::{bool_to_option, PostId, rpc::{FlatContent, FlatWhoAndWhen}, SpaceId};
+use pallet_utils::{bool_to_option, PostId, rpc::{FlatContent, FlatWhoAndWhen, ShouldSkip}, SpaceId};
 
 use crate::{Module, Post, PostExtension, Trait};
+pub type RepliesByPostId<AccountId, BlockNumber> = BTreeMap<PostId, Vec<FlatPost<AccountId, BlockNumber>>>;
+
+#[derive(Eq, PartialEq, Encode, Decode, Default)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+pub struct FlatPostExtension {
+    #[cfg_attr(feature = "std", serde(skip_serializing_if = "ShouldSkip::should_skip"))]
+    pub is_regular_post: Option<bool>,
+    #[cfg_attr(feature = "std", serde(skip_serializing_if = "ShouldSkip::should_skip"))]
+    pub is_shared_post: Option<bool>,
+    #[cfg_attr(feature = "std", serde(skip_serializing_if = "ShouldSkip::should_skip"))]
+    pub is_comment: Option<bool>,
+
+    #[cfg_attr(feature = "std", serde(skip_serializing_if = "ShouldSkip::should_skip"))]
+    pub root_post_id: Option<PostId>,
+    #[cfg_attr(feature = "std", serde(skip_serializing_if = "ShouldSkip::should_skip"))]
+    pub parent_post_id: Option<PostId>,
+    #[cfg_attr(feature = "std", serde(skip_serializing_if = "ShouldSkip::should_skip"))]
+    pub shared_post_id: Option<PostId>,
+}
+
+impl From<PostExtension> for FlatPostExtension {
+    fn from(from: PostExtension) -> Self {
+        let mut flat_extension = Self::default();
+
+        match from {
+            PostExtension::RegularPost => {
+                flat_extension.is_regular_post = Some(true);
+            }
+            PostExtension::Comment(comment_ext) => {
+                flat_extension.is_comment = Some(true);
+                flat_extension.root_post_id = Some(comment_ext.root_post_id);
+                flat_extension.parent_post_id = comment_ext.parent_id;
+            }
+            PostExtension::SharedPost(shared_post_id) => {
+                flat_extension.is_shared_post = Some(true);
+                flat_extension.shared_post_id = Some(shared_post_id);
+            }
+        }
+
+        flat_extension
+    }
+}
 
 #[derive(Eq, PartialEq, Encode, Decode, Default)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub struct FlatPost<AccountId, BlockNumber> {
     pub id: PostId,
+
     #[cfg_attr(feature = "std", serde(flatten))]
     pub who_and_when: FlatWhoAndWhen<AccountId, BlockNumber>,
 
     pub owner: AccountId,
 
+    #[cfg_attr(feature = "std", serde(skip_serializing_if = "ShouldSkip::should_skip"))]
     pub space_id: Option<SpaceId>,
 
     #[cfg_attr(feature = "std", serde(flatten))]
     pub content: FlatContent,
 
+    #[cfg_attr(feature = "std", serde(skip_serializing_if = "ShouldSkip::should_skip"))]
     pub is_hidden: Option<bool>,
 
-    #[cfg_attr(features = "std", serde(flatten))]
-    pub extension: PostExtension,
-
-    pub is_regular_post: Option<bool>,
-    pub is_shared_post: Option<bool>,
-    pub is_comment: Option<bool>,
-
-    pub root_post_id: Option<PostId>,
-    pub parent_post_id: Option<PostId>,
-    pub shared_post_id: Option<PostId>,
+    #[cfg_attr(feature = "std", serde(flatten))]
+    pub extension: FlatPostExtension,
 
     pub visible_replies_count: u16,
 
@@ -48,15 +85,31 @@ pub struct FlatPost<AccountId, BlockNumber> {
     pub score: i32,
 }
 
+#[derive(Encode, Decode, Ord, PartialOrd, Clone, Eq, PartialEq)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum ExtFilter {
+    RegularPost,
+    Comment,
+    SharedPost
+}
+
+impl<T: Trait> From<Post<T>> for ExtFilter {
+    fn from(from: Post<T>) -> Self {
+        match from.extension {
+            PostExtension::RegularPost => { Self::RegularPost }
+            PostExtension::Comment(_) => { Self::Comment }
+            PostExtension::SharedPost(_) => { Self::SharedPost }
+        }
+    }
+}
+
 impl<T: Trait> From<Post<T>> for FlatPost<T::AccountId, T::BlockNumber> {
     fn from(from: Post<T>) -> Self {
         let Post {
             id, created, updated, owner,
             extension, space_id, content, hidden, replies_count,
             hidden_replies_count, shares_count, upvotes_count, downvotes_count, score
-        } = from.clone();
-
-        let comment_ext = from.get_comment_ext().ok();
+        } = from;
 
         Self {
             id,
@@ -64,14 +117,8 @@ impl<T: Trait> From<Post<T>> for FlatPost<T::AccountId, T::BlockNumber> {
             owner,
             space_id,
             content: content.into(),
-            is_hidden: Some(hidden).filter(|value| *value == true),
-            extension,
-            is_regular_post: bool_to_option(from.is_regular_post()),
-            is_shared_post: bool_to_option(from.is_sharing_post()),
-            is_comment: bool_to_option(from.is_comment()),
-            root_post_id: comment_ext.clone().map(|comment_ext| comment_ext.root_post_id),
-            parent_post_id: comment_ext.and_then(|comment_ext| comment_ext.parent_id),
-            shared_post_id: from.get_shared_post_id().ok(),
+            is_hidden: bool_to_option(hidden),
+            extension: extension.into(),
             visible_replies_count: replies_count.saturating_sub(hidden_replies_count),
             shares_count,
             upvotes_count,
@@ -82,59 +129,54 @@ impl<T: Trait> From<Post<T>> for FlatPost<T::AccountId, T::BlockNumber> {
 }
 
 impl<T: Trait> Module<T> {
-    pub fn get_posts_by_ids(post_ids: Vec<PostId>) -> Vec<FlatPost<T::AccountId, T::BlockNumber>> {
+    fn get_posts_by_ids_with_filter<F: FnMut(&Post<T>) -> bool>(
+        all_post_ids: Vec<PostId>,
+        offset: u64,
+        limit: u16,
+        mut filter: F,
+    ) -> Vec<FlatPost<T::AccountId, T::BlockNumber>> {
         let mut posts = Vec::new();
-        for post_id in post_ids.iter() {
-            if let Some(post) = Self::require_post(*post_id).ok() {
-                posts.push(post.into());
+
+        let (_, posts_ids) = all_post_ids.split_at(offset as usize);
+
+        for post_id in posts_ids.iter() {
+            if let Ok(post) = Self::require_post(*post_id) {
+                if filter(&post) {
+                    posts.push(post.into());
+                }
             }
+
+            if posts.len() >= limit as usize { break; }
         }
+
         posts
+    }
+
+    pub fn get_posts_by_ids (
+        post_ids: Vec<PostId>,
+        offset: u64,
+        limit: u16,
+    ) -> Vec<FlatPost<T::AccountId, T::BlockNumber>> {
+        Self::get_posts_by_ids_with_filter(post_ids, offset, limit, |_| true)
+    }
+
+    pub fn get_public_posts_by_ids(
+        post_ids: Vec<PostId>,
+        offset: u64,
+        limit: u16,
+    ) -> Vec<FlatPost<T::AccountId, T::BlockNumber>> {
+        Self::get_posts_by_ids_with_filter(post_ids, offset, limit, |post: &Post<T>| post.is_public())
     }
 
     fn get_posts_slice_by_space_id<F: FnMut(&Post<T>) -> bool>(
         space_id: SpaceId,
         offset: u64,
         limit: u16,
-        compare_fn: F,
+        filter: F,
     ) -> Vec<FlatPost<T::AccountId, T::BlockNumber>> {
         let post_ids: Vec<PostId> = Self::post_ids_by_space_id(space_id);
 
-        Self::get_posts_slice(post_ids, offset, limit, compare_fn)
-    }
-
-    fn get_posts_slice<F: FnMut(&Post<T>) -> bool>(
-        post_ids: Vec<PostId>,
-        offset: u64,
-        limit: u16,
-        mut compare_fn: F,
-    ) -> Vec<FlatPost<T::AccountId, T::BlockNumber>> {
-        let mut posts = Vec::new();
-
-        let mut start_from = offset;
-        let mut iterate_until = offset;
-        let last_post_id = post_ids.len().saturating_sub(1) as u64;
-
-        'outer: loop {
-            iterate_until = iterate_until.saturating_add(limit.into());
-
-            if start_from > last_post_id { break; }
-            if iterate_until > last_post_id {
-                iterate_until = last_post_id;
-            }
-
-            for post_id in start_from..=iterate_until {
-                if let Some(post) = Self::require_post(post_id).ok() {
-                    if compare_fn(&post) {
-                        posts.push(post.into());
-                        if posts.len() >= limit as usize { break 'outer; }
-                    }
-                }
-            }
-            start_from = iterate_until;
-        }
-
-        posts
+        Self::get_posts_by_ids_with_filter(post_ids, offset, limit, filter)
     }
 
     pub fn get_public_posts_by_space_id(
@@ -155,33 +197,78 @@ impl<T: Trait> Module<T> {
         offset: u64,
         limit: u16,
     ) -> Vec<FlatPost<T::AccountId, T::BlockNumber>> {
-        let unlisted_space = Spaces::<T>::require_space(space_id).ok().filter(|space| !space.is_public());
-        if unlisted_space.is_some() {
-            return Self::get_posts_slice_by_space_id(space_id, offset, limit, |post| !post.is_public());
+        if let Ok(space) = Spaces::<T>::require_space(space_id) {
+            return Self::get_posts_slice_by_space_id(space.id, offset, limit, |post| post.is_unlisted());
         }
 
         vec![]
     }
 
-    pub fn get_reply_ids_by_post_id(post_id: PostId) -> Vec<PostId> {
-        Self::try_get_post_replies_ids(post_id)
+    pub fn get_reply_ids_by_parent_id(post_id: PostId) -> Vec<PostId> {
+        Self::reply_ids_by_post_id(post_id)
     }
 
-    // TODO: replace with get_comment_tree
-    //  - Additionally check comments depth
-    /*pub fn get_post_replies(post_id: PostId) -> Vec<FlatPost<T::AccountId, T::BlockNumber>> {
-        let replies_ids = Self::try_get_post_replies_ids(post_id);
-        Self::get_posts_by_ids(replies_ids)
-    }*/
+    pub fn get_replies_by_parent_id(post_id: PostId, offset: u64, limit: u16) -> Vec<FlatPost<T::AccountId, T::BlockNumber>> {
+        let reply_ids = Self::get_reply_ids_by_parent_id(post_id);
+        Self::get_posts_by_ids(reply_ids, offset, limit)
+    }
 
-    pub fn get_comment_ids_tree(post_id: PostId) -> BTreeMap<PostId, Vec<PostId>> {
-        BTreeMap::from_iter(Self::get_post_reply_ids_tree(post_id))
+    pub fn get_reply_ids_by_parent_ids(post_ids: Vec<PostId>) -> BTreeMap<PostId, Vec<PostId>> {
+        let mut reply_ids_by_parent: BTreeMap<PostId, Vec<PostId>> = BTreeMap::new();
+
+        for post_id in post_ids.iter() {
+            let reply_ids = Self::get_reply_ids_by_parent_id(*post_id);
+
+            if !reply_ids.is_empty() {
+                reply_ids_by_parent.insert(*post_id, reply_ids);
+            }
+        }
+
+        reply_ids_by_parent
+    }
+
+    pub fn get_replies_by_parent_ids(
+        post_ids: Vec<PostId>,
+        offset: u64,
+        limit: u16
+    ) -> RepliesByPostId<T::AccountId, T::BlockNumber> {
+       Self::get_reply_ids_by_parent_ids(post_ids)
+           .into_iter()
+           .map(|(parent_id, reply_ids)|
+               (parent_id, Self::get_posts_by_ids(reply_ids, offset, limit))
+           )
+           .collect()
+    }
+
+    pub fn get_public_posts(
+        ext_filter: Vec<ExtFilter>,
+        start_id: u64,
+        limit: u16,
+    ) -> Vec<FlatPost<T::AccountId, T::BlockNumber>> {
+        let not_filter = ext_filter.is_empty();
+        let ext_filter_set: BTreeSet<_> = ext_filter.into_iter().collect();
+
+        let mut posts = Vec::new();
+        let mut post_id = Self::get_next_post_id().saturating_sub(start_id + 1);
+
+        while posts.len() < limit as usize && post_id >= 1 {
+            if let Ok(post) = Self::require_post(post_id) {
+                let extension_filter: ExtFilter = post.clone().into();
+
+                if post.is_public() && (not_filter || ext_filter_set.contains(&extension_filter)) {
+                    posts.push(post.into());
+                }
+            }
+            post_id = post_id.saturating_sub(1);
+        }
+
+        posts
     }
 
     fn get_post_ids_by_space<F: FnMut(&Post<T>) -> bool>(space_id: SpaceId, mut filter: F) -> Vec<PostId> {
         Self::post_ids_by_space_id(space_id)
             .iter()
-            .filter_map(|id| Self::post_by_id(id))
+            .filter_map(Self::post_by_id)
             .filter(|post| filter(post))
             .map(|post| post.id)
             .collect()
@@ -212,11 +299,11 @@ impl<T: Trait> Module<T> {
     pub fn get_feed(account: T::AccountId, offset: u64, limit: u16) -> Vec<FlatPost<T::AccountId, T::BlockNumber>> {
         let mut post_ids: Vec<PostId> = SpaceFollows::<T>::spaces_followed_by_account(account)
             .iter()
-            .flat_map(|space_id| Self::post_ids_by_space_id(space_id))
+            .flat_map(Self::post_ids_by_space_id)
             .collect();
 
         post_ids.sort_by(|a, b| b.cmp(a));
 
-        Self::get_posts_slice(post_ids, offset, limit, |post| post.is_public() && !post.is_comment())
+        Self::get_posts_by_ids_with_filter(post_ids, offset, limit, |post: &Post<T>| post.is_public() && !post.is_comment())
     }
 }

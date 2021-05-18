@@ -6,7 +6,7 @@ use jsonrpc_core::Result;
 use jsonrpc_derive::rpc;
 use sp_api::ProvideRuntimeApi;
 
-use pallet_reactions::{ReactionId, rpc::FlatReaction};
+use pallet_reactions::{ReactionId, ReactionKind, rpc::FlatReaction};
 use pallet_utils::{PostId, rpc::map_rpc_error};
 pub use reactions_runtime_api::ReactionsApi as ReactionsRuntimeApi;
 
@@ -28,13 +28,13 @@ pub trait ReactionsApi<BlockHash, AccountId, BlockNumber> {
         offset: u64,
     ) -> Result<Vec<FlatReaction<AccountId, BlockNumber>>>;
 
-    #[rpc(name = "reactions_getReactionsByAccountAndPostIds")]
-    fn get_reactions_by_account_and_post_ids(
+    #[rpc(name = "reactions_getReactionsByPostIdsAndReactor")]
+    fn get_reactions_by_post_ids_and_reactor(
         &self,
         at: Option<BlockHash>,
-        account: AccountId,
         post_ids: Vec<PostId>,
-    ) -> Result<BTreeMap<PostId, FlatReaction<AccountId, BlockNumber>>>;
+        reactor: AccountId,
+    ) -> Result<BTreeMap<PostId, ReactionKind>>;
 }
 
 pub struct Reactions<C, M> {
@@ -86,16 +86,16 @@ where
         runtime_api_result.map_err(map_rpc_error)
     }
 
-    fn get_reactions_by_account_and_post_ids(
+    fn get_reactions_by_post_ids_and_reactor(
         &self,
         at: Option<<Block as BlockT>::Hash>,
-        account: AccountId,
-        post_ids: Vec<u64>,
-    ) -> Result<BTreeMap<u64, FlatReaction<AccountId, BlockNumber>>> {
+        post_ids: Vec<PostId>,
+        reactor: AccountId,
+    ) -> Result<BTreeMap<PostId, ReactionKind>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
-        let runtime_api_result = api.get_reactions_by_account_and_post_ids(&at, account, post_ids);
+        let runtime_api_result = api.get_reactions_by_post_ids_and_reactor(&at, post_ids, reactor);
         runtime_api_result.map_err(map_rpc_error)
     }
 }

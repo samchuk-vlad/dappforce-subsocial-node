@@ -10,6 +10,8 @@ impl<T: Trait> Module<T> {
     }
 
     pub fn filter_followed_space_ids(account: T::AccountId, space_ids: Vec<SpaceId>) -> Vec<SpaceId> {
-        space_ids.iter().filter(|space_id| Self::space_followed_by_account((&account, space_id))).cloned().collect()
+        space_ids.iter()
+            .filter(|space_id| Self::space_followed_by_account((&account, space_id)))
+            .cloned().collect()
     }
 }

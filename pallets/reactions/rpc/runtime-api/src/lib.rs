@@ -6,6 +6,7 @@ use sp_std::collections::btree_map::BTreeMap;
 
 use pallet_reactions::{
     ReactionId,
+    ReactionKind,
     rpc::FlatReaction,
 };
 use pallet_utils::PostId;
@@ -23,9 +24,9 @@ sp_api::decl_runtime_apis! {
             offset: u64
         ) -> Vec<FlatReaction<AccountId, BlockNumber>>;
 
-        fn get_reactions_by_account_and_post_ids(
-            account: AccountId,
+        fn get_reactions_by_post_ids_and_reactor(
             post_ids: Vec<PostId>,
-        ) -> BTreeMap<PostId, FlatReaction<AccountId, BlockNumber>>;
+            reactor: AccountId,
+        ) -> BTreeMap<PostId, ReactionKind>;
     }
 }

@@ -5,6 +5,8 @@ use sp_std::prelude::*;
 
 use pallet_utils::rpc::{FlatContent, FlatWhoAndWhen};
 
+use frame_system::Module as SystemModule;
+
 use crate::{Module, Profile, SocialAccount, Trait};
 
 #[derive(Eq, PartialEq, Encode, Decode, Default)]
@@ -71,5 +73,9 @@ impl<T: Trait> Module<T> {
                            })
                    })
                    .collect()
+    }
+
+    pub fn get_account_data(account: T::AccountId) -> T::AccountData {
+        SystemModule::<T>::account(&account).data
     }
 }

@@ -159,6 +159,10 @@ impl<T: Trait> Post<T> {
     pub fn is_public(&self) -> bool {
         !self.hidden && self.content.is_some()
     }
+
+    pub fn is_unlisted(&self) -> bool {
+        !self.is_public()
+    }
 }
 
 impl Default for PostUpdate {
@@ -298,20 +302,6 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
-    // TODO: move copy-paste of `try_get_post_replies_*` into common function
-    pub fn try_get_post_replies_ids(post_id: PostId) -> Vec<PostId> {
-        let mut replies: Vec<PostId> = Vec::new();
-
-        if let Some(post) = Self::post_by_id(post_id) {
-            replies.push(post.id);
-            for reply_id in Self::reply_ids_by_post_id(post_id).iter() {
-                replies.extend(Self::try_get_post_replies_ids(*reply_id).iter().cloned());
-            }
-        }
-
-        replies
-    }
-
     pub fn try_get_post_replies(post_id: PostId) -> Vec<Post<T>> {
         let mut replies: Vec<Post<T>> = Vec::new();
 
@@ -323,20 +313,6 @@ impl<T: Trait> Module<T> {
         }
 
         replies
-    }
-
-    pub fn get_post_reply_ids_tree(post_id: PostId) -> Vec<(PostId, Vec<PostId>)> {
-        let mut replies_tuple: Vec<(PostId, Vec<PostId>)> = Vec::new();
-        let post_replies: Vec<PostId> = Self::reply_ids_by_post_id(post_id);
-
-        if post_replies.first().is_some() {
-            replies_tuple.push((post_id, post_replies.clone()));
-            for reply_id in post_replies.iter() {
-                replies_tuple.extend(Self::get_post_reply_ids_tree(*reply_id));
-            }
-        }
-
-        replies_tuple
     }
 
     /// Recursively et all nested post replies (reply_ids_by_post_id)

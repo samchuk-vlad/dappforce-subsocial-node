@@ -9,7 +9,7 @@ use frame_support::{
 use frame_system::{self as system, ensure_signed};
 
 #[cfg(feature = "std")]
-use serde::{Serialize, Deserialize};
+use serde::Deserialize;
 use sp_runtime::{RuntimeDebug, DispatchError};
 use sp_std::prelude::*;
 
@@ -24,7 +24,8 @@ pub mod rpc;
 pub type ReactionId = u64;
 
 #[derive(Encode, Decode, Clone, Copy, Eq, PartialEq, RuntimeDebug)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "std", derive(Deserialize))]
+#[cfg_attr(feature = "std", serde(untagged))]
 pub enum ReactionKind {
     Upvote,
     Downvote,
@@ -38,7 +39,11 @@ impl Default for ReactionKind {
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct Reaction<T: Trait> {
+
+    /// Unique sequential identifier of a reaction. Examples of reaction ids: `1`, `2`, `3`,
+    /// and so on.
     pub id: ReactionId,
+
     pub created: WhoAndWhen<T>,
     pub updated: Option<WhoAndWhen<T>>,
     pub kind: ReactionKind,

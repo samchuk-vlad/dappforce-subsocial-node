@@ -3,7 +3,7 @@ use codec::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use sp_std::prelude::*;
 
-use pallet_utils::{SpaceId, rpc::{FlatContent, FlatWhoAndWhen, ShouldSkip}};
+use pallet_utils::{bool_to_option, SpaceId, rpc::{FlatContent, FlatWhoAndWhen, ShouldSkip}};
 
 use crate::{Module, Space, Trait};
 
@@ -12,6 +12,7 @@ use crate::{Module, Space, Trait};
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub struct FlatSpace<AccountId, BlockNumber> {
     pub id: SpaceId,
+
     #[cfg_attr(feature = "std", serde(flatten))]
     pub who_and_when: FlatWhoAndWhen<AccountId, BlockNumber>,
 
@@ -19,14 +20,15 @@ pub struct FlatSpace<AccountId, BlockNumber> {
 
     #[cfg_attr(feature = "std", serde(skip_serializing_if = "ShouldSkip::should_skip"))]
     pub parent_id: Option<SpaceId>,
-    #[cfg_attr(feature = "std", serde(skip_serializing_if = "ShouldSkip::should_skip"))]
-    #[cfg_attr(feature = "std", serde(serialize_with = "bytes_to_string"))]
+
+    #[cfg_attr(feature = "std", serde(skip_serializing_if = "ShouldSkip::should_skip", serialize_with = "bytes_to_string"))]
     pub handle: Option<Vec<u8>>,
+
     #[cfg_attr(feature = "std", serde(flatten))]
     pub content: FlatContent,
 
-    // #[cfg_attr(feature = "std", serde(skip_serializing_if = "ShouldSkip::should_skip"))]
-    pub is_hidden: bool,
+    #[cfg_attr(feature = "std", serde(skip_serializing_if = "ShouldSkip::should_skip"))]
+    pub is_hidden: Option<bool>,
 
     pub posts_count: u32,
     pub hidden_posts_count: u32,
@@ -60,7 +62,7 @@ impl<T: Trait> From<Space<T>> for FlatSpace<T::AccountId, T::BlockNumber> {
             parent_id,
             handle,
             content: content.into(),
-            is_hidden: hidden,
+            is_hidden: bool_to_option(hidden),
             posts_count,
             hidden_posts_count,
             visible_posts_count: posts_count.saturating_sub(hidden_posts_count),
@@ -79,51 +81,35 @@ impl<T: Trait> Module<T> {
     }
 
     fn get_spaces_slice<F: FnMut(&Space<T>) -> bool>(
-        offset: u64,
+        start_id: u64,
         limit: u64,
         mut filter: F,
     ) -> Vec<FlatSpace<T::AccountId, T::BlockNumber>> {
-        let mut start_from = offset;
-        let mut iterate_until = offset;
-        let last_space_id = Self::next_space_id().saturating_sub(1);
-
+        let mut space_id = Self::next_space_id().saturating_sub(start_id + 1);
         let mut spaces = Vec::new();
 
-        'outer: loop {
-            iterate_until = iterate_until.saturating_add(limit);
-
-            if start_from > last_space_id {
-                break;
-            }
-
-            if iterate_until > last_space_id {
-                iterate_until = last_space_id;
-            }
-
-            for space_id in start_from..=iterate_until {
-                if let Some(space) = Self::require_space(space_id).ok() {
-                    if filter(&space) {
-                        spaces.push(space.into());
-                        if spaces.len() >= limit as usize { break 'outer; }
-                    }
+        while spaces.len() < limit as usize && space_id >= 1 {
+            if let Some(space) = Self::require_space(space_id).ok() {
+                if filter(&space) {
+                    spaces.push(space.into());
                 }
             }
-            start_from = iterate_until;
+            space_id = space_id.saturating_sub(1);
         }
 
         spaces
     }
 
-    pub fn get_spaces(offset: u64, limit: u64) -> Vec<FlatSpace<T::AccountId, T::BlockNumber>> {
-        Self::get_spaces_slice(offset, limit, |_| true)
+    pub fn get_spaces(start_id: u64, limit: u64) -> Vec<FlatSpace<T::AccountId, T::BlockNumber>> {
+        Self::get_spaces_slice(start_id, limit, |_| true)
     }
 
-    pub fn get_public_spaces(offset: u64, limit: u64) -> Vec<FlatSpace<T::AccountId, T::BlockNumber>> {
-        Self::get_spaces_slice(offset, limit, |space| space.is_public())
+    pub fn get_public_spaces(start_id: u64, limit: u64) -> Vec<FlatSpace<T::AccountId, T::BlockNumber>> {
+        Self::get_spaces_slice(start_id, limit, |space| space.is_public())
     }
 
-    pub fn get_unlisted_spaces(offset: u64, limit: u64) -> Vec<FlatSpace<T::AccountId, T::BlockNumber>> {
-        Self::get_spaces_slice(offset, limit, |space| !space.is_public())
+    pub fn get_unlisted_spaces(start_id: u64, limit: u64) -> Vec<FlatSpace<T::AccountId, T::BlockNumber>> {
+        Self::get_spaces_slice(start_id, limit, |space| space.is_unlisted())
     }
 
     pub fn get_space_id_by_handle(handle: Vec<u8>) -> Option<SpaceId> {
@@ -152,7 +138,6 @@ impl<T: Trait> Module<T> {
     pub fn get_unlisted_space_ids_by_owner(owner: T::AccountId) -> Vec<SpaceId> {
         Self::get_space_ids_by_owner(owner, |space| space.hidden)
     }
-
 
     pub fn get_next_space_id() -> SpaceId {
         Self::next_space_id()

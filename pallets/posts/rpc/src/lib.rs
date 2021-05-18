@@ -6,7 +6,7 @@ use jsonrpc_core::Result;
 use jsonrpc_derive::rpc;
 use sp_api::ProvideRuntimeApi;
 
-use pallet_posts::rpc::FlatPost;
+use pallet_posts::rpc::{FlatPost, ExtFilter, RepliesByPostId};
 use pallet_utils::{PostId, SpaceId, rpc::map_rpc_error};
 pub use posts_runtime_api::PostsApi as PostsRuntimeApi;
 
@@ -17,6 +17,17 @@ pub trait PostsApi<BlockHash, AccountId, BlockNumber> {
         &self,
         at: Option<BlockHash>,
         post_ids: Vec<PostId>,
+        offset: u64,
+        limit: u16,
+    ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>>;
+
+    #[rpc(name = "posts_getPublicPosts")]
+    fn get_public_posts(
+        &self,
+        at: Option<BlockHash>,
+        ext_filter: Vec<ExtFilter>,
+        start_id: u64,
+        limit: u16
     ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>>;
 
     #[rpc(name = "posts_getPublicPostsBySpaceId")]
@@ -37,19 +48,37 @@ pub trait PostsApi<BlockHash, AccountId, BlockNumber> {
         limit: u16,
     ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>>;
 
-    #[rpc(name = "posts_getReplyIdsByPostId")]
-    fn get_reply_ids_by_post_id(
+    #[rpc(name = "posts_getReplyIdsByParentId")]
+    fn get_reply_ids_by_parent_id(
         &self,
         at: Option<BlockHash>,
         post_id: PostId,
     ) -> Result<Vec<PostId>>;
 
-    #[rpc(name = "posts_getCommentIdsTree")]
-    fn get_comment_ids_tree(
+    #[rpc(name = "posts_getReplyIdsByParentIds")]
+    fn get_reply_ids_by_parent_ids(
+        &self,
+        at: Option<BlockHash>,
+        post_ids: Vec<PostId>,
+    ) -> Result<BTreeMap<PostId, Vec<PostId>>>;
+
+    #[rpc(name = "posts_getRepliesByParentId")]
+    fn get_replies_by_parent_id(
         &self,
         at: Option<BlockHash>,
         post_id: PostId,
-    ) -> Result<BTreeMap<PostId, Vec<PostId>>>;
+        offset: u64,
+        limit: u16,
+    ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>>;
+
+    #[rpc(name = "posts_getRepliesByParentIds")]
+    fn get_replies_by_parent_ids(
+        &self,
+        at: Option<BlockHash>,
+        post_ids: Vec<PostId>,
+        offset: u64,
+        limit: u16,
+    ) -> Result<RepliesByPostId<AccountId, BlockNumber>>;
 
     #[rpc(name = "posts_getUnlistedPostIdsBySpaceId")]
     fn get_unlisted_post_ids_by_space_id(
@@ -104,12 +133,28 @@ where
     fn get_posts_by_ids(
         &self,
         at: Option<<Block as BlockT>::Hash>,
-        post_ids: Vec<u64>,
+        post_ids: Vec<PostId>,
+        offset: u64,
+        limit: u16,
     ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
-        let runtime_api_result = api.get_posts_by_ids(&at, post_ids);
+        let runtime_api_result = api.get_posts_by_ids(&at, post_ids, offset, limit);
+        runtime_api_result.map_err(map_rpc_error)
+    }
+
+    fn get_public_posts(
+        &self,
+        at: Option<<Block as BlockT>::Hash>,
+        ext_filter: Vec<ExtFilter>,
+        start_id: u64,
+        limit: u16
+    ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
+
+        let runtime_api_result = api.get_public_posts(&at, ext_filter, start_id, limit);
         runtime_api_result.map_err(map_rpc_error)
     }
 
@@ -141,23 +186,47 @@ where
         runtime_api_result.map_err(map_rpc_error)
     }
 
-    fn get_reply_ids_by_post_id(&self, at: Option<<Block as BlockT>::Hash>, post_id: u64) -> Result<Vec<u64>> {
+    fn get_reply_ids_by_parent_id(&self, at: Option<<Block as BlockT>::Hash>, post_id: PostId) -> Result<Vec<PostId>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
-        let runtime_api_result = api.get_reply_ids_by_post_id(&at, post_id);
+        let runtime_api_result = api.get_reply_ids_by_parent_id(&at, post_id);
         runtime_api_result.map_err(map_rpc_error)
     }
 
-    fn get_comment_ids_tree(
-        &self,
-        at: Option<<Block as BlockT>::Hash>,
-        post_id: u64,
-    ) -> Result<BTreeMap<u64, Vec<u64>>> {
+    fn get_reply_ids_by_parent_ids(&self, at: Option<<Block as BlockT>::Hash>, post_ids: Vec<PostId>) -> Result<BTreeMap<PostId, Vec<PostId>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
-        let runtime_api_result = api.get_comment_ids_tree(&at, post_id);
+        let runtime_api_result = api.get_reply_ids_by_parent_ids(&at, post_ids);
+        runtime_api_result.map_err(map_rpc_error)
+    }
+
+    fn get_replies_by_parent_id(
+        &self,
+        at: Option<<Block as BlockT>::Hash>,
+        post_id: PostId,
+        offset: u64,
+        limit: u16
+    ) -> Result<Vec<FlatPost<AccountId, BlockNumber>>> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
+
+        let runtime_api_result = api.get_replies_by_parent_id(&at, post_id, offset, limit);
+        runtime_api_result.map_err(map_rpc_error)
+    }
+
+    fn get_replies_by_parent_ids(
+        &self,
+        at: Option<<Block as BlockT>::Hash>,
+        post_ids: Vec<PostId>,
+        offset: u64,
+        limit: u16
+    ) -> Result<RepliesByPostId<AccountId, BlockNumber>> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
+
+        let runtime_api_result = api.get_replies_by_parent_ids(&at, post_ids, offset, limit);
         runtime_api_result.map_err(map_rpc_error)
     }
 

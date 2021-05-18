@@ -33,7 +33,10 @@ type RoleId = u64;
 pub struct Role<T: Trait> {
     pub created: WhoAndWhen<T>,
     pub updated: Option<WhoAndWhen<T>>,
+
+    /// Unique sequential identifier of a role. Examples of role ids: `1`, `2`, `3`, and so on.
     pub id: RoleId,
+
     pub space_id: SpaceId,
     pub disabled: bool,
     pub expires_at: Option<T::BlockNumber>,
