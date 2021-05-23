@@ -150,6 +150,7 @@ decl_storage! {
         /// The next space id.
         pub NextSpaceId get(fn next_space_id): SpaceId = RESERVED_SPACE_COUNT + 1;
 
+        /// Get the details of a space by its' id.
         pub SpaceById get(fn space_by_id) build(|config: &GenesisConfig<T>| {
           let mut spaces: Vec<(SpaceId, Space<T>)> = Vec::new();
           let endowed_account = config.endowed_account.clone();
@@ -160,9 +161,12 @@ decl_storage! {
         }):
             map hasher(twox_64_concat) SpaceId => Option<Space<T>>;
 
+        /// Find a given space id by its' unique handle.
+        /// If a handle is not registered, nothing will be returned (`None`).
         pub SpaceIdByHandle get(fn space_id_by_handle):
             map hasher(blake2_128_concat) Vec<u8> => Option<SpaceId>;
 
+        /// Find the ids of all spaces owned, by a given account.
         pub SpaceIdsByOwner get(fn space_ids_by_owner):
             map hasher(twox_64_concat) T::AccountId => Vec<SpaceId>;
     }
