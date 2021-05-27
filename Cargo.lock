@@ -1179,7 +1179,7 @@ dependencies = [
 
 [[package]]
 name = "df-integration-tests"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -1209,7 +1209,7 @@ dependencies = [
 
 [[package]]
 name = "df-traits"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "frame-support",
  "pallet-permissions",
@@ -3783,7 +3783,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-donations"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3798,7 +3798,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-faucets"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -3855,7 +3855,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-moderation"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "df-traits",
  "frame-support",
@@ -3878,19 +3878,20 @@ dependencies = [
 
 [[package]]
 name = "pallet-permissions"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "frame-support",
  "frame-system",
  "pallet-utils",
  "parity-scale-codec",
+ "serde",
  "sp-runtime",
  "sp-std",
 ]
 
 [[package]]
 name = "pallet-post-history"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3904,7 +3905,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-posts"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "df-traits",
  "frame-benchmarking",
@@ -3912,16 +3913,18 @@ dependencies = [
  "frame-system",
  "impl-trait-for-tuples",
  "pallet-permissions",
+ "pallet-space-follows",
  "pallet-spaces",
  "pallet-utils",
  "parity-scale-codec",
+ "serde",
  "sp-runtime",
  "sp-std",
 ]
 
 [[package]]
 name = "pallet-profile-follows"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -3935,7 +3938,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-profile-history"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3948,7 +3951,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-profiles"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -3957,6 +3960,7 @@ dependencies = [
  "pallet-permissions",
  "pallet-utils",
  "parity-scale-codec",
+ "serde",
  "sp-runtime",
  "sp-std",
 ]
@@ -3977,7 +3981,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-reactions"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "df-traits",
  "frame-benchmarking",
@@ -3988,13 +3992,14 @@ dependencies = [
  "pallet-spaces",
  "pallet-utils",
  "parity-scale-codec",
+ "serde",
  "sp-runtime",
  "sp-std",
 ]
 
 [[package]]
 name = "pallet-roles"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "df-traits",
  "frame-benchmarking",
@@ -4030,7 +4035,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-scores"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4070,7 +4075,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-session-keys"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4090,7 +4095,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-space-follows"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "df-traits",
  "frame-benchmarking",
@@ -4106,7 +4111,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-space-history"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4120,7 +4125,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-space-multi-ownership"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4136,7 +4141,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-space-ownership"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "df-traits",
  "frame-benchmarking",
@@ -4151,7 +4156,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-spaces"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "df-traits",
  "frame-benchmarking",
@@ -4168,7 +4173,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-subscriptions"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4286,10 +4291,11 @@ dependencies = [
 
 [[package]]
 name = "pallet-utils"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "frame-support",
  "frame-system",
+ "jsonrpc-core",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -4718,6 +4724,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "posts-rpc"
+version = "0.1.0"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "pallet-posts",
+ "pallet-utils",
+ "parity-scale-codec",
+ "posts-runtime-api",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-rpc",
+ "sp-runtime",
+]
+
+[[package]]
+name = "posts-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "pallet-posts",
+ "pallet-utils",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "ppv-lite86"
 version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4787,6 +4824,64 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e0704ee1a7e00d7bb417d0770ea303c1bccbabf0ef1667dae92b5967f5f8a71"
 dependencies = [
  "unicode-xid",
+]
+
+[[package]]
+name = "profile-follows-rpc"
+version = "0.1.0"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "pallet-utils",
+ "parity-scale-codec",
+ "profile-follows-runtime-api",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-rpc",
+ "sp-runtime",
+]
+
+[[package]]
+name = "profile-follows-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "profiles-rpc"
+version = "0.1.0"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "pallet-profiles",
+ "pallet-utils",
+ "parity-scale-codec",
+ "profiles-runtime-api",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-rpc",
+ "sp-runtime",
+]
+
+[[package]]
+name = "profiles-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "pallet-profiles",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -5182,6 +5277,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "reactions-rpc"
+version = "0.1.0"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "pallet-reactions",
+ "pallet-utils",
+ "parity-scale-codec",
+ "reactions-runtime-api",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-rpc",
+ "sp-runtime",
+]
+
+[[package]]
+name = "reactions-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "pallet-reactions",
+ "pallet-utils",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "redox_syscall"
 version = "0.1.57"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5316,6 +5442,37 @@ checksum = "23d83c02c429044d58474eaf5ae31e062d0de894e21125b47437ec0edc1397e6"
 dependencies = [
  "libc",
  "librocksdb-sys",
+]
+
+[[package]]
+name = "roles-rpc"
+version = "0.1.0"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "pallet-permissions",
+ "pallet-utils",
+ "parity-scale-codec",
+ "roles-runtime-api",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-rpc",
+ "sp-runtime",
+]
+
+[[package]]
+name = "roles-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "pallet-permissions",
+ "pallet-utils",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -7229,6 +7386,66 @@ dependencies = [
 ]
 
 [[package]]
+name = "space-follows-rpc"
+version = "0.1.0"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "pallet-utils",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-rpc",
+ "sp-runtime",
+ "space-follows-runtime-api",
+]
+
+[[package]]
+name = "space-follows-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "pallet-utils",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "spaces-rpc"
+version = "0.1.0"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "pallet-spaces",
+ "pallet-utils",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-rpc",
+ "sp-runtime",
+ "spaces-runtime-api",
+]
+
+[[package]]
+name = "spaces-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "pallet-spaces",
+ "pallet-utils",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "spin"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7327,13 +7544,18 @@ dependencies = [
 
 [[package]]
 name = "subsocial-node"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "frame-benchmarking",
  "frame-benchmarking-cli",
  "hex-literal",
  "jsonrpc-core",
  "pallet-transaction-payment-rpc",
+ "posts-rpc",
+ "profile-follows-rpc",
+ "profiles-rpc",
+ "reactions-rpc",
+ "roles-rpc",
  "sc-basic-authorship",
  "sc-cli",
  "sc-client-api",
@@ -7356,6 +7578,8 @@ dependencies = [
  "sp-inherents",
  "sp-runtime",
  "sp-transaction-pool",
+ "space-follows-rpc",
+ "spaces-rpc",
  "structopt",
  "subsocial-runtime",
  "substrate-build-script-utils",
@@ -7364,7 +7588,7 @@ dependencies = [
 
 [[package]]
 name = "subsocial-runtime"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "frame-benchmarking",
  "frame-executive",
@@ -7399,6 +7623,11 @@ dependencies = [
  "pallet-utility",
  "pallet-utils",
  "parity-scale-codec",
+ "posts-runtime-api",
+ "profile-follows-runtime-api",
+ "profiles-runtime-api",
+ "reactions-runtime-api",
+ "roles-runtime-api",
  "serde",
  "sp-api",
  "sp-block-builder",
@@ -7412,6 +7641,8 @@ dependencies = [
  "sp-std",
  "sp-transaction-pool",
  "sp-version",
+ "space-follows-runtime-api",
+ "spaces-runtime-api",
  "substrate-wasm-builder",
 ]
 
